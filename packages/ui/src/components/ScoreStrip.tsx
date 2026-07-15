@@ -42,7 +42,7 @@ export function ScoreStrip({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) font-ui text-sm">
+    <div className="w-fit min-w-[min(20rem,92vw)] max-w-full rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) font-ui text-sm">
       <button
         type="button"
         aria-expanded={open}

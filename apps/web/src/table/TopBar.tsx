@@ -27,7 +27,7 @@ export function TopBar({
   onToggleLog,
 }: TopBarProps) {
   return (
-    <div className="w-full max-w-[min(96vw,100rem)]" data-testid="score-strip">
+    <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
       <ScoreStrip
         teamNames={[TEAMS[0].label, TEAMS[1].label]}
         scores={view.scores}
