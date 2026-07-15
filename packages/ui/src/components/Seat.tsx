@@ -5,7 +5,6 @@ export interface SeatProps {
   readonly isDealer?: boolean;
   readonly isBot?: boolean;
   readonly connected?: boolean;
-  readonly cardCount?: number;
   /** On small screens, collapse to the avatar only (name stays for SR/title). */
   readonly compact?: boolean;
 }
@@ -18,7 +17,6 @@ export function Seat({
   isDealer = false,
   isBot = false,
   connected = true,
-  cardCount,
   compact = false,
 }: SeatProps) {
   const initial = (name[0] ?? '?').toUpperCase();
@@ -58,9 +56,6 @@ export function Seat({
           >
             D<span className="sr-only">ealer</span>
           </span>
-        )}
-        {cardCount !== undefined && (
-          <span className="text-[10px] tabular-nums text-(--color-ivory)/45">{cardCount}</span>
         )}
         {isTurn && <span className="sr-only">— their turn to play</span>}
       </span>

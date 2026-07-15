@@ -51,15 +51,15 @@ export const FullTable: Story = () => (
     />
     <div className="grid w-full grid-cols-3 items-center justify-items-center gap-2">
       <span />
-      <Seat name="Claudette" team={0} cardCount={5} isDealer />
+      <Seat name="Claudette" team={0} isDealer />
       <span />
-      <Seat name="Marcel" team={1} cardCount={5} isBot />
+      <Seat name="Marcel" team={1} isBot />
       <div className="relative size-72">
         <TrickArea plays={DEMO_TRICK.slice(0, 3)} />
       </div>
-      <Seat name="Ginette" team={1} cardCount={4} connected={false} />
+      <Seat name="Ginette" team={1} connected={false} />
       <span />
-      <Seat name="You" team={0} cardCount={8} isTurn />
+      <Seat name="You" team={0} isTurn />
       <span />
     </div>
     <Hand cards={SAMPLE_HAND.map((card) => ({ card, disabled: card.suit !== 'green' }))} />

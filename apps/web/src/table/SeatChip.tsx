@@ -21,7 +21,6 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
         isDealer={info.isDealer}
         isBot={info.isBot}
         connected={info.connected}
-        cardCount={info.cardCount}
       />
       {info.bidText !== null && (
         <span

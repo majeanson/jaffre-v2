@@ -44,6 +44,8 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         contract={derived.contractDisplay}
         trickCounts={derived.trickCounts}
         onLeave={onLeave}
+        logOpen={logOpen}
+        onToggleLog={() => setLogOpen((o) => !o)}
       />
       <Stage
         trickPlays={derived.trickPlays}
@@ -59,8 +61,6 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
       <UtilityRow
         you={seatInfo(0)}
         lastTrick={derived.lastTrick}
-        logOpen={logOpen}
-        onToggleLog={() => setLogOpen((o) => !o)}
         comms={online && <Comms me={me} />}
       />
       <GameLogPanel

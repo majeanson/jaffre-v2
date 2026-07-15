@@ -9,34 +9,53 @@ export interface TopBarProps {
   readonly contract: ContractDisplay | null;
   readonly trickCounts: readonly [number, number];
   readonly onLeave: () => void;
+  readonly logOpen: boolean;
+  readonly onToggleLog: () => void;
 }
 
-/** Owns the top bar: leave button, theme switcher, score strip. */
-export function TopBar({ view, contract, trickCounts, onLeave }: TopBarProps) {
+/**
+ * Owns the top bar. Collapsed it is just the score strip; expanding it
+ * reveals details plus the app controls (leave, skin, log).
+ */
+export function TopBar({
+  view,
+  contract,
+  trickCounts,
+  onLeave,
+  logOpen,
+  onToggleLog,
+}: TopBarProps) {
   return (
-    <div className="flex w-full max-w-[min(96vw,100rem)] items-center gap-3 max-sm:gap-2">
-      <button
-        onClick={onLeave}
-        aria-label="Leave the table"
-        className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm text-(--color-ivory)/80 max-sm:px-2 ${GHOST_BTN}`}
-      >
-        ←<span className="max-sm:hidden"> Leave</span>
-      </button>
-      <span className="max-sm:hidden">
-        <ThemeSwitcher />
-      </span>
-      <div className="flex-1" data-testid="score-strip">
-        <ScoreStrip
-          teamNames={['Team A', 'Team B']}
-          scores={view.scores}
-          target={41}
-          contract={contract}
-          trump={view.trump}
-          trumpDecided={view.trumpDecided}
-          roundPoints={view.roundPoints}
-          trickCounts={trickCounts}
-        />
-      </div>
+    <div className="w-full max-w-[min(96vw,100rem)]" data-testid="score-strip">
+      <ScoreStrip
+        teamNames={['Team A', 'Team B']}
+        scores={view.scores}
+        target={41}
+        contract={contract}
+        trump={view.trump}
+        trumpDecided={view.trumpDecided}
+        roundPoints={view.roundPoints}
+        trickCounts={trickCounts}
+        actions={
+          <>
+            <button
+              onClick={onLeave}
+              className={`whitespace-nowrap px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`}
+            >
+              ← Leave
+            </button>
+            <ThemeSwitcher />
+            <button
+              type="button"
+              aria-expanded={logOpen}
+              onClick={onToggleLog}
+              className={`px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`}
+            >
+              {logOpen ? 'Hide log' : 'Log'}
+            </button>
+          </>
+        }
+      />
     </div>
   );
 }

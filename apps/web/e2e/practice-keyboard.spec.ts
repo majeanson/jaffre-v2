@@ -20,8 +20,10 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   const hand = page.getByRole('listbox', { name: 'Your hand' });
   await expect(hand).toBeVisible();
 
-  // The log is collapsed by default (clean-UI rule) — open it for the test.
-  await page.getByRole('button', { name: 'Log' }).click();
+  // The log toggle lives inside the expanded top bar (clean-UI rule).
+  await page.getByRole('button', { name: 'Score details' }).click();
+  await page.getByRole('button', { name: 'Log', exact: true }).click();
+  await page.getByRole('button', { name: 'Score details' }).click();
   const log = page.getByTestId('game-log');
   const roundScored = log.getByText(/Score: Team A -?\d+, Team B -?\d+\./).first();
 

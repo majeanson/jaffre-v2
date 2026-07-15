@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { SuitId } from '../types.js';
 import { SUIT_STYLES } from '../types.js';
 
@@ -15,15 +15,18 @@ export interface ScoreStripProps {
   } | null;
   readonly trump?: SuitId | null;
   readonly trumpDecided?: boolean;
-  /** Trick points per team this round (details view). */
+  /** Trick points per team this round (expanded view). */
   readonly roundPoints?: readonly [number, number];
-  /** Tricks captured per team this round (details view). */
+  /** Tricks captured per team this round (expanded view). */
   readonly trickCounts?: readonly [number, number];
+  /** App controls (leave, skin, log…) shown only while expanded. */
+  readonly actions?: ReactNode;
 }
 
 /**
- * Minimal by default: scores, the live contract, trump. Everything else
- * (team names, round points, tricks, target) lives behind the details toggle.
+ * The top bar. Collapsed: just scores, the bet, and trump — centered. The
+ * whole bar is the toggle; expanding grows the SAME bar with full details
+ * and the app controls.
  */
 export function ScoreStrip({
   teamNames,
@@ -34,17 +37,18 @@ export function ScoreStrip({
   trumpDecided = false,
   roundPoints,
   trickCounts,
+  actions,
 }: ScoreStripProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-4 py-2 font-ui text-sm max-sm:px-2.5 max-sm:py-1.5">
+    <div className="rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) font-ui text-sm">
       <button
         type="button"
         aria-expanded={open}
         aria-label="Score details"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center gap-4 text-left max-sm:gap-2.5"
+        className="flex w-full cursor-pointer flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-2 max-sm:gap-x-3 max-sm:px-2.5 max-sm:py-1.5"
       >
         <span
           className="flex items-baseline gap-1.5"
@@ -69,47 +73,46 @@ export function ScoreStrip({
           <span className="size-2 self-center rounded-full bg-(--color-ivory)" aria-hidden />
         </span>
 
-        <span className="ml-auto flex min-w-0 items-center gap-3 max-sm:gap-1.5">
-          {contract !== null && (
-            <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
-              {contract.playerName} {contract.value}
-              {contract.sansAtout ? ' SA' : ''}
-              {contract.progress !== undefined && (
-                <span className="ml-1 text-(--color-lamplight)">
-                  {contract.progress}/{contract.value}
-                </span>
-              )}
-            </span>
-          )}
-          {trumpDecided && (
-            <span
-              className="text-lg font-bold"
-              style={trump !== null ? { color: SUIT_STYLES[trump].color } : undefined}
-            >
-              {trump === null ? (
-                <span className="text-sm font-semibold text-(--color-ivory)/70">no trump</span>
-              ) : (
-                <>
-                  {SUIT_STYLES[trump].glyph}
-                  <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
-                </>
-              )}
-            </span>
-          )}
-          <span
-            aria-hidden
-            className="grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
-          >
-            {open ? '▲' : '▼'}
+        {contract !== null && (
+          <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
+            <span className="font-normal text-(--color-ivory)/55">bet</span> {contract.playerName}{' '}
+            {contract.value}
+            {contract.sansAtout ? ' SA' : ''}
+            {contract.progress !== undefined && (
+              <span className="ml-1 text-(--color-lamplight)">
+                {contract.progress}/{contract.value}
+              </span>
+            )}
           </span>
+        )}
+
+        {trumpDecided && (
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <span className="text-(--color-ivory)/55">trump</span>
+            {trump === null ? (
+              <span className="font-semibold text-(--color-ivory)/90">none</span>
+            ) : (
+              <span className="text-lg font-bold" style={{ color: SUIT_STYLES[trump].color }}>
+                {SUIT_STYLES[trump].glyph}
+                <span className="sr-only">{SUIT_STYLES[trump].label}</span>
+              </span>
+            )}
+          </span>
+        )}
+
+        <span
+          aria-hidden
+          className="grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
+        >
+          {open ? '▲' : '▼'}
         </span>
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 text-xs shadow-(--shadow-panel)">
-          <div className="grid grid-cols-2 gap-2 tabular-nums">
+        <div className="flex flex-col items-center gap-3 border-t border-white/8 px-4 pt-3 pb-4 text-xs">
+          <div className="grid w-full max-w-sm grid-cols-2 gap-2 text-center tabular-nums">
             {([0, 1] as const).map((team) => (
-              <div key={team} className="rounded-lg bg-black/25 p-2">
+              <div key={team} className="rounded-lg bg-black/25 p-2.5">
                 <p className="font-semibold text-(--color-ivory)/90">
                   <span
                     className={`mr-1.5 inline-block size-2 rounded-full ${team === 0 ? 'bg-(--color-lamplight)' : 'bg-(--color-ivory)'}`}
@@ -117,18 +120,36 @@ export function ScoreStrip({
                   />
                   {teamNames[team]}
                 </p>
-                <p className="mt-1 text-(--color-ivory)/70">
-                  {roundPoints !== undefined &&
-                    `${(roundPoints[team] ?? 0) >= 0 ? '+' : ''}${roundPoints[team]} pts this round`}
-                </p>
-                <p className="text-(--color-ivory)/70">
-                  {trickCounts !== undefined &&
-                    `${trickCounts[team]} trick${trickCounts[team] === 1 ? '' : 's'} taken`}
-                </p>
+                <p className="mt-1 font-display text-2xl text-(--color-ivory)">{scores[team]}</p>
+                {roundPoints !== undefined && (
+                  <p className="text-(--color-ivory)/70">
+                    {(roundPoints[team] ?? 0) >= 0 ? '+' : ''}
+                    {roundPoints[team]} pts this round
+                  </p>
+                )}
+                {trickCounts !== undefined && (
+                  <p className="text-(--color-ivory)/70">
+                    {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'} taken
+                  </p>
+                )}
               </div>
             ))}
           </div>
-          <p className="mt-2 text-center text-(--color-ivory)/50">first team to {target} wins</p>
+          <p className="text-(--color-ivory)/55">
+            first team to <span className="font-semibold text-(--color-ivory)/85">{target}</span>{' '}
+            wins
+            {contract !== null && (
+              <>
+                {' '}
+                · {contract.playerName} must take{' '}
+                <span className="font-semibold text-(--color-ivory)/85">{contract.value}</span>{' '}
+                trick points{contract.sansAtout ? ' without trump (stake ×2)' : ''}
+              </>
+            )}
+          </p>
+          {actions !== undefined && (
+            <div className="flex flex-wrap items-center justify-center gap-2">{actions}</div>
+          )}
         </div>
       )}
     </div>

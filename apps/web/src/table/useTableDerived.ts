@@ -1,5 +1,5 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
-import { highestBid, legalBidChoices, legalCards } from '@jaffre/engine';
+import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 import type { BidOption, TrickPlayView } from '@jaffre/ui';
 import { toPosition, useGameStore } from '../state/gameStore.js';
@@ -12,7 +12,6 @@ export interface SeatChipInfo {
   readonly isDealer: boolean;
   readonly isBot: boolean;
   readonly connected: boolean;
-  readonly cardCount: number;
   /** The seat's auction declaration ("8 SA", "Pass"), null before it bids. */
   readonly bidText: string | null;
   /** True when this seat holds the contract (highlights the bid bubble). */
@@ -100,12 +99,19 @@ export function useTableDerived(): TableDerived | null {
         }
       : null;
 
-  // Only the bid that currently leads the auction (or won it) gets a bubble —
-  // passes and outbid declarations add noise without information.
-  const leading = view.contract ?? highestBid(view.bids);
+  // During the auction every declaration matters (who passed, who leads);
+  // once play starts only the winning bid stays, next to its seat.
   const bidTextFor = (seat: number): string | null => {
-    if (leading === null || leading.seat !== seat) return null;
-    return `${leading.value}${leading.sansAtout ? ' SA' : ''}`;
+    if (view.phase === 'bidding') {
+      const entry = view.bids.find((b) => b.seat === seat);
+      if (entry === undefined) return null;
+      if (entry.choice.kind === 'pass') return 'Pass';
+      return `${entry.choice.value}${entry.choice.sansAtout ? ' SA' : ''}`;
+    }
+    if (view.contract !== null && view.contract.seat === seat) {
+      return `${view.contract.value}${view.contract.sansAtout ? ' SA' : ''}`;
+    }
+    return null;
   };
 
   const bidOptions: BidOption[] =
@@ -151,7 +157,6 @@ export function useTableDerived(): TableDerived | null {
       isDealer: view.dealer === seat,
       isBot: info.isBot,
       connected: info.connected,
-      cardCount: view.handCounts[seat],
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
     };
