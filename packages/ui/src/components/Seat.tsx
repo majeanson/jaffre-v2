@@ -30,7 +30,7 @@ export function Seat({
       <span
         aria-hidden
         className={`relative grid size-9 shrink-0 place-items-center rounded-full font-display font-semibold text-lg text-(--color-felt-950) max-sm:size-7 max-sm:text-sm ${
-          team === 0 ? 'bg-(--color-lamplight)' : 'bg-(--color-ivory)'
+          team === 0 ? 'bg-(--color-team-a)' : 'bg-(--color-team-b)'
         } ${isTurn ? 'ring-2 ring-(--color-accent) ring-offset-2 ring-offset-(--color-felt-900)' : ''}`}
       >
         {initial}

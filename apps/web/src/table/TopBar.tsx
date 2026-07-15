@@ -1,6 +1,7 @@
 import type { SeatView } from '@jaffre/engine';
 import { ScoreStrip } from '@jaffre/ui';
 import { GHOST_BTN } from '../components/buttonStyles.js';
+import { TEAMS } from '../teams.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
@@ -28,7 +29,7 @@ export function TopBar({
   return (
     <div className="w-full max-w-[min(96vw,100rem)]" data-testid="score-strip">
       <ScoreStrip
-        teamNames={['Team A', 'Team B']}
+        teamNames={[TEAMS[0].label, TEAMS[1].label]}
         scores={view.scores}
         target={41}
         contract={contract}

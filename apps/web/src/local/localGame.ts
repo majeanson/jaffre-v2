@@ -29,11 +29,11 @@ const LOCAL_ROSTER: Roster = {
   started: true,
 };
 
-export function startLocalGame(): void {
+export function startLocalGame(seed?: number): void {
   stopLocalGame();
-  const seed = Math.floor(Math.random() * 2 ** 31);
-  state = createGame(seed);
-  rng = mulberry32(seed ^ 0xb07);
+  const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
+  state = createGame(actualSeed);
+  rng = mulberry32(actualSeed ^ 0xb07);
   const store = useGameStore.getState();
   store.reset();
   store.welcome(HUMAN_SEAT, viewFor(state, HUMAN_SEAT), 0, LOCAL_ROSTER, []);

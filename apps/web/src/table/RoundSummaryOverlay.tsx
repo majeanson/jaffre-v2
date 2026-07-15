@@ -21,7 +21,7 @@ export function RoundSummaryOverlay({ summary, contractName }: RoundSummaryOverl
       if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
     };
   }, []);
-  const team = summary.contract.seat % 2 === 0 ? 'Team A' : 'Team B';
+  const team = summary.contract.seat % 2 === 0 ? 'Team Sun' : 'Team Moon';
   return (
     <div
       ref={ref}
@@ -43,7 +43,7 @@ export function RoundSummaryOverlay({ summary, contractName }: RoundSummaryOverl
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm tabular-nums">
           {([0, 1] as const).map((t) => (
             <div key={t} className="rounded-lg bg-black/25 p-2">
-              <p className="text-(--color-ivory)/60">Team {t === 0 ? 'A' : 'B'}</p>
+              <p className="text-(--color-ivory)/60">{t === 0 ? 'Team Sun' : 'Team Moon'}</p>
               <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
               <p
                 className={

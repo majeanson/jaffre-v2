@@ -22,7 +22,7 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
       <div className="pop-in relative w-full max-w-md rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
         <Confetti />
         <p className="font-display text-3xl text-(--color-lamplight)">
-          Team {winner === 0 ? 'A' : 'B'} wins!
+          {winner === 0 ? 'Team Sun' : 'Team Moon'} wins!
         </p>
         <p className="mt-1 text-(--color-ivory)/80 tabular-nums">
           {scores[0]} — {scores[1]}
@@ -35,8 +35,8 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
                 <tr>
                   <th className="px-1.5 py-1 text-left font-normal">Rd</th>
                   <th className="px-1.5 py-1 text-left font-normal">Contract</th>
-                  <th className="px-1.5 py-1 text-right font-normal">ΔA</th>
-                  <th className="px-1.5 py-1 text-right font-normal">ΔB</th>
+                  <th className="px-1.5 py-1 text-right font-normal">Δ Sun</th>
+                  <th className="px-1.5 py-1 text-right font-normal">Δ Moon</th>
                   <th className="px-1.5 py-1 text-right font-normal">Score</th>
                 </tr>
               </thead>

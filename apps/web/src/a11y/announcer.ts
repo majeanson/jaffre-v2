@@ -33,12 +33,12 @@ export function announce(event: GameEvent, names: readonly string[]): string {
     }
     case 'round_scored': {
       const s = event.summary;
-      const team = s.contract.seat % 2 === 0 ? 'Team A' : 'Team B';
+      const team = s.contract.seat % 2 === 0 ? 'Team Sun' : 'Team Moon';
       return `${team} ${s.contractMade ? 'makes' : 'fails'} ${s.contract.value}${
         s.contract.sansAtout ? ' sans atout' : ''
-      }. Score: Team A ${s.scores[0]}, Team B ${s.scores[1]}.`;
+      }. Score: Team Sun ${s.scores[0]}, Team Moon ${s.scores[1]}.`;
     }
     case 'game_over':
-      return `Game over — ${event.winner === 0 ? 'Team A' : 'Team B'} wins!`;
+      return `Game over — ${event.winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`;
   }
 }

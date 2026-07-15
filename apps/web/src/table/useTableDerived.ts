@@ -26,10 +26,13 @@ export interface ContractDisplay {
   readonly progress: number;
 }
 
-/** The "X takes the trick" banner while a finished trick is held. */
+/** The trick result shown while a finished trick is held on the table. */
 export interface HeldBanner {
-  readonly text: string;
-  readonly special: boolean;
+  readonly winnerName: string;
+  readonly isYou: boolean;
+  readonly points: number;
+  readonly team: 0 | 1;
+  readonly specials: readonly ('red_zero' | 'brown_zero')[];
 }
 
 /** The previous trick, ready for the peek popover. */
@@ -84,18 +87,14 @@ export function useTableDerived(): TableDerived | null {
     card: p.card,
   }));
 
-  const specialTags =
-    heldTrick?.specials.map((s) => (s === 'red_zero' ? 'RED 0 +5!' : 'BROWN 0 −2!')).join(' ') ??
-    '';
   const heldBanner: HeldBanner | null =
     heldTrick !== null
       ? {
-          text: `${
-            heldTrick.winner === (me ?? -1)
-              ? 'You take'
-              : `${roster.seats[heldTrick.winner]?.name ?? 'Player'} takes`
-          } the trick — ${heldTrick.points > 0 ? '+' : ''}${heldTrick.points} to Team ${heldTrick.winner % 2 === 0 ? 'A' : 'B'}${specialTags ? ` · ${specialTags}` : ''}`,
-          special: specialTags !== '',
+          winnerName: roster.seats[heldTrick.winner]?.name ?? 'Player',
+          isYou: heldTrick.winner === (me ?? -1),
+          points: heldTrick.points,
+          team: (heldTrick.winner % 2) as 0 | 1,
+          specials: heldTrick.specials,
         }
       : null;
 

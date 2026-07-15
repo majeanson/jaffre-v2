@@ -54,7 +54,7 @@ export function ScoreStrip({
           className="flex items-baseline gap-1.5"
           aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
         >
-          <span className="size-2 self-center rounded-full bg-(--color-lamplight)" aria-hidden />
+          <span className="size-2 self-center rounded-full bg-(--color-team-a)" aria-hidden />
           <span
             key={scores[0]}
             className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
@@ -70,7 +70,7 @@ export function ScoreStrip({
           >
             {scores[1]}
           </span>
-          <span className="size-2 self-center rounded-full bg-(--color-ivory)" aria-hidden />
+          <span className="size-2 self-center rounded-full bg-(--color-team-b)" aria-hidden />
         </span>
 
         {contract !== null && (
@@ -115,7 +115,7 @@ export function ScoreStrip({
               <div key={team} className="rounded-lg bg-black/25 p-2.5">
                 <p className="font-semibold text-(--color-ivory)/90">
                   <span
-                    className={`mr-1.5 inline-block size-2 rounded-full ${team === 0 ? 'bg-(--color-lamplight)' : 'bg-(--color-ivory)'}`}
+                    className={`mr-1.5 inline-block size-2 rounded-full ${team === 0 ? 'bg-(--color-team-a)' : 'bg-(--color-team-b)'}`}
                     aria-hidden
                   />
                   {teamNames[team]}

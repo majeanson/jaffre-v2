@@ -22,7 +22,7 @@ export function Stage({ trickPlays, sweepTo, banner, seatInfo, bidOverlay }: Sta
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[22%] max-sm:inset-y-[14%]">
         <TrickArea plays={trickPlays} sweepTo={sweepTo} />
       </div>
-      {banner !== null && <TrickBanner text={banner.text} special={banner.special} />}
+      {banner !== null && <TrickBanner banner={banner} />}
       {/* top-4 keeps the top chip (and its bid bubble) below the top bar */}
       <div className="absolute top-4 left-1/2 z-0 -translate-x-1/2">
         <SeatChip info={seatInfo(2)} compact />

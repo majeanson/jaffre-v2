@@ -1,18 +1,53 @@
+import { TEAMS } from '../teams.js';
+import type { HeldBanner } from './useTableDerived.js';
+
 export interface TrickBannerProps {
-  readonly text: string;
-  /** True when the trick contained a special card (bigger burst animation). */
-  readonly special: boolean;
+  readonly banner: HeldBanner;
 }
 
-/** Owns the "X takes the trick" pill at the bottom of the stage. */
-export function TrickBanner({ text, special }: TrickBannerProps) {
+/**
+ * Owns the trick result: a big, glanceable card — who took it, how many
+ * points, for which team — shown while the finished trick is held.
+ */
+export function TrickBanner({ banner }: TrickBannerProps) {
+  const team = TEAMS[banner.team];
+  const special = banner.specials.length > 0;
   return (
-    <p
-      className={`absolute bottom-[2%] left-1/2 z-10 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
-        special ? 'special-burst' : 'pop-in'
-      }`}
+    <div
+      className={`absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 ${special ? 'special-burst' : 'pop-in'}`}
     >
-      {text}
-    </p>
+      <div
+        className="flex items-center gap-4 rounded-2xl border-2 bg-black/80 px-5 py-3 shadow-(--shadow-panel) max-sm:gap-3 max-sm:px-4 max-sm:py-2"
+        style={{ borderColor: team.color }}
+      >
+        <span
+          className="grid size-14 shrink-0 place-items-center rounded-xl font-display text-2xl font-black text-(--color-felt-950) max-sm:size-11 max-sm:text-xl"
+          style={{ background: team.color }}
+        >
+          {banner.points > 0 ? '+' : ''}
+          {banner.points}
+        </span>
+        <span className="flex flex-col leading-tight">
+          <span className="font-display text-xl text-(--color-ivory) max-sm:text-lg">
+            {banner.isYou ? 'You take the trick!' : `${banner.winnerName} takes the trick`}
+          </span>
+          <span className="text-sm font-semibold max-sm:text-xs" style={{ color: team.color }}>
+            for {team.label}
+            {banner.specials.map((s) => (
+              <span
+                key={s}
+                className={`ml-2 rounded-full px-2 py-px text-[11px] font-black ${
+                  s === 'red_zero'
+                    ? 'bg-(--color-suit-red) text-(--color-card-face)'
+                    : 'bg-(--color-suit-brown) text-(--color-card-face)'
+                }`}
+              >
+                {s === 'red_zero' ? 'RED 0 +5' : 'BROWN 0 −2'}
+              </span>
+            ))}
+          </span>
+        </span>
+      </div>
+    </div>
   );
 }

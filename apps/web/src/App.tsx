@@ -6,11 +6,15 @@ import { Lobby } from './screens/Lobby.js';
 import { Table } from './screens/Table.js';
 import { useGameStore } from './state/gameStore.js';
 
-type Route = { kind: 'home' } | { kind: 'practice' } | { kind: 'room'; code: string };
+type Route =
+  { kind: 'home' } | { kind: 'practice'; seed: number | null } | { kind: 'room'; code: string };
 
 function parseHash(): Route {
   const h = location.hash;
-  if (h === '#practice') return { kind: 'practice' };
+  if (h === '#practice') return { kind: 'practice', seed: null };
+  // '#practice/<seed>' pins the deal + bot rng — used by the screenshot gallery.
+  const practice = /^#practice\/(\d{1,10})$/.exec(h);
+  if (practice !== null) return { kind: 'practice', seed: Number(practice[1]) };
   const room = /^#room\/([a-z0-9-]{1,32})$/.exec(h);
   if (room !== null) return { kind: 'room', code: room[1] as string };
   return { kind: 'home' };
@@ -28,7 +32,7 @@ export function App() {
 
   useEffect(() => {
     if (route.kind === 'practice') {
-      startLocalGame();
+      startLocalGame(route.seed ?? undefined);
       return () => stopLocalGame();
     }
     if (route.kind === 'room') {
