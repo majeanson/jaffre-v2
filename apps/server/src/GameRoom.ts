@@ -17,6 +17,8 @@ import type { Action, GameState, Seat, Viewer } from '@jaffre/engine';
 import { chooseAction } from '@jaffre/bots';
 import { parseClientMessage } from '@jaffre/protocol';
 import type { ChatEntry, ClientAction, Roster, RosterSeat, ServerMessage } from '@jaffre/protocol';
+import type { Env } from './env.js';
+import { gameRecordFrom } from './history.js';
 
 const BOT_DELAY_MS = 700;
 /** After a completed trick the client holds the 4 cards on the table
@@ -36,6 +38,11 @@ interface Meta {
   seats: [SeatOwner, SeatOwner, SeatOwner, SeatOwner];
   names: Record<string, string>;
   started: boolean;
+  /** Room code (the /ws/:roomCode path segment), captured on first connect —
+   * a DO cannot recover its idFromName input, and the history rows need it. */
+  roomCode?: string;
+  /** Date.now() when the game started (history bookkeeping only). */
+  startedAt?: number;
   /** userId → Date.now() of when their last socket closed mid-game. */
   disconnectedSince?: Record<string, number>;
   /** Optional per-room override of BOT_SWAP_MS (used by tests). */
@@ -71,7 +78,10 @@ export class GameRoom implements DurableObject {
   private chat: ChatEntry[] = [];
   private loaded = false;
 
-  constructor(private readonly ctx: DurableObjectState) {}
+  constructor(
+    private readonly ctx: DurableObjectState,
+    private readonly env: Env,
+  ) {}
 
   /** Re-hydrate the in-memory cache from storage. Never trusted across wakes. */
   private async load(): Promise<void> {
@@ -94,12 +104,26 @@ export class GameRoom implements DurableObject {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
     const url = new URL(request.url);
-    const userId = url.searchParams.get('u');
-    const name = url.searchParams.get('n');
+    // Identity: the worker verifies the session token and forwards the result
+    // as headers (token mode). Query params are the no-secret fallback only —
+    // in token mode the worker never dispatches without the headers set.
+    const headerId = request.headers.get('X-User-Id');
+    const headerName = request.headers.get('X-User-Name');
+    const userId = headerId !== null && headerId !== '' ? headerId : url.searchParams.get('u');
+    const name =
+      headerName !== null && headerName !== ''
+        ? decodeURIComponent(headerName)
+        : url.searchParams.get('n');
     if (userId === null || userId === '' || name === null || name === '') {
-      return new Response('Missing u/n query params', { status: 400 });
+      return new Response('Missing identity', { status: 400 });
     }
     await this.load();
+    // Remember the room code for game-history rows (idFromName is one-way).
+    const roomCode = /^\/ws\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname)?.[1];
+    if (roomCode !== undefined && this.meta.roomCode !== roomCode) {
+      this.meta.roomCode = roomCode;
+      await this.ctx.storage.put('meta', this.meta);
+    }
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
@@ -324,6 +348,7 @@ export class GameRoom implements DurableObject {
     const game = createGame(seed);
     this.game = game;
     this.meta.started = true;
+    this.meta.startedAt = Date.now();
     this.seq = 0;
     await this.ctx.storage.put({ meta: this.meta, game: serialize(game), seq: this.seq });
     for (const socket of this.ctx.getWebSockets()) {
@@ -417,7 +442,58 @@ export class GameRoom implements DurableObject {
       });
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
+    if (game.phase === 'game_over') {
+      // History write is strictly best-effort: awaited (so tests observe it)
+      // but fully guarded — D1 being absent or failing never breaks the room.
+      try {
+        await this.persistHistory(game);
+      } catch (err) {
+        console.error('game history write failed', err);
+      }
+    }
     await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
+  }
+
+  /** Write games + game_players rows to D1 once, at game_over. */
+  private async persistHistory(game: GameState): Promise<void> {
+    const db = this.env.DB;
+    if (db === undefined) return; // no-DB env (local dev / tests) — skip
+    const stored = await this.ctx.storage.list<LogEntry>({ prefix: 'log:' });
+    const record = gameRecordFrom(
+      {
+        roomCode: this.meta.roomCode ?? 'unknown',
+        startedAt: this.meta.startedAt ?? null,
+        seats: this.meta.seats,
+      },
+      game,
+      [...stored.values()],
+      { id: crypto.randomUUID(), finishedAt: Date.now() },
+    );
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO games (id, room_code, seed, started_at, finished_at, winner_team, score_0, score_1, action_log)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+        )
+        .bind(
+          record.id,
+          record.room_code,
+          record.seed,
+          record.started_at,
+          record.finished_at,
+          record.winner_team,
+          record.score_0,
+          record.score_1,
+          record.action_log,
+        ),
+      ...record.players.map((p) =>
+        db
+          .prepare(
+            'INSERT INTO game_players (game_id, seat, user_id, is_bot) VALUES (?1, ?2, ?3, ?4)',
+          )
+          .bind(record.id, p.seat, p.user_id, p.is_bot),
+      ),
+    ]);
   }
 
   /** When `userId`'s bot-swap kicks in; +Infinity while they are connected. */

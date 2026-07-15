@@ -21,9 +21,11 @@ bindings = [{ name = "GAME_ROOM", class_name = "GameRoom" }]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
 
-# D1 added at M8 (accounts + history):
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "jaffre"
-# database_id = "..."
-# migrations_dir = "migrations"
+# D1 (M8: accounts + history). SESSION_SECRET is a wrangler secret
+# (`wrangler secret put SESSION_SECRET`, `.dev.vars` locally) — see src/env.ts
+# for the no-secret fallback behaviour.
+[[d1_databases]]
+binding = "DB"
+database_name = "jaffre"
+database_id = "ac79cf61-e214-405a-ae67-a9308dcd97d3"
+migrations_dir = "migrations"

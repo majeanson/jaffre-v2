@@ -12,3 +12,12 @@ bindings = [{ name = "GAME_ROOM", class_name = "GameRoom" }]
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameRoom"]
+
+# D1 for tests: miniflare fakes the database locally (the id is a placeholder,
+# never a real Cloudflare resource). Schema is applied per-run by
+# test/apply-migrations.ts via applyD1Migrations.
+[[d1_databases]]
+binding = "DB"
+database_name = "jaffre"
+database_id = "jaffre-test"
+migrations_dir = "migrations"

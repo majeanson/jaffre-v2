@@ -1,0 +1,6 @@
+# Copy to .dev.vars (gitignored) to enable auth locally with `wrangler dev`.
+# Must be >= 32 chars. Generate one:
+#   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+# Leave .dev.vars absent to run in the no-secret fallback mode (plain ?u=&n=
+# WebSocket identity, /api/auth/* returns 503) — see src/env.ts.
+SESSION_SECRET=replace-me-with-48-random-bytes-base64
