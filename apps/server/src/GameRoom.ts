@@ -19,6 +19,13 @@ import { parseClientMessage } from '@jaffre/protocol';
 import type { ChatEntry, ClientAction, Roster, RosterSeat, ServerMessage } from '@jaffre/protocol';
 
 const BOT_DELAY_MS = 700;
+/** After a completed trick the client holds the 4 cards on the table
+ * (~2.2s hold + sweep) — bots must not play into that window. */
+export const TRICK_HOLD_MS = 2600;
+const ROUND_OVER_DELAY_MS = 3200;
+/** How long a seated human may be fully disconnected mid-game before a bot
+ * plays their turns. Tests can override per-room via `meta.botSwapMs`. */
+export const BOT_SWAP_MS = 45_000;
 const CHAT_CAP = 100;
 const SEATS: readonly Seat[] = [0, 1, 2, 3];
 
@@ -29,6 +36,10 @@ interface Meta {
   seats: [SeatOwner, SeatOwner, SeatOwner, SeatOwner];
   names: Record<string, string>;
   started: boolean;
+  /** userId → Date.now() of when their last socket closed mid-game. */
+  disconnectedSince?: Record<string, number>;
+  /** Optional per-room override of BOT_SWAP_MS (used by tests). */
+  botSwapMs?: number;
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -138,6 +149,23 @@ export class GameRoom implements DurableObject {
     await this.load();
     // Recompute roster with this socket excluded so its seat shows connected=false.
     this.broadcastRoster({ exclude: ws });
+    // If a seated human's LAST socket just closed mid-game, start their
+    // disconnect clock so the alarm can bot-swap them after the deadline.
+    const att = this.attachment(ws);
+    if (typeof att.viewer !== 'number') return;
+    if (!this.meta.started || this.game === null || this.game.phase === 'game_over') return;
+    const stillConnected = this.ctx.getWebSockets().some((s) => {
+      if (s === ws) return false;
+      const a = this.attachment(s);
+      return a.joined && a.userId === att.userId;
+    });
+    if (stillConnected) return;
+    this.meta.disconnectedSince = {
+      ...this.meta.disconnectedSince,
+      [att.userId]: Date.now(),
+    };
+    await this.ctx.storage.put('meta', this.meta);
+    await this.scheduleNextWake();
   }
 
   webSocketError(ws: WebSocket): void {
@@ -148,7 +176,8 @@ export class GameRoom implements DurableObject {
     }
   }
 
-  /** Bot turns and round_over auto-continue run here, never inline. */
+  /** Bot turns, round_over auto-continue, and disconnected-human bot-swaps
+   * all run here, never inline. */
   async alarm(): Promise<void> {
     this.loaded = false; // always re-read after a wake — memory is not trusted
     await this.load();
@@ -159,7 +188,16 @@ export class GameRoom implements DurableObject {
       return;
     }
     const turnSeat = game.turn;
-    if (!isBotOwner(this.meta.seats[turnSeat])) return; // human's turn — do nothing
+    const owner = this.meta.seats[turnSeat];
+    const botActs =
+      isBotOwner(owner) ||
+      (typeof owner === 'string' && this.disconnectDeadline(owner) <= Date.now());
+    if (!botActs) {
+      // A connected human's turn (or their deadline has not passed yet):
+      // re-arm the alarm for whatever the next wake actually is.
+      await this.scheduleNextWake();
+      return;
+    }
     const rng = mulberry32((game.seed ^ this.seq) >>> 0);
     const action = chooseAction(viewFor(game, turnSeat), rng);
     if (action !== null) await this.applyEngineAction(action);
@@ -172,10 +210,25 @@ export class GameRoom implements DurableObject {
     att.viewer = seat ?? 'spectator';
     att.joined = true;
     ws.serializeAttachment(att);
+    let metaDirty = false;
     if (this.meta.names[att.userId] !== att.name) {
       this.meta.names[att.userId] = att.name;
-      await this.ctx.storage.put('meta', this.meta);
+      metaDirty = true;
     }
+    // Rejoining stops the disconnect clock — the human resumes control.
+    if (this.meta.disconnectedSince?.[att.userId] !== undefined) {
+      this.meta.disconnectedSince = Object.fromEntries(
+        Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== att.userId),
+      );
+      metaDirty = true;
+    }
+    if (metaDirty) await this.ctx.storage.put('meta', this.meta);
+    this.sendWelcome(ws, att);
+    this.broadcastRoster({ skip: ws });
+  }
+
+  /** Snapshot of everything a client needs to (re)adopt its identity. */
+  private sendWelcome(ws: WebSocket, att: Attachment): void {
     this.send(ws, {
       t: 'welcome',
       viewer: att.viewer,
@@ -184,7 +237,6 @@ export class GameRoom implements DurableObject {
       roster: this.roster(),
       chatTail: this.chat,
     });
-    this.broadcastRoster({ skip: ws });
   }
 
   private async onSit(ws: WebSocket, att: Attachment, seat: Seat): Promise<void> {
@@ -197,6 +249,7 @@ export class GameRoom implements DurableObject {
       // Already own this seat — idempotent.
       att.viewer = seat;
       ws.serializeAttachment(att);
+      this.sendWelcome(ws, att);
       this.broadcastRoster({});
       return;
     }
@@ -220,6 +273,9 @@ export class GameRoom implements DurableObject {
     att.viewer = seat;
     ws.serializeAttachment(att);
     await this.ctx.storage.put('meta', this.meta);
+    // Fresh welcome so the sitter's client adopts its new viewer identity —
+    // the store only learns `viewer` from welcome snapshots.
+    this.sendWelcome(ws, att);
     this.broadcastRoster({});
   }
 
@@ -276,7 +332,7 @@ export class GameRoom implements DurableObject {
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
     this.broadcastRoster({});
-    await this.maybeScheduleBot();
+    await this.scheduleNextWake();
   }
 
   private async onAction(ws: WebSocket, att: Attachment, client: ClientAction): Promise<void> {
@@ -361,15 +417,40 @@ export class GameRoom implements DurableObject {
       });
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
-    await this.maybeScheduleBot();
+    await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
   }
 
-  private async maybeScheduleBot(): Promise<void> {
+  /** When `userId`'s bot-swap kicks in; +Infinity while they are connected. */
+  private disconnectDeadline(userId: string): number {
+    const since = this.meta.disconnectedSince?.[userId];
+    if (since === undefined) return Number.POSITIVE_INFINITY;
+    return since + (this.meta.botSwapMs ?? BOT_SWAP_MS);
+  }
+
+  /**
+   * The single alarm slot is shared by bot turns, round_over auto-continue,
+   * and disconnected-human bot-swaps: compute the earliest wake we need and
+   * set one alarm. Date.now() for scheduling only — the engine never sees time.
+   */
+  private async scheduleNextWake(afterTrick = false): Promise<void> {
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
-    const due = game.phase === 'round_over' || isBotOwner(this.meta.seats[game.turn]);
-    // Date.now() for scheduling only — the engine itself never sees time.
-    if (due) await this.ctx.storage.setAlarm(Date.now() + BOT_DELAY_MS);
+    const now = Date.now();
+    let wake: number | null = null;
+    if (game.phase === 'round_over') {
+      wake = now + ROUND_OVER_DELAY_MS;
+    } else {
+      const owner = this.meta.seats[game.turn];
+      if (isBotOwner(owner)) {
+        // A trick just completed: the clients hold + sweep the 4 cards for
+        // ~2.2s, so the next bot must wait out that animation window.
+        wake = now + (afterTrick ? TRICK_HOLD_MS : BOT_DELAY_MS);
+      } else if (typeof owner === 'string') {
+        const deadline = this.disconnectDeadline(owner);
+        if (Number.isFinite(deadline)) wake = Math.max(now + 1, deadline);
+      }
+    }
+    if (wake !== null) await this.ctx.storage.setAlarm(wake);
   }
 
   /* ── Helpers ───────────────────────────────────────────────────────── */

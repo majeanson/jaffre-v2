@@ -63,7 +63,9 @@ export function Table({ onAction, onLeave }: TableProps) {
   const trickBanner =
     heldTrick !== null
       ? `${
-          heldTrick.winner === (me ?? -1) ? 'You take' : `${roster.seats[heldTrick.winner]?.name ?? 'Player'} takes`
+          heldTrick.winner === (me ?? -1)
+            ? 'You take'
+            : `${roster.seats[heldTrick.winner]?.name ?? 'Player'} takes`
         } the trick — ${heldTrick.points > 0 ? '+' : ''}${heldTrick.points} to Team ${heldTrick.winner % 2 === 0 ? 'A' : 'B'}`
       : null;
 

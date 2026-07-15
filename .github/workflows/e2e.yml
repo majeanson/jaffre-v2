@@ -1,0 +1,30 @@
+# Non-blocking browser e2e suite: runs after "CI & Deploy" completes, against
+# the same commit. Failures here never gate the main CI job or the deploy.
+name: E2E
+
+on:
+  workflow_run:
+    workflows: ['CI & Deploy']
+    types: [completed]
+
+jobs:
+  e2e:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7

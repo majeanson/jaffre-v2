@@ -42,6 +42,9 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
             id={cardKey(entry.card)}
             textValue={cardLabel(entry.card)}
             aria-disabled={!playable}
+            // react-aria drops the aria-disabled prop above, but forwards
+            // data-* — tests and tooling read playability from this.
+            data-playable={playable || undefined}
             className={`group rounded-(--radius-card) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
               playable
                 ? 'cursor-pointer hover:-translate-y-3 focus-visible:-translate-y-3'

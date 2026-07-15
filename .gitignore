@@ -3,6 +3,8 @@ dist/
 coverage/
 *.tsbuildinfo
 .wrangler/
+test-results/
+playwright-report/
 .dev.vars
 .DS_Store
 build/

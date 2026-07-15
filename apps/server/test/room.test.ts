@@ -1,9 +1,10 @@
-import { SELF, env, runDurableObjectAlarm } from 'cloudflare:test';
+import { SELF, env, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { chooseAction } from '@jaffre/bots';
 import { mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, SeatView } from '@jaffre/engine';
 import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
+import { BOT_SWAP_MS, TRICK_HOLD_MS } from '../src/GameRoom.js';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
@@ -236,6 +237,104 @@ describe('GameRoom', () => {
     expect(welcome.view).not.toBeNull();
     expect(welcome.view?.viewer).toBe(0);
     expect(welcome.roster.seats[0]).toMatchObject({ name: 'Alice', connected: true });
+  });
+
+  it('delays the next bot wake after a completed trick (trick-hold pacing)', async () => {
+    const room = 'room-trickhold';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    let view = await setupStartedGame(client);
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+    const rng = mulberry32(77);
+
+    // Drive the game until the first completed trick.
+    for (let i = 0; i < 300 && !client.allEvents.some((e) => e.type === 'trick_won'); i++) {
+      view = client.latestView() ?? view;
+      const humanTurn = (view.phase === 'bidding' || view.phase === 'playing') && view.turn === 0;
+      if (humanTurn) {
+        const action = chooseAction(view, rng);
+        expect(action).not.toBeNull();
+        if (action === null) break;
+        client.send({ t: 'action', action: toWire(action) });
+        const reply = await client.nextAny(['view', 'error']);
+        if (reply.t === 'view') view = reply.view;
+      } else {
+        const ran = await runDurableObjectAlarm(stub);
+        if (!ran) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+    }
+    expect(client.allEvents.some((e) => e.type === 'trick_won')).toBe(true);
+
+    // Unless the trick winner is the connected human (no alarm needed), the
+    // next wake is held back for the client's trick animation window.
+    view = client.latestView() ?? view;
+    const nextIsHuman = view.phase === 'playing' && view.turn === 0;
+    if (!nextIsHuman) {
+      const alarm = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+      expect(alarm).not.toBeNull();
+      expect((alarm ?? 0) - Date.now()).toBeGreaterThan(TRICK_HOLD_MS - 1500);
+    }
+  });
+
+  it('bot-swaps a disconnected human after the deadline, and rejoin clears it', async () => {
+    interface StoredMeta {
+      disconnectedSince?: Record<string, number>;
+    }
+    const room = 'room-botswap';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    let view = await setupStartedGame(client);
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+    // Drive bot alarms until it is the human's (seat 0) turn.
+    for (let i = 0; i < 100 && view.turn !== 0; i++) {
+      const ran = await runDurableObjectAlarm(stub);
+      if (!ran) await new Promise((resolve) => setTimeout(resolve, 20));
+      view = client.latestView() ?? view;
+    }
+    expect(view.turn).toBe(0);
+    const seqBefore =
+      (await runInDurableObject(stub, (_instance, state) => state.storage.get<number>('seq'))) ?? 0;
+
+    // The human's last socket closes during their turn.
+    client.ws.close(1000, 'bye');
+    // Wait until the close handler has recorded the disconnect clock.
+    let since: number | undefined;
+    for (let i = 0; i < 100 && since === undefined; i++) {
+      since = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.disconnectedSince?.['alice'];
+      });
+      if (since === undefined) await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(since).toBeTypeOf('number');
+
+    // Rewind the stored disconnect timestamp past the 45s deadline — the
+    // alarm re-reads storage on every wake, so this is all a test needs.
+    await runInDurableObject(stub, async (_instance, state) => {
+      const meta = await state.storage.get<StoredMeta>('meta');
+      if (meta === undefined) throw new Error('meta missing');
+      meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
+      await state.storage.put('meta', meta);
+    });
+
+    // The alarm scheduled at close time now fires: a bot plays for Alice.
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+    const seqAfter =
+      (await runInDurableObject(stub, (_instance, state) => state.storage.get<number>('seq'))) ?? 0;
+    expect(seqAfter).toBeGreaterThan(seqBefore);
+
+    // Rejoining restores the seat, sees the advanced game, and clears the clock.
+    const again = await Client.connect(room, 'alice', 'Alice');
+    again.send({ t: 'join' });
+    const welcome = await again.next('welcome');
+    expect(welcome.viewer).toBe(0);
+    // Wall-clock bot alarms may add more moves before the join lands.
+    expect(welcome.seq).toBeGreaterThanOrEqual(seqAfter);
+    expect(welcome.view?.turn).not.toBe(0);
+    const cleared = await runInDurableObject(stub, async (_instance, state) => {
+      const meta = await state.storage.get<StoredMeta>('meta');
+      return meta?.disconnectedSince?.['alice'];
+    });
+    expect(cleared).toBeUndefined();
   });
 
   it('enforces seat security for a second user', async () => {

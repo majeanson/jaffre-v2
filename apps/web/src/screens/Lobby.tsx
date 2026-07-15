@@ -31,7 +31,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           {([0, 1, 2, 3] as const).map((seat) => {
             const info = roster?.seats[seat] ?? null;
             return (
-              <div key={seat} className="flex items-center gap-3">
+              <div key={seat} data-testid={`seat-row-${seat}`} className="flex items-center gap-3">
                 <span className="w-16 text-right text-xs text-(--color-ivory)/45">
                   Seat {seat + 1} · Team {seat % 2 === 0 ? 'A' : 'B'}
                 </span>
