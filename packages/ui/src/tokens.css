@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Tailwind does not scan node_modules: when an app imports this file through
+ * the @jaffre/ui package, explicitly include the devkit sources so every
+ * class used by devkit components is generated. */
+@source './';
+
 /*
  * Jaffre design tokens — the single source of look.
  * A reskin is an edit to this file, never to a component.

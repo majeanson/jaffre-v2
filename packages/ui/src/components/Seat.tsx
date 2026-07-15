@@ -46,10 +46,10 @@ export function Seat({
             <span className="ml-1.5 text-[10px] uppercase tracking-widest opacity-60">bot</span>
           )}
         </span>
-        <span className="text-[11px] text-(--color-ivory)/55 tabular-nums">
-          {isDealer && <span className="mr-1.5 text-(--color-lamplight)">Dealer</span>}
-          {cardCount !== undefined && `${cardCount} cards`}
-          {isTurn && <span className="ml-1 text-(--color-accent)">— to play</span>}
+        <span className="flex gap-1.5 text-[11px] text-(--color-ivory)/55 tabular-nums">
+          {isDealer && <span className="text-(--color-lamplight)">Dealer ·</span>}
+          {cardCount !== undefined && <span>{cardCount} cards</span>}
+          {isTurn && <span className="text-(--color-accent)">· to play</span>}
         </span>
       </span>
     </div>

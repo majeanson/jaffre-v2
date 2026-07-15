@@ -50,6 +50,24 @@ export function Table({ onAction, onLeave }: TableProps) {
         )
       : [];
 
+  /** Render the seat occupying a table-relative position (0 = you/bottom). */
+  const seatAt = (position: 0 | 1 | 2 | 3) => {
+    const seat = me === null ? position : (((position + me) % 4) as 0 | 1 | 2 | 3);
+    const info = roster.seats[seat];
+    if (info == null) return <span className="text-sm text-(--color-ivory)/40">empty</span>;
+    return (
+      <Seat
+        name={seat === me ? 'You' : info.name}
+        team={(seat % 2) as 0 | 1}
+        isTurn={view.turn === seat && view.phase !== 'game_over'}
+        isDealer={view.dealer === seat}
+        isBot={info.isBot}
+        connected={info.connected}
+        cardCount={view.handCounts[seat]}
+      />
+    );
+  };
+
   return (
     <main className="table-felt flex min-h-screen flex-col items-center gap-3 p-4">
       <div className="flex w-full max-w-4xl items-center gap-3">
@@ -59,7 +77,7 @@ export function Table({ onAction, onLeave }: TableProps) {
         >
           ← Leave
         </button>
-        <div className="flex-1">
+        <div className="flex-1" data-testid="score-strip">
           <ScoreStrip
             teamNames={['Team A', 'Team B']}
             scores={view.scores}
@@ -81,45 +99,11 @@ export function Table({ onAction, onLeave }: TableProps) {
       </div>
 
       <div className="grid w-full max-w-4xl flex-1 grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2">
-        {([2, 1, 3, 0] as const).map((position, i) => {
-          const seat = me === null ? position : (((position + me) % 4) as 0 | 1 | 2 | 3);
-          const info = roster.seats[seat];
-          const el =
-            info == null ? (
-              <span key={position} className="text-sm text-(--color-ivory)/40">
-                empty
-              </span>
-            ) : (
-              <Seat
-                key={position}
-                name={seat === me ? 'You' : info.name}
-                team={(seat % 2) as 0 | 1}
-                isTurn={view.turn === seat && view.phase !== 'game_over'}
-                isDealer={view.dealer === seat}
-                isBot={info.isBot}
-                connected={info.connected}
-                cardCount={view.handCounts[seat]}
-              />
-            );
-          // grid: row1 = top seat, row2 = left | trick | right, row3 = bottom
-          if (i === 0)
-            return (
-              <div key="top" className="col-span-3">
-                {el}
-              </div>
-            );
-          if (i === 1) return el;
-          if (i === 2) return el;
-          return (
-            <div key="bottom" className="col-span-3">
-              {el}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <div className="col-span-3">{seatAt(2)}</div>
+        {seatAt(1)}
         <TrickArea plays={trickPlays} sweepTo={sweepTo} />
+        {seatAt(3)}
+        <div className="col-span-3">{seatAt(0)}</div>
       </div>
 
       {view.phase === 'bidding' && myTurn && (
@@ -183,6 +167,7 @@ function GameLog({ lines }: { lines: readonly string[] }) {
       </div>
       <div
         ref={ref}
+        data-testid="game-log"
         className="h-20 w-full max-w-4xl overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
       >
         {lines.slice(-40).map((text, i) => (
