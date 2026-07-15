@@ -52,7 +52,7 @@ export function PlayingCard({
     <div
       role="img"
       aria-label={cardLabel(card)}
-      className={`relative select-none ${SIZE_CLASSES[size]} rounded-(--radius-card) border border-black/25 bg-linear-to-b from-(--color-ivory) to-(--color-ivory-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
+      className={`relative select-none ${SIZE_CLASSES[size]} rounded-(--radius-card) border border-black/25 bg-linear-to-b from-(--color-card-face) to-(--color-card-face-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-card-raised) -translate-y-2' : 'shadow-(--shadow-card)'
       } ${dimmed ? 'opacity-45 saturate-50' : ''}`}
       style={{ color: suit.color }}
@@ -72,7 +72,7 @@ export function PlayingCard({
       </span>
       {bonus !== null && size !== 'sm' && (
         <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-[18%] rounded-full px-1.5 py-px text-[0.62em] font-bold tracking-wide text-(--color-ivory)"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[18%] rounded-full px-1.5 py-px text-[0.62em] font-bold tracking-wide text-(--color-card-face)"
           style={{ background: suit.color }}
         >
           {bonus}

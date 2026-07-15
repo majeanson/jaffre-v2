@@ -15,6 +15,7 @@ import {
   type VoicePeerChip,
 } from '@jaffre/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import { send } from '../net/socket.js';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 import { useVoiceStore } from '../state/voiceStore.js';
@@ -175,6 +176,7 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
         >
           ← Leave
         </button>
+        <ThemeSwitcher />
         <div className="flex-1" data-testid="score-strip">
           <ScoreStrip
             teamNames={['Team A', 'Team B']}
@@ -207,7 +209,11 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
         <div className="relative">
           <TrickArea plays={trickPlays} sweepTo={sweepTo} />
           {trickBanner !== null && (
-            <p className="absolute -bottom-7 left-1/2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight)">
+            <p
+              className={`absolute -bottom-7 left-1/2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
+                specialTags ? 'special-burst' : 'pop-in'
+              }`}
+            >
               {trickBanner}
             </p>
           )}
@@ -237,7 +243,8 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
       )}
 
       {view.phase === 'game_over' && (
-        <div className="rounded-(--radius-panel) bg-(--color-felt-800) border border-(--color-accent)/40 px-8 py-5 text-center shadow-(--shadow-panel)">
+        <div className="pop-in relative rounded-(--radius-panel) bg-(--color-felt-800) border border-(--color-accent)/40 px-8 py-5 text-center shadow-(--shadow-panel)">
+          <Confetti />
           <p className="font-display text-2xl text-(--color-lamplight)">
             {view.winner === 0 ? 'Team A wins!' : 'Team B wins!'}
           </p>
@@ -415,6 +422,32 @@ function LastTrickPeek({
         </div>
       )}
     </div>
+  );
+}
+
+const CONFETTI_COLORS = [
+  'var(--color-suit-red)',
+  'var(--color-suit-green)',
+  'var(--color-suit-blue)',
+  'var(--color-lamplight)',
+];
+
+/** A dozen falling pieces over the winner card. CSS-only; reduced-motion hides the fall. */
+function Confetti() {
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-x-0 -top-2 block">
+      {Array.from({ length: 12 }, (_, i) => (
+        <span
+          key={i}
+          className="confetti-piece absolute block h-2.5 w-1.5 rounded-xs"
+          style={{
+            left: `${5 + i * 8}%`,
+            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            animationDelay: `${(i % 5) * 120}ms`,
+          }}
+        />
+      ))}
+    </span>
   );
 }
 

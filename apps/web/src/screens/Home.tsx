@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import { lastRoom, playerName, setPlayerName } from '../net/socket.js';
 
 export interface HomeProps {
@@ -23,6 +24,9 @@ export function Home({ onPractice, onJoinRoom }: HomeProps) {
           <p className="mt-2 text-sm text-(--color-ivory)/60">
             Trick-taking for four. Bid, take the tricks, first team to 41.
           </p>
+          <div className="mt-3 flex justify-center">
+            <ThemeSwitcher />
+          </div>
         </header>
 
         <label className="flex flex-col gap-1.5 text-sm text-(--color-ivory)/80">

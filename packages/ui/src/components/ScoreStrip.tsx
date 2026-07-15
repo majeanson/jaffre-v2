@@ -39,7 +39,10 @@ export function ScoreStrip({
             aria-hidden
           />
           <span className="text-(--color-ivory)/70">{teamNames[team]}</span>
-          <span className="font-display font-semibold text-xl tabular-nums text-(--color-ivory)">
+          <span
+            key={scores[team]}
+            className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
+          >
             {scores[team]}
           </span>
           {roundPoints !== undefined && (
