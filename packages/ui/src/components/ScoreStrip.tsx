@@ -24,9 +24,60 @@ export interface ScoreStripProps {
 }
 
 /**
- * The top bar. Collapsed: just scores, the bet, and trump — centered. The
- * whole bar is the toggle; expanding grows the SAME bar with full details
- * and the app controls.
+ * One team's tricks this round: a pile of face-down mini cards + the round
+ * points. The at-a-glance answer to "how is this round going".
+ */
+function TrickPile({
+  count,
+  points,
+  colorVar,
+  label,
+  mirrored = false,
+}: {
+  count: number;
+  points: number;
+  colorVar: string;
+  label: string;
+  mirrored?: boolean;
+}) {
+  const shown = Math.min(count, 8);
+  return (
+    <span
+      className={`flex items-center gap-1.5 ${mirrored ? 'flex-row-reverse' : ''}`}
+      aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round`}
+    >
+      <span className="size-2 shrink-0 rounded-full" style={{ background: colorVar }} aria-hidden />
+      <span
+        className={`flex items-center ${mirrored ? 'flex-row-reverse -space-x-1.5 space-x-reverse' : '-space-x-1.5'}`}
+        aria-hidden
+      >
+        {Array.from({ length: shown }, (_, i) => (
+          <span
+            key={i}
+            className="pop-in inline-block h-5 w-3.5 rounded-[3px] border-[1.5px] bg-(--color-card-back) shadow-sm"
+            style={{ borderColor: colorVar }}
+          />
+        ))}
+        {count === 0 && (
+          <span className="inline-block h-5 w-3.5 rounded-[3px] border-[1.5px] border-dashed border-white/20" />
+        )}
+      </span>
+      <span
+        className="min-w-6 text-center font-display text-base font-semibold tabular-nums"
+        style={{ color: colorVar }}
+        aria-hidden
+      >
+        {points > 0 ? '+' : ''}
+        {points}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The top bar. Collapsed: this round first — trick piles + bet + trump, the
+ * game total small. The whole bar is the toggle; expanding grows the SAME
+ * bar with full details and the app controls.
  */
 export function ScoreStrip({
   teamNames,
@@ -48,61 +99,68 @@ export function ScoreStrip({
         aria-expanded={open}
         aria-label="Score details"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 py-2 max-sm:gap-x-3 max-sm:px-2.5 max-sm:py-1.5"
+        className="flex w-full cursor-pointer items-center justify-center gap-x-4 px-4 py-2 max-sm:gap-x-2.5 max-sm:px-2.5 max-sm:py-1.5"
       >
-        <span
-          className="flex items-baseline gap-1.5"
-          aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
-        >
-          <span className="size-2 self-center rounded-full bg-(--color-team-a)" aria-hidden />
+        {/* This round comes first: each team's captured tricks as a pile. */}
+        <TrickPile
+          count={trickCounts?.[0] ?? 0}
+          points={roundPoints?.[0] ?? 0}
+          colorVar="var(--color-team-a)"
+          label={teamNames[0]}
+        />
+
+        <span className="flex min-w-0 flex-col items-center leading-tight">
+          <span className="flex min-w-0 items-center gap-2">
+            {contract !== null && (
+              <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
+                <span className="font-normal text-(--color-ivory)/55">bet</span>{' '}
+                {contract.playerName} {contract.value}
+                {contract.sansAtout ? ' SA' : ''}
+                {contract.progress !== undefined && (
+                  <span className="ml-1 text-(--color-lamplight)">
+                    {contract.progress}/{contract.value}
+                  </span>
+                )}
+              </span>
+            )}
+            {trumpDecided &&
+              (trump === null ? (
+                <span className="whitespace-nowrap text-xs font-semibold text-(--color-ivory)/80">
+                  no trump
+                </span>
+              ) : (
+                <span className="text-lg font-bold" style={{ color: SUIT_STYLES[trump].color }}>
+                  {SUIT_STYLES[trump].glyph}
+                  <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
+                </span>
+              ))}
+          </span>
+          {/* The game total rides along small — players mostly know it. */}
           <span
-            key={scores[0]}
-            className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
+            className="text-[11px] tabular-nums text-(--color-ivory)/55"
+            aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
           >
-            {scores[0]}
+            <span key={scores[0]} className="score-flash inline-block">
+              {scores[0]}
+            </span>
+            {' — '}
+            <span key={`b${scores[1]}`} className="score-flash inline-block">
+              {scores[1]}
+            </span>
           </span>
-          <span className="text-(--color-ivory)/40" aria-hidden>
-            —
-          </span>
-          <span
-            key={`b${scores[1]}`}
-            className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
-          >
-            {scores[1]}
-          </span>
-          <span className="size-2 self-center rounded-full bg-(--color-team-b)" aria-hidden />
         </span>
 
-        {contract !== null && (
-          <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
-            <span className="font-normal text-(--color-ivory)/55">bet</span> {contract.playerName}{' '}
-            {contract.value}
-            {contract.sansAtout ? ' SA' : ''}
-            {contract.progress !== undefined && (
-              <span className="ml-1 text-(--color-lamplight)">
-                {contract.progress}/{contract.value}
-              </span>
-            )}
-          </span>
-        )}
-
-        {trumpDecided && (
-          <span className="flex items-center gap-1 whitespace-nowrap">
-            <span className="text-(--color-ivory)/55">trump</span>
-            {trump === null ? (
-              <span className="font-semibold text-(--color-ivory)/90">none</span>
-            ) : (
-              <span className="text-lg font-bold" style={{ color: SUIT_STYLES[trump].color }}>
-                {SUIT_STYLES[trump].glyph}
-                <span className="sr-only">{SUIT_STYLES[trump].label}</span>
-              </span>
-            )}
-          </span>
-        )}
+        <TrickPile
+          count={trickCounts?.[1] ?? 0}
+          points={roundPoints?.[1] ?? 0}
+          colorVar="var(--color-team-b)"
+          label={teamNames[1]}
+          mirrored
+        />
 
         <span
           aria-hidden
-          className="grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
+          className="grid size-6 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
         >
           {open ? '▲' : '▼'}
         </span>

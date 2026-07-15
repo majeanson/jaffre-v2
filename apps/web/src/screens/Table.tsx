@@ -51,6 +51,7 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         trickPlays={derived.trickPlays}
         sweepTo={derived.sweepTo}
         banner={derived.heldBanner}
+        winnerPosition={derived.winnerPosition}
         seatInfo={seatInfo}
         bidOverlay={
           view.phase === 'bidding' &&

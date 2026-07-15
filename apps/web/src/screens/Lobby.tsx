@@ -1,5 +1,6 @@
 import { ChatPanel } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
+import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -50,12 +51,18 @@ export function Lobby({ code, onLeave }: LobbyProps) {
 
         <ChatPanel entries={chat} onSend={sendChat} />
 
-        <button
-          onClick={onLeave}
-          className="text-sm text-(--color-ivory)/50 hover:text-(--color-ivory)/80 cursor-pointer"
-        >
-          ← Back home
-        </button>
+        <div className="flex items-center justify-center gap-5">
+          <button
+            onClick={onLeave}
+            className="text-sm text-(--color-ivory)/50 hover:text-(--color-ivory)/80 cursor-pointer"
+          >
+            ← Back home
+          </button>
+          <HelpButton
+            label="How to play"
+            className="text-sm text-(--color-ivory)/50 hover:text-(--color-ivory)/80 cursor-pointer"
+          />
+        </div>
       </div>
     </main>
   );

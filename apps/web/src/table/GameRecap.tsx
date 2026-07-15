@@ -21,8 +21,14 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
     >
       <div className="pop-in relative w-full max-w-md rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
         <Confetti />
-        <p className="font-display text-3xl text-(--color-lamplight)">
+        <p
+          className="font-display text-(length:--text-fluid-2xl)"
+          style={{ color: `var(--color-team-${winner === 0 ? 'a' : 'b'})` }}
+        >
           {winner === 0 ? 'Team Sun' : 'Team Moon'} wins!
+        </p>
+        <p className="mt-0.5 font-semibold text-(length:--text-fluid-base) text-(--color-ivory)">
+          {names[winner]} & {names[winner + 2]}
         </p>
         <p className="mt-1 text-(--color-ivory)/80 tabular-nums">
           {scores[0]} — {scores[1]}

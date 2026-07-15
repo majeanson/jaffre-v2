@@ -35,9 +35,11 @@ export interface HeldBanner {
   readonly specials: readonly ('red_zero' | 'brown_zero')[];
 }
 
-/** The previous trick, ready for the peek popover. */
+/** The previous trick, ready for the peek popover — laid out like the table. */
 export interface LastTrickInfo {
-  readonly cards: readonly Card[];
+  /** Each play mapped to its table-relative position (0 = you/bottom). */
+  readonly plays: readonly { readonly position: 0 | 1 | 2 | 3; readonly card: Card }[];
+  readonly winnerPosition: 0 | 1 | 2 | 3;
   readonly winnerName: string;
   readonly points: number;
 }
@@ -56,6 +58,8 @@ export interface TableDerived {
   /** Table-relative position the trick is sweeping toward, if any. */
   readonly sweepTo: 0 | 1 | 2 | 3 | null;
   readonly heldBanner: HeldBanner | null;
+  /** Table-relative position of the held trick's winning card, for highlight. */
+  readonly winnerPosition: 0 | 1 | 2 | 3 | null;
   readonly bidOptions: readonly BidOption[];
   readonly contractDisplay: ContractDisplay | null;
   readonly trickCounts: readonly [number, number];
@@ -139,7 +143,8 @@ export function useTableDerived(): TableDerived | null {
   const lastTrick: LastTrickInfo | null =
     last !== undefined && view.phase === 'playing'
       ? {
-          cards: last.cards,
+          plays: last.plays.map((p) => ({ position: toPosition(p.seat, viewer), card: p.card })),
+          winnerPosition: toPosition(last.winner, viewer),
           winnerName: roster.seats[last.winner]?.name ?? 'Player',
           points: last.points,
         }
@@ -171,6 +176,7 @@ export function useTableDerived(): TableDerived | null {
     trickPlays,
     sweepTo,
     heldBanner,
+    winnerPosition: heldTrick !== null ? toPosition(heldTrick.winner, viewer) : null,
     bidOptions,
     contractDisplay,
     trickCounts,

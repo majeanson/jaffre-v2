@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react';
 export interface RoundSummaryOverlayProps {
   readonly summary: NonNullable<SeatView['lastRoundSummary']>;
   readonly contractName: string;
+  /** Player names by absolute seat (team t = seats t and t+2). */
+  readonly names: readonly string[];
 }
 
 /**
@@ -12,7 +14,7 @@ export interface RoundSummaryOverlayProps {
  * land on it, then hands focus back when it auto-dismisses. It never traps
  * focus: there is nothing to interact with and it closes on its own.
  */
-export function RoundSummaryOverlay({ summary, contractName }: RoundSummaryOverlayProps) {
+export function RoundSummaryOverlay({ summary, contractName, names }: RoundSummaryOverlayProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -41,21 +43,40 @@ export function RoundSummaryOverlay({ summary, contractName }: RoundSummaryOverl
           {summary.contract.sansAtout ? ' sans atout' : ''}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm tabular-nums">
-          {([0, 1] as const).map((t) => (
-            <div key={t} className="rounded-lg bg-black/25 p-2">
-              <p className="text-(--color-ivory)/60">{t === 0 ? 'Team Sun' : 'Team Moon'}</p>
-              <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
-              <p
-                className={
-                  (summary.deltas[t] ?? 0) >= 0 ? 'text-(--color-ok)' : 'text-(--color-danger)'
+          {([0, 1] as const).map((t) => {
+            const won = (summary.deltas[t] ?? 0) >= (summary.deltas[t === 0 ? 1 : 0] ?? 0);
+            return (
+              <div
+                key={t}
+                className={`rounded-lg bg-black/25 p-2 ${won ? 'ring-2' : 'opacity-80'}`}
+                style={
+                  won
+                    ? { ['--tw-ring-color' as string]: `var(--color-team-${t === 0 ? 'a' : 'b'})` }
+                    : undefined
                 }
               >
-                {(summary.deltas[t] ?? 0) >= 0 ? '+' : ''}
-                {summary.deltas[t]}
-              </p>
-              <p className="font-display text-lg text-(--color-ivory)">{summary.scores[t]}</p>
-            </div>
-          ))}
+                <p
+                  className="font-semibold"
+                  style={{ color: `var(--color-team-${t === 0 ? 'a' : 'b'})` }}
+                >
+                  {t === 0 ? 'Team Sun' : 'Team Moon'}
+                </p>
+                <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/75">
+                  {names[t]} & {names[t + 2]}
+                </p>
+                <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
+                <p
+                  className={
+                    (summary.deltas[t] ?? 0) >= 0 ? 'text-(--color-ok)' : 'text-(--color-danger)'
+                  }
+                >
+                  {(summary.deltas[t] ?? 0) >= 0 ? '+' : ''}
+                  {summary.deltas[t]}
+                </p>
+                <p className="font-display text-lg text-(--color-ivory)">{summary.scores[t]}</p>
+              </div>
+            );
+          })}
         </div>
         <p className="mt-3 text-xs text-(--color-ivory)/70">Next round starting…</p>
       </div>

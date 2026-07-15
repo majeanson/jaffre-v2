@@ -1,16 +1,26 @@
-import type { Card } from '@jaffre/engine';
 import { PlayingCard } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import type { LastTrickInfo } from './useTableDerived.js';
 
 export interface LastTrickPeekProps {
-  readonly cards: readonly Card[];
-  readonly winnerName: string;
-  readonly points: number;
+  readonly trick: LastTrickInfo;
 }
 
-/** Owns the click reveal of the previous trick. Closes on Escape or an outside click. */
-export function LastTrickPeek({ cards, winnerName, points }: LastTrickPeekProps) {
+/** Mini table slots matching the stage: 0 you/bottom, 1 left, 2 top, 3 right. */
+const MINI_SLOT: Record<0 | 1 | 2 | 3, string> = {
+  0: 'bottom-0 left-1/2 -translate-x-1/2',
+  1: 'left-0 top-1/2 -translate-y-1/2',
+  2: 'top-0 left-1/2 -translate-x-1/2',
+  3: 'right-0 top-1/2 -translate-y-1/2',
+};
+
+/**
+ * Owns the previous-trick popover: four cards laid out exactly like the
+ * table so who-played-what is instantly readable; the winner is raised.
+ * Closes on Escape or an outside click.
+ */
+export function LastTrickPeek({ trick }: LastTrickPeekProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -47,14 +57,23 @@ export function LastTrickPeek({ cards, winnerName, points }: LastTrickPeekProps)
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 shadow-(--shadow-panel)">
-          <div className="flex gap-1.5">
-            {cards.map((card) => (
-              <PlayingCard key={`${card.suit}-${card.value}`} card={card} size="sm" />
+          <div className="relative size-[clamp(9rem,22vmin,13rem)]">
+            {trick.plays.map((play) => (
+              <span
+                key={`${play.card.suit}-${play.card.value}`}
+                className={`absolute ${MINI_SLOT[play.position]}`}
+              >
+                <PlayingCard
+                  card={play.card}
+                  size="sm"
+                  raised={play.position === trick.winnerPosition}
+                />
+              </span>
             ))}
           </div>
-          <p className="text-[11px] text-(--color-ivory)/65 whitespace-nowrap">
-            {winnerName} · {points > 0 ? '+' : ''}
-            {points} pt{Math.abs(points) === 1 ? '' : 's'}
+          <p className="text-center text-(length:--text-fluid-xs) text-(--color-ivory)/70 whitespace-nowrap">
+            {trick.winnerName} · {trick.points > 0 ? '+' : ''}
+            {trick.points} pt{Math.abs(trick.points) === 1 ? '' : 's'}
           </p>
         </div>
       )}

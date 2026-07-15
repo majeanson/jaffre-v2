@@ -143,7 +143,7 @@ function playCard(state: GameState, seat: Seat, card: Card): Result {
 
   const roundPoints: [number, number] = [...state.roundPoints] as [number, number];
   roundPoints[teamOf(winner)] += points;
-  const capturedTricks = [...state.capturedTricks, { winner, cards, points }];
+  const capturedTricks = [...state.capturedTricks, { winner, cards, plays: currentTrick, points }];
 
   const played: GameState = {
     ...state,

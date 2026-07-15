@@ -1,6 +1,7 @@
 import type { SeatView } from '@jaffre/engine';
 import { ScoreStrip } from '@jaffre/ui';
 import { GHOST_BTN } from '../components/buttonStyles.js';
+import { HelpButton } from '../help/HelpButton.js';
 import { TEAMS } from '../teams.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
@@ -46,6 +47,7 @@ export function TopBar({
               ← Leave
             </button>
             <ThemeSwitcher />
+            <HelpButton label="Help" />
             <button
               type="button"
               aria-expanded={logOpen}

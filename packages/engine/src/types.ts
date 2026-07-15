@@ -41,6 +41,8 @@ export interface TrickPlay {
 export interface CapturedTrick {
   readonly winner: Seat;
   readonly cards: readonly Card[];
+  /** The trick in play order with each card's seat — who played what. */
+  readonly plays: readonly TrickPlay[];
   readonly points: number;
 }
 

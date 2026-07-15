@@ -21,6 +21,7 @@ export function Overlays({ view, roster, onRematch, onLeave }: OverlaysProps) {
         <RoundSummaryOverlay
           summary={view.lastRoundSummary}
           contractName={roster.seats[view.lastRoundSummary.contract.seat]?.name ?? 'Player'}
+          names={roster.seats.map((s) => s?.name ?? '—')}
         />
       )}
       {view.phase === 'game_over' && (

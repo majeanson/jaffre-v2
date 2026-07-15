@@ -13,6 +13,8 @@ export interface TrickAreaProps {
   readonly plays: readonly TrickPlayView[];
   /** When set, the trick sweeps away toward this position. */
   readonly sweepTo?: 0 | 1 | 2 | 3 | null;
+  /** Highlight the winning card while a resolved trick is held. */
+  readonly highlight?: 0 | 1 | 2 | 3 | null;
 }
 
 const SLOT: Record<0 | 1 | 2 | 3, string> = {
@@ -43,7 +45,7 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
  * seat's direction and sweep toward the winner; timing comes from motion
  * tokens; with reduced motion everything is instant (MotionConfig).
  */
-export function TrickArea({ plays, sweepTo = null }: TrickAreaProps) {
+export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickAreaProps) {
   return (
     <div role="group" className="relative h-full w-full" aria-label="Current trick">
       <AnimatePresence>
@@ -57,7 +59,7 @@ export function TrickArea({ plays, sweepTo = null }: TrickAreaProps) {
               exit={{ ...SWEEP_TO[play.position], opacity: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             >
-              <PlayingCard card={play.card} size="md" />
+              <PlayingCard card={play.card} size="md" raised={highlight === play.position} />
             </motion.div>
           ))}
         {sweepTo !== null &&

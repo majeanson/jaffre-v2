@@ -17,13 +17,7 @@ export function UtilityRow({ you, lastTrick, comms }: UtilityRowProps) {
   return (
     <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center gap-2 py-1">
       <SeatChip info={you} />
-      {lastTrick !== null && (
-        <LastTrickPeek
-          cards={lastTrick.cards}
-          winnerName={lastTrick.winnerName}
-          points={lastTrick.points}
-        />
-      )}
+      {lastTrick !== null && <LastTrickPeek trick={lastTrick} />}
       <span className="ml-auto flex items-center gap-2">{comms}</span>
     </div>
   );
