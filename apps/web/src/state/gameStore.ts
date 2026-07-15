@@ -1,4 +1,4 @@
-import type { Card, GameEvent, SeatView, Viewer } from '@jaffre/engine';
+import type { Card, GameEvent, RoundSummary, SeatView, Viewer } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
 import { create } from 'zustand';
 import { announce } from '../a11y/announcer.js';
@@ -32,6 +32,8 @@ interface GameStore {
    * cards and the points before it sweeps to the winner.
    */
   heldTrick: HeldTrick | null;
+  /** Every scored round this game — feeds the end-of-game recap. */
+  roundHistory: readonly RoundSummary[];
   setSweep: (position: 0 | 1 | 2 | 3) => void;
   clearHeldTrick: () => void;
 
@@ -65,11 +67,21 @@ export const useGameStore = create<GameStore>((set) => ({
   log: [],
   sweepTo: null,
   heldTrick: null,
+  roundHistory: [],
 
   setConnection: (connection) => set({ connection }),
   welcome: (viewer, view, seq, roster, chat) =>
-    set({ viewer, view, seq, roster, chat, connection: 'open' }),
-  setView: (view, seq) => set({ view, seq }),
+    set({ viewer, view, seq, roster, chat, connection: 'open', roundHistory: [] }),
+  setView: (view, seq) =>
+    set((s) => ({
+      view,
+      seq,
+      // A fresh game arriving over a finished one is a rematch — reset recap.
+      roundHistory:
+        s.view?.phase === 'game_over' && view.phase === 'bidding' && view.roundIndex === 0
+          ? []
+          : s.roundHistory,
+    })),
   applyEvents: (events, seq, view) =>
     set((s) => {
       const names = seatNames(s.roster);
@@ -87,12 +99,19 @@ export const useGameStore = create<GameStore>((set) => ({
           specials: trickWon.specials,
         };
       }
+      const scored = events.find((e) => e.type === 'round_scored');
+      const restarted = events.some((e) => e.type === 'round_started' && e.roundIndex === 0);
       return {
         view: view ?? s.view,
         seq,
         log: [...s.log.slice(-120), ...lines],
         heldTrick: heldTrick ?? s.heldTrick,
         sweepTo: heldTrick !== null ? null : s.sweepTo,
+        roundHistory: restarted
+          ? []
+          : scored?.type === 'round_scored'
+            ? [...s.roundHistory, scored.summary]
+            : s.roundHistory,
       };
     }),
   setSweep: (position) => set({ sweepTo: position }),
@@ -110,6 +129,7 @@ export const useGameStore = create<GameStore>((set) => ({
       log: [],
       sweepTo: null,
       heldTrick: null,
+      roundHistory: [],
     }),
 }));
 

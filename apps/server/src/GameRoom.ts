@@ -326,7 +326,9 @@ export class GameRoom implements DurableObject {
   }
 
   private async onStart(ws: WebSocket, att: Attachment): Promise<void> {
-    if (this.meta.started) {
+    // A finished game may be restarted in place (rematch, same table).
+    const isRematch = this.meta.started && this.game?.phase === 'game_over';
+    if (this.meta.started && !isRematch) {
       this.send(ws, { t: 'error', code: 'ALREADY_STARTED', message: 'Game already started' });
       return;
     }
@@ -341,6 +343,12 @@ export class GameRoom implements DurableObject {
         message: 'All four seats must be filled to start',
       });
       return;
+    }
+    if (isRematch) {
+      // Clear the previous game's action log so the next history record and
+      // any replay contain only the new game.
+      const oldLog = await this.ctx.storage.list({ prefix: 'log:' });
+      if (oldLog.size > 0) await this.ctx.storage.delete([...oldLog.keys()]);
     }
     const buf = new Uint32Array(1);
     crypto.getRandomValues(buf);

@@ -43,7 +43,11 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
  */
 export function TrickArea({ plays, sweepTo = null }: TrickAreaProps) {
   return (
-    <div role="group" className="relative size-56 max-sm:size-40" aria-label="Current trick">
+    <div
+      role="group"
+      className="relative size-[clamp(10rem,32vmin,22rem)]"
+      aria-label="Current trick"
+    >
       <AnimatePresence>
         {sweepTo === null &&
           plays.map((play) => (

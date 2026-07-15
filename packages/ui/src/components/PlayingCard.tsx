@@ -3,16 +3,15 @@ import { cardLabel, SUIT_STYLES } from '../types.js';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
+/**
+ * Fluid sizing: cards scale with the viewport (vmin) so the table reads from
+ * a TV across the room and still fits a phone. Chunky-illustrated look:
+ * thick ink border, big centered glyph, corner value plates, slight depth.
+ */
 const SIZE_CLASSES: Record<CardSize, string> = {
-  sm: 'w-9 h-13 text-[10px]',
-  md: 'w-14 h-20 text-sm',
-  lg: 'w-18 h-26 text-base',
-};
-
-const CENTER_GLYPH: Record<CardSize, string> = {
-  sm: 'text-lg',
-  md: 'text-3xl',
-  lg: 'text-4xl',
+  sm: 'w-[clamp(2.1rem,5vmin,3.4rem)] text-[clamp(0.55rem,1.3vmin,0.8rem)]',
+  md: 'w-[clamp(3.2rem,8vmin,5.6rem)] text-[clamp(0.75rem,1.9vmin,1.25rem)]',
+  lg: 'w-[clamp(4.2rem,10.5vmin,7.5rem)] text-[clamp(0.95rem,2.4vmin,1.6rem)]',
 };
 
 export interface PlayingCardProps {
@@ -21,58 +20,81 @@ export interface PlayingCardProps {
   readonly faceDown?: boolean;
   readonly raised?: boolean;
   readonly dimmed?: boolean;
+  /** Small deterministic tilt (degrees) for a hand-held look. */
+  readonly tilt?: number;
 }
 
-/** A single card face — pure presentation; interactivity belongs to Hand. */
 export function PlayingCard({
   card,
   size = 'md',
   faceDown = false,
   raised = false,
   dimmed = false,
+  tilt = 0,
 }: PlayingCardProps) {
   if (faceDown) {
     return (
       <div
         aria-hidden
-        className={`${SIZE_CLASSES[size]} rounded-(--radius-card) shadow-(--shadow-card) border border-black/40 bg-(--color-card-back) bg-[repeating-linear-gradient(135deg,var(--color-card-back-line)_0_3px,transparent_3px_9px)]`}
+        style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
+        className={`${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-card) shadow-(--shadow-card) border-[0.18em] border-(--color-ink) bg-(--color-card-back) bg-[repeating-linear-gradient(135deg,var(--color-card-back-line)_0_0.2em,transparent_0.2em_0.55em)]`}
       />
     );
   }
 
   const suit = SUIT_STYLES[card.suit];
-  const bonus =
-    card.suit === 'red' && card.value === 0
-      ? '+5'
-      : card.suit === 'brown' && card.value === 0
-        ? '−2'
-        : null;
+  const isRedZero = card.suit === 'red' && card.value === 0;
+  const isBrownZero = card.suit === 'brown' && card.value === 0;
+  const bonus = isRedZero ? '+5' : isBrownZero ? '−2' : null;
 
   return (
     <div
       role="img"
       aria-label={cardLabel(card)}
-      className={`relative select-none ${SIZE_CLASSES[size]} rounded-(--radius-card) border border-black/25 bg-linear-to-b from-(--color-card-face) to-(--color-card-face-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
+      style={{
+        color: suit.color,
+        ...(tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : {}),
+      }}
+      className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-card) border-[0.18em] border-(--color-ink) bg-linear-to-b from-(--color-card-face) to-(--color-card-face-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-card-raised) -translate-y-2' : 'shadow-(--shadow-card)'
-      } ${dimmed ? 'opacity-45 saturate-50' : ''}`}
-      style={{ color: suit.color }}
+      } ${dimmed ? 'opacity-45 saturate-50' : ''} ${isBrownZero ? 'brightness-95' : ''}`}
     >
-      <span className="absolute top-1 left-1.5 leading-none font-bold tabular-nums">
+      {/* Special halo: rays for the red zero, cracks-dark vignette for brown */}
+      {isRedZero && (
+        <span
+          aria-hidden
+          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgb(255_200_60/0.5),transparent_58%)]"
+        />
+      )}
+      {isBrownZero && (
+        <span
+          aria-hidden
+          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,transparent_35%,rgb(40_25_10/0.22)_100%)]"
+        />
+      )}
+
+      {/* Corner value plates */}
+      <span
+        className="absolute top-[3%] left-[5%] grid place-items-center rounded-[0.3em] px-[0.28em] py-[0.08em] font-black leading-none tabular-nums text-[1.05em] text-(--color-card-face)"
+        style={{ background: suit.color }}
+      >
         {card.value}
-        <span className="block text-[0.7em]">{suit.glyph}</span>
-      </span>
-      <span className="absolute bottom-1 right-1.5 leading-none font-bold tabular-nums rotate-180">
-        {card.value}
-        <span className="block text-[0.7em]">{suit.glyph}</span>
       </span>
       <span
-        className={`absolute inset-0 grid place-items-center ${CENTER_GLYPH[size]} drop-shadow-[0_1px_0_rgb(0_0_0/0.15)]`}
+        className="absolute bottom-[3%] right-[5%] grid rotate-180 place-items-center rounded-[0.3em] px-[0.28em] py-[0.08em] font-black leading-none tabular-nums text-[1.05em] text-(--color-card-face)"
+        style={{ background: suit.color }}
       >
+        {card.value}
+      </span>
+
+      {/* Big center glyph with letterpress depth */}
+      <span className="absolute inset-0 grid place-items-center text-[2.6em] leading-none drop-shadow-[0_0.06em_0_rgb(0_0_0/0.3)]">
         {suit.glyph}
       </span>
+
       {bonus !== null && size !== 'sm' && (
         <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-[18%] rounded-full px-1.5 py-px text-[0.62em] font-bold tracking-wide text-(--color-card-face)"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[8%] rounded-full border-[0.12em] border-(--color-card-face) px-[0.5em] py-[0.1em] text-[0.78em] font-black tracking-wide text-(--color-card-face)"
           style={{ background: suit.color }}
         >
           {bonus}

@@ -30,7 +30,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
       selectionMode="none"
       // On narrow screens the fan overlaps harder so 8 lg cards (72px each)
       // still fit 390px while every card keeps a >=40px exposed tap strip.
-      className="flex items-end justify-center -space-x-3 px-4 pt-4 pb-2 max-sm:-space-x-7 max-sm:px-1"
+      className="flex items-end justify-center -space-x-3 px-4 pt-4 pb-2 max-sm:-space-x-6 max-sm:px-1"
       onAction={(key) => {
         const entry = cards.find((c) => cardKey(c.card) === key);
         if (entry !== undefined && entry.disabled !== true && active) onPlay?.(entry.card);
@@ -38,6 +38,8 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
     >
       {cards.map((entry, i) => {
         const playable = active && entry.disabled !== true;
+        // Gentle physical fan: outer cards tilt away from the center.
+        const tilt = (i - (cards.length - 1) / 2) * 1.6;
         return (
           <ListBoxItem
             key={cardKey(entry.card)}
@@ -55,7 +57,12 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
             style={{ zIndex: i }}
           >
             <span title={!playable ? entry.disabledReason : undefined}>
-              <PlayingCard card={entry.card} size="lg" dimmed={active && entry.disabled === true} />
+              <PlayingCard
+                card={entry.card}
+                size="lg"
+                tilt={tilt}
+                dimmed={active && entry.disabled === true}
+              />
               {!playable && entry.disabledReason !== undefined && (
                 <span className="sr-only">{entry.disabledReason}</span>
               )}

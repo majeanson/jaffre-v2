@@ -24,6 +24,8 @@ import { joinVoice, leaveVoice, toggleMute } from '../voice/rtc.js';
 export interface TableProps {
   readonly onAction: (action: ClientAction) => void;
   readonly onLeave: () => void;
+  /** Start a fresh game with the same table. */
+  readonly onRematch?: () => void;
   /** True in a room (chat + voice); false in practice mode (bots don't chat). */
   readonly online?: boolean;
 }
@@ -43,8 +45,8 @@ export function useChatSend(): (text: string) => boolean {
 const TRICK_HOLD_MS = 1600;
 const SWEEP_MS = 600;
 
-export function Table({ onAction, onLeave, online = false }: TableProps) {
-  const { view, viewer, roster, log, sweepTo, heldTrick, chat } = useGameStore();
+export function Table({ onAction, onLeave, onRematch, online = false }: TableProps) {
+  const { view, viewer, roster, log, sweepTo, heldTrick, chat, roundHistory } = useGameStore();
   const voice = useVoiceStore();
   const sendChat = useChatSend();
 
@@ -169,7 +171,7 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
 
   return (
     <main className="table-felt flex min-h-screen flex-col items-center gap-3 overflow-x-clip p-4 max-sm:gap-2 max-sm:p-2">
-      <div className="flex w-full max-w-4xl items-center gap-3 max-sm:gap-2">
+      <div className="flex w-full max-w-[min(96vw,100rem)] items-center gap-3 max-sm:gap-2">
         <button
           onClick={onLeave}
           className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-(--color-ivory)/80 hover:bg-white/8 cursor-pointer"
@@ -203,7 +205,7 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
         </div>
       </div>
 
-      <div className="grid w-full max-w-4xl flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center justify-items-center gap-2">
+      <div className="grid w-full max-w-[min(96vw,100rem)] flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center justify-items-center gap-2">
         <div className="col-span-3">{seatAt(2)}</div>
         {seatAt(1)}
         <div className="relative">
@@ -243,15 +245,14 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
       )}
 
       {view.phase === 'game_over' && (
-        <div className="pop-in relative rounded-(--radius-panel) bg-(--color-felt-800) border border-(--color-accent)/40 px-8 py-5 text-center shadow-(--shadow-panel)">
-          <Confetti />
-          <p className="font-display text-2xl text-(--color-lamplight)">
-            {view.winner === 0 ? 'Team A wins!' : 'Team B wins!'}
-          </p>
-          <p className="mt-1 text-sm text-(--color-ivory)/70 tabular-nums">
-            {view.scores[0]} — {view.scores[1]}
-          </p>
-        </div>
+        <GameRecap
+          winner={view.winner as 0 | 1}
+          scores={view.scores}
+          rounds={roundHistory}
+          names={roster.seats.map((s) => s?.name ?? '—')}
+          onRematch={onRematch}
+          onLeave={onLeave}
+        />
       )}
 
       {me !== null && (
@@ -272,7 +273,7 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
         />
       )}
 
-      <div className="flex w-full max-w-4xl items-start gap-2">
+      <div className="flex w-full max-w-[min(96vw,100rem)] items-start gap-2">
         {lastTrick !== undefined && view.phase === 'playing' && (
           <LastTrickPeek
             cards={lastTrick.cards}
@@ -425,6 +426,101 @@ function LastTrickPeek({
   );
 }
 
+/** End-of-game recap: winner, round-by-round breakdown, rematch or leave. */
+function GameRecap({
+  winner,
+  scores,
+  rounds,
+  names,
+  onRematch,
+  onLeave,
+}: {
+  winner: 0 | 1;
+  scores: readonly [number, number];
+  rounds: readonly SeatView['lastRoundSummary'][];
+  names: readonly string[];
+  onRematch?: (() => void) | undefined;
+  onLeave: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Game over"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4"
+    >
+      <div className="pop-in relative w-full max-w-md rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
+        <Confetti />
+        <p className="font-display text-3xl text-(--color-lamplight)">
+          Team {winner === 0 ? 'A' : 'B'} wins!
+        </p>
+        <p className="mt-1 text-(--color-ivory)/80 tabular-nums">
+          {scores[0]} — {scores[1]}
+        </p>
+
+        {rounds.length > 0 && (
+          <div className="mt-4 max-h-56 overflow-y-auto rounded-lg bg-black/25 p-2 text-left text-xs">
+            <table className="w-full tabular-nums">
+              <thead className="text-(--color-ivory)/50">
+                <tr>
+                  <th className="px-1.5 py-1 text-left font-normal">Rd</th>
+                  <th className="px-1.5 py-1 text-left font-normal">Contract</th>
+                  <th className="px-1.5 py-1 text-right font-normal">ΔA</th>
+                  <th className="px-1.5 py-1 text-right font-normal">ΔB</th>
+                  <th className="px-1.5 py-1 text-right font-normal">Score</th>
+                </tr>
+              </thead>
+              <tbody className="text-(--color-ivory)/85">
+                {rounds.map(
+                  (r) =>
+                    r !== null && (
+                      <tr key={r.roundIndex} className="odd:bg-white/4">
+                        <td className="px-1.5 py-1">{r.roundIndex + 1}</td>
+                        <td className="px-1.5 py-1">
+                          {names[r.contract.seat]} {r.contract.value}
+                          {r.contract.sansAtout ? ' SA' : ''}{' '}
+                          <span
+                            className={
+                              r.contractMade ? 'text-(--color-ok)' : 'text-(--color-danger)'
+                            }
+                          >
+                            {r.contractMade ? '✓' : '✗'}
+                          </span>
+                        </td>
+                        <td className="px-1.5 py-1 text-right">{r.deltas[0]}</td>
+                        <td className="px-1.5 py-1 text-right">{r.deltas[1]}</td>
+                        <td className="px-1.5 py-1 text-right">
+                          {r.scores[0]}–{r.scores[1]}
+                        </td>
+                      </tr>
+                    ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mt-5 flex justify-center gap-3">
+          {onRematch !== undefined && (
+            <button
+              onClick={onRematch}
+              className="rounded-(--radius-panel) bg-(--color-lamplight) px-6 py-3 font-semibold text-(--color-felt-950) hover:brightness-110 active:translate-y-px cursor-pointer"
+            >
+              Rematch
+            </button>
+          )}
+          <button
+            onClick={onLeave}
+            className="rounded-(--radius-panel) border border-white/20 px-6 py-3 font-semibold text-(--color-ivory)/90 hover:bg-white/8 cursor-pointer"
+          >
+            Leave
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CONFETTI_COLORS = [
   'var(--color-suit-red)',
   'var(--color-suit-green)',
@@ -469,7 +565,7 @@ function GameLog({ lines }: { lines: readonly string[] }) {
         role="region"
         aria-label="Game log"
         tabIndex={0}
-        className="h-20 w-full max-w-4xl overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
+        className="h-20 w-full max-w-[min(96vw,100rem)] overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
       >
         {lines.slice(-40).map((text, i) => (
           <p key={i}>{text}</p>
