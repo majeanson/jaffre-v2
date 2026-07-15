@@ -6,6 +6,8 @@ export interface SeatProps {
   readonly isBot?: boolean;
   readonly connected?: boolean;
   readonly cardCount?: number;
+  /** On small screens, collapse to the avatar only (name stays for SR/title). */
+  readonly compact?: boolean;
 }
 
 /** A player nameplate around the table. */
@@ -17,13 +19,15 @@ export function Seat({
   isBot = false,
   connected = true,
   cardCount,
+  compact = false,
 }: SeatProps) {
   const initial = (name[0] ?? '?').toUpperCase();
   return (
     <div
+      title={compact ? name : undefined}
       className={`inline-flex max-w-full items-center gap-2.5 rounded-(--radius-panel) px-3 py-2 bg-(--color-felt-800)/80 shadow-(--shadow-panel) border transition-colors duration-(--duration-flick) max-sm:gap-1.5 max-sm:px-2 max-sm:py-1 ${
-        isTurn ? 'border-(--color-accent)' : 'border-white/8'
-      }`}
+        compact ? 'max-sm:gap-0 max-sm:rounded-full max-sm:p-1' : ''
+      } ${isTurn ? 'border-(--color-accent)' : 'border-white/8'}`}
     >
       <span
         aria-hidden
@@ -39,7 +43,8 @@ export function Seat({
           }`}
         />
       </span>
-      <span className="flex min-w-0 items-center gap-1.5">
+      {compact && <span className="sr-only">{name}</span>}
+      <span className={`flex min-w-0 items-center gap-1.5 ${compact ? 'max-sm:hidden' : ''}`}>
         <span className="truncate font-semibold text-sm text-(--color-ivory) max-sm:text-xs">
           {name}
         </span>

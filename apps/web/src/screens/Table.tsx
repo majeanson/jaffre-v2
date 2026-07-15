@@ -147,6 +147,7 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
     return (
       <span className="relative inline-block max-w-full min-w-0">
         <Seat
+          compact={position !== 0}
           name={seat === me ? 'You' : info.name}
           team={(seat % 2) as 0 | 1}
           isTurn={view.turn === seat && view.phase !== 'game_over'}
@@ -175,11 +176,14 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
       <div className="flex w-full max-w-[min(96vw,100rem)] items-center gap-3 max-sm:gap-2">
         <button
           onClick={onLeave}
-          className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-(--color-ivory)/80 hover:bg-white/8 cursor-pointer"
+          aria-label="Leave the table"
+          className="shrink-0 whitespace-nowrap rounded-lg border border-white/15 px-3 py-1.5 text-sm text-(--color-ivory)/80 hover:bg-white/8 cursor-pointer max-sm:px-2"
         >
-          ← Leave
+          ←<span className="max-sm:hidden"> Leave</span>
         </button>
-        <ThemeSwitcher />
+        <span className="max-sm:hidden">
+          <ThemeSwitcher />
+        </span>
         <div className="flex-1" data-testid="score-strip">
           <ScoreStrip
             teamNames={['Team A', 'Team B']}
@@ -206,25 +210,23 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         </div>
       </div>
 
-      {/* Center stage: the trick dominates; seats float as chips at the edges. */}
-      <div className="relative w-full min-h-0 flex-1">
-        <div className="absolute inset-0 grid place-items-center">
-          <div className="relative">
-            <TrickArea plays={trickPlays} sweepTo={sweepTo} />
-            {trickBanner !== null && (
-              <p
-                className={`absolute -bottom-4 left-1/2 z-10 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
-                  specialTags ? 'special-burst' : 'pop-in'
-                }`}
-              >
-                {trickBanner}
-              </p>
-            )}
-          </div>
+      {/* Center stage: the trick spreads across all of it toward each player. */}
+      <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
+        <div className="absolute inset-x-[16%] inset-y-[10%] max-sm:inset-x-[20%] max-sm:inset-y-[12%]">
+          <TrickArea plays={trickPlays} sweepTo={sweepTo} />
         </div>
-        <div className="absolute top-1 left-1/2 -translate-x-1/2">{seatAt(2)}</div>
-        <div className="absolute left-1 top-1/2 -translate-y-1/2">{seatAt(1)}</div>
-        <div className="absolute right-1 top-1/2 -translate-y-1/2">{seatAt(3)}</div>
+        {trickBanner !== null && (
+          <p
+            className={`absolute bottom-[2%] left-1/2 z-10 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
+              specialTags ? 'special-burst' : 'pop-in'
+            }`}
+          >
+            {trickBanner}
+          </p>
+        )}
+        <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2">{seatAt(2)}</div>
+        <div className="absolute left-0 top-1/2 z-10 -translate-y-1/2">{seatAt(1)}</div>
+        <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2">{seatAt(3)}</div>
 
         {view.phase === 'bidding' && myTurn && (
           <div className="absolute inset-0 z-20 grid place-items-center">
@@ -296,9 +298,9 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
       </div>
       <GameLog lines={log.map((l) => l.text)} visible={logOpen} />
 
-      {/* The hand owns the bottom edge, oversized, bleeding slightly off. */}
+      {/* The hand owns the bottom edge, oversized, fully visible. */}
       {me !== null && (
-        <div className="-mb-[2.5vmin] shrink-0">
+        <div className="shrink-0 pb-1">
           <Hand
             active={myTurn && view.phase === 'playing'}
             cards={view.hand.map((card) => ({

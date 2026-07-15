@@ -37,17 +37,15 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
 };
 
 /**
- * The center of the table: cards fly in from each seat's direction and, once
- * the trick resolves, sweep toward the winner. Timing comes from motion
+ * The trick fills whatever box its parent gives it: each play sits toward its
+ * player's edge, so on a tall phone the cards spread vertically and on a wide
+ * desktop they spread horizontally — no wasted stage. Cards fly in from each
+ * seat's direction and sweep toward the winner; timing comes from motion
  * tokens; with reduced motion everything is instant (MotionConfig).
  */
 export function TrickArea({ plays, sweepTo = null }: TrickAreaProps) {
   return (
-    <div
-      role="group"
-      className="relative size-[clamp(13rem,46vmin,30rem)]"
-      aria-label="Current trick"
-    >
+    <div role="group" className="relative h-full w-full" aria-label="Current trick">
       <AnimatePresence>
         {sweepTo === null &&
           plays.map((play) => (

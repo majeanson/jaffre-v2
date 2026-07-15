@@ -63,9 +63,9 @@ export function ScoreStrip({
           <span className="size-2 self-center rounded-full bg-(--color-ivory)" aria-hidden />
         </span>
 
-        <span className="ml-auto flex items-center gap-3 max-sm:gap-2">
+        <span className="ml-auto flex min-w-0 items-center gap-3 max-sm:gap-1.5">
           {contract !== null && (
-            <span className="font-semibold text-(--color-ivory)/90 tabular-nums">
+            <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
               {contract.playerName} {contract.value}
               {contract.sansAtout ? ' SA' : ''}
               {contract.progress !== undefined && (

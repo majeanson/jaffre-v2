@@ -31,7 +31,9 @@ export const TrickLoop: Story = () => {
   }, [sweep]);
   return (
     <div className="grid place-items-center h-80">
-      <TrickArea plays={DEMO_TRICK.slice(0, count)} sweepTo={count === 4 ? sweep : null} />
+      <div className="relative size-80">
+        <TrickArea plays={DEMO_TRICK.slice(0, count)} sweepTo={count === 4 ? sweep : null} />
+      </div>
     </div>
   );
 };
@@ -52,7 +54,9 @@ export const FullTable: Story = () => (
       <Seat name="Claudette" team={0} cardCount={5} isDealer />
       <span />
       <Seat name="Marcel" team={1} cardCount={5} isBot />
-      <TrickArea plays={DEMO_TRICK.slice(0, 3)} />
+      <div className="relative size-72">
+        <TrickArea plays={DEMO_TRICK.slice(0, 3)} />
+      </div>
       <Seat name="Ginette" team={1} cardCount={4} connected={false} />
       <span />
       <Seat name="You" team={0} cardCount={8} isTurn />
