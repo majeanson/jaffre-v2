@@ -25,7 +25,7 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Score details' }).click();
   const log = page.getByTestId('game-log');
-  const roundScored = log.getByText(/Score: Team A -?\d+, Team B -?\d+\./).first();
+  const roundScored = log.getByText(/Score: Team Sun -?\d+, Team Moon -?\d+\./).first();
 
   const deadline = Date.now() + 100_000;
   while (Date.now() < deadline) {
@@ -64,7 +64,7 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
 
   // ...and the score strip shows the cumulative scores from the round summary.
   const summary = (await roundScored.textContent()) ?? '';
-  const match = /Score: Team A (-?\d+), Team B (-?\d+)/.exec(summary);
+  const match = /Score: Team Sun (-?\d+), Team Moon (-?\d+)/.exec(summary);
   expect(match).not.toBeNull();
   const teamA = match?.[1] ?? '';
   const teamB = match?.[2] ?? '';
