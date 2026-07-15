@@ -3,27 +3,52 @@ import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import {
   BidPanel,
+  ChatPanel,
   Hand,
   PlayingCard,
   ScoreStrip,
   Seat,
   TrickArea,
+  VoiceBar,
   type BidOption,
   type TrickPlayView,
+  type VoicePeerChip,
 } from '@jaffre/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { send } from '../net/socket.js';
 import { toPosition, useGameStore } from '../state/gameStore.js';
+import { useVoiceStore } from '../state/voiceStore.js';
+import { joinVoice, leaveVoice, toggleMute } from '../voice/rtc.js';
 
 export interface TableProps {
   readonly onAction: (action: ClientAction) => void;
   readonly onLeave: () => void;
+  /** True in a room (chat + voice); false in practice mode (bots don't chat). */
+  readonly online?: boolean;
+}
+
+/** Client-side chat throttle: ~1 msg/sec, rejected sends show "slow down". */
+export function useChatSend(): (text: string) => boolean {
+  const lastAt = useRef(0);
+  return useCallback((text: string) => {
+    const now = Date.now();
+    if (now - lastAt.current < 1000) return false;
+    lastAt.current = now;
+    send({ t: 'chat', text });
+    return true;
+  }, []);
 }
 
 const TRICK_HOLD_MS = 1600;
 const SWEEP_MS = 600;
 
-export function Table({ onAction, onLeave }: TableProps) {
-  const { view, viewer, roster, log, sweepTo, heldTrick } = useGameStore();
+export function Table({ onAction, onLeave, online = false }: TableProps) {
+  const { view, viewer, roster, log, sweepTo, heldTrick, chat } = useGameStore();
+  const voice = useVoiceStore();
+  const sendChat = useChatSend();
+
+  // Leaving the table (or the room) always tears the voice mesh down.
+  useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 
   // Hold a finished trick on the table, then sweep it toward the winner.
   useEffect(() => {
@@ -62,9 +87,8 @@ export function Table({ onAction, onLeave }: TableProps) {
     card: p.card,
   }));
   const specialTags =
-    heldTrick?.specials
-      .map((s) => (s === 'red_zero' ? 'RED 0 +5!' : 'BROWN 0 −2!'))
-      .join(' ') ?? '';
+    heldTrick?.specials.map((s) => (s === 'red_zero' ? 'RED 0 +5!' : 'BROWN 0 −2!')).join(' ') ??
+    '';
   const trickBanner =
     heldTrick !== null
       ? `${
@@ -86,6 +110,22 @@ export function Table({ onAction, onLeave }: TableProps) {
 
   const contractName =
     view.contract === null ? null : (roster.seats[view.contract.seat]?.name ?? 'Player');
+
+  const voicePeers: VoicePeerChip[] =
+    online && me !== null
+      ? roster.seats.flatMap((s, i) => {
+          if (s === null || s.isBot || i === me) return [];
+          const p = voice.peers[i];
+          return [
+            {
+              name: s.name,
+              connected: p?.connected ?? false,
+              muted: p?.muted ?? false,
+              speaking: p?.speaking ?? false,
+            },
+          ];
+        })
+      : [];
 
   const bidOptions: BidOption[] =
     view.phase === 'bidding'
@@ -236,6 +276,19 @@ export function Table({ onAction, onLeave }: TableProps) {
         <div className="flex-1">
           <GameLog lines={log.map((l) => l.text)} />
         </div>
+        {online && me !== null && (
+          <VoiceBar
+            status={voice.status}
+            {...(voice.error !== null ? { errorMessage: voice.error } : {})}
+            peers={voicePeers}
+            muted={voice.muted}
+            speaking={voice.speaking}
+            onJoin={() => void joinVoice()}
+            onLeave={leaveVoice}
+            onToggleMute={toggleMute}
+          />
+        )}
+        {online && <ChatPanel collapsible entries={chat} onSend={sendChat} />}
       </div>
     </main>
   );
@@ -251,13 +304,18 @@ function RoundSummaryOverlay({
 }) {
   const team = summary.contract.seat % 2 === 0 ? 'Team A' : 'Team B';
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50" role="dialog" aria-label="Round summary">
+    <div
+      className="fixed inset-0 z-40 grid place-items-center bg-black/50"
+      role="dialog"
+      aria-label="Round summary"
+    >
       <div className="w-80 rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
         <p className="font-display text-xl text-(--color-lamplight)">
           Round {summary.roundIndex + 1}
         </p>
         <p className="mt-2 text-(--color-ivory)">
-          {contractName} ({team}) {summary.contractMade ? 'MADE' : 'FAILED'} {summary.contract.value}
+          {contractName} ({team}) {summary.contractMade ? 'MADE' : 'FAILED'}{' '}
+          {summary.contract.value}
           {summary.contract.sansAtout ? ' sans atout' : ''}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-sm tabular-nums">

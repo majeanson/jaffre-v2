@@ -1,11 +1,20 @@
 import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
+import { getGuestToken } from './auth.js';
 
 /**
  * Online transport: one WebSocket to the room's Durable Object. Feeds the
  * same store shape as practice mode. Reconnects with backoff and resumes via
  * the welcome snapshot.
  */
+
+/** Voice signaling hook: rtc payloads bypass the store (they are transient). */
+type RtcHandler = (from: number, payload: unknown) => void;
+let rtcHandler: RtcHandler | null = null;
+
+export function setRtcHandler(handler: RtcHandler | null): void {
+  rtcHandler = handler;
+}
 
 let ws: WebSocket | null = null;
 let room: string | null = null;
@@ -32,17 +41,21 @@ export function connect(roomCode: string): void {
   disconnect();
   closedByUs = false;
   room = roomCode;
-  open();
+  void open();
 }
 
-function open(): void {
+async function open(): Promise<void> {
   if (room === null) return;
   const store = useGameStore.getState();
   store.setConnection(attempts === 0 ? 'connecting' : 'reconnecting');
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(
-    `${proto}://${location.host}/ws/${room}?u=${encodeURIComponent(userId())}&n=${encodeURIComponent(playerName())}`,
-  );
+  const auth = await getGuestToken(playerName());
+  const identity =
+    auth !== null
+      ? `t=${encodeURIComponent(auth.token)}`
+      : `u=${encodeURIComponent(userId())}&n=${encodeURIComponent(playerName())}`;
+  if (room === null) return; // disconnected while fetching the token
+  ws = new WebSocket(`${proto}://${location.host}/ws/${room}?${identity}`);
   ws.onopen = () => {
     attempts = 0;
     send({ t: 'join' });
@@ -56,7 +69,7 @@ function open(): void {
     if (closedByUs) return;
     attempts += 1;
     useGameStore.getState().setConnection('reconnecting');
-    setTimeout(open, Math.min(8000, 400 * 2 ** attempts));
+    setTimeout(() => void open(), Math.min(8000, 400 * 2 ** attempts));
   };
 }
 
@@ -91,6 +104,8 @@ function handle(msg: ServerMessage): void {
       store.addChat(msg.entry);
       break;
     case 'rtc':
+      rtcHandler?.(msg.from, msg.payload);
+      break;
     case 'pong':
     case 'error':
       break;

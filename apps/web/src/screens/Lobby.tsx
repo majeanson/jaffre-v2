@@ -1,6 +1,7 @@
-import { Seat } from '@jaffre/ui';
+import { ChatPanel, Seat } from '@jaffre/ui';
 import { send } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
+import { useChatSend } from './Table.js';
 
 export interface LobbyProps {
   readonly code: string;
@@ -9,7 +10,8 @@ export interface LobbyProps {
 
 /** Pre-game room: pick a seat, fill the rest with bots, start. */
 export function Lobby({ code, onLeave }: LobbyProps) {
-  const { roster, viewer, connection } = useGameStore();
+  const { roster, viewer, connection, chat } = useGameStore();
+  const sendChat = useChatSend();
   const seated = viewer !== null && viewer !== 'spectator';
   const full = roster !== null && roster.seats.every((s) => s !== null);
 
@@ -79,6 +81,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
         >
           {full ? 'Start the game' : 'Waiting for 4 players…'}
         </button>
+
+        <ChatPanel entries={chat} onSend={sendChat} />
 
         <button
           onClick={onLeave}

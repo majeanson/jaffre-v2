@@ -5,5 +5,7 @@ export * from './components/Seat';
 export * from './components/TrickArea';
 export * from './components/BidPanel';
 export * from './components/ScoreStrip';
+export * from './components/ChatPanel';
+export * from './components/VoiceBar';
 export * from './motion/config';
 export * from './motion/DealGroup';

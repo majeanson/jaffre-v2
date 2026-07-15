@@ -47,6 +47,7 @@ export function App() {
   if (route.kind === 'room') {
     return started ? (
       <Table
+        online
         onAction={(action) => send({ t: 'action', action })}
         onLeave={() => (location.hash = '')}
       />
