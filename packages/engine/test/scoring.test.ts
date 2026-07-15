@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '../src/reducer.js';
-import { ROUND_TOTAL_POINTS, TARGET_SCORE } from '../src/rules.js';
+import { decideWinner, ROUND_TOTAL_POINTS, TARGET_SCORE } from '../src/rules.js';
 import type { GameState, RoundSummary } from '../src/types.js';
 import { teamOf } from '../src/types.js';
 import { playFullGame, randomAction } from './helpers/driver.js';
@@ -65,6 +65,28 @@ describe('round scoring', () => {
       expect(next.state.scores).toEqual(state.scores);
       expect(next.events[0]?.type).toBe('round_started');
     }
+  });
+});
+
+describe('decideWinner (M3 ruling: higher total wins, contract team on exact tie)', () => {
+  it('no winner below the target', () => {
+    expect(decideWinner([40, 40], 0)).toBeNull();
+    expect(decideWinner([-20, 12], 1)).toBeNull();
+  });
+
+  it('single team crossing wins', () => {
+    expect(decideWinner([41, 10], 1)).toBe(0);
+    expect(decideWinner([10, 45], 0)).toBe(1);
+  });
+
+  it('both cross: higher total wins regardless of contract', () => {
+    expect(decideWinner([44, 42], 1)).toBe(0);
+    expect(decideWinner([42, 44], 0)).toBe(1);
+  });
+
+  it('both cross with equal totals: contract team wins', () => {
+    expect(decideWinner([43, 43], 0)).toBe(0);
+    expect(decideWinner([43, 43], 1)).toBe(1);
   });
 });
 

@@ -1,6 +1,6 @@
 import { resolveContract, outbids, highestBid } from './bidding.js';
 import { deal } from './deck.js';
-import { legalCards, trickPoints, trickWinner, TARGET_SCORE } from './rules.js';
+import { decideWinner, legalCards, trickPoints, trickWinner } from './rules.js';
 import type {
   Action,
   BidChoice,
@@ -186,11 +186,7 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
   };
   events.push({ type: 'round_scored', summary });
 
-  // Provisional 41-tiebreak (M3 open question): the contract team's total is
-  // checked first, so it wins when both teams cross 41 in the same round.
-  let winner: Team | null = null;
-  if (scores[contractTeam] >= TARGET_SCORE) winner = contractTeam;
-  else if (scores[defenderTeam] >= TARGET_SCORE) winner = defenderTeam;
+  const winner = decideWinner(scores, contractTeam);
 
   if (winner !== null) {
     events.push({ type: 'game_over', winner });

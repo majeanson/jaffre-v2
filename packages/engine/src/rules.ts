@@ -1,4 +1,4 @@
-import type { Card, Suit, TrickPlay } from './types.js';
+import type { Card, Suit, Team, TrickPlay } from './types.js';
 import { sameCard } from './types.js';
 
 export const RED_ZERO: Card = { suit: 'red', value: 0 };
@@ -50,3 +50,18 @@ export const ROUND_TOTAL_POINTS = 11;
 
 /** First team to reach this score wins. */
 export const TARGET_SCORE = 41;
+
+/**
+ * Winner once a round is scored (M3 ruling, 2026-07-15): if both teams cross
+ * the target in the same round, the higher total wins; the contract team wins
+ * only an exact tie.
+ */
+export function decideWinner(scores: readonly [number, number], contractTeam: Team): Team | null {
+  const aWins = scores[0] >= TARGET_SCORE;
+  const bWins = scores[1] >= TARGET_SCORE;
+  if (!aWins && !bWins) return null;
+  if (aWins && !bWins) return 0;
+  if (bWins && !aWins) return 1;
+  if (scores[0] !== scores[1]) return scores[0] > scores[1] ? 0 : 1;
+  return contractTeam;
+}

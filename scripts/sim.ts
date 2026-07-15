@@ -53,7 +53,11 @@ function randomAction(state: GameState, rng: Rng): Action {
     const hand = state.hands[state.turn] as readonly Card[];
     const led = state.currentTrick[0]?.card.suit ?? null;
     const legal = legalCards(hand, led);
-    return { type: 'play_card', seat: state.turn, card: legal[Math.floor(rng() * legal.length)] as Card };
+    return {
+      type: 'play_card',
+      seat: state.turn,
+      card: legal[Math.floor(rng() * legal.length)] as Card,
+    };
   }
   return { type: 'continue' };
 }
@@ -64,7 +68,9 @@ function narrateGame(seed: number, maxRounds: number): void {
   const log = (s: string) => console.log(s);
 
   log(`\n════════ GAME seed=${seed} — first team to 41 ════════`);
-  log(`Teams: ${PLAYER_NAMES[0]}+${PLAYER_NAMES[2]} (Team A) vs ${PLAYER_NAMES[1]}+${PLAYER_NAMES[3]} (Team B)`);
+  log(
+    `Teams: ${PLAYER_NAMES[0]}+${PLAYER_NAMES[2]} (Team A) vs ${PLAYER_NAMES[1]}+${PLAYER_NAMES[3]} (Team B)`,
+  );
 
   let announcedRound = -1;
   while (state.phase !== 'game_over' && state.roundIndex < maxRounds) {
@@ -72,12 +78,15 @@ function narrateGame(seed: number, maxRounds: number): void {
       announcedRound = state.roundIndex;
       log(`\n─── Round ${state.roundIndex + 1} — dealer ${PLAYER_NAMES[state.dealer]} ───`);
       for (const seat of [0, 1, 2, 3] as const) {
-        log(`  ${(PLAYER_NAMES[seat] + ':').padEnd(7)} ${fmtHand(state.hands[seat] as readonly Card[])}`);
+        log(
+          `  ${(PLAYER_NAMES[seat] + ':').padEnd(7)} ${fmtHand(state.hands[seat] as readonly Card[])}`,
+        );
       }
     }
     const action = randomAction(state, rng);
     const result = applyAction(state, action);
-    if (!result.ok) throw new Error(`engine rejected ${JSON.stringify(action)}: ${result.error.code}`);
+    if (!result.ok)
+      throw new Error(`engine rejected ${JSON.stringify(action)}: ${result.error.code}`);
     for (const event of result.events) {
       switch (event.type) {
         case 'bid_placed':
@@ -91,7 +100,11 @@ function narrateGame(seed: number, maxRounds: number): void {
           break;
         }
         case 'trump_set':
-          log(event.trump === null ? `  ► No trump this round.` : `  ► Trump is ${SUIT_ICONS[event.trump]}`);
+          log(
+            event.trump === null
+              ? `  ► No trump this round.`
+              : `  ► Trump is ${SUIT_ICONS[event.trump]}`,
+          );
           break;
         case 'card_played':
           log(`    ${PLAYER_NAMES[event.seat]} plays ${fmtCard(event.card)}`);
@@ -100,7 +113,9 @@ function narrateGame(seed: number, maxRounds: number): void {
           const tags = event.specials
             .map((s) => (s === 'red_zero' ? '+5 red zero!' : '−2 brown zero!'))
             .join(' ');
-          log(`    ⤷ ${PLAYER_NAMES[event.winner]} takes the trick (${event.points} pt${tags ? ', ' + tags : ''})`);
+          log(
+            `    ⤷ ${PLAYER_NAMES[event.winner]} takes the trick (${event.points} pt${tags ? ', ' + tags : ''})`,
+          );
           break;
         }
         case 'round_scored': {
@@ -112,7 +127,9 @@ function narrateGame(seed: number, maxRounds: number): void {
           break;
         }
         case 'game_over':
-          log(`\n★★★ ${event.winner === 0 ? 'Team A (North+South)' : 'Team B (East+West)'} WINS ★★★`);
+          log(
+            `\n★★★ ${event.winner === 0 ? 'Team A (North+South)' : 'Team B (East+West)'} WINS ★★★`,
+          );
           break;
         case 'round_started':
           break;
@@ -146,7 +163,9 @@ function stats(games: number): void {
     rounds += state.roundIndex + 1;
     winners[state.winner as 0 | 1]++;
   }
-  console.log(`games=${games} avgRounds=${(rounds / games).toFixed(1)} contractMade=${((made / contracts) * 100).toFixed(1)}% forced7=${((forced / contracts) * 100).toFixed(1)}% wins A/B=${winners[0]}/${winners[1]}`);
+  console.log(
+    `games=${games} avgRounds=${(rounds / games).toFixed(1)} contractMade=${((made / contracts) * 100).toFixed(1)}% forced7=${((forced / contracts) * 100).toFixed(1)}% wins A/B=${winners[0]}/${winners[1]}`,
+  );
 }
 
 const args = process.argv.slice(2);
