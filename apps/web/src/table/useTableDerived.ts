@@ -1,5 +1,5 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
-import { legalBidChoices, legalCards } from '@jaffre/engine';
+import { highestBid, legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 import type { BidOption, TrickPlayView } from '@jaffre/ui';
 import { toPosition, useGameStore } from '../state/gameStore.js';
@@ -100,12 +100,12 @@ export function useTableDerived(): TableDerived | null {
         }
       : null;
 
-  /** A seat's auction declaration, shown as a bubble until the round ends. */
+  // Only the bid that currently leads the auction (or won it) gets a bubble —
+  // passes and outbid declarations add noise without information.
+  const leading = view.contract ?? highestBid(view.bids);
   const bidTextFor = (seat: number): string | null => {
-    const entry = view.bids.find((b) => b.seat === seat);
-    if (entry === undefined) return null;
-    if (entry.choice.kind === 'pass') return 'Pass';
-    return `${entry.choice.value}${entry.choice.sansAtout ? ' SA' : ''}`;
+    if (leading === null || leading.seat !== seat) return null;
+    return `${leading.value}${leading.sansAtout ? ' SA' : ''}`;
   };
 
   const bidOptions: BidOption[] =

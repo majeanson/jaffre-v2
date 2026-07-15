@@ -63,7 +63,11 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         onToggleLog={() => setLogOpen((o) => !o)}
         comms={online && <Comms me={me} />}
       />
-      <GameLogPanel lines={log.map((l) => l.text)} visible={logOpen} />
+      <GameLogPanel
+        lines={log.map((l) => l.text)}
+        visible={logOpen}
+        onClose={() => setLogOpen(false)}
+      />
       {me !== null && (
         <PlayerHand
           cards={view.hand}

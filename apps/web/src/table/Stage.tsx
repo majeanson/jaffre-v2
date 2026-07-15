@@ -17,17 +17,20 @@ export interface StageProps {
 export function Stage({ trickPlays, sweepTo, banner, seatInfo, bidOverlay }: StageProps) {
   return (
     <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
-      <div className="absolute inset-x-[16%] inset-y-[10%] max-sm:inset-x-[20%] max-sm:inset-y-[12%]">
+      {/* Trick insets keep cards clear of the seat chips; cards render above
+          chips as a fallback so a chip never covers a played card. */}
+      <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[22%] max-sm:inset-y-[14%]">
         <TrickArea plays={trickPlays} sweepTo={sweepTo} />
       </div>
       {banner !== null && <TrickBanner text={banner.text} special={banner.special} />}
-      <div className="absolute top-0 left-1/2 z-10 -translate-x-1/2">
+      {/* top-4 keeps the top chip (and its bid bubble) below the top bar */}
+      <div className="absolute top-4 left-1/2 z-0 -translate-x-1/2">
         <SeatChip info={seatInfo(2)} compact />
       </div>
-      <div className="absolute left-0 top-1/2 z-10 -translate-y-1/2">
+      <div className="absolute left-0 top-1/2 z-0 -translate-y-1/2">
         <SeatChip info={seatInfo(1)} compact />
       </div>
-      <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2">
+      <div className="absolute right-0 top-1/2 z-0 -translate-y-1/2">
         <SeatChip info={seatInfo(3)} compact />
       </div>
       {bidOverlay}

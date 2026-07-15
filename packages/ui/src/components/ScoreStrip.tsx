@@ -39,7 +39,13 @@ export function ScoreStrip({
 
   return (
     <div className="relative rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-4 py-2 font-ui text-sm max-sm:px-2.5 max-sm:py-1.5">
-      <div className="flex items-center gap-4 max-sm:gap-2.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label="Score details"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full cursor-pointer items-center gap-4 text-left max-sm:gap-2.5"
+      >
         <span
           className="flex items-baseline gap-1.5"
           aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
@@ -90,17 +96,14 @@ export function ScoreStrip({
               )}
             </span>
           )}
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-label="Score details"
-            onClick={() => setOpen((o) => !o)}
-            className="grid size-7 place-items-center rounded-full border border-white/15 text-(--color-ivory)/70 hover:bg-white/8 cursor-pointer"
+          <span
+            aria-hidden
+            className="grid size-6 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
           >
-            ⋯
-          </button>
+            {open ? '▲' : '▼'}
+          </span>
         </span>
-      </div>
+      </button>
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 text-xs shadow-(--shadow-panel)">
