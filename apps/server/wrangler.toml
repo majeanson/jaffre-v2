@@ -6,8 +6,7 @@ compatibility_date = "2026-06-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
-# Custom domain — uncomment once ready to attach to the zone:
-# routes = [{ pattern = "jaffre.marcportal.com", custom_domain = true }]
+routes = [{ pattern = "jaffre.marcportal.com", custom_domain = true }]
 
 [assets]
 binding = "ASSETS"

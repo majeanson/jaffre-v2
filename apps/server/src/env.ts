@@ -20,4 +20,13 @@ export interface Env {
    * plain mode is disabled.
    */
   SESSION_SECRET?: string;
+  /**
+   * Cloudflare Realtime TURN key (wrangler secrets). Optional: without them
+   * /api/ice returns STUN only and voice works for most-but-not-all NATs.
+   * Create a key at dash.cloudflare.com → Realtime → TURN, then:
+   *   wrangler secret put TURN_KEY_ID
+   *   wrangler secret put TURN_KEY_API_TOKEN
+   */
+  TURN_KEY_ID?: string;
+  TURN_KEY_API_TOKEN?: string;
 }

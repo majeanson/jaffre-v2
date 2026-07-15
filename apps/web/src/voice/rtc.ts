@@ -23,9 +23,35 @@ type Signal =
   | { kind: 'mute'; muted: boolean }
   | { kind: 'leave' };
 
-const RTC_CONFIG: RTCConfiguration = {
-  iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.l.google.com:19302' }],
-};
+const FALLBACK_ICE: RTCIceServer[] = [
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:stun.l.google.com:19302' },
+];
+
+/** ICE servers from the server (adds short-lived TURN credentials when the
+ * Cloudflare TURN key is configured). Cached for the voice session. */
+let iceServers: RTCIceServer[] = FALLBACK_ICE;
+let iceFetchedAt = 0;
+
+async function refreshIceServers(): Promise<void> {
+  if (Date.now() - iceFetchedAt < 3600_000) return;
+  try {
+    const res = await fetch('/api/ice');
+    if (res.ok) {
+      const data = (await res.json()) as { iceServers?: RTCIceServer[] };
+      if (Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+        iceServers = data.iceServers;
+        iceFetchedAt = Date.now();
+      }
+    }
+  } catch {
+    iceServers = FALLBACK_ICE;
+  }
+}
+
+function rtcConfig(): RTCConfiguration {
+  return { iceServers };
+}
 
 const SPEAKING_POLL_MS = 100;
 const SPEAKING_RMS = 0.02;
@@ -76,6 +102,7 @@ export async function joinVoice(): Promise<void> {
   if (store.status === 'live' || store.status === 'joining') return;
   if (mySeat() === null) return; // spectators never get voice
   store.setStatus('joining');
+  await refreshIceServers(); // TURN credentials (when configured) before any peer exists
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -208,7 +235,7 @@ async function flushIce(peer: Peer): Promise<void> {
 /* ── Peer connections ──────────────────────────────────────────────────── */
 
 function createPeer(seat: number): Peer {
-  const pc = new RTCPeerConnection(RTC_CONFIG);
+  const pc = new RTCPeerConnection(rtcConfig());
   const peer: Peer = { pc, audio: null, analyser: null, pendingIce: [], retried: false };
   peers.set(seat, peer);
   if (localStream !== null) {
