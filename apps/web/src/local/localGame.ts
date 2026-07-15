@@ -60,10 +60,10 @@ function apply(action: Action): void {
   state = result.state;
   const store = useGameStore.getState();
   store.applyEvents(result.events, store.seq + 1, viewFor(state, HUMAN_SEAT));
-  scheduleBots();
+  scheduleBots(result.events.some((e) => e.type === 'trick_won'));
 }
 
-function scheduleBots(): void {
+function scheduleBots(afterTrick = false): void {
   if (botTimer !== null) clearTimeout(botTimer);
   botTimer = null;
   if (state === null || state.phase === 'game_over') return;
@@ -79,6 +79,7 @@ function scheduleBots(): void {
           : chooseAction(viewFor(state, state.turn), rng);
       if (action !== null) apply(action);
     },
-    state.phase === 'round_over' ? 2600 : 750,
+    // Leave room for the trick-hold + sweep animation before the next play.
+    state.phase === 'round_over' ? 3200 : afterTrick ? 2600 : 750,
   );
 }

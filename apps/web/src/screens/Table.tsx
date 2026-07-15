@@ -18,8 +18,26 @@ export interface TableProps {
   readonly onLeave: () => void;
 }
 
+const TRICK_HOLD_MS = 1600;
+const SWEEP_MS = 600;
+
 export function Table({ onAction, onLeave }: TableProps) {
-  const { view, viewer, roster, log, sweepTo } = useGameStore();
+  const { view, viewer, roster, log, sweepTo, heldTrick } = useGameStore();
+
+  // Hold a finished trick on the table, then sweep it toward the winner.
+  useEffect(() => {
+    if (heldTrick === null) return undefined;
+    const store = useGameStore.getState();
+    const t1 = setTimeout(
+      () => store.setSweep(toPosition(heldTrick.winner, store.viewer)),
+      TRICK_HOLD_MS,
+    );
+    const t2 = setTimeout(() => store.clearHeldTrick(), TRICK_HOLD_MS + SWEEP_MS);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [heldTrick]);
 
   if (view === null || roster === null) {
     return (
@@ -35,10 +53,19 @@ export function Table({ onAction, onLeave }: TableProps) {
   const legal =
     me !== null && view.phase === 'playing' && myTurn ? legalCards(view.hand, ledSuit) : [];
 
-  const trickPlays: TrickPlayView[] = view.currentTrick.map((p) => ({
+  // While a finished trick is held, show it instead of the (already empty)
+  // live trick so players see all four cards and the points.
+  const shownTrick = heldTrick?.plays ?? view.currentTrick;
+  const trickPlays: TrickPlayView[] = shownTrick.map((p) => ({
     position: toPosition(p.seat, viewer),
     card: p.card,
   }));
+  const trickBanner =
+    heldTrick !== null
+      ? `${
+          heldTrick.winner === (me ?? -1) ? 'You take' : `${roster.seats[heldTrick.winner]?.name ?? 'Player'} takes`
+        } the trick — ${heldTrick.points > 0 ? '+' : ''}${heldTrick.points} to Team ${heldTrick.winner % 2 === 0 ? 'A' : 'B'}`
+      : null;
 
   const contractName =
     view.contract === null ? null : (roster.seats[view.contract.seat]?.name ?? 'Player');
@@ -101,7 +128,14 @@ export function Table({ onAction, onLeave }: TableProps) {
       <div className="grid w-full max-w-4xl flex-1 grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2">
         <div className="col-span-3">{seatAt(2)}</div>
         {seatAt(1)}
-        <TrickArea plays={trickPlays} sweepTo={sweepTo} />
+        <div className="relative">
+          <TrickArea plays={trickPlays} sweepTo={sweepTo} />
+          {trickBanner !== null && (
+            <p className="absolute -bottom-7 left-1/2 w-max -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-(--color-lamplight)">
+              {trickBanner}
+            </p>
+          )}
+        </div>
         {seatAt(3)}
         <div className="col-span-3">{seatAt(0)}</div>
       </div>
