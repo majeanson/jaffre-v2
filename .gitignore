@@ -5,3 +5,4 @@ coverage/
 .wrangler/
 .dev.vars
 .DS_Store
+build/

@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p apps/server && tsc -p apps/web && tsc -p packages/ui",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
