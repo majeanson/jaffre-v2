@@ -2,7 +2,7 @@ import type { Story } from '@ladle/react';
 import { useState } from 'react';
 import { SAMPLE_HAND } from '../stories-helpers.js';
 import type { CardData } from '../types.js';
-import { Hand } from './Hand.tsx';
+import { Hand } from './Hand';
 
 export const YourTurn: Story = () => {
   const [played, setPlayed] = useState<string[]>([]);

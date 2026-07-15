@@ -1,12 +1,12 @@
 import type { Story } from '@ladle/react';
 import { useEffect, useState } from 'react';
 import { SAMPLE_HAND } from '../stories-helpers.js';
-import { BidPanel } from './BidPanel.tsx';
-import { Hand } from './Hand.tsx';
-import { ScoreStrip } from './ScoreStrip.tsx';
-import { Seat } from './Seat.tsx';
-import type { TrickPlayView } from './TrickArea.tsx';
-import { TrickArea } from './TrickArea.tsx';
+import { BidPanel } from './BidPanel';
+import { Hand } from './Hand';
+import { ScoreStrip } from './ScoreStrip';
+import { Seat } from './Seat';
+import type { TrickPlayView } from './TrickArea';
+import { TrickArea } from './TrickArea';
 
 const DEMO_TRICK: readonly TrickPlayView[] = [
   { position: 0, card: { suit: 'green', value: 5 } },

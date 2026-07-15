@@ -1,7 +1,7 @@
 import { ListBox, ListBoxItem } from 'react-aria-components';
 import type { CardData } from '../types.js';
 import { cardKey, cardLabel } from '../types.js';
-import { PlayingCard } from './PlayingCard.tsx';
+import { PlayingCard } from './PlayingCard';
 
 export interface HandCard {
   readonly card: CardData;

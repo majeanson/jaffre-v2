@@ -1,8 +1,63 @@
+import { useEffect, useState } from 'react';
+import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
+import { connect, disconnect, send } from './net/socket.js';
+import { Home } from './screens/Home.js';
+import { Lobby } from './screens/Lobby.js';
+import { Table } from './screens/Table.js';
+import { useGameStore } from './state/gameStore.js';
+
+type Route = { kind: 'home' } | { kind: 'practice' } | { kind: 'room'; code: string };
+
+function parseHash(): Route {
+  const h = location.hash;
+  if (h === '#practice') return { kind: 'practice' };
+  const room = /^#room\/([a-z0-9-]{1,32})$/.exec(h);
+  if (room !== null) return { kind: 'room', code: room[1] as string };
+  return { kind: 'home' };
+}
+
 export function App() {
+  const [route, setRoute] = useState<Route>(parseHash());
+  const started = useGameStore((s) => s.roster?.started ?? false);
+
+  useEffect(() => {
+    const onHash = () => setRoute(parseHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  useEffect(() => {
+    if (route.kind === 'practice') {
+      startLocalGame();
+      return () => stopLocalGame();
+    }
+    if (route.kind === 'room') {
+      connect(route.code);
+      return () => {
+        disconnect();
+        useGameStore.getState().reset();
+      };
+    }
+    return undefined;
+  }, [route]);
+
+  if (route.kind === 'practice') {
+    return <Table onAction={sendLocalAction} onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'room') {
+    return started ? (
+      <Table
+        onAction={(action) => send({ t: 'action', action })}
+        onLeave={() => (location.hash = '')}
+      />
+    ) : (
+      <Lobby code={route.code} onLeave={() => (location.hash = '')} />
+    );
+  }
   return (
-    <main>
-      <h1>Jaffre</h1>
-      <p>Coming soon.</p>
-    </main>
+    <Home
+      onPractice={() => (location.hash = '#practice')}
+      onJoinRoom={(code) => (location.hash = `#room/${code}`)}
+    />
   );
 }

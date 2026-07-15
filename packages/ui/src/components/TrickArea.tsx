@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { CardData } from '../types.js';
 import { cardKey } from '../types.js';
-import { PlayingCard } from './PlayingCard.tsx';
+import { PlayingCard } from './PlayingCard';
 
 export interface TrickPlayView {
   /** 0 = bottom (you), 1 = left, 2 = top, 3 = right — table-relative. */

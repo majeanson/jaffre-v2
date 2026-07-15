@@ -1,6 +1,6 @@
 import type { Story } from '@ladle/react';
 import { SUITS_FOR_STORIES } from '../stories-helpers.js';
-import { PlayingCard } from './PlayingCard.tsx';
+import { PlayingCard } from './PlayingCard';
 
 export const AllSuits: Story = () => (
   <div className="flex flex-col gap-6">
