@@ -6,11 +6,14 @@ export const TRICK_HOLD_MS = 1600;
 /** How long the sweep animation runs before the trick is cleared. */
 export const SWEEP_MS = 600;
 
-/** Hold a finished trick on the table, then sweep it toward the winner. */
-export function useTrickHold(): void {
+/**
+ * Hold a finished trick on the table, then sweep it toward the winner.
+ * `frozen` (scene viewer) keeps the held trick on screen indefinitely.
+ */
+export function useTrickHold(frozen = false): void {
   const heldTrick = useGameStore((s) => s.heldTrick);
   useEffect(() => {
-    if (heldTrick === null) return undefined;
+    if (heldTrick === null || frozen) return undefined;
     const store = useGameStore.getState();
     const t1 = setTimeout(
       () => store.setSweep(toPosition(heldTrick.winner, store.viewer)),
@@ -21,5 +24,5 @@ export function useTrickHold(): void {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [heldTrick]);
+  }, [heldTrick, frozen]);
 }

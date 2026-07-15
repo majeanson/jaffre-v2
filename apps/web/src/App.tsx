@@ -3,11 +3,15 @@ import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGam
 import { connect, disconnect, send } from './net/socket.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
+import { Scenes } from './screens/Scenes.js';
 import { Table } from './screens/Table.js';
 import { useGameStore } from './state/gameStore.js';
 
 type Route =
-  { kind: 'home' } | { kind: 'practice'; seed: number | null } | { kind: 'room'; code: string };
+  | { kind: 'home' }
+  | { kind: 'practice'; seed: number | null }
+  | { kind: 'room'; code: string }
+  | { kind: 'scenes' };
 
 function parseHash(): Route {
   const h = location.hash;
@@ -17,6 +21,8 @@ function parseHash(): Route {
   if (practice !== null) return { kind: 'practice', seed: Number(practice[1]) };
   const room = /^#room\/([a-z0-9-]{1,32})$/.exec(h);
   if (room !== null) return { kind: 'room', code: room[1] as string };
+  // '#scenes' — live-through every game phase instantly (design/dev tool).
+  if (h === '#scenes') return { kind: 'scenes' };
   return { kind: 'home' };
 }
 
@@ -53,6 +59,9 @@ export function App() {
         onRematch={() => startLocalGame()}
       />
     );
+  }
+  if (route.kind === 'scenes') {
+    return <Scenes onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'room') {
     return started ? (

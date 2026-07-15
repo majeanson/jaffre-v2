@@ -23,14 +23,22 @@ export interface TableProps {
   readonly onRematch?: () => void;
   /** True in a room (chat + voice); false in practice mode (bots don't chat). */
   readonly online?: boolean;
+  /** Scene viewer: keep a held trick on screen indefinitely. */
+  readonly frozenHold?: boolean;
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
-export function Table({ onAction, onLeave, onRematch, online = false }: TableProps) {
+export function Table({
+  onAction,
+  onLeave,
+  onRematch,
+  online = false,
+  frozenHold = false,
+}: TableProps) {
   const log = useGameStore((s) => s.log);
   const [logOpen, setLogOpen] = useState(false);
   const derived = useTableDerived();
-  useTrickHold();
+  useTrickHold(frozenHold);
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 
