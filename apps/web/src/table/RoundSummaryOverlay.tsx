@@ -6,6 +6,11 @@ export interface RoundSummaryOverlayProps {
   readonly contractName: string;
   /** Player names by absolute seat (team t = seats t and t+2). */
   readonly names: readonly string[];
+  /** Per-seat readiness for the next round (bots always ready). */
+  readonly readySeats: readonly boolean[];
+  /** True once YOU are ready (disables the button). */
+  readonly youReady: boolean;
+  readonly onReady: () => void;
 }
 
 /**
@@ -14,7 +19,14 @@ export interface RoundSummaryOverlayProps {
  * land on it, then hands focus back when it auto-dismisses. It never traps
  * focus: there is nothing to interact with and it closes on its own.
  */
-export function RoundSummaryOverlay({ summary, contractName, names }: RoundSummaryOverlayProps) {
+export function RoundSummaryOverlay({
+  summary,
+  contractName,
+  names,
+  readySeats,
+  youReady,
+  onReady,
+}: RoundSummaryOverlayProps) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -78,7 +90,27 @@ export function RoundSummaryOverlay({ summary, contractName, names }: RoundSumma
             );
           })}
         </div>
-        <p className="mt-3 text-xs text-(--color-ivory)/70">Next round starting…</p>
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={onReady}
+            disabled={youReady}
+            className={`rounded-(--radius-panel) px-8 py-3 font-semibold text-(length:--text-fluid-base) ${
+              youReady
+                ? 'bg-white/10 text-(--color-ivory)/50'
+                : 'bg-(--color-lamplight) text-(--color-felt-950) hover:brightness-110 active:translate-y-px cursor-pointer'
+            }`}
+          >
+            {youReady ? 'Waiting for the others…' : 'Ready for the next round'}
+          </button>
+          <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ivory)/70">
+            {names.map((n, seat) => (
+              <span key={seat} className={readySeats[seat] ? '' : 'opacity-50'}>
+                {readySeats[seat] ? '✓' : '…'} {n}
+              </span>
+            ))}
+          </p>
+        </div>
       </div>
     </div>
   );

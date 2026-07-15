@@ -24,7 +24,6 @@ const BOT_DELAY_MS = 700;
 /** After a completed trick the client holds the 4 cards on the table
  * (~2.2s hold + sweep) — bots must not play into that window. */
 export const TRICK_HOLD_MS = 2600;
-const ROUND_OVER_DELAY_MS = 3200;
 /** How long a seated human may be fully disconnected mid-game before a bot
  * plays their turns. Tests can override per-room via `meta.botSwapMs`. */
 export const BOT_SWAP_MS = 45_000;
@@ -47,6 +46,8 @@ interface Meta {
   disconnectedSince?: Record<string, number>;
   /** Optional per-room override of BOT_SWAP_MS (used by tests). */
   botSwapMs?: number;
+  /** Per-seat readiness for the next round (round_over phase only). */
+  readyNextRound?: [boolean, boolean, boolean, boolean];
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -154,6 +155,9 @@ export class GameRoom implements DurableObject {
       case 'start':
         await this.onStart(ws, att);
         return;
+      case 'ready':
+        await this.onReady(ws, att);
+        return;
       case 'action':
         await this.onAction(ws, att, msg.action);
         return;
@@ -208,7 +212,29 @@ export class GameRoom implements DurableObject {
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
     if (game.phase === 'round_over') {
-      await this.applyEngineAction({ type: 'continue' });
+      // Rounds wait for readiness; the alarm only auto-readies humans whose
+      // disconnect deadline has passed so an absent player can't stall the
+      // table forever.
+      const ready = this.readyState();
+      let changed = false;
+      for (const s of SEATS) {
+        const owner = this.meta.seats[s];
+        if (
+          !ready[s] &&
+          typeof owner === 'string' &&
+          this.disconnectDeadline(owner) <= Date.now()
+        ) {
+          ready[s] = true;
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.meta.readyNextRound = ready;
+        await this.ctx.storage.put('meta', this.meta);
+        this.broadcastRoster({});
+        await this.continueIfAllReady();
+      }
+      if (this.game?.phase === 'round_over') await this.scheduleNextWake();
       return;
     }
     const turnSeat = game.turn;
@@ -378,14 +404,56 @@ export class GameRoom implements DurableObject {
       return;
     }
     const seat = att.viewer;
+    if (client.type === 'continue') {
+      // Rounds advance by readiness, never by a raw continue from one client.
+      await this.onReady(ws, att);
+      return;
+    }
     // Stamp the seat from the authenticated attachment — never from the wire.
     const action: Action =
       client.type === 'place_bid'
         ? { type: 'place_bid', seat, choice: client.choice }
-        : client.type === 'play_card'
-          ? { type: 'play_card', seat, card: client.card }
-          : { type: 'continue' };
+        : { type: 'play_card', seat, card: client.card };
     await this.applyEngineAction(action, ws);
+  }
+
+  /** A seated player is ready for the next round; all ready → deal it. */
+  private async onReady(ws: WebSocket, att: Attachment): Promise<void> {
+    if (!att.joined || typeof att.viewer !== 'number') {
+      this.send(ws, { t: 'error', code: 'NOT_SEATED', message: 'Take a seat first' });
+      return;
+    }
+    if (this.game?.phase !== 'round_over') {
+      this.send(ws, { t: 'error', code: 'WRONG_PHASE', message: 'No round to be ready for' });
+      return;
+    }
+    const ready = this.readyState();
+    if (ready[att.viewer]) return; // idempotent
+    ready[att.viewer] = true;
+    this.meta.readyNextRound = ready;
+    await this.ctx.storage.put('meta', this.meta);
+    this.broadcastRoster({});
+    await this.continueIfAllReady();
+  }
+
+  /** Current readiness, bots always ready. */
+  private readyState(): [boolean, boolean, boolean, boolean] {
+    const base = this.meta.readyNextRound ?? [false, false, false, false];
+    return SEATS.map((i) => isBotOwner(this.meta.seats[i]) || base[i]) as [
+      boolean,
+      boolean,
+      boolean,
+      boolean,
+    ];
+  }
+
+  private async continueIfAllReady(): Promise<void> {
+    if (this.game?.phase !== 'round_over') return;
+    if (!this.readyState().every(Boolean)) return;
+    delete this.meta.readyNextRound;
+    await this.ctx.storage.put('meta', this.meta);
+    await this.applyEngineAction({ type: 'continue' });
+    this.broadcastRoster({});
   }
 
   private async onChat(ws: WebSocket, att: Attachment, text: string): Promise<void> {
@@ -522,7 +590,16 @@ export class GameRoom implements DurableObject {
     const now = Date.now();
     let wake: number | null = null;
     if (game.phase === 'round_over') {
-      wake = now + ROUND_OVER_DELAY_MS;
+      // Waiting on readiness: wake only for disconnected humans' deadlines.
+      const ready = this.readyState();
+      for (const s of SEATS) {
+        const owner = this.meta.seats[s];
+        if (ready[s] || typeof owner !== 'string') continue;
+        const deadline = this.disconnectDeadline(owner);
+        if (Number.isFinite(deadline)) {
+          wake = wake === null ? Math.max(now + 1, deadline) : Math.min(wake, deadline);
+        }
+      }
     } else {
       const owner = this.meta.seats[game.turn];
       if (isBotOwner(owner)) {
@@ -558,11 +635,20 @@ export class GameRoom implements DurableObject {
     const seats = SEATS.map((i): RosterSeat | null => {
       const owner = this.meta.seats[i];
       if (owner === null) return null;
-      if (isBotOwner(owner)) return { name: `Bot ${String(i + 1)}`, isBot: true, connected: true };
+      const ready = this.game?.phase === 'round_over' ? this.readyState()[i] : undefined;
+      if (isBotOwner(owner)) {
+        return {
+          name: `Bot ${String(i + 1)}`,
+          isBot: true,
+          connected: true,
+          ...(ready !== undefined ? { ready } : {}),
+        };
+      }
       return {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,
         connected: attachments.some((a) => a.joined && a.viewer === i),
+        ...(ready !== undefined ? { ready } : {}),
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;

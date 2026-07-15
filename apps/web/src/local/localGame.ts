@@ -67,19 +67,16 @@ function scheduleBots(afterTrick = false): void {
   if (botTimer !== null) clearTimeout(botTimer);
   botTimer = null;
   if (state === null || state.phase === 'game_over') return;
-  const isBotTurn = state.turn !== HUMAN_SEAT;
-  const isPause = state.phase === 'round_over';
-  if (!isBotTurn && !isPause) return;
+  // round_over waits for the human's Ready click — bots are always ready.
+  if (state.phase === 'round_over') return;
+  if (state.turn === HUMAN_SEAT) return;
   botTimer = setTimeout(
     () => {
-      if (state === null) return;
-      const action =
-        state.phase === 'round_over'
-          ? ({ type: 'continue' } as const)
-          : chooseAction(viewFor(state, state.turn), rng);
+      if (state === null || state.phase !== 'playing' && state.phase !== 'bidding') return;
+      const action = chooseAction(viewFor(state, state.turn), rng);
       if (action !== null) apply(action);
     },
     // Leave room for the trick-hold + sweep animation before the next play.
-    state.phase === 'round_over' ? 3200 : afterTrick ? 2600 : 750,
+    afterTrick ? 2600 : 750,
   );
 }

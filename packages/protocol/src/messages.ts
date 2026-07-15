@@ -50,6 +50,7 @@ export const clientMessageSchema = z.union([
   z.object({ t: z.literal('add_bot'), seat: seatSchema }),
   z.object({ t: z.literal('start') }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
+  z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
   z.object({ t: z.literal('rtc'), to: seatSchema, payload: z.unknown() }),
   z.object({ t: z.literal('ping') }),
@@ -64,6 +65,8 @@ export interface RosterSeat {
   readonly name: string;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** Ready for the next round (round_over phase only; bots are always ready). */
+  readonly ready?: boolean;
 }
 
 export interface Roster {

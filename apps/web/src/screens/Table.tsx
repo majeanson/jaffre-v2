@@ -66,7 +66,14 @@ export function Table({
           myTurn && <BidOverlay options={derived.bidOptions} onAction={onAction} />
         }
       />
-      <Overlays view={view} roster={roster} onRematch={onRematch} onLeave={onLeave} />
+      <Overlays
+        view={view}
+        roster={roster}
+        me={me}
+        onReady={() => onAction({ type: 'continue' })}
+        onRematch={onRematch}
+        onLeave={onLeave}
+      />
       <UtilityRow
         you={seatInfo(0)}
         lastTrick={derived.lastTrick}

@@ -130,9 +130,15 @@ async function snapshot(stub: DurableObjectStub): Promise<RoomSnap> {
 /**
  * Fast-forward alarms until the room is quiescent at the connected human's
  * turn: phase bidding/playing, turn 0, and NO pending alarm — i.e. no
- * wall-clock 700ms/2600ms/3200ms alarm can race whatever the test does next.
+ * wall-clock 700ms/2600ms alarm can race whatever the test does next.
+ * Rounds only advance by readiness, so at round_over the human's `ready`
+ * is sent on their behalf (idempotent — bots are always ready).
  */
-async function driveToQuiescentHumanTurn(stub: DurableObjectStub, ms = 20_000): Promise<RoomSnap> {
+async function driveToQuiescentHumanTurn(
+  stub: DurableObjectStub,
+  client: Client,
+  ms = 20_000,
+): Promise<RoomSnap> {
   const deadline = Date.now() + ms;
   for (;;) {
     const snap = await snapshot(stub);
@@ -145,6 +151,11 @@ async function driveToQuiescentHumanTurn(stub: DurableObjectStub, ms = 20_000): 
     }
     if (snap.phase === 'game_over') throw new Error('game ended before the human turn');
     if (Date.now() > deadline) throw new Error('never reached a quiescent human turn');
+    if (snap.phase === 'round_over') {
+      client.send({ t: 'ready' });
+      await sleep(25);
+      continue;
+    }
     const ran = await runDurableObjectAlarm(stub);
     if (!ran) await sleep(25);
   }
@@ -297,6 +308,13 @@ describe('GameRoom', () => {
           gameOver = true;
           break;
         }
+        if (view.phase === 'round_over') {
+          // Rounds wait for every human's readiness — the sole human here.
+          // The next view is the freshly dealt round.
+          client.send({ t: 'ready' });
+          view = (await client.next('view')).view;
+          continue;
+        }
         const humanTurn = (view.phase === 'bidding' || view.phase === 'playing') && view.turn === 0;
         if (humanTurn) {
           const action = chooseAction(view, rng);
@@ -426,7 +444,7 @@ describe('GameRoom', () => {
       const deadline = Date.now() + 50_000;
       for (;;) {
         expect(Date.now()).toBeLessThan(deadline);
-        const before = await driveToQuiescentHumanTurn(stub);
+        const before = await driveToQuiescentHumanTurn(stub, client);
 
         // Wait for the client's view stream to catch up with storage truth.
         const view = await pollUntil(async () => {
@@ -451,6 +469,10 @@ describe('GameRoom', () => {
 
         const after = await snapshot(stub);
         if (after.phase === 'playing' && after.turn === 0) continue; // human won the trick — no alarm due
+        // Round-ending trick: no alarm — the room waits for readiness. The
+        // drive helper sends `ready` on the next lap; keep looking for a
+        // mid-round trick.
+        if (after.phase === 'round_over') continue;
         // Trick completed and a bot (or round_over) is next: the wake is held
         // back for the client's trick animation, well beyond the 700ms tick.
         expect(after.alarm).not.toBeNull();
@@ -478,7 +500,7 @@ describe('GameRoom', () => {
 
       // Reach the human's turn with NO pending alarm: from here, only the
       // test itself can make the room move.
-      const before = await driveToQuiescentHumanTurn(stub);
+      const before = await driveToQuiescentHumanTurn(stub, client);
       const seqBefore = before.seq;
 
       // The human's last socket closes during their turn. Poll storage until

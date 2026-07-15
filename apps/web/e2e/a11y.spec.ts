@@ -117,7 +117,7 @@ test('table overlays: last-trick popover closes on Escape/outside click, round s
   await expect(lastTrick).toHaveAttribute('aria-expanded', 'false');
 
   // Keep playing to the end of the round: the summary dialog appears, takes
-  // focus (screen readers land on it) and auto-dismisses without Escape.
+  // focus (screen readers land on it), and dismisses via the Ready button.
   const dialog = page.getByRole('dialog', { name: 'Round summary' });
   const end = Date.now() + 120_000;
   while (Date.now() < end && !(await dialog.isVisible())) {
@@ -128,8 +128,9 @@ test('table overlays: last-trick popover closes on Escape/outside click, round s
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
   await expect(dialog).toBeFocused();
 
-  // No focus trap: Tab is not swallowed by the overlay, and no Escape is
-  // needed — the table moves on to the next round by itself.
-  await page.keyboard.press('Tab');
+  // Ready-check: the round waits for the player; the Ready button is
+  // keyboard-reachable and advances to the next round.
+  const ready = dialog.getByRole('button', { name: /Ready for the next round/ });
+  await ready.click();
   await expect(dialog).toBeHidden({ timeout: 20_000 });
 });
