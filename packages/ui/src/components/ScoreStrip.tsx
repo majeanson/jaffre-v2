@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SuitId } from '../types.js';
 import { SUIT_STYLES } from '../types.js';
 
@@ -12,14 +13,18 @@ export interface ScoreStripProps {
     /** Trick points the contract team has taken so far this round. */
     readonly progress?: number;
   } | null;
-  /** Tricks captured per team this round. */
-  readonly trickCounts?: readonly [number, number];
   readonly trump?: SuitId | null;
   readonly trumpDecided?: boolean;
+  /** Trick points per team this round (details view). */
   readonly roundPoints?: readonly [number, number];
+  /** Tricks captured per team this round (details view). */
+  readonly trickCounts?: readonly [number, number];
 }
 
-/** Persistent banner: scores, the live contract, and the trump suit. */
+/**
+ * Minimal by default: scores, the live contract, trump. Everything else
+ * (team names, round points, tricks, target) lives behind the details toggle.
+ */
 export function ScoreStrip({
   teamNames,
   scores,
@@ -30,64 +35,99 @@ export function ScoreStrip({
   roundPoints,
   trickCounts,
 }: ScoreStripProps) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="flex flex-wrap items-center gap-5 rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-5 py-2.5 font-ui text-sm max-sm:gap-x-3 max-sm:gap-y-0.5 max-sm:px-3 max-sm:py-1.5 max-sm:text-xs">
-      {([0, 1] as const).map((team) => (
-        <span key={team} className="flex items-baseline gap-2">
+    <div className="relative rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-4 py-2 font-ui text-sm max-sm:px-2.5 max-sm:py-1.5">
+      <div className="flex items-center gap-4 max-sm:gap-2.5">
+        <span
+          className="flex items-baseline gap-1.5"
+          aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
+        >
+          <span className="size-2 self-center rounded-full bg-(--color-lamplight)" aria-hidden />
           <span
-            className={`size-2 rounded-full self-center ${team === 0 ? 'bg-(--color-lamplight)' : 'bg-(--color-ivory)'}`}
-            aria-hidden
-          />
-          <span className="text-(--color-ivory)/70">{teamNames[team]}</span>
-          <span
-            key={scores[team]}
+            key={scores[0]}
             className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
           >
-            {scores[team]}
+            {scores[0]}
           </span>
-          {roundPoints !== undefined && (
-            <span className="text-(--color-ivory)/60 tabular-nums max-sm:hidden">
-              {roundPoints[team] >= 0 ? '+' : ''}
-              {roundPoints[team]} pts
-            </span>
-          )}
-          {trickCounts !== undefined && (
-            <span className="text-(--color-ivory)/60 tabular-nums max-sm:hidden">
-              · {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'}
-            </span>
-          )}
+          <span className="text-(--color-ivory)/40" aria-hidden>
+            —
+          </span>
+          <span
+            key={`b${scores[1]}`}
+            className="score-flash inline-block font-display font-semibold text-xl tabular-nums text-(--color-ivory)"
+          >
+            {scores[1]}
+          </span>
+          <span className="size-2 self-center rounded-full bg-(--color-ivory)" aria-hidden />
         </span>
-      ))}
-      <span className="text-(--color-ivory)/60 max-sm:hidden">first to {target}</span>
-      <span className="ml-auto flex flex-wrap items-center gap-4 max-sm:gap-2">
-        {contract !== null && (
-          <span className="text-(--color-ivory)/85">
-            <span className="text-(--color-ivory)/60">Contract</span>{' '}
-            <span className="font-semibold">
-              {contract.playerName} · {contract.value}
+
+        <span className="ml-auto flex items-center gap-3 max-sm:gap-2">
+          {contract !== null && (
+            <span className="font-semibold text-(--color-ivory)/90 tabular-nums">
+              {contract.playerName} {contract.value}
               {contract.sansAtout ? ' SA' : ''}
+              {contract.progress !== undefined && (
+                <span className="ml-1 text-(--color-lamplight)">
+                  {contract.progress}/{contract.value}
+                </span>
+              )}
             </span>
-            {contract.progress !== undefined && (
-              <span className="ml-1.5 tabular-nums text-(--color-lamplight)">
-                {contract.progress}/{contract.value}
-              </span>
-            )}
-          </span>
-        )}
-        {trumpDecided && (
-          <span className="flex items-center gap-1.5">
-            <span className="text-(--color-ivory)/60">Trump</span>
-            {trump === null ? (
-              <span className="font-semibold text-(--color-ivory)/85">none</span>
-            ) : (
-              <span className="font-bold text-lg" style={{ color: SUIT_STYLES[trump].color }}>
-                {SUIT_STYLES[trump].glyph}
-                <span className="sr-only">{SUIT_STYLES[trump].label}</span>
-              </span>
-            )}
-          </span>
-        )}
-      </span>
+          )}
+          {trumpDecided && (
+            <span
+              className="text-lg font-bold"
+              style={trump !== null ? { color: SUIT_STYLES[trump].color } : undefined}
+            >
+              {trump === null ? (
+                <span className="text-sm font-semibold text-(--color-ivory)/70">no trump</span>
+              ) : (
+                <>
+                  {SUIT_STYLES[trump].glyph}
+                  <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
+                </>
+              )}
+            </span>
+          )}
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label="Score details"
+            onClick={() => setOpen((o) => !o)}
+            className="grid size-7 place-items-center rounded-full border border-white/15 text-(--color-ivory)/70 hover:bg-white/8 cursor-pointer"
+          >
+            ⋯
+          </button>
+        </span>
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 text-xs shadow-(--shadow-panel)">
+          <div className="grid grid-cols-2 gap-2 tabular-nums">
+            {([0, 1] as const).map((team) => (
+              <div key={team} className="rounded-lg bg-black/25 p-2">
+                <p className="font-semibold text-(--color-ivory)/90">
+                  <span
+                    className={`mr-1.5 inline-block size-2 rounded-full ${team === 0 ? 'bg-(--color-lamplight)' : 'bg-(--color-ivory)'}`}
+                    aria-hidden
+                  />
+                  {teamNames[team]}
+                </p>
+                <p className="mt-1 text-(--color-ivory)/70">
+                  {roundPoints !== undefined &&
+                    `${(roundPoints[team] ?? 0) >= 0 ? '+' : ''}${roundPoints[team]} pts this round`}
+                </p>
+                <p className="text-(--color-ivory)/70">
+                  {trickCounts !== undefined &&
+                    `${trickCounts[team]} trick${trickCounts[team] === 1 ? '' : 's'} taken`}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-(--color-ivory)/50">first team to {target} wins</p>
+        </div>
+      )}
     </div>
   );
 }

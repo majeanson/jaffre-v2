@@ -39,18 +39,25 @@ export function Seat({
           }`}
         />
       </span>
-      <span className="flex min-w-0 flex-col leading-tight">
+      <span className="flex min-w-0 items-center gap-1.5">
         <span className="truncate font-semibold text-sm text-(--color-ivory) max-sm:text-xs">
           {name}
-          {isBot && (
-            <span className="ml-1.5 text-[10px] uppercase tracking-widest opacity-60">bot</span>
-          )}
         </span>
-        <span className="flex gap-1.5 overflow-hidden text-[11px] whitespace-nowrap text-(--color-ivory)/55 tabular-nums">
-          {isDealer && <span className="text-(--color-lamplight)">Dealer ·</span>}
-          {cardCount !== undefined && <span>{cardCount} cards</span>}
-          {isTurn && <span className="text-(--color-accent)">· to play</span>}
-        </span>
+        {isBot && (
+          <span className="text-[9px] uppercase tracking-widest text-(--color-ivory)/50">bot</span>
+        )}
+        {isDealer && (
+          <span
+            title="Dealer"
+            className="grid size-4 shrink-0 place-items-center rounded-full bg-(--color-lamplight)/20 text-[9px] font-black text-(--color-lamplight)"
+          >
+            D<span className="sr-only">ealer</span>
+          </span>
+        )}
+        {cardCount !== undefined && (
+          <span className="text-[10px] tabular-nums text-(--color-ivory)/45">{cardCount}</span>
+        )}
+        {isTurn && <span className="sr-only">— their turn to play</span>}
       </span>
     </div>
   );

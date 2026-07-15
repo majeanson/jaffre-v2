@@ -49,6 +49,7 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
   const { view, viewer, roster, log, sweepTo, heldTrick, chat, roundHistory } = useGameStore();
   const voice = useVoiceStore();
   const sendChat = useChatSend();
+  const [logOpen, setLogOpen] = useState(false);
 
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
@@ -281,8 +282,16 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
             points={lastTrick.points}
           />
         )}
+        <button
+          type="button"
+          aria-expanded={logOpen}
+          onClick={() => setLogOpen((o) => !o)}
+          className="rounded-lg border border-white/15 px-3 py-2 text-xs text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
+        >
+          Log
+        </button>
         <div className="flex-1">
-          <GameLog lines={log.map((l) => l.text)} />
+          <GameLog lines={log.map((l) => l.text)} visible={logOpen} />
         </div>
         {online && me !== null && (
           <VoiceBar
@@ -548,29 +557,32 @@ function Confetti() {
 }
 
 /** Visible history + the screen-reader announcer, fed by the same sentences. */
-function GameLog({ lines }: { lines: readonly string[] }) {
+function GameLog({ lines, visible }: { lines: readonly string[]; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
-  }, [lines.length]);
+  }, [lines.length, visible]);
   const latest = lines[lines.length - 1] ?? '';
   return (
     <>
+      {/* The announcer always runs, even with the visible log collapsed. */}
       <div aria-live="polite" className="sr-only">
         {latest}
       </div>
-      <div
-        ref={ref}
-        data-testid="game-log"
-        role="region"
-        aria-label="Game log"
-        tabIndex={0}
-        className="h-20 w-full max-w-[min(96vw,100rem)] overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
-      >
-        {lines.slice(-40).map((text, i) => (
-          <p key={i}>{text}</p>
-        ))}
-      </div>
+      {visible && (
+        <div
+          ref={ref}
+          data-testid="game-log"
+          role="region"
+          aria-label="Game log"
+          tabIndex={0}
+          className="h-24 w-full max-w-[min(96vw,100rem)] overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
+        >
+          {lines.slice(-40).map((text, i) => (
+            <p key={i}>{text}</p>
+          ))}
+        </div>
+      )}
     </>
   );
 }

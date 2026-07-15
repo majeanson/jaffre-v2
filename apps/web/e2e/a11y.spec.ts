@@ -110,10 +110,10 @@ test('table overlays: last-trick popover closes on Escape/outside click, round s
   await expect(lastTrick).toHaveAttribute('aria-expanded', 'false');
   await expect(lastTrick).toBeFocused();
 
-  // Open → clicking outside closes it.
+  // Open → clicking outside (the table backdrop) closes it.
   await lastTrick.click();
   await expect(lastTrick).toHaveAttribute('aria-expanded', 'true');
-  await page.getByTestId('game-log').click();
+  await page.locator('main').click({ position: { x: 10, y: 300 } });
   await expect(lastTrick).toHaveAttribute('aria-expanded', 'false');
 
   // Keep playing to the end of the round: the summary dialog appears, takes

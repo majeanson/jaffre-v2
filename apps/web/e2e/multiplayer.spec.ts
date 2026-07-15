@@ -51,8 +51,8 @@ test('two clients share a room, play starts, and a disconnect is shown', async (
   const start = a.getByRole('button', { name: 'Start the game' });
   await expect(start).toBeEnabled();
   await start.click();
-  await expect(a.getByText('first to 41')).toBeVisible();
-  await expect(b.getByText('first to 41')).toBeVisible();
+  await expect(a.getByTestId('score-strip')).toBeVisible();
+  await expect(b.getByTestId('score-strip')).toBeVisible();
 
   // Whoever's turn it is (their BidPanel appears) bids/passes until play
   // starts — i.e. until a card animates into the trick area.

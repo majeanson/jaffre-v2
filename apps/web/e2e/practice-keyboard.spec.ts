@@ -20,6 +20,8 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   const hand = page.getByRole('listbox', { name: 'Your hand' });
   await expect(hand).toBeVisible();
 
+  // The log is collapsed by default (clean-UI rule) — open it for the test.
+  await page.getByRole('button', { name: 'Log' }).click();
   const log = page.getByTestId('game-log');
   const roundScored = log.getByText(/Score: Team A -?\d+, Team B -?\d+\./).first();
 
@@ -64,7 +66,7 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   expect(match).not.toBeNull();
   const teamA = match?.[1] ?? '';
   const teamB = match?.[2] ?? '';
+  // Minimal strip shows "A — B" scores as plain numbers.
   const strip = page.getByTestId('score-strip');
-  await expect(strip).toContainText(new RegExp(`Team A\\s*${teamA}(?!\\d)`));
-  await expect(strip).toContainText(new RegExp(`Team B\\s*${teamB}(?!\\d)`));
+  await expect(strip).toContainText(new RegExp(`${teamA}\\s*—\\s*${teamB}`));
 });

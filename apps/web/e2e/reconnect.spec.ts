@@ -25,7 +25,7 @@ test('a page reload restores the room, seat, and hand', async ({ page }) => {
 
   // Same room, back on the table with the welcome snapshot applied.
   await expect(page).toHaveURL(new RegExp(`#room/${room}$`));
-  await expect(page.getByText('first to 41')).toBeVisible();
+  await expect(page.getByTestId('score-strip')).toBeVisible();
   // Seat 0 again: the viewer's own nameplate renders as "You".
   await expect(page.getByText('You', { exact: true })).toBeVisible();
   // Non-empty hand from the snapshot.

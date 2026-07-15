@@ -10,7 +10,7 @@ export type CardSize = 'sm' | 'md' | 'lg';
  */
 const SIZE_CLASSES: Record<CardSize, string> = {
   sm: 'w-[clamp(2.1rem,5vmin,3.4rem)] text-[clamp(0.55rem,1.3vmin,0.8rem)]',
-  md: 'w-[clamp(3.2rem,8vmin,5.6rem)] text-[clamp(0.75rem,1.9vmin,1.25rem)]',
+  md: 'w-[clamp(3.6rem,9vmin,6.6rem)] text-[clamp(0.85rem,2.1vmin,1.45rem)]',
   lg: 'w-[clamp(4.2rem,10.5vmin,7.5rem)] text-[clamp(0.95rem,2.4vmin,1.6rem)]',
 };
 
