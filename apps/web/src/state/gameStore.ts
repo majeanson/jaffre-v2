@@ -14,6 +14,7 @@ export interface HeldTrick {
   readonly plays: readonly { readonly seat: number; readonly card: Card }[];
   readonly winner: number;
   readonly points: number;
+  readonly specials: readonly ('red_zero' | 'brown_zero')[];
 }
 
 interface GameStore {
@@ -83,6 +84,7 @@ export const useGameStore = create<GameStore>((set) => ({
           plays: [...(s.view?.currentTrick ?? []), { seat: lastPlay.seat, card: lastPlay.card }],
           winner: trickWon.winner,
           points: trickWon.points,
+          specials: trickWon.specials,
         };
       }
       return {

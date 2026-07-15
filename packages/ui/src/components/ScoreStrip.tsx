@@ -9,7 +9,11 @@ export interface ScoreStripProps {
     readonly playerName: string;
     readonly value: number;
     readonly sansAtout: boolean;
+    /** Trick points the contract team has taken so far this round. */
+    readonly progress?: number;
   } | null;
+  /** Tricks captured per team this round. */
+  readonly trickCounts?: readonly [number, number];
   readonly trump?: SuitId | null;
   readonly trumpDecided?: boolean;
   readonly roundPoints?: readonly [number, number];
@@ -24,6 +28,7 @@ export function ScoreStrip({
   trump = null,
   trumpDecided = false,
   roundPoints,
+  trickCounts,
 }: ScoreStripProps) {
   return (
     <div className="flex items-center gap-5 rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-5 py-2.5 font-ui text-sm">
@@ -38,7 +43,15 @@ export function ScoreStrip({
             {scores[team]}
           </span>
           {roundPoints !== undefined && (
-            <span className="text-(--color-ivory)/45 tabular-nums">+{roundPoints[team]}</span>
+            <span className="text-(--color-ivory)/45 tabular-nums">
+              {roundPoints[team] >= 0 ? '+' : ''}
+              {roundPoints[team]} pts
+            </span>
+          )}
+          {trickCounts !== undefined && (
+            <span className="text-(--color-ivory)/45 tabular-nums">
+              · {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'}
+            </span>
           )}
         </span>
       ))}
@@ -51,6 +64,11 @@ export function ScoreStrip({
               {contract.playerName} · {contract.value}
               {contract.sansAtout ? ' SA' : ''}
             </span>
+            {contract.progress !== undefined && (
+              <span className="ml-1.5 tabular-nums text-(--color-lamplight)">
+                {contract.progress}/{contract.value}
+              </span>
+            )}
           </span>
         )}
         {trumpDecided && (

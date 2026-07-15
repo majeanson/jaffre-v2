@@ -1,16 +1,17 @@
-import type { Card } from '@jaffre/engine';
+import type { Card, SeatView } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import {
   BidPanel,
   Hand,
+  PlayingCard,
   ScoreStrip,
   Seat,
   TrickArea,
   type BidOption,
   type TrickPlayView,
 } from '@jaffre/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 
 export interface TableProps {
@@ -60,14 +61,28 @@ export function Table({ onAction, onLeave }: TableProps) {
     position: toPosition(p.seat, viewer),
     card: p.card,
   }));
+  const specialTags =
+    heldTrick?.specials
+      .map((s) => (s === 'red_zero' ? 'RED 0 +5!' : 'BROWN 0 −2!'))
+      .join(' ') ?? '';
   const trickBanner =
     heldTrick !== null
       ? `${
           heldTrick.winner === (me ?? -1)
             ? 'You take'
             : `${roster.seats[heldTrick.winner]?.name ?? 'Player'} takes`
-        } the trick — ${heldTrick.points > 0 ? '+' : ''}${heldTrick.points} to Team ${heldTrick.winner % 2 === 0 ? 'A' : 'B'}`
+        } the trick — ${heldTrick.points > 0 ? '+' : ''}${heldTrick.points} to Team ${heldTrick.winner % 2 === 0 ? 'A' : 'B'}${specialTags ? ` · ${specialTags}` : ''}`
       : null;
+
+  /** A seat's auction declaration, shown as a bubble until the round ends. */
+  const bidTextFor = (seat: number): string | null => {
+    const entry = view.bids.find((b) => b.seat === seat);
+    if (entry === undefined) return null;
+    if (entry.choice.kind === 'pass') return 'Pass';
+    return `${entry.choice.value}${entry.choice.sansAtout ? ' SA' : ''}`;
+  };
+
+  const lastTrick = view.capturedTricks[view.capturedTricks.length - 1];
 
   const contractName =
     view.contract === null ? null : (roster.seats[view.contract.seat]?.name ?? 'Player');
@@ -84,16 +99,30 @@ export function Table({ onAction, onLeave }: TableProps) {
     const seat = me === null ? position : (((position + me) % 4) as 0 | 1 | 2 | 3);
     const info = roster.seats[seat];
     if (info == null) return <span className="text-sm text-(--color-ivory)/40">empty</span>;
+    const bid = bidTextFor(seat);
     return (
-      <Seat
-        name={seat === me ? 'You' : info.name}
-        team={(seat % 2) as 0 | 1}
-        isTurn={view.turn === seat && view.phase !== 'game_over'}
-        isDealer={view.dealer === seat}
-        isBot={info.isBot}
-        connected={info.connected}
-        cardCount={view.handCounts[seat]}
-      />
+      <span className="relative inline-block">
+        <Seat
+          name={seat === me ? 'You' : info.name}
+          team={(seat % 2) as 0 | 1}
+          isTurn={view.turn === seat && view.phase !== 'game_over'}
+          isDealer={view.dealer === seat}
+          isBot={info.isBot}
+          connected={info.connected}
+          cardCount={view.handCounts[seat]}
+        />
+        {bid !== null && (
+          <span
+            className={`absolute -top-3 -right-2 rounded-full px-2 py-0.5 text-[11px] font-bold shadow ${
+              view.contract?.seat === seat
+                ? 'bg-(--color-lamplight) text-(--color-felt-950)'
+                : 'bg-black/70 text-(--color-ivory)/80'
+            }`}
+          >
+            {bid}
+          </span>
+        )}
+      </span>
     );
   };
 
@@ -117,12 +146,17 @@ export function Table({ onAction, onLeave }: TableProps) {
                     playerName: contractName,
                     value: view.contract.value,
                     sansAtout: view.contract.sansAtout,
+                    progress: view.roundPoints[view.contract.seat % 2] ?? 0,
                   }
                 : null
             }
             trump={view.trump}
             trumpDecided={view.trumpDecided}
             roundPoints={view.roundPoints}
+            trickCounts={[
+              view.capturedTricks.filter((t) => t.winner % 2 === 0).length,
+              view.capturedTricks.filter((t) => t.winner % 2 === 1).length,
+            ]}
           />
         </div>
       </div>
@@ -155,6 +189,13 @@ export function Table({ onAction, onLeave }: TableProps) {
         />
       )}
 
+      {view.phase === 'round_over' && view.lastRoundSummary !== null && (
+        <RoundSummaryOverlay
+          summary={view.lastRoundSummary}
+          contractName={roster.seats[view.lastRoundSummary.contract.seat]?.name ?? 'Player'}
+        />
+      )}
+
       {view.phase === 'game_over' && (
         <div className="rounded-(--radius-panel) bg-(--color-felt-800) border border-(--color-accent)/40 px-8 py-5 text-center shadow-(--shadow-panel)">
           <p className="font-display text-2xl text-(--color-lamplight)">
@@ -184,8 +225,98 @@ export function Table({ onAction, onLeave }: TableProps) {
         />
       )}
 
-      <GameLog lines={log.map((l) => l.text)} />
+      <div className="flex w-full max-w-4xl items-start gap-2">
+        {lastTrick !== undefined && view.phase === 'playing' && (
+          <LastTrickPeek
+            cards={lastTrick.cards}
+            winnerName={roster.seats[lastTrick.winner]?.name ?? 'Player'}
+            points={lastTrick.points}
+          />
+        )}
+        <div className="flex-1">
+          <GameLog lines={log.map((l) => l.text)} />
+        </div>
+      </div>
     </main>
+  );
+}
+
+/** Round-end scoreboard, shown while the table pauses between rounds. */
+function RoundSummaryOverlay({
+  summary,
+  contractName,
+}: {
+  summary: NonNullable<SeatView['lastRoundSummary']>;
+  contractName: string;
+}) {
+  const team = summary.contract.seat % 2 === 0 ? 'Team A' : 'Team B';
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50" role="dialog" aria-label="Round summary">
+      <div className="w-80 rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
+        <p className="font-display text-xl text-(--color-lamplight)">
+          Round {summary.roundIndex + 1}
+        </p>
+        <p className="mt-2 text-(--color-ivory)">
+          {contractName} ({team}) {summary.contractMade ? 'MADE' : 'FAILED'} {summary.contract.value}
+          {summary.contract.sansAtout ? ' sans atout' : ''}
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm tabular-nums">
+          {([0, 1] as const).map((t) => (
+            <div key={t} className="rounded-lg bg-black/25 p-2">
+              <p className="text-(--color-ivory)/60">Team {t === 0 ? 'A' : 'B'}</p>
+              <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
+              <p
+                className={
+                  (summary.deltas[t] ?? 0) >= 0 ? 'text-(--color-ok)' : 'text-(--color-danger)'
+                }
+              >
+                {(summary.deltas[t] ?? 0) >= 0 ? '+' : ''}
+                {summary.deltas[t]}
+              </p>
+              <p className="font-display text-lg text-(--color-ivory)">{summary.scores[t]}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-(--color-ivory)/45">Next round starting…</p>
+      </div>
+    </div>
+  );
+}
+
+/** Hover/click reveal of the previous trick. */
+function LastTrickPeek({
+  cards,
+  winnerName,
+  points,
+}: {
+  cards: readonly Card[];
+  winnerName: string;
+  points: number;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-lg border border-white/15 px-3 py-2 text-xs text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
+      >
+        Last trick
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 shadow-(--shadow-panel)">
+          <div className="flex gap-1.5">
+            {cards.map((card) => (
+              <PlayingCard key={`${card.suit}-${card.value}`} card={card} size="sm" />
+            ))}
+          </div>
+          <p className="text-[11px] text-(--color-ivory)/65 whitespace-nowrap">
+            {winnerName} · {points > 0 ? '+' : ''}
+            {points} pt{Math.abs(points) === 1 ? '' : 's'}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
