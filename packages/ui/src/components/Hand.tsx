@@ -28,7 +28,9 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
       aria-label={label}
       orientation="horizontal"
       selectionMode="none"
-      className="flex items-end justify-center -space-x-3 px-4 pt-4 pb-2"
+      // On narrow screens the fan overlaps harder so 8 lg cards (72px each)
+      // still fit 390px while every card keeps a >=40px exposed tap strip.
+      className="flex items-end justify-center -space-x-3 px-4 pt-4 pb-2 max-sm:-space-x-7 max-sm:px-1"
       onAction={(key) => {
         const entry = cards.find((c) => cardKey(c.card) === key);
         if (entry !== undefined && entry.disabled !== true && active) onPlay?.(entry.card);

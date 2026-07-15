@@ -20,6 +20,7 @@
     "dev": "npm run dev -w apps/server"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@cloudflare/vitest-pool-workers": "^0.8.19",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.15.0",

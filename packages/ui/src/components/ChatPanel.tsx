@@ -31,6 +31,7 @@ export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelPro
   const [hint, setHint] = useState(false);
   const seenRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // While the panel is open every entry counts as read.
@@ -47,6 +48,20 @@ export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelPro
     },
     [],
   );
+
+  // Collapsible popover: Escape closes it and hands focus back to the toggle,
+  // so the keyboard never gets stranded inside the panel.
+  useEffect(() => {
+    if (!collapsible || !open) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [collapsible, open]);
 
   const submit = () => {
     const trimmed = text.trim();
@@ -84,6 +99,9 @@ export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelPro
       <div
         ref={listRef}
         data-testid="chat-messages"
+        role="region"
+        aria-label="Chat messages"
+        tabIndex={0}
         className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ivory)/85"
       >
         {entries.length === 0 && <p className="text-(--color-ivory)/40">No messages yet.</p>}
@@ -128,8 +146,10 @@ export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelPro
   return (
     <div className="relative">
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         data-testid="chat-toggle"
         className="relative rounded-lg border border-white/15 px-3 py-2 text-xs text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
       >
@@ -143,7 +163,13 @@ export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelPro
           </span>
         )}
       </button>
-      {open && <div className="absolute right-0 bottom-full z-30 mb-2 w-72">{panel}</div>}
+      {open && (
+        // Desktop: popover above the toggle. Narrow screens: a bottom sheet
+        // pinned to the viewport so it never overflows the 390px layout.
+        <div className="absolute right-0 bottom-full z-30 mb-2 w-72 max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto">
+          {panel}
+        </div>
+      )}
     </div>
   );
 }

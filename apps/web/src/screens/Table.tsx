@@ -141,7 +141,7 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
     if (info == null) return <span className="text-sm text-(--color-ivory)/40">empty</span>;
     const bid = bidTextFor(seat);
     return (
-      <span className="relative inline-block">
+      <span className="relative inline-block max-w-full min-w-0">
         <Seat
           name={seat === me ? 'You' : info.name}
           team={(seat % 2) as 0 | 1}
@@ -167,8 +167,8 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
   };
 
   return (
-    <main className="table-felt flex min-h-screen flex-col items-center gap-3 p-4">
-      <div className="flex w-full max-w-4xl items-center gap-3">
+    <main className="table-felt flex min-h-screen flex-col items-center gap-3 overflow-x-clip p-4 max-sm:gap-2 max-sm:p-2">
+      <div className="flex w-full max-w-4xl items-center gap-3 max-sm:gap-2">
         <button
           onClick={onLeave}
           className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-(--color-ivory)/80 hover:bg-white/8 cursor-pointer"
@@ -201,13 +201,13 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
         </div>
       </div>
 
-      <div className="grid w-full max-w-4xl flex-1 grid-cols-[1fr_auto_1fr] items-center justify-items-center gap-2">
+      <div className="grid w-full max-w-4xl flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center justify-items-center gap-2">
         <div className="col-span-3">{seatAt(2)}</div>
         {seatAt(1)}
         <div className="relative">
           <TrickArea plays={trickPlays} sweepTo={sweepTo} />
           {trickBanner !== null && (
-            <p className="absolute -bottom-7 left-1/2 w-max -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-(--color-lamplight)">
+            <p className="absolute -bottom-7 left-1/2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight)">
               {trickBanner}
             </p>
           )}
@@ -294,7 +294,12 @@ export function Table({ onAction, onLeave, online = false }: TableProps) {
   );
 }
 
-/** Round-end scoreboard, shown while the table pauses between rounds. */
+/**
+ * Round-end scoreboard, shown while the table pauses between rounds. It is
+ * announced as a modal dialog and takes focus on mount so screen readers land
+ * on it, then hands focus back when it auto-dismisses. It never traps focus:
+ * there is nothing to interact with and it closes on its own.
+ */
 function RoundSummaryOverlay({
   summary,
   contractName,
@@ -302,11 +307,22 @@ function RoundSummaryOverlay({
   summary: NonNullable<SeatView['lastRoundSummary']>;
   contractName: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    ref.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
+    };
+  }, []);
   const team = summary.contract.seat % 2 === 0 ? 'Team A' : 'Team B';
   return (
     <div
-      className="fixed inset-0 z-40 grid place-items-center bg-black/50"
+      ref={ref}
+      tabIndex={-1}
+      className="fixed inset-0 z-40 grid place-items-center bg-black/50 outline-none"
       role="dialog"
+      aria-modal="true"
       aria-label="Round summary"
     >
       <div className="w-80 rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
@@ -335,13 +351,13 @@ function RoundSummaryOverlay({
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-(--color-ivory)/45">Next round starting…</p>
+        <p className="mt-3 text-xs text-(--color-ivory)/70">Next round starting…</p>
       </div>
     </div>
   );
 }
 
-/** Hover/click reveal of the previous trick. */
+/** Click reveal of the previous trick. Closes on Escape or an outside click. */
 function LastTrickPeek({
   cards,
   winnerName,
@@ -352,11 +368,35 @@ function LastTrickPeek({
   points: number;
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current !== null && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
         className="rounded-lg border border-white/15 px-3 py-2 text-xs text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
       >
         Last trick
@@ -393,6 +433,9 @@ function GameLog({ lines }: { lines: readonly string[] }) {
       <div
         ref={ref}
         data-testid="game-log"
+        role="region"
+        aria-label="Game log"
+        tabIndex={0}
         className="h-20 w-full max-w-4xl overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
       >
         {lines.slice(-40).map((text, i) => (

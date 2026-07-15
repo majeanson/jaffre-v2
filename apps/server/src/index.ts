@@ -161,10 +161,7 @@ async function handleIce(env: Env): Promise<Response> {
       // STUN-only fallback.
     }
   }
-  return Response.json(
-    { iceServers },
-    { headers: { 'Cache-Control': 'no-store' } },
-  );
+  return Response.json({ iceServers }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export default {

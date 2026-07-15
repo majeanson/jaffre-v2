@@ -19,9 +19,9 @@ export function BidPanel({ options, onPass, onBid, disabled = false }: BidPanelP
   const values = [7, 8, 9, 10, 11, 12] as const;
 
   return (
-    <div className="inline-flex flex-col gap-3 rounded-(--radius-panel) bg-(--color-felt-800) shadow-(--shadow-panel) border border-white/10 p-4 font-ui">
+    <div className="inline-flex max-w-full flex-col gap-3 rounded-(--radius-panel) bg-(--color-felt-800) shadow-(--shadow-panel) border border-white/10 p-4 font-ui max-sm:p-3">
       <span className="font-display text-lg text-(--color-lamplight)">Your bid</span>
-      <div role="group" aria-label="Bid value" className="flex gap-2">
+      <div role="group" aria-label="Bid value" className="flex gap-2 max-sm:gap-1.5">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const enabled = legal && !disabled;
@@ -33,8 +33,8 @@ export function BidPanel({ options, onPass, onBid, disabled = false }: BidPanelP
               onClick={() => onBid({ value, sansAtout })}
               className={
                 enabled
-                  ? 'h-12 w-12 rounded-lg font-bold tabular-nums text-lg border bg-(--color-ivory) text-(--color-ink) border-black/20 hover:bg-(--color-lamplight) active:translate-y-px cursor-pointer'
-                  : 'h-12 w-12 rounded-lg font-bold tabular-nums text-lg border bg-white/5 text-(--color-ivory)/25 border-white/5 cursor-not-allowed'
+                  ? 'h-12 w-12 max-sm:h-11 max-sm:w-11 rounded-lg font-bold tabular-nums text-lg border bg-(--color-ivory) text-(--color-ink) border-black/20 hover:bg-(--color-lamplight) active:translate-y-px cursor-pointer'
+                  : 'h-12 w-12 max-sm:h-11 max-sm:w-11 rounded-lg font-bold tabular-nums text-lg border bg-white/5 text-(--color-ivory)/25 border-white/5 cursor-not-allowed'
               }
             >
               {value}
@@ -51,7 +51,7 @@ export function BidPanel({ options, onPass, onBid, disabled = false }: BidPanelP
             onChange={(e) => setSansAtout(e.target.checked)}
             className="h-5 w-5 accent-(--color-lamplight) cursor-pointer"
           />
-          Sans atout <span className="opacity-55">(stake ×2)</span>
+          Sans atout <span className="opacity-80">(stake ×2)</span>
         </label>
         <button
           type="button"

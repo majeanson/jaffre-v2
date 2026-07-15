@@ -31,7 +31,7 @@ export function ScoreStrip({
   trickCounts,
 }: ScoreStripProps) {
   return (
-    <div className="flex items-center gap-5 rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-5 py-2.5 font-ui text-sm">
+    <div className="flex flex-wrap items-center gap-5 rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) px-5 py-2.5 font-ui text-sm max-sm:gap-x-3 max-sm:gap-y-0.5 max-sm:px-3 max-sm:py-1.5 max-sm:text-xs">
       {([0, 1] as const).map((team) => (
         <span key={team} className="flex items-baseline gap-2">
           <span
@@ -43,23 +43,23 @@ export function ScoreStrip({
             {scores[team]}
           </span>
           {roundPoints !== undefined && (
-            <span className="text-(--color-ivory)/45 tabular-nums">
+            <span className="text-(--color-ivory)/60 tabular-nums max-sm:hidden">
               {roundPoints[team] >= 0 ? '+' : ''}
               {roundPoints[team]} pts
             </span>
           )}
           {trickCounts !== undefined && (
-            <span className="text-(--color-ivory)/45 tabular-nums">
+            <span className="text-(--color-ivory)/60 tabular-nums max-sm:hidden">
               · {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'}
             </span>
           )}
         </span>
       ))}
-      <span className="text-(--color-ivory)/35">first to {target}</span>
-      <span className="ml-auto flex items-center gap-4">
+      <span className="text-(--color-ivory)/60 max-sm:hidden">first to {target}</span>
+      <span className="ml-auto flex flex-wrap items-center gap-4 max-sm:gap-2">
         {contract !== null && (
           <span className="text-(--color-ivory)/85">
-            <span className="text-(--color-ivory)/50">Contract</span>{' '}
+            <span className="text-(--color-ivory)/60">Contract</span>{' '}
             <span className="font-semibold">
               {contract.playerName} · {contract.value}
               {contract.sansAtout ? ' SA' : ''}
@@ -73,7 +73,7 @@ export function ScoreStrip({
         )}
         {trumpDecided && (
           <span className="flex items-center gap-1.5">
-            <span className="text-(--color-ivory)/50">Trump</span>
+            <span className="text-(--color-ivory)/60">Trump</span>
             {trump === null ? (
               <span className="font-semibold text-(--color-ivory)/85">none</span>
             ) : (

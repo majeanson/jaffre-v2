@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { playerName, setPlayerName } from '../net/socket.js';
+import { lastRoom, playerName, setPlayerName } from '../net/socket.js';
 
 export interface HomeProps {
   readonly onPractice: () => void;
@@ -9,6 +9,7 @@ export interface HomeProps {
 export function Home({ onPractice, onJoinRoom }: HomeProps) {
   const [name, setName] = useState(playerName());
   const [code, setCode] = useState('');
+  const resumeCode = lastRoom();
 
   const saveName = () => setPlayerName(name.trim() === '' ? 'Player' : name.trim());
 
@@ -64,6 +65,7 @@ export function Home({ onPractice, onJoinRoom }: HomeProps) {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="room code"
+            aria-label="Room code"
             className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/25 px-3 py-2.5 text-(--color-ivory) placeholder:text-(--color-ivory)/30 focus:border-(--color-accent)"
           />
           <button
@@ -73,6 +75,22 @@ export function Home({ onPractice, onJoinRoom }: HomeProps) {
             Join room
           </button>
         </form>
+
+        <p className="text-center text-xs text-(--color-ivory)/60">
+          Friends can also join straight from a link:{' '}
+          <span className="tabular-nums break-all text-(--color-ivory)/80">
+            {location.origin}/#room/your-code
+          </span>
+        </p>
+
+        {resumeCode !== null && (
+          <a
+            href={`#room/${resumeCode}`}
+            className="text-center text-sm text-(--color-lamplight) underline underline-offset-4 hover:brightness-110"
+          >
+            Resume last room · {resumeCode}
+          </a>
+        )}
       </div>
     </main>
   );

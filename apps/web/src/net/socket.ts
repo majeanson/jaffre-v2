@@ -37,10 +37,16 @@ export function setPlayerName(name: string): void {
   localStorage.setItem('jaffre-name', name);
 }
 
+/** The most recent room this browser joined — lets Home offer a resume link. */
+export function lastRoom(): string | null {
+  return localStorage.getItem('jaffre-last-room');
+}
+
 export function connect(roomCode: string): void {
   disconnect();
   closedByUs = false;
   room = roomCode;
+  localStorage.setItem('jaffre-last-room', roomCode);
   void open();
 }
 
