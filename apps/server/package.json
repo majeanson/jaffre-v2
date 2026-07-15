@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250510.0"
+    "@cloudflare/workers-types": "^4.20250510.0",
+    "@jaffre/bots": "*",
+    "@jaffre/engine": "*",
+    "@jaffre/protocol": "*"
   }
 }

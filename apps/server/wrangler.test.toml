@@ -1,0 +1,14 @@
+# Test-only wrangler config for @cloudflare/vitest-pool-workers.
+# Identical to wrangler.toml minus the [assets] binding: the assets directory
+# (../web/dist) may not exist in CI and is irrelevant to room tests.
+name = "jaffre"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [{ name = "GAME_ROOM", class_name = "GameRoom" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]

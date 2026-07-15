@@ -15,11 +15,16 @@ export default {
       return Response.json({ ok: true, service: 'jaffre' });
     }
 
-    // /ws/:roomCode — WebSocket upgrade routed to the room's Durable Object (M5).
+    // /ws/:roomCode — WebSocket upgrade routed to the room's Durable Object.
     const wsMatch = /^\/ws\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname);
     if (wsMatch) {
       if (request.headers.get('Upgrade') !== 'websocket') {
         return new Response('Expected WebSocket upgrade', { status: 426 });
+      }
+      const u = url.searchParams.get('u');
+      const n = url.searchParams.get('n');
+      if (u === null || u === '' || n === null || n === '') {
+        return new Response('Missing u/n query params', { status: 400 });
       }
       const roomCode = wsMatch[1] as string;
       const id = env.GAME_ROOM.idFromName(roomCode);
