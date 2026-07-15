@@ -171,7 +171,7 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
   };
 
   return (
-    <main className="table-felt flex min-h-screen flex-col items-center gap-3 overflow-x-clip p-4 max-sm:gap-2 max-sm:p-2">
+    <main className="table-felt flex h-dvh flex-col items-center overflow-hidden p-3 pb-0 max-sm:p-2 max-sm:pb-0">
       <div className="flex w-full max-w-[min(96vw,100rem)] items-center gap-3 max-sm:gap-2">
         <button
           onClick={onLeave}
@@ -206,37 +206,41 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         </div>
       </div>
 
-      <div className="grid w-full max-w-[min(96vw,100rem)] flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center justify-items-center gap-2">
-        <div className="col-span-3">{seatAt(2)}</div>
-        {seatAt(1)}
-        <div className="relative">
-          <TrickArea plays={trickPlays} sweepTo={sweepTo} />
-          {trickBanner !== null && (
-            <p
-              className={`absolute -bottom-7 left-1/2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
-                specialTags ? 'special-burst' : 'pop-in'
-              }`}
-            >
-              {trickBanner}
-            </p>
-          )}
+      {/* Center stage: the trick dominates; seats float as chips at the edges. */}
+      <div className="relative w-full min-h-0 flex-1">
+        <div className="absolute inset-0 grid place-items-center">
+          <div className="relative">
+            <TrickArea plays={trickPlays} sweepTo={sweepTo} />
+            {trickBanner !== null && (
+              <p
+                className={`absolute -bottom-4 left-1/2 z-10 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-center text-xs font-semibold text-(--color-lamplight) ${
+                  specialTags ? 'special-burst' : 'pop-in'
+                }`}
+              >
+                {trickBanner}
+              </p>
+            )}
+          </div>
         </div>
-        {seatAt(3)}
-        <div className="col-span-3">{seatAt(0)}</div>
-      </div>
+        <div className="absolute top-1 left-1/2 -translate-x-1/2">{seatAt(2)}</div>
+        <div className="absolute left-1 top-1/2 -translate-y-1/2">{seatAt(1)}</div>
+        <div className="absolute right-1 top-1/2 -translate-y-1/2">{seatAt(3)}</div>
 
-      {view.phase === 'bidding' && myTurn && (
-        <BidPanel
-          options={bidOptions}
-          onPass={() => onAction({ type: 'place_bid', choice: { kind: 'pass' } })}
-          onBid={(o) =>
-            onAction({
-              type: 'place_bid',
-              choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
-            })
-          }
-        />
-      )}
+        {view.phase === 'bidding' && myTurn && (
+          <div className="absolute inset-0 z-20 grid place-items-center">
+            <BidPanel
+              options={bidOptions}
+              onPass={() => onAction({ type: 'place_bid', choice: { kind: 'pass' } })}
+              onBid={(o) =>
+                onAction({
+                  type: 'place_bid',
+                  choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
+                })
+              }
+            />
+          </div>
+        )}
+      </div>
 
       {view.phase === 'round_over' && view.lastRoundSummary !== null && (
         <RoundSummaryOverlay
@@ -256,25 +260,9 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         />
       )}
 
-      {me !== null && (
-        <Hand
-          active={myTurn && view.phase === 'playing'}
-          cards={view.hand.map((card) => ({
-            card,
-            disabled:
-              view.phase !== 'playing' ||
-              !myTurn ||
-              !legal.some((c) => c.suit === card.suit && c.value === card.value),
-            disabledReason:
-              ledSuit !== null && card.suit !== ledSuit
-                ? `You must follow ${ledSuit}`
-                : 'Not your turn',
-          }))}
-          onPlay={(card) => onAction({ type: 'play_card', card: card as Card })}
-        />
-      )}
-
-      <div className="flex w-full max-w-[min(96vw,100rem)] items-start gap-2">
+      {/* Utility row: your chip + detail toggles, slim, above the hand. */}
+      <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center gap-2 py-1">
+        {seatAt(0)}
         {lastTrick !== undefined && view.phase === 'playing' && (
           <LastTrickPeek
             cards={lastTrick.cards}
@@ -290,23 +278,44 @@ export function Table({ onAction, onLeave, onRematch, online = false }: TablePro
         >
           Log
         </button>
-        <div className="flex-1">
-          <GameLog lines={log.map((l) => l.text)} visible={logOpen} />
-        </div>
-        {online && me !== null && (
-          <VoiceBar
-            status={voice.status}
-            {...(voice.error !== null ? { errorMessage: voice.error } : {})}
-            peers={voicePeers}
-            muted={voice.muted}
-            speaking={voice.speaking}
-            onJoin={() => void joinVoice()}
-            onLeave={leaveVoice}
-            onToggleMute={toggleMute}
-          />
-        )}
-        {online && <ChatPanel collapsible entries={chat} onSend={sendChat} />}
+        <span className="ml-auto flex items-center gap-2">
+          {online && me !== null && (
+            <VoiceBar
+              status={voice.status}
+              {...(voice.error !== null ? { errorMessage: voice.error } : {})}
+              peers={voicePeers}
+              muted={voice.muted}
+              speaking={voice.speaking}
+              onJoin={() => void joinVoice()}
+              onLeave={leaveVoice}
+              onToggleMute={toggleMute}
+            />
+          )}
+          {online && <ChatPanel collapsible entries={chat} onSend={sendChat} />}
+        </span>
       </div>
+      <GameLog lines={log.map((l) => l.text)} visible={logOpen} />
+
+      {/* The hand owns the bottom edge, oversized, bleeding slightly off. */}
+      {me !== null && (
+        <div className="-mb-[2.5vmin] shrink-0">
+          <Hand
+            active={myTurn && view.phase === 'playing'}
+            cards={view.hand.map((card) => ({
+              card,
+              disabled:
+                view.phase !== 'playing' ||
+                !myTurn ||
+                !legal.some((c) => c.suit === card.suit && c.value === card.value),
+              disabledReason:
+                ledSuit !== null && card.suit !== ledSuit
+                  ? `You must follow ${ledSuit}`
+                  : 'Not your turn',
+            }))}
+            onPlay={(card) => onAction({ type: 'play_card', card: card as Card })}
+          />
+        </div>
+      )}
     </main>
   );
 }
@@ -576,7 +585,7 @@ function GameLog({ lines, visible }: { lines: readonly string[]; visible: boolea
           role="region"
           aria-label="Game log"
           tabIndex={0}
-          className="h-24 w-full max-w-[min(96vw,100rem)] overflow-y-auto rounded-(--radius-panel) border border-white/8 bg-black/25 px-4 py-2 text-xs leading-5 text-(--color-ivory)/65"
+          className="fixed bottom-[24vmin] left-1/2 z-40 h-32 w-[min(92vw,50rem)] -translate-x-1/2 overflow-y-auto rounded-(--radius-panel) border border-white/10 bg-(--color-felt-950)/95 px-4 py-2 text-xs leading-5 text-(--color-ivory)/75 shadow-(--shadow-panel)"
         >
           {lines.slice(-40).map((text, i) => (
             <p key={i}>{text}</p>

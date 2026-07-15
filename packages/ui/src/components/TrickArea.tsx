@@ -45,7 +45,7 @@ export function TrickArea({ plays, sweepTo = null }: TrickAreaProps) {
   return (
     <div
       role="group"
-      className="relative size-[clamp(10rem,32vmin,22rem)]"
+      className="relative size-[clamp(13rem,46vmin,30rem)]"
       aria-label="Current trick"
     >
       <AnimatePresence>

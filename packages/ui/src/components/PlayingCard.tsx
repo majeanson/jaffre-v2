@@ -10,8 +10,8 @@ export type CardSize = 'sm' | 'md' | 'lg';
  */
 const SIZE_CLASSES: Record<CardSize, string> = {
   sm: 'w-[clamp(2.1rem,5vmin,3.4rem)] text-[clamp(0.55rem,1.3vmin,0.8rem)]',
-  md: 'w-[clamp(3.6rem,9vmin,6.6rem)] text-[clamp(0.85rem,2.1vmin,1.45rem)]',
-  lg: 'w-[clamp(4.2rem,10.5vmin,7.5rem)] text-[clamp(0.95rem,2.4vmin,1.6rem)]',
+  md: 'w-[clamp(4.4rem,12vmin,9rem)] text-[clamp(0.95rem,2.3vmin,1.7rem)]',
+  lg: 'w-[clamp(6rem,15vmin,12rem)] text-[clamp(1rem,2.6vmin,2rem)]',
 };
 
 export interface PlayingCardProps {

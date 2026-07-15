@@ -30,7 +30,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
       selectionMode="none"
       // On narrow screens the fan overlaps harder so 8 lg cards (72px each)
       // still fit 390px while every card keeps a >=40px exposed tap strip.
-      className="flex items-end justify-center -space-x-3 px-4 pt-4 pb-2 max-sm:-space-x-6 max-sm:px-1"
+      className="flex items-end justify-center -space-x-6 px-2 pt-4 max-sm:-space-x-[3.4rem] max-sm:px-0"
       onAction={(key) => {
         const entry = cards.find((c) => cardKey(c.card) === key);
         if (entry !== undefined && entry.disabled !== true && active) onPlay?.(entry.card);
