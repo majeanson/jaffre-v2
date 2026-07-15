@@ -1,0 +1,40 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 1`] = `
+{
+  "actionCount": 1590,
+  "rounds": 43,
+  "scores": [
+    20,
+    41,
+  ],
+  "seed": 1,
+  "winner": 1,
+}
+`;
+
+exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 2`] = `
+{
+  "actionCount": 591,
+  "rounds": 16,
+  "scores": [
+    42,
+    -2,
+  ],
+  "seed": 2,
+  "winner": 0,
+}
+`;
+
+exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 3`] = `
+{
+  "actionCount": 480,
+  "rounds": 13,
+  "scores": [
+    2,
+    47,
+  ],
+  "seed": 3,
+  "winner": 1,
+}
+`;
