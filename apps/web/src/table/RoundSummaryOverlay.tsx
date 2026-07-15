@@ -79,7 +79,9 @@ export function RoundSummaryOverlay({
                 <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
                 <p
                   className={
-                    (summary.deltas[t] ?? 0) >= 0 ? 'text-(--color-ok)' : 'text-(--color-danger)'
+                    (summary.deltas[t] ?? 0) >= 0
+                      ? 'text-(--color-ok)'
+                      : 'text-(--color-danger-text)'
                   }
                 >
                   {(summary.deltas[t] ?? 0) >= 0 ? '+' : ''}
@@ -103,9 +105,10 @@ export function RoundSummaryOverlay({
           >
             {youReady ? 'Waiting for the others…' : 'Ready for the next round'}
           </button>
+          {/* Unready stays at the base 70% ivory — dimming further fails AA. */}
           <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ivory)/70">
             {names.map((n, seat) => (
-              <span key={seat} className={readySeats[seat] ? '' : 'opacity-50'}>
+              <span key={seat} className={readySeats[seat] ? 'text-(--color-ivory)' : ''}>
                 {readySeats[seat] ? '✓' : '…'} {n}
               </span>
             ))}

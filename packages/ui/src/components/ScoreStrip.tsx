@@ -21,6 +21,8 @@ export interface ScoreStripProps {
   readonly trickCounts?: readonly [number, number];
   /** App controls (leave, skin, log…) shown only while expanded. */
   readonly actions?: ReactNode;
+  /** Mount with the details panel already expanded (scene viewer). */
+  readonly defaultDetailsOpen?: boolean;
 }
 
 /**
@@ -89,8 +91,9 @@ export function ScoreStrip({
   roundPoints,
   trickCounts,
   actions,
+  defaultDetailsOpen = false,
 }: ScoreStripProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
     <div className="w-fit min-w-[min(20rem,92vw)] max-w-full rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) font-ui text-sm">

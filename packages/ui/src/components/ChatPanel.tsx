@@ -15,6 +15,8 @@ export interface ChatPanelProps {
    * badge, expanding upward as a popover. When false (lobby) it is always open.
    */
   readonly collapsible?: boolean;
+  /** Collapsible only: mount with the popover already open (scene viewer). */
+  readonly defaultOpen?: boolean;
 }
 
 const MAX_CHARS = 500;
@@ -25,8 +27,13 @@ function hhmm(at: number): string {
 }
 
 /** Room text chat: message list + input. Compact — shares space with the log. */
-export function ChatPanel({ entries, onSend, collapsible = false }: ChatPanelProps) {
-  const [open, setOpen] = useState(!collapsible);
+export function ChatPanel({
+  entries,
+  onSend,
+  collapsible = false,
+  defaultOpen = false,
+}: ChatPanelProps) {
+  const [open, setOpen] = useState(!collapsible || defaultOpen);
   const [text, setText] = useState('');
   const [hint, setHint] = useState(false);
   const seenRef = useRef(0);

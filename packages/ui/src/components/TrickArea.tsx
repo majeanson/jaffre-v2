@@ -53,6 +53,7 @@ export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickArea
           plays.map((play) => (
             <motion.div
               key={cardKey(play.card)}
+              data-testid="trick-card"
               className={`absolute ${SLOT[play.position]}`}
               initial={{ ...ENTER_FROM[play.position], opacity: 0, rotate: -6 + play.position * 4 }}
               animate={{ x: 0, y: 0, opacity: 1, rotate: -3 + play.position * 2 }}

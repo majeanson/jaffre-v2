@@ -13,6 +13,8 @@ export interface TopBarProps {
   readonly onLeave: () => void;
   readonly logOpen: boolean;
   readonly onToggleLog: () => void;
+  /** Scene viewer: mount with the details panel already expanded. */
+  readonly defaultDetailsOpen?: boolean;
 }
 
 /**
@@ -26,10 +28,12 @@ export function TopBar({
   onLeave,
   logOpen,
   onToggleLog,
+  defaultDetailsOpen = false,
 }: TopBarProps) {
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
       <ScoreStrip
+        defaultDetailsOpen={defaultDetailsOpen}
         teamNames={[TEAMS[0].label, TEAMS[1].label]}
         scores={view.scores}
         target={41}

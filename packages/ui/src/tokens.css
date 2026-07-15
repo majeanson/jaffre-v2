@@ -52,6 +52,8 @@
   /* Feedback */
   --color-accent: #f2c66d;
   --color-danger: #e05252;
+  /* Danger as SMALL TEXT on dark panels — lighter for WCAG AA contrast. */
+  --color-danger-text: #ef8a8a;
   --color-ok: #58b884;
 
   /* Shape */
@@ -109,6 +111,7 @@
   --color-suit-brown: #96660f;
   --color-suit-green: #157a5f;
   --color-suit-blue: #2b57ad;
+  --color-danger-text: #a82626;
   --shadow-card: 0 1px 2px rgb(70 60 40 / 0.25), 0 6px 14px rgb(70 60 40 / 0.18);
   --shadow-card-raised: 0 2px 4px rgb(70 60 40 / 0.3), 0 12px 24px rgb(70 60 40 / 0.22);
   --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 8px 24px rgb(70 60 40 / 0.2);
@@ -140,6 +143,7 @@
   --color-suit-blue: #3f8bff;
   --color-ok: #14d29a;
   --color-danger: #ff3d5e;
+  --color-danger-text: #ff8fa3;
   --radius-card: 14px;
   --radius-panel: 18px;
   --duration-flick: 100ms;

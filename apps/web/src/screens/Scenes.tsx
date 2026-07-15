@@ -1,23 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { SCENES } from '../dev/scenes.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import { Home } from './Home.js';
+import { Lobby } from './Lobby.js';
 import { Table } from './Table.js';
 
 export interface ScenesProps {
+  /** Scene id from '#scenes/<id>'; null or unknown falls back to the first. */
+  readonly sceneId: string | null;
   readonly onLeave: () => void;
 }
 
-/**
- * Owns the scene viewer (#scenes): live-through every phase of a game
- * instantly — real Table rendering staged engine states, with a floating
- * picker. Actions are inert; switch skins from the top bar as usual.
- */
-const FALLBACK = SCENES[0];
+const noop = () => undefined;
 
-export function Scenes({ onLeave }: ScenesProps) {
-  const [index, setIndex] = useState(0);
-  const safeIndex = ((index % SCENES.length) + SCENES.length) % SCENES.length;
-  const current = SCENES[safeIndex] ?? FALLBACK;
+const goTo = (id: string) => {
+  location.hash = `#scenes/${id}`;
+};
+
+/**
+ * Owns the scene viewer (#scenes/<id>): live-through every phase and screen
+ * of a game instantly — the real components rendering staged engine states,
+ * with a floating picker. The hash is the source of truth; actions are inert.
+ */
+export function Scenes({ sceneId, onLeave }: ScenesProps) {
+  const index = Math.max(
+    0,
+    SCENES.findIndex((s) => s.id === sceneId),
+  );
+  const current = SCENES[index] ?? SCENES[0];
 
   useEffect(() => {
     current?.load();
@@ -25,13 +35,31 @@ export function Scenes({ onLeave }: ScenesProps) {
 
   if (current === undefined) return null;
 
+  const step = (delta: number) => {
+    const next = SCENES[(((index + delta) % SCENES.length) + SCENES.length) % SCENES.length];
+    if (next !== undefined) goTo(next.id);
+  };
+
   return (
     <>
-      <Table onAction={() => undefined} onLeave={onLeave} frozenHold={current.frozenHold} />
-      <div className="fixed bottom-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)">
+      {/* key remounts per scene so initial-state props (open panels) re-apply. */}
+      {current.screen === 'home' && <Home key={current.id} onPractice={noop} onJoinRoom={noop} />}
+      {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
+      {current.screen === 'table' && (
+        <Table
+          key={current.id}
+          onAction={noop}
+          onLeave={onLeave}
+          onRematch={noop}
+          online={current.online ?? false}
+          frozenHold={current.frozenHold ?? false}
+          initialUi={current.ui}
+        />
+      )}
+      <div className="fixed bottom-2 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)">
         <button
           type="button"
-          onClick={() => setIndex((i) => i - 1)}
+          onClick={() => step(-1)}
           className={GHOST_BTN_SM}
           aria-label="Previous scene"
         >
@@ -40,7 +68,7 @@ export function Scenes({ onLeave }: ScenesProps) {
         <select
           aria-label="Scene"
           value={current.id}
-          onChange={(e) => setIndex(SCENES.findIndex((s) => s.id === e.target.value))}
+          onChange={(e) => goTo(e.target.value)}
           className="cursor-pointer rounded-lg border border-white/15 bg-(--color-felt-800) px-2 py-1.5 text-(length:--text-fluid-xs) text-(--color-ivory)"
         >
           {SCENES.map((s) => (
@@ -51,7 +79,7 @@ export function Scenes({ onLeave }: ScenesProps) {
         </select>
         <button
           type="button"
-          onClick={() => setIndex((i) => i + 1)}
+          onClick={() => step(1)}
           className={GHOST_BTN_SM}
           aria-label="Next scene"
         >

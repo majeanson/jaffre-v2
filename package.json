@@ -13,6 +13,7 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "e2e": "playwright test -c apps/web/playwright.config.ts",
+    "e2e:scenes": "playwright test -c apps/web/playwright.config.ts scenes.spec.ts",
     "shots": "playwright test -c apps/web/playwright.shots.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

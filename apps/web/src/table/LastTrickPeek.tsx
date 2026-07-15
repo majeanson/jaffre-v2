@@ -5,6 +5,8 @@ import type { LastTrickInfo } from './useTableDerived.js';
 
 export interface LastTrickPeekProps {
   readonly trick: LastTrickInfo;
+  /** Mount with the popover already open (scene viewer). */
+  readonly defaultOpen?: boolean;
 }
 
 /** Mini table slots matching the stage: 0 you/bottom, 1 left, 2 top, 3 right. */
@@ -20,8 +22,8 @@ const MINI_SLOT: Record<0 | 1 | 2 | 3, string> = {
  * table so who-played-what is instantly readable; the winner is raised.
  * Closes on Escape or an outside click.
  */
-export function LastTrickPeek({ trick }: LastTrickPeekProps) {
-  const [open, setOpen] = useState(false);
+export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 

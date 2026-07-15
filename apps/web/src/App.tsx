@@ -11,7 +11,7 @@ type Route =
   | { kind: 'home' }
   | { kind: 'practice'; seed: number | null }
   | { kind: 'room'; code: string }
-  | { kind: 'scenes' };
+  | { kind: 'scenes'; id: string | null };
 
 function parseHash(): Route {
   const h = location.hash;
@@ -21,8 +21,9 @@ function parseHash(): Route {
   if (practice !== null) return { kind: 'practice', seed: Number(practice[1]) };
   const room = /^#room\/([a-z0-9-]{1,32})$/.exec(h);
   if (room !== null) return { kind: 'room', code: room[1] as string };
-  // '#scenes' — live-through every game phase instantly (design/dev tool).
-  if (h === '#scenes') return { kind: 'scenes' };
+  // '#scenes[/<id>]' — live-through every game phase instantly (design/dev tool).
+  const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
+  if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   return { kind: 'home' };
 }
 
@@ -61,7 +62,7 @@ export function App() {
     );
   }
   if (route.kind === 'scenes') {
-    return <Scenes onLeave={() => (location.hash = '')} />;
+    return <Scenes sceneId={route.id} onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'room') {
     return started ? (

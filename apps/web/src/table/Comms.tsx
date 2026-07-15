@@ -7,6 +7,8 @@ import { joinVoice, leaveVoice, toggleMute } from '../voice/rtc.js';
 export interface CommsProps {
   /** Your absolute seat, or null when spectating (voice needs a seat). */
   readonly me: number | null;
+  /** Mount with the chat popover already open (scene viewer). */
+  readonly defaultChatOpen?: boolean;
 }
 
 /** Resolve the other humans' voice presence into chips, keyed off the roster. */
@@ -29,7 +31,7 @@ function useVoicePeers(me: number | null): VoicePeerChip[] {
 }
 
 /** Owns the online-room comms: voice bar + chat panel (rendered in the utility row). */
-export function Comms({ me }: CommsProps) {
+export function Comms({ me, defaultChatOpen = false }: CommsProps) {
   const voice = useVoiceStore();
   const chat = useGameStore((s) => s.chat);
   const voicePeers = useVoicePeers(me);
@@ -48,7 +50,7 @@ export function Comms({ me }: CommsProps) {
           onToggleMute={toggleMute}
         />
       )}
-      <ChatPanel collapsible entries={chat} onSend={sendChat} />
+      <ChatPanel collapsible defaultOpen={defaultChatOpen} entries={chat} onSend={sendChat} />
     </>
   );
 }

@@ -14,6 +14,7 @@ export function TrickBanner({ banner }: TrickBannerProps) {
   const special = banner.specials.length > 0;
   return (
     <div
+      data-testid="trick-banner"
       className={`absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 ${special ? 'special-burst' : 'pop-in'}`}
     >
       <div
@@ -33,13 +34,13 @@ export function TrickBanner({ banner }: TrickBannerProps) {
           </span>
           <span className="text-sm font-semibold max-sm:text-xs" style={{ color: team.color }}>
             for {team.label}
+            {/* Dark badge + suit border: a suit-color FILL can't carry
+                AA-readable 11px text (brown especially). */}
             {banner.specials.map((s) => (
               <span
                 key={s}
-                className={`ml-2 rounded-full px-2 py-px text-[11px] font-black ${
-                  s === 'red_zero'
-                    ? 'bg-(--color-suit-red) text-(--color-card-face)'
-                    : 'bg-(--color-suit-brown) text-(--color-card-face)'
+                className={`ml-2 rounded-full border-2 bg-black/60 px-2 py-px text-[11px] font-black text-white ${
+                  s === 'red_zero' ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
                 }`}
               >
                 {s === 'red_zero' ? 'RED 0 +5' : 'BROWN 0 −2'}

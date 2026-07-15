@@ -1,5 +1,6 @@
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useState } from 'react';
+import type { SceneUi } from '../dev/sceneManifest.js';
 import { useGameStore } from '../state/gameStore.js';
 import {
   BidOverlay,
@@ -25,6 +26,8 @@ export interface TableProps {
   readonly online?: boolean;
   /** Scene viewer: keep a held trick on screen indefinitely. */
   readonly frozenHold?: boolean;
+  /** Scene viewer: panels to open on mount (initial state only). */
+  readonly initialUi?: SceneUi | undefined;
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
@@ -34,9 +37,10 @@ export function Table({
   onRematch,
   online = false,
   frozenHold = false,
+  initialUi,
 }: TableProps) {
   const log = useGameStore((s) => s.log);
-  const [logOpen, setLogOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
   const derived = useTableDerived();
   useTrickHold(frozenHold);
   // Leaving the table (or the room) always tears the voice mesh down.
@@ -54,6 +58,7 @@ export function Table({
         onLeave={onLeave}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}
+        defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
       <Stage
         trickPlays={derived.trickPlays}
@@ -77,7 +82,8 @@ export function Table({
       <UtilityRow
         you={seatInfo(0)}
         lastTrick={derived.lastTrick}
-        comms={online && <Comms me={me} />}
+        defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
+        comms={online && <Comms me={me} defaultChatOpen={initialUi?.chatOpen ?? false} />}
       />
       <GameLogPanel
         lines={log.map((l) => l.text)}

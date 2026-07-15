@@ -57,7 +57,7 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
                           {r.contract.sansAtout ? ' SA' : ''}{' '}
                           <span
                             className={
-                              r.contractMade ? 'text-(--color-ok)' : 'text-(--color-danger)'
+                              r.contractMade ? 'text-(--color-ok)' : 'text-(--color-danger-text)'
                             }
                           >
                             {r.contractMade ? '✓' : '✗'}
