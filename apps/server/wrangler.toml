@@ -1,0 +1,29 @@
+# Jaffre — Cloudflare Worker
+# Account selected at deploy time via CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN.
+name = "jaffre"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Custom domain — uncomment once ready to attach to the zone:
+# routes = [{ pattern = "jaffre.marcportal.com", custom_domain = true }]
+
+[assets]
+binding = "ASSETS"
+directory = "../web/dist"
+not_found_handling = "single-page-application"
+
+[durable_objects]
+bindings = [{ name = "GAME_ROOM", class_name = "GameRoom" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]
+
+# D1 added at M8 (accounts + history):
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "jaffre"
+# database_id = "..."
+# migrations_dir = "migrations"
