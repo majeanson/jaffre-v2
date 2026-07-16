@@ -324,6 +324,8 @@ const LOADERS: Record<SceneId, () => void> = {
   'stats-empty': () => undefined,
   replay: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
+  // The share sheet renders from its own props (no engine state) — no-op.
+  'share-sheet': () => undefined,
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

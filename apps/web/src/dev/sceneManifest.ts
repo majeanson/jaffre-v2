@@ -4,7 +4,8 @@
  * the store here would drag the whole app into the test runner.
  */
 
-export type SceneScreen = 'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor';
+export type SceneScreen =
+  'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor' | 'share';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -217,6 +218,12 @@ export const SCENE_METAS = [
     label: 'Visitor — take a bot seat',
     screen: 'visitor',
     probe: '[data-testid="take-seat-1"]',
+  },
+  {
+    id: 'share-sheet',
+    label: 'Invite — share sheet',
+    screen: 'share',
+    probe: 'role=dialog[name="Invite to your table"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

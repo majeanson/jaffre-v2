@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { DEMO_HISTORY, DEMO_REPLAY, DEMO_STATS, SCENES } from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
+import { ShareSheet } from '../components/ShareSheet.js';
 import { History } from './History.js';
 import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
@@ -79,6 +80,12 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'visitor' && (
         <Visitor key={current.id} code="scene" onSit={noop} onWatch={noop} onLeave={onLeave} />
+      )}
+      {current.screen === 'share' && (
+        <>
+          <main className="min-h-screen bg-(--color-ap-ground)" />
+          <ShareSheet key={current.id} code="scene" onCopy={noop} onClose={onLeave} />
+        </>
       )}
       {current.screen === 'table' && (
         <Table
