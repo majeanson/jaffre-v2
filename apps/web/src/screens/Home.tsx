@@ -4,6 +4,7 @@ import { HelpButton } from '../help/HelpButton.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { NameField } from '../home/NameField.js';
 import { PlayMenu } from '../home/PlayMenu.js';
+import { RecoveryCard } from '../home/RecoveryCard.js';
 import { lastRoom, playerName, setPlayerName } from '../net/socket.js';
 
 export interface HomeProps {
@@ -25,6 +26,8 @@ export function Home({ onPractice, onJoinRoom, helpOpen = false }: HomeProps) {
       <HeroBanner />
 
       <NameField value={name} onChange={setName} onCommit={saveName} />
+
+      <RecoveryCard />
 
       <div className="w-full max-w-[min(92vw,44rem)]">
         <PlayMenu
