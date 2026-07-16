@@ -2,6 +2,12 @@ import { useState, type ReactNode } from 'react';
 import type { SuitId } from '../types.js';
 import { SUIT_STYLES } from '../types.js';
 
+/** Which scoring specials a team has captured this round. */
+export interface TeamSpecials {
+  readonly red: boolean; // the red 0 (+5)
+  readonly brown: boolean; // the brown 0 (−2)
+}
+
 export interface ScoreStripProps {
   readonly teamNames: readonly [string, string];
   readonly scores: readonly [number, number];
@@ -19,6 +25,10 @@ export interface ScoreStripProps {
   readonly roundPoints?: readonly [number, number];
   /** Tricks captured per team this round (expanded view). */
   readonly trickCounts?: readonly [number, number];
+  /** Specials captured per team this round — shown as chips on the piles. */
+  readonly specials?: readonly [TeamSpecials, TeamSpecials];
+  /** The current turn/phase, e.g. "Marcel to play" — the center headline. */
+  readonly action?: string;
   /** App controls (leave, skin, log…) shown only while expanded. */
   readonly actions?: ReactNode;
   /** Mount with the details panel already expanded (scene viewer). */
@@ -28,19 +38,38 @@ export interface ScoreStripProps {
 /** "Team Sun" → "Sun": the dot already carries the team identity. */
 const shortName = (name: string): string => name.replace(/^team\s+/i, '');
 
+/** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
+function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
+  const isRed = kind === 'red';
+  return (
+    <span
+      title={isRed ? 'Red 0 captured · +5' : 'Brown 0 captured · −2'}
+      className={`rounded-full border px-1 text-[9px] font-black leading-tight text-white ${
+        isRed
+          ? 'border-(--color-suit-red) bg-(--color-suit-red)/30'
+          : 'border-(--color-suit-brown) bg-(--color-suit-brown)/30'
+      }`}
+    >
+      {isRed ? '+5' : '−2'}
+    </span>
+  );
+}
+
 /**
- * One team's tricks this round: a pile of face-down mini cards + the round
- * points, grouped in an inset tray so they read as one "this round" unit.
+ * One team's tricks this round: a pile of face-down mini cards, the round
+ * points, and any captured specials called out in their own suit color.
  */
 function TrickPile({
   count,
   points,
+  special,
   colorVar,
   label,
   mirrored = false,
 }: {
   count: number;
   points: number;
+  special?: TeamSpecials | undefined;
   colorVar: string;
   label: string;
   mirrored?: boolean;
@@ -49,7 +78,9 @@ function TrickPile({
   return (
     <span
       className={`flex items-center gap-1.5 rounded-lg bg-black/20 px-1.5 py-1 ${mirrored ? 'flex-row-reverse' : ''}`}
-      aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round`}
+      aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
+        special?.red ? ', captured the red 0 for +5' : ''
+      }${special?.brown ? ', captured the brown 0 for −2' : ''}`}
     >
       <span
         className={`flex items-center ${mirrored ? 'flex-row-reverse -space-x-1.5 space-x-reverse' : '-space-x-1.5'}`}
@@ -74,21 +105,27 @@ function TrickPile({
         {points > 0 ? '+' : ''}
         {points}
       </span>
+      {(special?.red ?? false) || (special?.brown ?? false) ? (
+        <span
+          className={`flex items-center gap-0.5 ${mirrored ? 'flex-row-reverse' : ''}`}
+          aria-hidden
+        >
+          {special?.red === true && <SpecialChip kind="red" />}
+          {special?.brown === true && <SpecialChip kind="brown" />}
+        </span>
+      ) : null}
     </span>
   );
 }
 
-/**
- * One team's half of the scoreboard: named and color-dotted, the GAME score
- * as the headline number with a thin race-to-target bar under it, and the
- * round tray beside it.
- */
+/** One team's half of the scoreboard: dot + name, the game score, race bar. */
 function TeamSide({
   name,
   score,
   target,
   count,
   points,
+  special,
   colorVar,
   mirrored = false,
   testId,
@@ -98,6 +135,7 @@ function TeamSide({
   target: number;
   count: number;
   points: number;
+  special?: TeamSpecials | undefined;
   colorVar: string;
   mirrored?: boolean;
   testId: string;
@@ -110,7 +148,7 @@ function TeamSide({
       <span className="flex flex-col items-center gap-0.5 leading-none">
         <span className="flex items-center gap-1.5">
           <span className="size-2 rounded-full" style={{ background: colorVar }} aria-hidden />
-          <span className="text-[10px] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/60 uppercase">
+          <span className="text-[10px] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/70 uppercase">
             {name}
           </span>
         </span>
@@ -123,17 +161,17 @@ function TeamSide({
             {score}
           </span>
         </span>
-        {/* The race to the target, at a glance. */}
         <span aria-hidden className="h-0.5 w-11 overflow-hidden rounded-full bg-white/10">
           <span
             className="block h-full rounded-full"
-            style={{ width: `${pct}%`, background: colorVar }}
+            style={{ width: `${String(pct)}%`, background: colorVar }}
           />
         </span>
       </span>
       <TrickPile
         count={count}
         points={points}
+        special={special}
         colorVar={colorVar}
         label={name}
         mirrored={mirrored}
@@ -142,12 +180,34 @@ function TeamSide({
   );
 }
 
+/** The trump suit, called out in its own color — the key fact of the round. */
+function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecided: boolean }) {
+  if (!trumpDecided) return null;
+  if (trump === null) {
+    return (
+      <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-(--color-ivory)/85 uppercase">
+        No&nbsp;trump
+      </span>
+    );
+  }
+  const style = SUIT_STYLES[trump];
+  return (
+    <span
+      title={`Trump: ${style.label}`}
+      className="grid size-6 place-items-center rounded-md border text-lg leading-none font-bold"
+      style={{ color: style.color, borderColor: style.color, background: `${style.color}22` }}
+    >
+      {style.glyph}
+      <span className="sr-only">Trump {style.label}</span>
+    </span>
+  );
+}
+
 /**
- * The top bar, read as a scoreboard: each team's side is labeled (dot +
- * name) with the game total as the big number, the round's trick tray next
- * to it, and the bet on a labeled plaque in the middle. The whole bar is
- * the toggle; expanding grows the SAME bar with full details and the app
- * controls.
+ * The top bar, read as a scoreboard: each team's side (dot, name, game score,
+ * race bar) with its round trick tray, and a center that shows only what
+ * matters right now — whose turn it is, the bet, and the trump. Tap to expand
+ * for full details and the app controls.
  */
 export function ScoreStrip({
   teamNames,
@@ -158,23 +218,12 @@ export function ScoreStrip({
   trumpDecided = false,
   roundPoints,
   trickCounts,
+  specials,
+  action,
   actions,
   defaultDetailsOpen = false,
 }: ScoreStripProps) {
   const [open, setOpen] = useState(defaultDetailsOpen);
-
-  const trumpBadge = trumpDecided ? (
-    trump === null ? (
-      <span className="text-[11px] font-semibold whitespace-nowrap text-(--color-ivory)/80">
-        no trump
-      </span>
-    ) : (
-      <span className="text-lg leading-none font-bold" style={{ color: SUIT_STYLES[trump].color }}>
-        {SUIT_STYLES[trump].glyph}
-        <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
-      </span>
-    )
-  ) : null;
 
   return (
     <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/90 font-ui text-sm shadow-(--shadow-panel)">
@@ -192,36 +241,36 @@ export function ScoreStrip({
             target={target}
             count={trickCounts?.[0] ?? 0}
             points={roundPoints?.[0] ?? 0}
+            special={specials?.[0]}
             colorVar="var(--color-team-a)"
             testId="team-score-0"
           />
         </span>
 
-        {/* Center plaque: the one contract everyone plays against. */}
-        <span className="flex min-w-0 flex-col items-center gap-0.5 px-1 leading-none">
-          <span className="text-[9px] font-semibold tracking-[0.22em] text-(--color-ivory)/45 uppercase">
-            {contract !== null ? 'bet' : 'auction'}
-          </span>
-          {contract !== null ? (
-            <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
-              <span className="truncate">
-                {contract.playerName} {contract.value}
-                {contract.sansAtout ? ' SA' : ''}
-              </span>
-              {contract.progress !== undefined && (
-                <span className="text-(--color-lamplight)">
-                  {contract.progress}/{contract.value}
-                </span>
-              )}
-              {trumpBadge}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-xs text-(--color-ivory)/65">
-              bidding…{trumpBadge}
+        {/* Center: the live state — action, bet, trump. No filler. */}
+        <span className="flex min-w-0 flex-col items-center gap-1 px-1 leading-none">
+          {action !== undefined && (
+            <span className="text-[9px] font-semibold tracking-[0.16em] whitespace-nowrap text-(--color-ivory)/55 uppercase max-sm:hidden">
+              {action}
             </span>
           )}
-          <span className="text-[10px] whitespace-nowrap text-(--color-ivory)/45">
-            first to {target}
+          <span className="flex min-w-0 items-center gap-2">
+            {contract !== null ? (
+              <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory) tabular-nums max-sm:text-xs">
+                <span className="truncate">
+                  {contract.playerName} {contract.value}
+                  {contract.sansAtout ? ' SA' : ''}
+                </span>
+                {contract.progress !== undefined && (
+                  <span className="text-(--color-lamplight)">
+                    {contract.progress}/{contract.value}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-xs whitespace-nowrap text-(--color-ivory)/70">no bet yet</span>
+            )}
+            <TrumpBadge trump={trump} trumpDecided={trumpDecided} />
           </span>
         </span>
 
@@ -232,6 +281,7 @@ export function ScoreStrip({
             target={target}
             count={trickCounts?.[1] ?? 0}
             points={roundPoints?.[1] ?? 0}
+            special={specials?.[1]}
             colorVar="var(--color-team-b)"
             mirrored
             testId="team-score-1"
@@ -271,21 +321,23 @@ export function ScoreStrip({
                     {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'} taken
                   </p>
                 )}
+                {(specials?.[team]?.red ?? false) || (specials?.[team]?.brown ?? false) ? (
+                  <p className="mt-1 flex items-center justify-center gap-1">
+                    {specials?.[team]?.red === true && <SpecialChip kind="red" />}
+                    {specials?.[team]?.brown === true && <SpecialChip kind="brown" />}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
-          <p className="text-(--color-ivory)/55">
-            first team to <span className="font-semibold text-(--color-ivory)/85">{target}</span>{' '}
-            wins
-            {contract !== null && (
-              <>
-                {' '}
-                · {contract.playerName} must take{' '}
-                <span className="font-semibold text-(--color-ivory)/85">{contract.value}</span>{' '}
-                trick points{contract.sansAtout ? ' without trump (stake ×2)' : ''}
-              </>
-            )}
-          </p>
+          {contract !== null && (
+            <p className="text-(--color-ivory)/60">
+              <span className="font-semibold text-(--color-ivory)/85">{contract.playerName}</span>{' '}
+              must take{' '}
+              <span className="font-semibold text-(--color-ivory)/85">{contract.value}</span> trick
+              points{contract.sansAtout ? ' with no trump (stake ×2)' : ''}
+            </p>
+          )}
           {actions !== undefined && (
             <div className="flex flex-wrap items-center justify-center gap-2">{actions}</div>
           )}

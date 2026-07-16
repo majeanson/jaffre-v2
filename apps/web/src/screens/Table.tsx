@@ -59,6 +59,8 @@ export function Table({
         view={view}
         contract={derived.contractDisplay}
         trickCounts={derived.trickCounts}
+        specials={derived.teamSpecials}
+        action={derived.headerAction}
         onLeave={onLeave}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}

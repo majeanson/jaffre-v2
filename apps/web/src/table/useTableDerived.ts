@@ -1,7 +1,7 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
-import type { BidOption, TrickPlayView } from '@jaffre/ui';
+import type { BidOption, TeamSpecials, TrickPlayView } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 
@@ -66,6 +66,10 @@ export interface TableDerived {
   readonly bidOptions: readonly BidOption[];
   readonly contractDisplay: ContractDisplay | null;
   readonly trickCounts: readonly [number, number];
+  /** Specials each team has captured this round (header chips). */
+  readonly teamSpecials: readonly [TeamSpecials, TeamSpecials];
+  /** The current turn/phase for the score-strip center, e.g. "Marcel to play". */
+  readonly headerAction: string;
   readonly lastTrick: LastTrickInfo | null;
   /** Resolve the seat occupying a table-relative position (0 = you/bottom). */
   readonly seatInfo: (position: 0 | 1 | 2 | 3) => SeatChipInfo | null;
@@ -146,6 +150,38 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     view.capturedTricks.filter((t) => t.winner % 2 === 1).length,
   ];
 
+  // Which team holds each scoring special this round (derived from the cards
+  // in their captured tricks) — the header calls them out per team.
+  const specialFlags: [TeamSpecials, TeamSpecials] = [
+    { red: false, brown: false },
+    { red: false, brown: false },
+  ];
+  for (const t of view.capturedTricks) {
+    const team = (t.winner % 2) as 0 | 1;
+    for (const c of t.cards) {
+      if (c.suit === 'red' && c.value === 0)
+        specialFlags[team] = { ...specialFlags[team], red: true };
+      if (c.suit === 'brown' && c.value === 0)
+        specialFlags[team] = { ...specialFlags[team], brown: true };
+    }
+  }
+
+  // A one-line "what's happening now" for the score-strip center.
+  const turnName = view.turn === me ? 'You' : (roster.seats[view.turn]?.name ?? 'Player');
+  const youTurn = view.turn === me;
+  const headerAction =
+    view.phase === 'bidding'
+      ? youTurn
+        ? 'Your bid'
+        : `${turnName} bidding`
+      : view.phase === 'playing'
+        ? youTurn
+          ? 'Your turn'
+          : `${turnName} to play`
+        : view.phase === 'round_over'
+          ? 'Round over'
+          : 'Game over';
+
   const last = view.capturedTricks[view.capturedTricks.length - 1];
   const lastTrick: LastTrickInfo | null =
     last !== undefined && view.phase === 'playing'
@@ -188,6 +224,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     bidOptions,
     contractDisplay,
     trickCounts,
+    teamSpecials: specialFlags,
+    headerAction,
     lastTrick,
     seatInfo,
     coach,

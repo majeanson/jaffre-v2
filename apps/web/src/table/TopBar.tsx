@@ -1,5 +1,5 @@
 import type { SeatView } from '@jaffre/engine';
-import { ScoreStrip } from '@jaffre/ui';
+import { ScoreStrip, type TeamSpecials } from '@jaffre/ui';
 import { GHOST_BTN } from '../components/buttonStyles.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { TEAMS } from '../teams.js';
@@ -10,6 +10,8 @@ export interface TopBarProps {
   readonly view: SeatView;
   readonly contract: ContractDisplay | null;
   readonly trickCounts: readonly [number, number];
+  readonly specials: readonly [TeamSpecials, TeamSpecials];
+  readonly action: string;
   readonly onLeave: () => void;
   readonly logOpen: boolean;
   readonly onToggleLog: () => void;
@@ -27,6 +29,8 @@ export function TopBar({
   view,
   contract,
   trickCounts,
+  specials,
+  action,
   onLeave,
   logOpen,
   onToggleLog,
@@ -46,6 +50,8 @@ export function TopBar({
         trumpDecided={view.trumpDecided}
         roundPoints={view.roundPoints}
         trickCounts={trickCounts}
+        specials={specials}
+        action={action}
         actions={
           <>
             <button
