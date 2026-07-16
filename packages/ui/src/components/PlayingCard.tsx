@@ -64,7 +64,7 @@ export function PlayingCard({
         recommended
           ? 'outline outline-[0.16em] outline-(--color-lamplight) outline-offset-[0.12em]'
           : ''
-      } ${dimmed ? 'opacity-45 saturate-50' : ''} ${isBrownZero ? 'brightness-95' : ''}`}
+      } ${dimmed ? 'scale-[0.94] saturate-[0.65]' : ''} ${isBrownZero ? 'brightness-95' : ''}`}
     >
       {/* Special halo: rays for the red zero, cracks-dark vignette for brown */}
       {isRedZero && (
@@ -107,6 +107,11 @@ export function PlayingCard({
           {bonus}
         </span>
       )}
+
+      {/* Not playable now: sink the card into the felt (skin-adaptive — felt is
+          near-black in dark skins, linen in the light one) instead of a ghostly
+          fade, so it reads "parked" but stays crisp and legible. */}
+      {dimmed && <span aria-hidden className="absolute inset-0 bg-(--color-felt-950)/45" />}
     </div>
   );
 }

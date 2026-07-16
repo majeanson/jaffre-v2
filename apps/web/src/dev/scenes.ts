@@ -1,6 +1,6 @@
 import { chooseAction } from '@jaffre/bots';
 import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
-import { applyAction, createGame, mulberry32, viewFor } from '@jaffre/engine';
+import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
 import type { HistoryGame, ReplayData } from '../net/history.js';
 import type { Connection } from '../state/gameStore.js';
@@ -217,6 +217,15 @@ const LOADERS: Record<SceneId, () => void> = {
     (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
   ),
   'mid-trick': gameScene('mid-trick', midTrick),
+  // Seat 0 on turn, following a led suit, holding a mix of legal and locked
+  // cards — the state that shows the dimmed/unplayable styling.
+  'follow-suit': gameScene('follow-suit', (s) => {
+    if (s.phase !== 'playing' || s.turn !== 0 || s.currentTrick.length === 0) return false;
+    const v = viewFor(s, 0);
+    const led = v.currentTrick[0]?.card.suit ?? null;
+    const legal = legalCards(v.hand, led);
+    return legal.length > 0 && legal.length < v.hand.length;
+  }),
   'trick-held': gameScene(
     'trick-held',
     (_s, ev) => ev.some((e) => e.type === 'trick_won' && e.specials.length === 0),

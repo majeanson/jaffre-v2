@@ -96,6 +96,12 @@ export const SCENE_METAS = [
     probe: '[data-testid="trick-card"]',
   },
   {
+    id: 'follow-suit',
+    label: 'Play — follow suit (locked cards)',
+    screen: 'table',
+    probe: 'role=listbox[name="Your hand"]',
+  },
+  {
     id: 'trick-held',
     label: 'Trick resolved (held)',
     screen: 'table',
