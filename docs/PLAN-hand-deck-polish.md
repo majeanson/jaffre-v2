@@ -13,24 +13,31 @@ lobby voice), and the **chat-triples bug**. A long-standing Home axe flake was
 also fixed (a11y helper settles animations + skips the native-`<select>` false
 positive).
 
-**Only remaining item**: **C drag half** — manual drag-to-reorder the hand.
-The colour-sort button already covers "tidy my hand"; this adds free rearrange.
-The local `order` state + `motion layout` reflow already exist in `PlayerHand`;
-drag just needs to rewrite `order` from pointer position.
+**C drag half — SHIPPED** (2026-07-16, commit `feat: drag-to-reorder the
+hand`). Manual drag-to-reorder the hand now works: the colour-sort button
+covers "tidy my hand" and this adds free rearrange. `Hand` takes an optional
+`onReorder(keys)`; `PlayerHand` owns the client-only `order` state and the
+`motion layout` reflow handles the slide.
 
-**Attempt log (react-aria `useDragAndDrop`, reverted):** wiring it into the
-existing `ListBox` DID work — a real POINTER drag (mouse down/move/up, NOT
-Playwright's `dragTo`, which sends native HTML5 drag events react-aria ignores)
-reorders the hand correctly, and keyboard/tap play survived. BUT react-aria's
-drag layer leaves a **document-level overlay that intercepts pointer events**,
-which then blocks clicking anything else (the a11y overlays test times out
-clicking "Last trick" with `<html> intercepts pointer events`) — a real
-click-to-play vs drag conflict, not just a test artifact. Reverted rather than
-ship a broken interaction. **Next approach:** a threshold-based manual pointer
-drag on the card (like `BetCards`' motion `drag` + click-suppression: a tap
-plays, a drag past ~8px reorders and cancels the click), computing the target
-index from pointer x vs sibling centers and calling back to set `order`. Avoids
-react-aria's overlay entirely. Keep keyboard play (Enter) intact.
+**Implementation (what actually shipped):** a plain `motion` pointer drag on
+each card's inner `motion.span` (`drag="x"` + `dragSnapToOrigin`), NOT
+react-aria's `useDragAndDrop`. A tap still plays via the listbox `onAction`; a
+real drag sets a one-shot `justDragged` ref in `onDragStart` so the same
+pointer-up can't also fire a play (cleared on the next tick), then `onDragEnd`
+computes the target slot from `info.point.x` vs the other cards' slot centres
+(each `ListBoxItem` is captured in a `slots` ref map) and calls `onReorder`
+with the new key order. Reordering is allowed even when the hand isn't
+`active`. Verified with a real pointer drag (mouse down/move-in-steps/up, NOT
+`dragTo`); tap-play (`mobile.spec`), keyboard Enter-play (`practice-keyboard`),
+and the a11y overlay-click tests all still pass.
+
+**Attempt log (react-aria `useDragAndDrop`, REVERTED — kept for history):**
+wiring it into the existing `ListBox` DID work — a real POINTER drag reorders
+the hand and keyboard/tap play survived. BUT react-aria's drag layer left a
+**document-level overlay that intercepts pointer events**, blocking clicks
+elsewhere (the a11y overlays test timed out clicking "Last trick" with `<html>
+intercepts pointer events`). The shipped manual-drag approach above avoids that
+overlay entirely.
 
 Guiding intent (user's words): make playing cards feel **satisfying — ASMR /
 haptic / phone-style**: cards deal in one at a time, you can drag to sort your
