@@ -322,23 +322,40 @@ export class GameRoom implements DurableObject {
       this.broadcastRoster({});
       return;
     }
-    if (occupant !== null) {
-      this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
-      return;
-    }
-    if (this.meta.started) {
-      this.send(ws, {
-        t: 'error',
-        code: 'ALREADY_STARTED',
-        message: 'Cannot change seats after the game has started',
-      });
-      return;
+    // A spectator may take over a bot seat mid-game — the seat's hand/tricks/turn
+    // carry over untouched, and the alarm's isBotOwner check means it will no
+    // longer bot-play this (now human-owned) seat.
+    const midGameTakeover =
+      isBotOwner(occupant) &&
+      this.meta.started &&
+      this.game !== null &&
+      this.game.phase !== 'game_over';
+    if (!midGameTakeover) {
+      if (occupant !== null) {
+        // A human (or a bot pre-start, where seating changes are handled below
+        // only if the game hasn't started) occupies the seat.
+        this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
+        return;
+      }
+      if (this.meta.started) {
+        this.send(ws, {
+          t: 'error',
+          code: 'ALREADY_STARTED',
+          message: 'Cannot change seats after the game has started',
+        });
+        return;
+      }
     }
     for (const s of SEATS) {
       if (this.meta.seats[s] === att.userId) this.meta.seats[s] = null;
     }
     this.meta.seats[seat] = att.userId;
     this.meta.names[att.userId] = att.name;
+    if (this.meta.disconnectedSince?.[att.userId] !== undefined) {
+      this.meta.disconnectedSince = Object.fromEntries(
+        Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== att.userId),
+      );
+    }
     att.viewer = seat;
     ws.serializeAttachment(att);
     await this.ctx.storage.put('meta', this.meta);

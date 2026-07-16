@@ -8,6 +8,7 @@ import { Lobby } from './screens/Lobby.js';
 import { Replay } from './screens/Replay.js';
 import { Scenes } from './screens/Scenes.js';
 import { Table } from './screens/Table.js';
+import { Visitor } from './screens/Visitor.js';
 import { useGameStore } from './state/gameStore.js';
 
 type Route =
@@ -38,6 +39,8 @@ function parseHash(): Route {
 export function App() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
+  const viewer = useGameStore((s) => s.viewer);
+  const [watching, setWatching] = useState(false);
 
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
@@ -52,6 +55,7 @@ export function App() {
     }
     if (route.kind === 'room') {
       connect(route.code);
+      setWatching(false);
       return () => {
         // Tear the voice mesh down at the room boundary — it persists across the
         // lobby→table remount, so leaving from either must clean it up.
@@ -82,6 +86,19 @@ export function App() {
     return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;
   }
   if (route.kind === 'room') {
+    // A spectator arriving at a room already underway (viewer is not a seated
+    // number) lands on the Visitor screen first — take over a bot's seat or
+    // keep watching — unless they've already chosen to watch.
+    if (started && typeof viewer !== 'number' && !watching) {
+      return (
+        <Visitor
+          code={route.code}
+          onSit={(seat) => send({ t: 'sit', seat })}
+          onWatch={() => setWatching(true)}
+          onLeave={() => (location.hash = '')}
+        />
+      );
+    }
     return started ? (
       <Table
         online

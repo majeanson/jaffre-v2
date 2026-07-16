@@ -6,6 +6,7 @@ import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Replay } from './Replay.js';
 import { Table } from './Table.js';
+import { Visitor } from './Visitor.js';
 
 export interface ScenesProps {
   /** Scene id from '#scenes/<id>'; null or unknown falls back to the first. */
@@ -63,6 +64,9 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'replay' && (
         <Replay key={current.id} gameId={null} demo={DEMO_REPLAY} onLeave={onLeave} />
+      )}
+      {current.screen === 'visitor' && (
+        <Visitor key={current.id} code="scene" onSit={noop} onWatch={noop} onLeave={onLeave} />
       )}
       {current.screen === 'table' && (
         <Table
