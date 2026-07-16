@@ -15,7 +15,7 @@ export function TrickBanner({ banner }: TrickBannerProps) {
   return (
     <div
       data-testid="trick-banner"
-      className={`absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 ${special ? 'special-burst' : 'pop-in'}`}
+      className={`absolute bottom-[4%] left-1/2 z-30 w-max max-w-[94vw] -translate-x-1/2 ${special ? 'special-burst' : 'pop-in'}`}
     >
       {/* Fluid: root font scales with the viewport, internals in em. */}
       <div

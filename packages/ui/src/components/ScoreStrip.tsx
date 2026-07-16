@@ -101,8 +101,10 @@ function TrickPile({
         special?.red ? ', captured the red 0 for +5' : ''
       }${special?.brown ? ', captured the brown 0 for −2' : ''}`}
     >
+      {/* The mini-card stack needs width a phone doesn't have — there the
+          points + special chips alone tell the story. */}
       <span
-        className={`flex items-center ${mirrored ? 'flex-row-reverse -space-x-1.5 space-x-reverse' : '-space-x-1.5'}`}
+        className={`flex items-center max-sm:hidden ${mirrored ? 'flex-row-reverse -space-x-1.5 space-x-reverse' : '-space-x-1.5'}`}
         aria-hidden
       >
         {Array.from({ length: shown }, (_, i) => (
