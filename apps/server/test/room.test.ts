@@ -639,6 +639,50 @@ describe('GameRoom', () => {
     },
   );
 
+  it(
+    'exposes botSwapAt on a disconnected human seat and clears it on rejoin',
+    { timeout: 20_000 },
+    async () => {
+      const room = 'room-botswapat';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(alice); // seat 0 human + 3 bots, phase bidding
+
+      // A spectator stays connected to observe roster broadcasts (alice's own
+      // socket won't receive them once it closes).
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+
+      // Alice drops mid-game — the disconnect roster must carry her deadline.
+      const closeAt = Date.now();
+      alice.ws.close(1000, 'bye');
+      let botSwapAt: number | undefined;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && botSwapAt === undefined) {
+        const r = await carol.next('roster');
+        botSwapAt = r.roster.seats[0]?.botSwapAt;
+      }
+      expect(botSwapAt).toBeTypeOf('number');
+      // Absolute epoch ms ≈ closeAt + BOT_SWAP_MS.
+      expect((botSwapAt ?? 0) - closeAt).toBeGreaterThan(BOT_SWAP_MS - 5000);
+      expect((botSwapAt ?? 0) - closeAt).toBeLessThan(BOT_SWAP_MS + 5000);
+
+      // Rejoining clears the deadline in the next roster the spectator sees.
+      const again = await Client.connect(room, 'alice', 'Alice');
+      again.send({ t: 'join' });
+      await again.next('welcome');
+      let cleared = false;
+      const deadline2 = Date.now() + 5000;
+      while (Date.now() < deadline2 && !cleared) {
+        const r = await carol.next('roster');
+        const seat0 = r.roster.seats[0];
+        cleared = seat0?.connected === true && seat0.botSwapAt === undefined;
+      }
+      expect(cleared).toBe(true);
+      await endQuiet(room, alice, carol, again);
+    },
+  );
+
   it('enforces seat security for a second user', async () => {
     const room = 'room-security';
     const alice = await Client.connect(room, 'alice', 'Alice');

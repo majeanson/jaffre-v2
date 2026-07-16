@@ -13,6 +13,8 @@ export interface SeatChipInfo {
   readonly isDealer: boolean;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
+  readonly botSwapAt: number | null;
   /** The seat's auction declaration ("8 SA", "Pass"), null before it bids. */
   readonly bidText: string | null;
   /** True when this seat holds the contract (highlights the bid bubble). */
@@ -166,6 +168,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       isDealer: view.dealer === seat,
       isBot: info.isBot,
       connected: info.connected,
+      botSwapAt: info.botSwapAt ?? null,
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
     };

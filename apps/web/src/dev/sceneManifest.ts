@@ -139,6 +139,19 @@ export const SCENE_METAS = [
     probe: '[data-testid="chat-input"]',
   },
   {
+    id: 'table-reconnecting',
+    label: 'Table — reconnecting',
+    screen: 'table',
+    online: true,
+    probe: '[data-testid="connection-banner"]',
+  },
+  {
+    id: 'seat-disconnected-countdown',
+    label: 'Opponent away — bot-swap countdown',
+    screen: 'table',
+    probe: '[data-testid="botswap-countdown"]',
+  },
+  {
     id: 'spectator',
     label: 'Spectator view',
     screen: 'table',

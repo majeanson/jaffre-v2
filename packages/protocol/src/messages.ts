@@ -76,6 +76,12 @@ export interface RosterSeat {
   readonly ready?: boolean;
   /** Present only for bot seats — the difficulty this bot plays at. */
   readonly difficulty?: BotDifficulty;
+  /**
+   * Epoch ms when this disconnected human's seat gets handed to a bot.
+   * Present only while a seated human is disconnected mid-game; absolute
+   * (not remaining) so the client can tick it down locally between rosters.
+   */
+  readonly botSwapAt?: number;
 }
 
 export interface Roster {

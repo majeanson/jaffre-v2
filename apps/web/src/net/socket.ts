@@ -20,6 +20,18 @@ let ws: WebSocket | null = null;
 let room: string | null = null;
 let attempts = 0;
 let closedByUs = false;
+let pingTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Keepalive: nudge the server every 30s so idle proxies don't cull the
+ * socket and a dead connection surfaces as a close sooner. */
+function startPing(): void {
+  stopPing();
+  pingTimer = setInterval(() => send({ t: 'ping' }), 30_000);
+}
+function stopPing(): void {
+  if (pingTimer !== null) clearInterval(pingTimer);
+  pingTimer = null;
+}
 
 function userId(): string {
   const existing = localStorage.getItem('jaffre-uid');
@@ -64,6 +76,7 @@ async function open(): Promise<void> {
   ws = new WebSocket(`${proto}://${location.host}/ws/${room}?${identity}`);
   ws.onopen = () => {
     attempts = 0;
+    startPing();
     send({ t: 'join' });
   };
   ws.onmessage = (e) => {
@@ -72,6 +85,7 @@ async function open(): Promise<void> {
   };
   ws.onclose = () => {
     ws = null;
+    stopPing();
     if (closedByUs) return;
     attempts += 1;
     useGameStore.getState().setConnection('reconnecting');
@@ -81,6 +95,7 @@ async function open(): Promise<void> {
 
 export function disconnect(): void {
   closedByUs = true;
+  stopPing();
   ws?.close();
   ws = null;
   room = null;

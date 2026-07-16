@@ -184,6 +184,26 @@ const LOADERS: Record<SceneId, () => void> = {
   'log-open': gameScene('log-open', midTrick),
   'score-details': gameScene('score-details', midTrick),
   'comms-open': gameScene('comms-open', midTrick),
+  'table-reconnecting': () => {
+    inject(cached('mid-trick', midTrick));
+    // welcome() (inside inject) hard-sets 'open', so this must come after it.
+    useGameStore.getState().setConnection('reconnecting');
+  },
+  'seat-disconnected-countdown': () => {
+    // botSwapAt is computed at load time so the countdown is always in the
+    // future (the probe targets the testid, not the ticking text).
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: false, botSwapAt: Date.now() + 30_000 },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+    };
+    inject(cached('mid-trick', midTrick), { roster });
+  },
   spectator: gameScene('spectator', midTrick, {
     viewer: 'spectator',
     roster: SPECTATOR_ROSTER,

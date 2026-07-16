@@ -184,25 +184,33 @@ export class GameRoom implements DurableObject {
 
   async webSocketClose(ws: WebSocket): Promise<void> {
     await this.load();
-    // Recompute roster with this socket excluded so its seat shows connected=false.
-    this.broadcastRoster({ exclude: ws });
-    // If a seated human's LAST socket just closed mid-game, start their
-    // disconnect clock so the alarm can bot-swap them after the deadline.
     const att = this.attachment(ws);
-    if (typeof att.viewer !== 'number') return;
-    if (!this.meta.started || this.game === null || this.game.phase === 'game_over') return;
-    const stillConnected = this.ctx.getWebSockets().some((s) => {
-      if (s === ws) return false;
-      const a = this.attachment(s);
-      return a.joined && a.userId === att.userId;
-    });
-    if (stillConnected) return;
-    this.meta.disconnectedSince = {
-      ...this.meta.disconnectedSince,
-      [att.userId]: Date.now(),
-    };
-    await this.ctx.storage.put('meta', this.meta);
-    await this.scheduleNextWake();
+    // If a seated human's LAST socket just closed mid-game, start their
+    // disconnect clock BEFORE broadcasting, so the roster we send carries
+    // their bot-swap deadline (botSwapAt) in the same update as connected=false.
+    const seatedHuman =
+      typeof att.viewer === 'number' &&
+      this.meta.started &&
+      this.game !== null &&
+      this.game.phase !== 'game_over';
+    if (seatedHuman) {
+      const stillConnected = this.ctx.getWebSockets().some((s) => {
+        if (s === ws) return false;
+        const a = this.attachment(s);
+        return a.joined && a.userId === att.userId;
+      });
+      if (!stillConnected) {
+        this.meta.disconnectedSince = {
+          ...this.meta.disconnectedSince,
+          [att.userId]: Date.now(),
+        };
+        await this.ctx.storage.put('meta', this.meta);
+        await this.scheduleNextWake();
+      }
+    }
+    // Recompute roster with this socket excluded so its seat shows
+    // connected=false (plus botSwapAt when the clock was just started).
+    this.broadcastRoster({ exclude: ws });
   }
 
   webSocketError(ws: WebSocket): void {
@@ -664,11 +672,17 @@ export class GameRoom implements DurableObject {
           ...(ready !== undefined ? { ready } : {}),
         };
       }
+      const connected = attachments.some((a) => a.joined && a.viewer === i);
+      // A disconnected human mid-game is on the bot-swap clock — expose the
+      // absolute deadline so the client can show a countdown.
+      const swapActive = !connected && this.game !== null && this.game.phase !== 'game_over';
+      const botSwapAt = swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY;
       return {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,
-        connected: attachments.some((a) => a.joined && a.viewer === i),
+        connected,
         ...(ready !== undefined ? { ready } : {}),
+        ...(Number.isFinite(botSwapAt) ? { botSwapAt } : {}),
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;

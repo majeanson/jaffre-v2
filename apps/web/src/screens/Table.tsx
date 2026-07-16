@@ -5,6 +5,7 @@ import { useGameStore } from '../state/gameStore.js';
 import {
   BidOverlay,
   Comms,
+  ConnectionBanner,
   GameLogPanel,
   Overlays,
   PlayerHand,
@@ -53,6 +54,7 @@ export function Table({
 
   return (
     <main className="table-felt flex h-dvh flex-col items-center overflow-hidden p-3 pb-0 max-sm:p-2 max-sm:pb-0">
+      {online && <ConnectionBanner />}
       <TopBar
         view={view}
         contract={derived.contractDisplay}
