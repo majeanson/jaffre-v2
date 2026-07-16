@@ -359,18 +359,34 @@ voice) is small and independent — a good quick win any time.** B, C, F are the
 big creative pieces; prototype feel early and iterate in `npm run shots` / a
 live `#practice` game.
 
-## Open questions for the user
+## Open questions — RESOLVED (as shipped, 2026-07-16)
 
-- Sound **default on or off**? (Recommend off + a toggle.)
-- Colour-sort order: suit grouping order (red, brown, green, blue?) and within
-  a suit ascending or descending?
-- Should manual drag order **persist** only for the round, or auto-re-sort each
-  new deal?
-- Deck deal: deal all four players visually, or only _your_ hand flies in?
-- Bet cards: keep the current bid buttons as a fallback, or fully replace them?
-  Confirm gesture — tap the card, or drag it up like playing a card?
-- Take-over: open to any spectator, or only the room creator / invited? Should a
-  taken-over bot's accumulated score/tricks just carry to the human (yes,
-  simplest) — confirm.
-- Visitor page: always shown to spectators of a started room, or only when there
-  are bot seats available to replace?
+All were answered by what actually shipped; each stays as-is unless noted.
+
+- **Sound default on or off?** → **Off.** `soundEnabled()` reads
+  `localStorage['jaffre-sound'] === 'on'`; absent = off (opt-in via the toggle).
+  Keep.
+- **Colour-sort order + direction?** → Suits **red → brown → green → blue**
+  (`handSort.ts` `SUIT_ORDER`), within a suit **ascending** (low→high value).
+  Bonus: the sort button **alternates each press** between colour-sort and
+  value-sort (0→7). Keep.
+- **Manual order persist per round or auto-re-sort each deal?** → **Persists for
+  the round only; a new deal resets to dealt/server order** (not auto-sorted).
+  `PlayerHand` keys its client `order` on card keys, so a new round's keys fall
+  back to dealt order. Keep — auto-sorting every deal would fight players who
+  arrange their own hand.
+- **Deck deal: all four players or only yours?** → **Only your hand flies in**
+  (deal-in stagger on your own full 8-card hand; no deck-stack visual, no
+  opponent deal). A four-player deal + deck stack remains the deferred "richer
+  motion" upgrade from Workstream B.
+- **Bet cards: keep bid buttons as fallback? gesture?** → **Fully replaced** the
+  buttons with bet cards (brass chips). Gesture: **drag-up or tap** to commit;
+  **★ toggle** for sans-atout. No button fallback.
+- **Take-over: who, and does score carry?** → **Open to any joined spectator**
+  (`GameRoom.onSit` allows taking a bot seat mid-game, no creator/invite gate);
+  the seat's **hand/tricks/turn/score carry over untouched**. Keep open for now.
+- **Visitor page: always, or only when bot seats free?** → **Always shown** to a
+  spectator of a started room (`started && viewer not a number && !watching`)
+  until they choose Watch. Optional future tweak: gate the per-seat "take over"
+  affordance on there actually being a bot seat free (the landing screen itself
+  always showing Watch/Leave is fine).
