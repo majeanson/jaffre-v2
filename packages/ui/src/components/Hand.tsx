@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import { ListBox, ListBoxItem } from 'react-aria-components';
 import type { CardData } from '../types.js';
 import { cardKey, cardLabel } from '../types.js';
@@ -60,25 +61,28 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
             }`}
             style={{ zIndex: entry.recommended === true ? cards.length + i : i }}
           >
-            {/* deal-in staggers each card's entrance (new round = new keys =
-                fresh mount); on an inner span so the item's hover-lift is
-                untouched. Gated on no-reduced-motion in tokens.css. */}
-            <span
-              className="deal-in inline-block"
-              style={{ ['--deal-i' as string]: i }}
-              title={!playable ? entry.disabledReason : undefined}
-            >
-              <PlayingCard
-                card={entry.card}
-                size="lg"
-                tilt={tilt}
-                dimmed={active && entry.disabled === true}
-                recommended={entry.recommended === true}
-              />
-              {!playable && entry.disabledReason !== undefined && (
-                <span className="sr-only">{entry.disabledReason}</span>
-              )}
-            </span>
+            {/* layout animates the card sliding to its new spot when the hand
+                is re-sorted; the inner deal-in span staggers the entrance (new
+                round = new keys = fresh mount) without touching the hover-lift.
+                Both are gated on no-reduced-motion. */}
+            <motion.span layout className="inline-block">
+              <span
+                className="deal-in inline-block"
+                style={{ ['--deal-i' as string]: i }}
+                title={!playable ? entry.disabledReason : undefined}
+              >
+                <PlayingCard
+                  card={entry.card}
+                  size="lg"
+                  tilt={tilt}
+                  dimmed={active && entry.disabled === true}
+                  recommended={entry.recommended === true}
+                />
+                {!playable && entry.disabledReason !== undefined && (
+                  <span className="sr-only">{entry.disabledReason}</span>
+                )}
+              </span>
+            </motion.span>
           </ListBoxItem>
         );
       })}

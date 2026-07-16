@@ -1,4 +1,5 @@
 export * from './types.js';
+export * from './handSort.js';
 export * from './components/PlayingCard';
 export * from './components/Hand';
 export * from './components/Seat';
