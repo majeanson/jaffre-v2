@@ -24,3 +24,17 @@ test('replay viewer steps through frames', async ({ page }) => {
   await expect(controls).toBeVisible();
   await expect(counter).toHaveText(/ \/ \d+$/);
 });
+
+test('replay nameplates show the real player names from the stored game', async ({ page }) => {
+  // Phase 1 (workstream B): replays carry the game's players, so the table
+  // shows who actually sat where — DEMO_REPLAY stages Marcel/Ginette/Réal.
+  await page.goto('/#scenes/replay');
+  await expect(page.getByTestId('replay-controls')).toBeVisible();
+  for (const name of ['Marcel', 'Ginette', 'Réal']) {
+    // Nameplates render the name twice (an sr-only copy + the visible one),
+    // so filter to the visible occurrence.
+    await expect(
+      page.getByText(name, { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+  }
+});
