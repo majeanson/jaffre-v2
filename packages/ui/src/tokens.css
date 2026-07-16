@@ -81,6 +81,37 @@
   --duration-sweep: 560ms;
   --ease-snap: cubic-bezier(0.2, 0.9, 0.25, 1);
 
+  /* ── Arcade product shell ────────────────────────────────────────────────
+   * The identity + social surfaces (home, recovery, stats, invite, standing
+   * table) — NOT the felt table — wear a violet "Refined Arcade Violet" shell:
+   * hard ink borders + zero-blur offset shadows, Pixelify/Rubik type. Colors
+   * live in the --color-ap-* namespace and FLIP under [data-theme='light'];
+   * the type / border / shadow / radius tokens are constant across skins so the
+   * shell reads the same everywhere. Card faces reuse --color-card-face. */
+  --font-arcade-display: 'Pixelify Sans Variable', 'Visitor', ui-monospace, monospace;
+  --font-arcade-ui: 'Rubik Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-ap-ground: #181225;
+  --color-ap-panel: #221a35;
+  --color-ap-panel-hover: #2c2244;
+  --color-ap-ink: #0b0713; /* every border + every hard shadow */
+  --color-ap-violet: #7a6ff0; /* primary CTA */
+  --color-ap-violet-soft: #a897f0; /* accents, badges, notification dots */
+  --color-ap-gold: #f2b712; /* wordmark, win-rate stat */
+  --color-ap-text: #ebe6f5;
+  --color-ap-muted: #9a8fbf;
+  --color-ap-ok: #58b884;
+  --color-ap-danger: #e05252;
+  --color-ap-danger-text: #ef8a8a; /* danger as text on dark */
+  --radius-ap-inner: 8px;
+  --radius-ap-control: 10px;
+  --radius-ap-panel: 12px;
+  --radius-ap-card: 14px;
+  --radius-ap-hero: 16px;
+  --shadow-ap-sm: 3px 3px 0 var(--color-ap-ink);
+  --shadow-ap: 4px 4px 0 var(--color-ap-ink);
+  --shadow-ap-lg: 6px 6px 0 var(--color-ap-ink);
+  --shadow-ap-hero: 8px 8px 0 var(--color-ap-ink);
+
   /* Table backdrop layers (themes swap the whole backdrop) */
   --table-backdrop:
     radial-gradient(ellipse 120% 90% at 50% 30%, rgb(242 198 109 / 0.07), transparent 60%),
@@ -119,6 +150,15 @@
     radial-gradient(ellipse 120% 90% at 50% 25%, rgb(255 255 255 / 0.5), transparent 60%),
     repeating-linear-gradient(45deg, rgb(120 100 60 / 0.03) 0 2px, transparent 2px 4px),
     linear-gradient(180deg, var(--color-felt-900), var(--color-felt-950));
+  /* Arcade shell — light flip (ink + violet stay; ground/panel/text invert,
+   * gold darkens for AA). Card face stays ivory via --color-card-face. */
+  --color-ap-ground: #f4f1fa;
+  --color-ap-panel: #ffffff;
+  --color-ap-panel-hover: #f0ecfa;
+  --color-ap-text: #181225;
+  --color-ap-muted: #6f6689;
+  --color-ap-gold: #d99a00;
+  --color-ap-danger-text: #b3261e;
 }
 
 /* Juicy: saturated arcade night — electric violet table, candy suits,
@@ -301,6 +341,57 @@
     100% {
       transform: translateY(130px) rotate(540deg);
       opacity: 0;
+    }
+  }
+
+  /* Arcade shell juice: a slow card wobble + a diagonal foil sweep. Both are
+   * decorative and disabled under reduced motion (the foil sheen vanishes
+   * entirely, the wobble sits at rest). */
+  .ap-wobble {
+    transform-origin: center;
+  }
+  .ap-foil {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ap-wobble {
+      animation: ap-wobble 4.4s ease-in-out infinite;
+    }
+    .ap-foil::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        115deg,
+        transparent 34%,
+        rgb(255 255 255 / 0.16) 50%,
+        transparent 66%
+      );
+      background-size: 250% 100%;
+      mix-blend-mode: screen;
+      animation: ap-foil 4.6s linear infinite;
+    }
+  }
+
+  @keyframes ap-wobble {
+    0%,
+    100% {
+      transform: rotate(-2deg);
+    }
+    50% {
+      transform: rotate(2deg);
+    }
+  }
+
+  @keyframes ap-foil {
+    0% {
+      background-position: 120% 0;
+    }
+    100% {
+      background-position: -30% 0;
     }
   }
 }

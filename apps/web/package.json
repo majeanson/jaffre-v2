@@ -8,6 +8,8 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@fontsource-variable/pixelify-sans": "^5.2.7",
+    "@fontsource-variable/rubik": "^5.2.8",
     "@jaffre/bots": "*",
     "@jaffre/engine": "*",
     "@jaffre/protocol": "*",
