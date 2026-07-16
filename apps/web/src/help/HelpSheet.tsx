@@ -8,7 +8,7 @@ export interface HelpSheetProps {
 }
 
 const FOCUSABLE =
-  'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 function Rule({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
@@ -25,6 +25,14 @@ function Rule({ title, children }: { readonly title: string; readonly children: 
 
 function Strong({ children }: { readonly children: ReactNode }) {
   return <strong className="font-semibold text-(--color-ivory)">{children}</strong>;
+}
+
+function Tip({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+  return (
+    <p>
+      <Strong>{label}</Strong> {children}
+    </p>
+  );
 }
 
 /**
@@ -198,6 +206,66 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
               </li>
             </ul>
           </Rule>
+
+          <div className="flex items-center gap-3 pt-1" aria-hidden>
+            <span className="h-px flex-1 bg-white/10" />
+            <span className="text-(length:--text-fluid-xs) tracking-wide text-(--color-ivory)/40">
+              for when you&rsquo;ve played a few rounds
+            </span>
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <details className="group rounded-(--radius-panel) border border-white/8 bg-black/20">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-panel) p-4 hover:bg-white/5">
+              <span className="font-display text-(length:--text-fluid-lg) font-semibold text-(--color-lamplight)">
+                Advanced strategy
+                <span className="ml-2 align-middle text-(length:--text-fluid-xs) font-normal text-(--color-ivory)/40">
+                  optional
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className="text-(--color-ivory)/50 transition-transform duration-(--duration-flick) group-open:rotate-90"
+              >
+                ▸
+              </span>
+            </summary>
+            <div className="space-y-2 border-t border-white/8 px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ivory)/80">
+              <Tip label="Bidding is about your best suit.">
+                Size up your hand once for each suit as trump — your longest, strongest suit is your
+                real strength. Then bid the <Strong>smallest number that wins the auction</Strong>:
+                making 12 on a bet of 7 still only scores 7.
+              </Tip>
+              <Tip label="When you win the bet, you set trump.">
+                Your <Strong>first card names the trump suit</Strong> — lead your best suit, and
+                lead trumps high to strip them from the defenders. Once your points reach your bet,
+                stop pushing; extra tricks are worthless to you.
+              </Tip>
+              <Tip label="When you&rsquo;re defending, take everything.">
+                Every point you win, you <Strong>keep</Strong> — so grab all you can. And if one
+                more trick would push the bettors below their number, spend anything to win it and{' '}
+                <Strong>set the contract</Strong>.
+              </Tip>
+              <Tip label="The red 0 is the whole game (+5).">
+                Never lead it and never throw it away. <Strong>Cash it</Strong> on a trick your
+                partner has already won. On defense, hold a high trump for the trick it shows up in.
+              </Tip>
+              <Tip label="The brown 0 is a gift you re-gift (−2).">
+                Hand it to a trick the <Strong>opponents</Strong> are winning — best of all when you
+                can&rsquo;t follow suit and would waste a card anyway. Never dump it on your
+                partner.
+              </Tip>
+              <Tip label="Count what&rsquo;s been played.">
+                Every played card is public. Track the high cards that are gone — yours may now be
+                <Strong> unbeatable</Strong> — and note who <Strong>failed to follow a suit</Strong>
+                : they&rsquo;re out of it, so don&rsquo;t lead it into their trump.
+              </Tip>
+              <Tip label="Play with your partner.">
+                If your partner is already winning the trick, <Strong>play low</Strong> — never
+                overtake your own side or waste a trump on a trick you were going to win anyway.
+              </Tip>
+            </div>
+          </details>
         </div>
       </div>
     </div>,

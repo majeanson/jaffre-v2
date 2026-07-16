@@ -37,7 +37,7 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
         {rounds.length > 0 && (
           <div className="mt-4 max-h-56 overflow-y-auto rounded-lg bg-black/25 p-2 text-left text-xs">
             <table className="w-full tabular-nums">
-              <thead className="text-(--color-ivory)/50">
+              <thead className="text-(--color-ivory)/75">
                 <tr>
                   <th className="px-1.5 py-1 text-left font-normal">Rd</th>
                   <th className="px-1.5 py-1 text-left font-normal">Contract</th>

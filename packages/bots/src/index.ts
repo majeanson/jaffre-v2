@@ -1,57 +1,66 @@
-import type { Action, BidChoice, Card, Rng, SeatView } from '@jaffre/engine';
-import { legalBidChoices, legalCards } from '@jaffre/engine';
+import type { Action, Seat, SeatView, Rng } from '@jaffre/engine';
+import { easyAction } from './easy.js';
+import { pickBid, type BidOpts } from './evaluate.js';
+import { heuristicCard } from './heuristics.js';
+import { hardCard } from './rollout.js';
+
+export type BotDifficulty = 'easy' | 'normal' | 'hard';
+export const BOT_DIFFICULTIES: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
+
+export function isBotDifficulty(x: unknown): x is BotDifficulty {
+  return x === 'easy' || x === 'normal' || x === 'hard';
+}
+
+const BID_OPTS: Record<Exclude<BotDifficulty, 'easy'>, BidOpts> = {
+  normal: { margin: 1.0, allowSansAtout: false, scoreAware: false, partnerOutbidMargin: Infinity },
+  hard: { margin: 0.5, allowSansAtout: true, scoreAware: true, partnerOutbidMargin: 2 },
+};
 
 /**
- * Bot policies operate on a REDACTED SeatView — a bot structurally cannot
- * see hidden cards, so every bot game doubles as a redaction test.
- * Returns null when it is not the bot's turn or nothing is actionable.
+ * Bot policies operate on a REDACTED SeatView — a bot structurally cannot see
+ * hidden cards, so every bot game doubles as a redaction test. Returns null
+ * when it is not the bot's turn or nothing is actionable. `difficulty` defaults
+ * to 'normal' so every existing caller keeps a sane opponent for free.
  */
-export function chooseAction(view: SeatView, rng: Rng): Action | null {
+export function chooseAction(
+  view: SeatView,
+  rng: Rng,
+  difficulty: BotDifficulty = 'normal',
+): Action | null {
   if (view.viewer === 'spectator' || view.turn !== view.viewer) return null;
-
-  if (view.phase === 'bidding') {
-    // Bid on hand strength: high cards and long suits; otherwise pass.
-    const strength = handStrength(view.hand);
-    const bidsOnly = legalBidChoices(view.bids).filter(
-      (c): c is Extract<BidChoice, { kind: 'bid' }> => c.kind === 'bid',
-    );
-    const wanted = bidsOnly.filter((b) => !b.sansAtout && b.value <= strength);
-    const choice: BidChoice =
-      wanted.length > 0 && rng() < 0.75
-        ? (wanted[wanted.length - 1] as BidChoice)
-        : { kind: 'pass' };
-    return { type: 'place_bid', seat: view.viewer, choice };
-  }
-
-  if (view.phase === 'playing') {
-    const led = view.currentTrick[0]?.card.suit ?? null;
-    const legal = legalCards(view.hand, led);
-    const card = pickCard(legal, view, rng);
-    return { type: 'play_card', seat: view.viewer, card };
-  }
-
   if (view.phase === 'round_over') return { type: 'continue' };
+
+  if (difficulty === 'easy') return easyAction(view, rng);
+
+  const seat = view.viewer as Seat;
+  if (view.phase === 'bidding') {
+    return { type: 'place_bid', seat, choice: pickBid(view, BID_OPTS[difficulty]) };
+  }
+  if (view.phase === 'playing') {
+    const card = difficulty === 'hard' ? hardCard(view, rng) : heuristicCard(view, rng, 'normal');
+    return { type: 'play_card', seat, card };
+  }
   return null;
 }
 
-/** Rough contract estimate: 7 baseline, +1 per 7/6 held, +1 for a 4+ suit. */
-function handStrength(hand: readonly Card[]): number {
-  let s = 6;
-  for (const card of hand) if (card.value >= 6) s += 0.5;
-  const bySuit = new Map<string, number>();
-  for (const card of hand) bySuit.set(card.suit, (bySuit.get(card.suit) ?? 0) + 1);
-  for (const n of bySuit.values()) if (n >= 4) s += 1;
-  return Math.min(12, Math.floor(s));
-}
-
-function pickCard(legal: readonly Card[], view: SeatView, rng: Rng): Card {
-  const sorted = [...legal].sort((a, b) => a.value - b.value);
-  const winningNow = view.currentTrick.length === 3;
-  // Dump the brown 0 on opponents' tricks when possible; protect the red 0.
-  const brown = sorted.find((c) => c.suit === 'brown' && c.value === 0);
-  if (brown !== undefined && view.currentTrick.length > 0 && rng() < 0.8) return brown;
-  const nonRedZero = sorted.filter((c) => !(c.suit === 'red' && c.value === 0));
-  const pool = nonRedZero.length > 0 ? nonRedZero : sorted;
-  // Last to play: try cheapest winner; otherwise mid-range.
-  return (winningNow ? pool[pool.length - 1] : pool[Math.floor(rng() * pool.length)]) as Card;
-}
+export {
+  bestTrump,
+  evalTrump,
+  evalSansAtout,
+  pickBid,
+  type BidOpts,
+  type TrumpEval,
+} from './evaluate.js';
+export {
+  certainWinner,
+  cheapestWinner,
+  inferredVoids,
+  isBoss,
+  outstanding,
+  partnerOf,
+  redZeroLive,
+  trickCtx,
+  trumpsOutstanding,
+} from './analysis.js';
+export { heuristicCard } from './heuristics.js';
+export { suggest, type Advice } from './coach.js';

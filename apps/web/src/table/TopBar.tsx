@@ -13,6 +13,8 @@ export interface TopBarProps {
   readonly onLeave: () => void;
   readonly logOpen: boolean;
   readonly onToggleLog: () => void;
+  readonly coachOn: boolean;
+  readonly onToggleCoach: () => void;
   /** Scene viewer: mount with the details panel already expanded. */
   readonly defaultDetailsOpen?: boolean;
 }
@@ -28,6 +30,8 @@ export function TopBar({
   onLeave,
   logOpen,
   onToggleLog,
+  coachOn,
+  onToggleCoach,
   defaultDetailsOpen = false,
 }: TopBarProps) {
   return (
@@ -52,6 +56,17 @@ export function TopBar({
             </button>
             <ThemeSwitcher />
             <HelpButton label="Help" />
+            <button
+              type="button"
+              aria-pressed={coachOn}
+              onClick={onToggleCoach}
+              title="Show a suggested move on your turn"
+              className={`whitespace-nowrap px-3 py-1.5 text-sm ${GHOST_BTN} ${
+                coachOn ? 'text-(--color-lamplight)' : 'text-(--color-ivory)/80'
+              }`}
+            >
+              {coachOn ? '✦ Coach on' : 'Coach'}
+            </button>
             <button
               type="button"
               aria-expanded={logOpen}

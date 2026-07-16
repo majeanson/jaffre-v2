@@ -1,8 +1,9 @@
-import type { Action, GameState, Rng } from '@jaffre/engine';
+import type { Action, GameState, Rng, Seat } from '@jaffre/engine';
 import { applyAction, createGame, mulberry32, viewFor } from '@jaffre/engine';
 import { chooseAction } from '@jaffre/bots';
 import type { ClientAction } from '@jaffre/protocol';
 import type { Roster } from '@jaffre/protocol';
+import { loadPracticeBots, PRACTICE_BOT_NAMES, type PracticeBots } from '../home/practiceBots.js';
 import { useGameStore } from '../state/gameStore.js';
 
 /**
@@ -11,32 +12,35 @@ import { useGameStore } from '../state/gameStore.js';
  * Table screen cannot tell local from online play.
  */
 
-const BOT_NAMES = ['Marcel', 'Ginette', 'Réal'] as const;
 const HUMAN_SEAT = 0 as const;
 
 let state: GameState | null = null;
 let rng: Rng = mulberry32(0);
 let botTimer: ReturnType<typeof setTimeout> | null = null;
+let botDifficulties: PracticeBots = ['normal', 'normal', 'normal'];
 
-const LOCAL_ROSTER: Roster = {
-  seats: [
-    { name: 'You', isBot: false, connected: true },
-    { name: BOT_NAMES[0], isBot: true, connected: true },
-    { name: BOT_NAMES[1], isBot: true, connected: true },
-    { name: BOT_NAMES[2], isBot: true, connected: true },
-  ],
-  spectators: 0,
-  started: true,
-};
+function localRoster(bots: PracticeBots): Roster {
+  return {
+    seats: [
+      { name: 'You', isBot: false, connected: true },
+      { name: PRACTICE_BOT_NAMES[0], isBot: true, connected: true, difficulty: bots[0] },
+      { name: PRACTICE_BOT_NAMES[1], isBot: true, connected: true, difficulty: bots[1] },
+      { name: PRACTICE_BOT_NAMES[2], isBot: true, connected: true, difficulty: bots[2] },
+    ],
+    spectators: 0,
+    started: true,
+  };
+}
 
 export function startLocalGame(seed?: number): void {
   stopLocalGame();
+  botDifficulties = loadPracticeBots();
   const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
   state = createGame(actualSeed);
   rng = mulberry32(actualSeed ^ 0xb07);
   const store = useGameStore.getState();
   store.reset();
-  store.welcome(HUMAN_SEAT, viewFor(state, HUMAN_SEAT), 0, LOCAL_ROSTER, []);
+  store.welcome(HUMAN_SEAT, viewFor(state, HUMAN_SEAT), 0, localRoster(botDifficulties), []);
   scheduleBots();
 }
 
@@ -72,8 +76,9 @@ function scheduleBots(afterTrick = false): void {
   if (state.turn === HUMAN_SEAT) return;
   botTimer = setTimeout(
     () => {
-      if (state === null || state.phase !== 'playing' && state.phase !== 'bidding') return;
-      const action = chooseAction(viewFor(state, state.turn), rng);
+      if (state === null || (state.phase !== 'playing' && state.phase !== 'bidding')) return;
+      const seat = state.turn as Seat;
+      const action = chooseAction(viewFor(state, seat), rng, botDifficulties[seat - 1]);
       if (action !== null) apply(action);
     },
     // Leave room for the trick-hold + sweep animation before the next play.

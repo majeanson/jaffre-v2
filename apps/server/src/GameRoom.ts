@@ -15,6 +15,7 @@ import {
 } from '@jaffre/engine';
 import type { Action, GameState, Seat, Viewer } from '@jaffre/engine';
 import { chooseAction } from '@jaffre/bots';
+import type { BotDifficulty } from '@jaffre/bots';
 import { parseClientMessage } from '@jaffre/protocol';
 import type { ChatEntry, ClientAction, Roster, RosterSeat, ServerMessage } from '@jaffre/protocol';
 import type { Env } from './env.js';
@@ -30,8 +31,11 @@ export const BOT_SWAP_MS = 45_000;
 const CHAT_CAP = 100;
 const SEATS: readonly Seat[] = [0, 1, 2, 3];
 
-/** A seat is owned by a user (userId), a bot, or nobody. */
-type SeatOwner = string | { readonly bot: true } | null;
+/** A seat is owned by a user (userId), a bot (at a difficulty), or nobody.
+ * Older persisted metas store `{ bot: true }` without a difficulty — those
+ * read back as 'normal' via botDifficulty(). */
+type BotOwner = { readonly bot: true; readonly difficulty?: BotDifficulty };
+type SeatOwner = string | BotOwner | null;
 
 interface Meta {
   seats: [SeatOwner, SeatOwner, SeatOwner, SeatOwner];
@@ -68,8 +72,13 @@ function emptyMeta(): Meta {
   return { seats: [null, null, null, null], names: {}, started: false };
 }
 
-function isBotOwner(owner: SeatOwner): owner is { readonly bot: true } {
+function isBotOwner(owner: SeatOwner): owner is BotOwner {
   return typeof owner === 'object' && owner !== null;
+}
+
+/** A bot seat's difficulty, defaulting to 'normal' for legacy `{ bot: true }`. */
+function botDifficulty(owner: SeatOwner): BotDifficulty {
+  return isBotOwner(owner) ? (owner.difficulty ?? 'normal') : 'normal';
 }
 
 export class GameRoom implements DurableObject {
@@ -150,7 +159,7 @@ export class GameRoom implements DurableObject {
         await this.onSit(ws, att, msg.seat);
         return;
       case 'add_bot':
-        await this.onAddBot(ws, att, msg.seat);
+        await this.onAddBot(ws, att, msg.seat, msg.difficulty);
         return;
       case 'start':
         await this.onStart(ws, att);
@@ -249,7 +258,9 @@ export class GameRoom implements DurableObject {
       return;
     }
     const rng = mulberry32((game.seed ^ this.seq) >>> 0);
-    const action = chooseAction(viewFor(game, turnSeat), rng);
+    // Disconnected humans are covered at 'normal' — fair to both teams.
+    const difficulty = isBotOwner(owner) ? botDifficulty(owner) : 'normal';
+    const action = chooseAction(viewFor(game, turnSeat), rng, difficulty);
     if (action !== null) await this.applyEngineAction(action);
   }
 
@@ -329,7 +340,12 @@ export class GameRoom implements DurableObject {
     this.broadcastRoster({});
   }
 
-  private async onAddBot(ws: WebSocket, att: Attachment, seat: Seat): Promise<void> {
+  private async onAddBot(
+    ws: WebSocket,
+    att: Attachment,
+    seat: Seat,
+    difficulty: BotDifficulty = 'normal',
+  ): Promise<void> {
     if (!att.joined) {
       this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
       return;
@@ -342,11 +358,14 @@ export class GameRoom implements DurableObject {
       });
       return;
     }
-    if (this.meta.seats[seat] !== null) {
+    const occupant = this.meta.seats[seat];
+    // A human occupies the seat — cannot be replaced by a bot.
+    if (occupant !== null && !isBotOwner(occupant)) {
       this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
       return;
     }
-    this.meta.seats[seat] = { bot: true };
+    // Empty seat → add a bot; existing bot seat → change its difficulty in place.
+    this.meta.seats[seat] = { bot: true, difficulty };
     await this.ctx.storage.put('meta', this.meta);
     this.broadcastRoster({});
   }
@@ -641,6 +660,7 @@ export class GameRoom implements DurableObject {
           name: `Bot ${String(i + 1)}`,
           isBot: true,
           connected: true,
+          difficulty: botDifficulty(owner),
           ...(ready !== undefined ? { ready } : {}),
         };
       }

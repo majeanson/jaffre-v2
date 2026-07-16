@@ -2,6 +2,7 @@ import type { Card, SeatView, Suit } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 import type { BidOption, TrickPlayView } from '@jaffre/ui';
+import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 
 /** Everything a seat chip needs to render, already resolved from game state. */
@@ -66,6 +67,8 @@ export interface TableDerived {
   readonly lastTrick: LastTrickInfo | null;
   /** Resolve the seat occupying a table-relative position (0 = you/bottom). */
   readonly seatInfo: (position: 0 | 1 | 2 | 3) => SeatChipInfo | null;
+  /** The Coach's advice on your turn when it's switched on, else null. */
+  readonly coach: Advice | null;
 }
 
 /**
@@ -73,12 +76,14 @@ export interface TableDerived {
  * src/table/ are thin renderers of what this hook returns — they never
  * compute game logic themselves. Returns null until the first view arrives.
  */
-export function useTableDerived(): TableDerived | null {
+export function useTableDerived(coachOn = false): TableDerived | null {
   const { view, viewer, roster, sweepTo, heldTrick } = useGameStore();
   if (view === null || roster === null) return null;
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
   const myTurn = me !== null && view.turn === me && view.phase !== 'game_over';
+  // The Coach reads only the redacted view — exactly what the human can see.
+  const coach = coachOn && myTurn ? suggest(view) : null;
   const ledSuit = view.currentTrick[0]?.card.suit ?? null;
   const legal =
     me !== null && view.phase === 'playing' && myTurn ? legalCards(view.hand, ledSuit) : [];
@@ -182,5 +187,6 @@ export function useTableDerived(): TableDerived | null {
     trickCounts,
     lastTrick,
     seatInfo,
+    coach,
   };
 }

@@ -290,6 +290,31 @@ describe('GameRoom', () => {
     await endQuiet('room-start', client);
   });
 
+  it('carries per-seat bot difficulty and updates it in place', async () => {
+    const client = await Client.connect('room-difficulty', 'alice', 'Alice');
+    client.send({ t: 'join' });
+    await client.next('welcome');
+    client.send({ t: 'sit', seat: 0 });
+    await client.next('roster');
+
+    // No difficulty specified → defaults to normal.
+    client.send({ t: 'add_bot', seat: 1 });
+    let roster = await client.next('roster');
+    expect(roster.roster.seats[1]).toMatchObject({ isBot: true, difficulty: 'normal' });
+
+    // Explicit difficulty is carried through to the roster.
+    client.send({ t: 'add_bot', seat: 2, difficulty: 'hard' });
+    roster = await client.next('roster');
+    expect(roster.roster.seats[2]).toMatchObject({ isBot: true, difficulty: 'hard' });
+
+    // Re-sending add_bot on an existing bot seat updates its difficulty in place.
+    client.send({ t: 'add_bot', seat: 2, difficulty: 'easy' });
+    roster = await client.next('roster');
+    expect(roster.roster.seats[2]).toMatchObject({ isBot: true, difficulty: 'easy' });
+
+    await endQuiet('room-difficulty', client);
+  });
+
   it(
     'plays a full game to game_over (human via client-side bot, bots via alarms)',
     { timeout: 120_000 },

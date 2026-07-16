@@ -34,7 +34,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           roster={roster}
           viewer={viewer}
           onSit={(seat) => send({ t: 'sit', seat })}
-          onAddBot={(seat) => send({ t: 'add_bot', seat })}
+          onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
         />
 
         <button

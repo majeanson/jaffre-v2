@@ -8,6 +8,8 @@ export interface HandCard {
   readonly disabled?: boolean;
   /** Shown to the player when the card is not legal right now. */
   readonly disabledReason?: string;
+  /** The Coach's suggested card — highlighted and lifted. */
+  readonly recommended?: boolean;
 }
 
 export interface HandProps {
@@ -50,11 +52,13 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
             // data-* — tests and tooling read playability from this.
             data-playable={playable || undefined}
             className={`group rounded-(--radius-card) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
+              entry.recommended === true ? '-translate-y-3' : ''
+            } ${
               playable
                 ? 'cursor-pointer hover:-translate-y-3 focus-visible:-translate-y-3'
                 : 'cursor-not-allowed'
             }`}
-            style={{ zIndex: i }}
+            style={{ zIndex: entry.recommended === true ? cards.length + i : i }}
           >
             <span title={!playable ? entry.disabledReason : undefined}>
               <PlayingCard
@@ -62,6 +66,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
                 size="lg"
                 tilt={tilt}
                 dimmed={active && entry.disabled === true}
+                recommended={entry.recommended === true}
               />
               {!playable && entry.disabledReason !== undefined && (
                 <span className="sr-only">{entry.disabledReason}</span>

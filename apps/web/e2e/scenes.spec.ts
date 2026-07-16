@@ -61,7 +61,10 @@ test('home fits a phone viewport — no primary control clipped', async ({ page 
   };
 
   await fits(await page.getByRole('region', { name: 'Play' }).boundingBox(), 'Play panel');
-  await fits(await page.getByRole('button', { name: 'Create a room' }).boundingBox(), 'Create a room');
+  await fits(
+    await page.getByRole('button', { name: 'Create a room' }).boundingBox(),
+    'Create a room',
+  );
   await fits(await page.getByRole('button', { name: 'Join room' }).boundingBox(), 'Join room');
 });
 

@@ -1,5 +1,6 @@
 import { TrickArea } from '@jaffre/ui';
 import type { ReactNode } from 'react';
+import { CoachHint } from './CoachHint.js';
 import { SeatChip } from './SeatChip.js';
 import { TrickBanner } from './TrickBanner.js';
 import type { HeldBanner, TableDerived } from './useTableDerived.js';
@@ -13,6 +14,8 @@ export interface StageProps {
   readonly seatInfo: TableDerived['seatInfo'];
   /** Auction controls, rendered over the stage on your bidding turn. */
   readonly bidOverlay?: ReactNode;
+  /** The Coach's one-line tip, shown when a trick result isn't already up. */
+  readonly coachTip?: string | null;
 }
 
 /** Owns the center stage: trick area, opponents' seat chips, trick banner, bid overlay. */
@@ -23,6 +26,7 @@ export function Stage({
   winnerPosition,
   seatInfo,
   bidOverlay,
+  coachTip = null,
 }: StageProps) {
   return (
     <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
@@ -32,6 +36,7 @@ export function Stage({
         <TrickArea plays={trickPlays} sweepTo={sweepTo} highlight={winnerPosition} />
       </div>
       {banner !== null && <TrickBanner banner={banner} />}
+      {banner === null && coachTip !== null && coachTip !== '' && <CoachHint tip={coachTip} />}
       {/* top-4 keeps the top chip (and its bid bubble) below the top bar */}
       <div className="absolute top-4 left-1/2 z-0 -translate-x-1/2">
         <SeatChip info={seatInfo(2)} compact />

@@ -1,5 +1,24 @@
 import { useState, type CSSProperties } from 'react';
+import type { BotDifficulty } from '@jaffre/protocol';
 import { generateRoomCode } from './roomCode.js';
+import {
+  loadPracticeBots,
+  PRACTICE_BOT_NAMES,
+  savePracticeBots,
+  type PracticeBots,
+} from './practiceBots.js';
+
+const DIFFICULTY_ORDER: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
+const DIFFICULTY_LABEL: Record<BotDifficulty, string> = {
+  easy: 'Easy',
+  normal: 'Normal',
+  hard: 'Hard',
+};
+
+function nextDifficulty(current: BotDifficulty): BotDifficulty {
+  const i = DIFFICULTY_ORDER.indexOf(current);
+  return DIFFICULTY_ORDER[(i + 1) % DIFFICULTY_ORDER.length] as BotDifficulty;
+}
 
 export interface PlayMenuProps {
   readonly onPractice: () => void;
@@ -17,6 +36,15 @@ const PANEL =
  */
 export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) {
   const [code, setCode] = useState('');
+  const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
+
+  const cycleBot = (seat: 0 | 1 | 2) => {
+    const next = bots.map((d, i) =>
+      i === seat ? nextDifficulty(d) : d,
+    ) as unknown as PracticeBots;
+    setBots(next);
+    savePracticeBots(next);
+  };
 
   const joinTyped = () => {
     const clean = code
@@ -28,31 +56,51 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
 
   return (
     <section aria-label="Play" className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-      <button
-        type="button"
-        onClick={onPractice}
-        className="rise-in group relative cursor-pointer overflow-hidden rounded-(--radius-panel) bg-(--color-lamplight) p-5 text-left text-(--color-felt-950) shadow-(--shadow-panel) transition-[filter] duration-(--duration-flick) hover:brightness-110 active:translate-y-px max-sm:p-4"
+      <div
+        className="rise-in flex flex-col gap-2"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-8 -right-6 font-display text-[7rem] leading-none opacity-10 transition-transform duration-(--duration-play) group-hover:-rotate-12"
+        <button
+          type="button"
+          onClick={onPractice}
+          className="group relative cursor-pointer overflow-hidden rounded-(--radius-panel) bg-(--color-lamplight) p-5 text-left text-(--color-felt-950) shadow-(--shadow-panel) transition-[filter] duration-(--duration-flick) hover:brightness-110 active:translate-y-px max-sm:p-4"
         >
-          ♠
-        </span>
-        <span className="block font-display text-[clamp(1.35rem,2.6vmin,1.7rem)] font-semibold">
-          Practice vs bots
-        </span>
-        <span className="mt-1 block text-(length:--text-fluid-sm) font-medium opacity-80">
-          Deal yourself in — three bots fill the table.
-        </span>
-        <span
-          aria-hidden
-          className="mt-4 inline-block text-(length:--text-fluid-sm) font-bold tracking-wide transition-transform duration-(--duration-flick) group-hover:translate-x-1"
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -top-8 -right-6 font-display text-[7rem] leading-none opacity-10 transition-transform duration-(--duration-play) group-hover:-rotate-12"
+          >
+            ♠
+          </span>
+          <span className="block font-display text-[clamp(1.35rem,2.6vmin,1.7rem)] font-semibold">
+            Practice vs bots
+          </span>
+          <span className="mt-1 block text-(length:--text-fluid-sm) font-medium opacity-80">
+            Deal yourself in — three bots fill the table.
+          </span>
+          <span
+            aria-hidden
+            className="mt-4 inline-block text-(length:--text-fluid-sm) font-bold tracking-wide transition-transform duration-(--duration-flick) group-hover:translate-x-1"
+          >
+            Play now →
+          </span>
+        </button>
+        <div
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ivory)/45"
+          aria-label="Bot difficulty"
         >
-          Play now →
-        </span>
-      </button>
+          <span>Opponents:</span>
+          {([0, 1, 2] as const).map((seat) => (
+            <button
+              key={seat}
+              type="button"
+              onClick={() => cycleBot(seat)}
+              className="cursor-pointer rounded-full border border-white/12 px-2 py-0.5 text-(--color-ivory)/70 hover:border-white/25 hover:text-(--color-ivory)"
+            >
+              {PRACTICE_BOT_NAMES[seat]} · {DIFFICULTY_LABEL[bots[seat]]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div
         className={`rise-in flex flex-col gap-3 p-5 max-sm:p-4 ${PANEL}`}

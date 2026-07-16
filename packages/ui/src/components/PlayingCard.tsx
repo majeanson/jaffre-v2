@@ -20,6 +20,8 @@ export interface PlayingCardProps {
   readonly faceDown?: boolean;
   readonly raised?: boolean;
   readonly dimmed?: boolean;
+  /** The Coach's suggested card — draws a golden halo around it. */
+  readonly recommended?: boolean;
   /** Small deterministic tilt (degrees) for a hand-held look. */
   readonly tilt?: number;
 }
@@ -30,6 +32,7 @@ export function PlayingCard({
   faceDown = false,
   raised = false,
   dimmed = false,
+  recommended = false,
   tilt = 0,
 }: PlayingCardProps) {
   if (faceDown) {
@@ -57,6 +60,10 @@ export function PlayingCard({
       }}
       className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-card) border-[0.18em] border-(--color-ink) bg-linear-to-b from-(--color-card-face) to-(--color-card-face-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-card-raised) -translate-y-2' : 'shadow-(--shadow-card)'
+      } ${
+        recommended
+          ? 'outline outline-[0.16em] outline-(--color-lamplight) outline-offset-[0.12em]'
+          : ''
       } ${dimmed ? 'opacity-45 saturate-50' : ''} ${isBrownZero ? 'brightness-95' : ''}`}
     >
       {/* Special halo: rays for the red zero, cracks-dark vignette for brown */}

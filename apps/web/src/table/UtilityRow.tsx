@@ -15,13 +15,16 @@ export interface UtilityRowProps {
 }
 
 /** Owns the slim row above the hand: your chip, last-trick peek, comms. */
-export function UtilityRow({ you, lastTrick, defaultLastTrickOpen = false, comms }: UtilityRowProps) {
+export function UtilityRow({
+  you,
+  lastTrick,
+  defaultLastTrickOpen = false,
+  comms,
+}: UtilityRowProps) {
   return (
     <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center gap-2 py-1">
       <SeatChip info={you} />
-      {lastTrick !== null && (
-        <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
-      )}
+      {lastTrick !== null && <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />}
       <span className="ml-auto flex items-center gap-2">{comms}</span>
     </div>
   );

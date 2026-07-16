@@ -6,6 +6,9 @@ import { z } from 'zod';
 
 const seatSchema = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
 
+export const botDifficultySchema = z.enum(['easy', 'normal', 'hard']);
+export type BotDifficulty = z.infer<typeof botDifficultySchema>;
+
 const cardSchema = z.object({
   suit: z.enum(['red', 'brown', 'green', 'blue']),
   value: z.union([
@@ -47,7 +50,11 @@ const clientActionSchema = z.union([
 export const clientMessageSchema = z.union([
   z.object({ t: z.literal('join'), resumeSeq: z.number().int().nonnegative().optional() }),
   z.object({ t: z.literal('sit'), seat: seatSchema }),
-  z.object({ t: z.literal('add_bot'), seat: seatSchema }),
+  z.object({
+    t: z.literal('add_bot'),
+    seat: seatSchema,
+    difficulty: botDifficultySchema.optional(),
+  }),
   z.object({ t: z.literal('start') }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
@@ -67,6 +74,8 @@ export interface RosterSeat {
   readonly connected: boolean;
   /** Ready for the next round (round_over phase only; bots are always ready). */
   readonly ready?: boolean;
+  /** Present only for bot seats — the difficulty this bot plays at. */
+  readonly difficulty?: BotDifficulty;
 }
 
 export interface Roster {

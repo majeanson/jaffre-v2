@@ -131,7 +131,13 @@ function TeamSide({
           />
         </span>
       </span>
-      <TrickPile count={count} points={points} colorVar={colorVar} label={name} mirrored={mirrored} />
+      <TrickPile
+        count={count}
+        points={points}
+        colorVar={colorVar}
+        label={name}
+        mirrored={mirrored}
+      />
     </span>
   );
 }
@@ -252,8 +258,7 @@ export function ScoreStrip({
                   {teamNames[team]}
                 </p>
                 <p className="mt-1 font-display text-2xl text-(--color-ivory)">
-                  {scores[team]}{' '}
-                  <span className="text-sm text-(--color-ivory)/50">/ {target}</span>
+                  {scores[team]} <span className="text-sm text-(--color-ivory)/50">/ {target}</span>
                 </p>
                 {roundPoints !== undefined && (
                   <p className="text-(--color-ivory)/70">

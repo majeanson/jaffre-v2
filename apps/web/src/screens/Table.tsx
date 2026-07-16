@@ -15,6 +15,7 @@ import {
   useTableDerived,
   useTrickHold,
 } from '../table/index.js';
+import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { leaveVoice } from '../voice/rtc.js';
 
 export interface TableProps {
@@ -41,7 +42,8 @@ export function Table({
 }: TableProps) {
   const log = useGameStore((s) => s.log);
   const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
-  const derived = useTableDerived();
+  const [coachOn, setCoachOn] = useState(loadCoachPref);
+  const derived = useTableDerived(coachOn);
   useTrickHold(frozenHold);
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
@@ -58,6 +60,13 @@ export function Table({
         onLeave={onLeave}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}
+        coachOn={coachOn}
+        onToggleCoach={() =>
+          setCoachOn((on) => {
+            saveCoachPref(!on);
+            return !on;
+          })
+        }
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
       <Stage
@@ -66,9 +75,16 @@ export function Table({
         banner={derived.heldBanner}
         winnerPosition={derived.winnerPosition}
         seatInfo={seatInfo}
+        coachTip={derived.coach?.tip ?? null}
         bidOverlay={
           view.phase === 'bidding' &&
-          myTurn && <BidOverlay options={derived.bidOptions} onAction={onAction} />
+          myTurn && (
+            <BidOverlay
+              options={derived.bidOptions}
+              onAction={onAction}
+              recommended={derived.coach?.bid ?? null}
+            />
+          )
         }
       />
       <Overlays
@@ -97,6 +113,7 @@ export function Table({
           ledSuit={derived.ledSuit}
           active={myTurn && view.phase === 'playing'}
           onPlay={(card) => onAction({ type: 'play_card', card })}
+          recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}
         />
       )}
     </main>
