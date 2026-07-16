@@ -60,7 +60,14 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand' }: Hand
             }`}
             style={{ zIndex: entry.recommended === true ? cards.length + i : i }}
           >
-            <span title={!playable ? entry.disabledReason : undefined}>
+            {/* deal-in staggers each card's entrance (new round = new keys =
+                fresh mount); on an inner span so the item's hover-lift is
+                untouched. Gated on no-reduced-motion in tokens.css. */}
+            <span
+              className="deal-in inline-block"
+              style={{ ['--deal-i' as string]: i }}
+              title={!playable ? entry.disabledReason : undefined}
+            >
               <PlayingCard
                 card={entry.card}
                 size="lg"
