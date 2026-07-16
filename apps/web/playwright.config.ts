@@ -20,6 +20,11 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:8788',
     trace: 'retain-on-failure',
+    // Entrance animations (rise-in/pop-in) are gated on no-preference, so this
+    // renders them at their final state instantly. Without it, axe can read an
+    // element mid-fade at partial opacity and flag a false contrast failure
+    // (deterministic on CI's timing, invisible locally).
+    reducedMotion: 'reduce',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

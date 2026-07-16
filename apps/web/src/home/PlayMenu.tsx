@@ -85,7 +85,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
           </span>
         </button>
         <div
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ivory)/45"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ivory)/70"
           aria-label="Bot difficulty"
         >
           <span>Opponents:</span>
