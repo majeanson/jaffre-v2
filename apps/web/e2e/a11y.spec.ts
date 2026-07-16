@@ -47,6 +47,10 @@ test('lobby with a seated player has no serious axe violations, chat is keyboard
 }) => {
   const room = `e2e-a11y-${Math.random().toString(36).slice(2, 10)}`;
   await page.goto(`/#room/${room}`);
+  // Wait until the socket is actually open before sitting: token auth adds a
+  // mint round-trip, so an immediate click can outrun the join and get dropped
+  // server-side as "join the room first". This copy shows only when open.
+  await expect(page.getByText('Share this code with your table.')).toBeVisible();
   await page.getByTestId('seat-row-0').getByRole('button', { name: 'Sit here' }).click();
   await expect(page.getByText('You', { exact: true })).toBeVisible();
   await expectNoSeriousViolations(page, 'lobby seated');
