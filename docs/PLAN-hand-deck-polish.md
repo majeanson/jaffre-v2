@@ -184,10 +184,13 @@ plus a `Pass` card. A **sans-atout toggle** adds a star (★) to the chosen card
 so the declaration reads at a glance. The played bet card then sits by the
 bidder's seat (like the trick cards) so every player sees the standing bids.
 
-- **Same card component, different skin**: extend `PlayingCard` (or a thin
-  `BetCard` wrapper) with a "bet" variant — no suit glyph; a big value, a
-  `Pass` face, and a ★ badge when sans-atout is on. Keep the deal/hover/lift
-  and (once built) the click sound, so it feels identical to playing a card.
+- **Same mechanic, VISUALLY DISTINCT** (user requirement — players must never
+  confuse a bet card with a playing card): reuse the card interaction (drag-up
+  to commit, hover/lift, click sound) but give bet cards a clearly different
+  look — e.g. no suit glyph, a different face material/color (a token/chip or
+  "bid slip" treatment rather than the ivory card face), a big value + `Pass`
+  face, and a ★ badge when sans-atout is on. The auction fan should read as
+  "bids", not "your hand". Confirmed gesture: drag-up to bid.
 - **Selection UX**: tap a value card to bid it; a persistent SA toggle
   (star button) flips sans-atout before you commit; illegal bids (below the
   current high bid) use the new punchy disabled state (Workstream A). Confirm

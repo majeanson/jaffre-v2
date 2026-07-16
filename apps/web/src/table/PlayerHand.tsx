@@ -1,5 +1,6 @@
 import type { Card, Suit } from '@jaffre/engine';
 import { Hand } from '@jaffre/ui';
+import { feedback } from '../audio/clicks.js';
 
 export interface PlayerHandProps {
   readonly cards: readonly Card[];
@@ -38,7 +39,10 @@ export function PlayerHand({
             recommended.suit === card.suit &&
             recommended.value === card.value,
         }))}
-        onPlay={(card) => onPlay(card as Card)}
+        onPlay={(card) => {
+          feedback('play');
+          onPlay(card as Card);
+        }}
       />
     </div>
   );

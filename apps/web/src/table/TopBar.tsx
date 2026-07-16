@@ -2,6 +2,7 @@ import type { SeatView } from '@jaffre/engine';
 import { ScoreStrip, type TeamSpecials } from '@jaffre/ui';
 import { GHOST_BTN } from '../components/buttonStyles.js';
 import { HelpButton } from '../help/HelpButton.js';
+import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
@@ -61,6 +62,7 @@ export function TopBar({
               ← Leave
             </button>
             <ThemeSwitcher />
+            <SoundToggle />
             <HelpButton label="Help" />
             <button
               type="button"

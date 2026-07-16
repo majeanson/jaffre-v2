@@ -1,6 +1,7 @@
 import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { BidPanel, type BidOption } from '@jaffre/ui';
+import { feedback } from '../audio/clicks.js';
 
 export interface BidOverlayProps {
   readonly options: readonly BidOption[];
@@ -22,13 +23,17 @@ export function BidOverlay({ options, onAction, recommended = null }: BidOverlay
         options={options}
         coaching={coaching}
         recommended={recommendedOption}
-        onPass={() => onAction({ type: 'place_bid', choice: { kind: 'pass' } })}
-        onBid={(o) =>
+        onPass={() => {
+          feedback('play');
+          onAction({ type: 'place_bid', choice: { kind: 'pass' } });
+        }}
+        onBid={(o) => {
+          feedback('play');
           onAction({
             type: 'place_bid',
             choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
-          })
-        }
+          });
+        }}
       />
     </div>
   );
