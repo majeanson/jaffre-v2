@@ -9,5 +9,6 @@ export * from './components/BetCards';
 export * from './components/ScoreStrip';
 export * from './components/ChatPanel';
 export * from './components/VoiceBar';
+export * from './components/arcade';
 export * from './motion/config';
 export * from './motion/DealGroup';
