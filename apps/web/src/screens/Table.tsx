@@ -1,6 +1,7 @@
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
+import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
 import {
   BidOverlay,
@@ -27,6 +28,8 @@ export interface TableProps {
   readonly onRematch?: () => void;
   /** True in a room (chat + voice); false in practice mode (bots don't chat). */
   readonly online?: boolean;
+  /** The room code (online rooms only) — feeds the Share button's invite link. */
+  readonly roomCode?: string;
   /** Scene viewer: keep a held trick on screen indefinitely. */
   readonly frozenHold?: boolean;
   /** Scene viewer: panels to open on mount (initial state only). */
@@ -39,6 +42,7 @@ export function Table({
   onLeave,
   onRematch,
   online = false,
+  roomCode,
   frozenHold = false,
   initialUi,
 }: TableProps) {
@@ -74,6 +78,7 @@ export function Table({
           })
         }
         voice={online && me !== null ? <VoiceControls me={me} /> : undefined}
+        share={online && roomCode !== undefined ? <ShareButton code={roomCode} /> : undefined}
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
       <Stage

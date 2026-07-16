@@ -25,6 +25,9 @@ const ROSTER: Roster = {
   ],
   spectators: 1,
   started: true,
+  // A standing table mid-series — the game-over scene shows this tally under
+  // the final score.
+  seriesWins: [2, 1],
 };
 
 /** You are ready, one human is not — the summary shows the waiting state. */

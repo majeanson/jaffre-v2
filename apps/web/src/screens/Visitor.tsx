@@ -1,4 +1,5 @@
 import { Seat } from '@jaffre/ui';
+import type { RosterSeat } from '@jaffre/protocol';
 import { GHOST_BTN } from '../components/buttonStyles.js';
 import { useGameStore } from '../state/gameStore.js';
 
@@ -17,12 +18,16 @@ export interface VisitorProps {
 export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   const { roster, view } = useGameStore();
   const scores = view?.scores;
+  // Whoever is first seated and human "owns" this table — the landing page
+  // greets a visitor by name, falling back to the raw room code.
+  const host = roster?.seats.find((s): s is RosterSeat => s !== null && !s.isBot);
+  const title = host !== undefined ? `${host.name}’s table` : `Room ${code}`;
 
   return (
     <main className="table-felt grid min-h-screen place-items-center p-6">
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
-          <h1 className="font-display text-3xl text-(--color-lamplight)">Room {code}</h1>
+          <h1 className="font-display text-3xl text-(--color-lamplight)">{title}</h1>
           <p className="mt-1 text-sm text-(--color-ivory)/55">
             Game in progress — jump in or watch.
           </p>

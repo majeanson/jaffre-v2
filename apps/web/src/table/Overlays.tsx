@@ -37,6 +37,7 @@ export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: Over
           scores={view.scores}
           rounds={view.roundSummaries}
           names={roster.seats.map((s) => s?.name ?? '—')}
+          seriesWins={roster.seriesWins}
           onRematch={onRematch}
           onLeave={onLeave}
         />

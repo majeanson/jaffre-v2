@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
-import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
+import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
 import { BOT_SWAP_MS, TRICK_HOLD_MS } from '../src/GameRoom.js';
 
 declare module 'cloudflare:test' {
@@ -83,6 +83,19 @@ class Client {
       const msg = this.buffer[i];
       if (msg !== undefined && msg.t === 'view') {
         latest ??= msg.view;
+        this.buffer.splice(i, 1);
+      }
+    }
+    return latest;
+  }
+
+  /** Drain every buffered `roster` message and return the newest, if any. */
+  latestRoster(): Roster | null {
+    let latest: Roster | null = null;
+    for (let i = this.buffer.length - 1; i >= 0; i--) {
+      const msg = this.buffer[i];
+      if (msg !== undefined && msg.t === 'roster') {
+        latest ??= msg.roster;
         this.buffer.splice(i, 1);
       }
     }
@@ -210,6 +223,56 @@ async function setupStartedGame(client: Client): Promise<SeatView> {
   client.send({ t: 'start' });
   const view = await client.next('view');
   return view.view;
+}
+
+/** Drive a started game (seat 0 human via `rng`, seats 1-3 via alarms) to
+ * game_over, mirroring the full-game test's loop. Returns the final view. */
+async function playToGameOver(
+  client: Client,
+  stub: DurableObjectStub,
+  rngSeed: number,
+  startView: SeatView,
+): Promise<SeatView> {
+  const rng = mulberry32(rngSeed);
+  let view = startView;
+  for (let i = 0; i < 5000 && view.phase !== 'game_over'; i++) {
+    view = client.latestView() ?? view;
+    if (view.phase === 'game_over') break;
+    if (view.phase === 'round_over') {
+      client.send({ t: 'ready' });
+      view = (await client.next('view')).view;
+      continue;
+    }
+    const humanTurn = (view.phase === 'bidding' || view.phase === 'playing') && view.turn === 0;
+    if (humanTurn) {
+      const action = chooseAction(view, rng);
+      if (action === null) break;
+      client.send({ t: 'action', action: toWire(action) });
+      const reply = await client.nextAny(['view', 'error']);
+      if (reply.t === 'view') view = reply.view;
+    } else {
+      const ran = await runDurableObjectAlarm(stub);
+      if (ran) {
+        view = (await client.next('view')).view;
+      } else {
+        await sleep(20);
+      }
+    }
+  }
+  return view;
+}
+
+/** Poll buffered roster messages until `seriesWins` reflects `totalGames`
+ * finished games (i.e. the post-game_over broadcast has landed). */
+async function waitForSeriesWins(client: Client, totalGames: number): Promise<[number, number]> {
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    const roster = client.latestRoster();
+    const sw = roster?.seriesWins;
+    if (sw !== undefined && sw[0] + sw[1] === totalGames) return [sw[0], sw[1]];
+    if (Date.now() > deadline) throw new Error('timed out waiting for seriesWins');
+    await sleep(20);
+  }
 }
 
 describe('GameRoom', () => {
@@ -415,6 +478,41 @@ describe('GameRoom', () => {
       const replay = (await replayResp.json()) as { seed: number; actions: unknown[] };
       expect(replay.seed).toBe(game.seed);
       expect(replay.actions).toEqual(actions);
+      await endQuiet(room, client);
+    },
+  );
+
+  it(
+    'tallies seriesWins at game_over and increments again after a rematch',
+    { timeout: 240_000 },
+    async () => {
+      const room = 'room-series';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      let view = await setupStartedGame(client);
+
+      view = await playToGameOver(client, stub, 1234, view);
+      expect(view.phase).toBe('game_over');
+      const firstWinner = view.winner;
+      expect(firstWinner === 0 || firstWinner === 1).toBe(true);
+
+      const afterFirst = await waitForSeriesWins(client, 1);
+      expect(afterFirst).toEqual(firstWinner === 0 ? [1, 0] : [0, 1]);
+
+      // Rematch, same table (isRematch — meta.started stays true, the DO's
+      // action log resets) — the next game_over must increment the same tally.
+      client.send({ t: 'start' });
+      view = (await client.next('view')).view;
+      view = await playToGameOver(client, stub, 5678, view);
+      expect(view.phase).toBe('game_over');
+      const secondWinner = view.winner;
+      expect(secondWinner === 0 || secondWinner === 1).toBe(true);
+
+      const afterSecond = await waitForSeriesWins(client, 2);
+      const expected: [number, number] = [...afterFirst] as [number, number];
+      if (secondWinner === 0 || secondWinner === 1) expected[secondWinner] += 1;
+      expect(afterSecond).toEqual(expected);
+
       await endQuiet(room, client);
     },
   );

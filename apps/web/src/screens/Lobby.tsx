@@ -3,6 +3,7 @@ import { useChatSend } from '../chat/useChatSend.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { SeatPicker } from '../room/SeatPicker.js';
+import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
 
@@ -21,7 +22,10 @@ export function Lobby({ code, onLeave }: LobbyProps) {
     <main className="table-felt grid min-h-screen place-items-center p-6">
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
-          <h1 className="font-display text-3xl text-(--color-lamplight)">Room {code}</h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="font-display text-3xl text-(--color-lamplight)">Room {code}</h1>
+            <ShareButton code={code} />
+          </div>
           <p className="mt-1 text-sm text-(--color-ivory)/55">
             {connection === 'open'
               ? 'Share this code with your table.'

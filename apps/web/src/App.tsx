@@ -102,6 +102,7 @@ export function App() {
     return started ? (
       <Table
         online
+        roomCode={route.code}
         onAction={(action) => send({ t: 'action', action })}
         onLeave={() => (location.hash = '')}
         onRematch={() => send({ t: 'start' })}
