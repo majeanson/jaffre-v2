@@ -568,7 +568,7 @@ export class GameRoom implements DurableObject {
       try {
         await this.persistHistory(game);
       } catch (err) {
-        console.error('game history write failed', err);
+        console.error('[history] game history write failed', err);
       }
     }
     await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
