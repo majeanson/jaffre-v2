@@ -83,7 +83,10 @@ export function RecoveryCard() {
           <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/70">
             These words get your name and games back on a new phone.
           </p>
-          <p className="font-display text-(length:--text-fluid-sm) font-semibold tracking-wide text-(--color-lamplight)">
+          <p
+            data-testid="recovery-code"
+            className="font-display text-(length:--text-fluid-sm) font-semibold tracking-wide text-(--color-lamplight)"
+          >
             {code}
           </p>
           <button

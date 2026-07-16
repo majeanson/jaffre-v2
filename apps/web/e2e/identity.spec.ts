@@ -1,0 +1,122 @@
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+/**
+ * One identity + 3-word recovery (Phase 1, workstream A), against the real
+ * server: the home screen mints a guest identity and shows its recovery code
+ * once; typing that code into a brand-new browser context restores the SAME
+ * uid (so history/stats follow the player across devices). Requires the e2e
+ * server's SESSION_SECRET (see playwright.config.ts webServer command).
+ */
+
+const CODE_RE = /^[a-z]+-[a-z]+-[a-z]+$/;
+
+/** The canonical uid of the identity this page currently holds. */
+async function uidOf(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const raw = localStorage.getItem('jaffre-token');
+    if (raw === null) throw new Error('no jaffre-token in localStorage');
+    return (JSON.parse(raw) as { userId: string }).userId;
+  });
+}
+
+test('first visit mints an identity and shows a 3-word recovery code that persists', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto('/');
+
+  // The card appears once the guest identity is minted.
+  const code = page.getByTestId('recovery-code');
+  await expect(code).toBeVisible();
+  expect((await code.innerText()).trim()).toMatch(CODE_RE);
+  await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
+
+  // Same words after a reload — the code is issued exactly once per browser.
+  const words = (await code.innerText()).trim();
+  await page.reload();
+  await expect(code).toHaveText(words);
+
+  await context.close();
+});
+
+test('a recovery code restores the same identity (uid + name) in a fresh browser', async ({
+  browser,
+}) => {
+  // Browser A: mint an identity under a distinctive name, keep its code.
+  const contextA = await browser.newContext();
+  const a = await contextA.newPage();
+  await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Marc-e2e'));
+  await a.goto('/');
+  const codeEl = a.getByTestId('recovery-code');
+  await expect(codeEl).toBeVisible();
+  const words = (await codeEl.innerText()).trim();
+  expect(words).toMatch(CODE_RE);
+  const uidA = await uidOf(a);
+  await contextA.close();
+
+  // Browser B: a completely fresh context (its own localStorage) mints its
+  // own identity first — entering A's words must replace it with A's.
+  const contextB = await browser.newContext();
+  const b = await contextB.newPage();
+  await b.goto('/');
+  await expect(b.getByTestId('recovery-code')).toBeVisible(); // B's own mint done
+  const uidB = await uidOf(b);
+  expect(uidB).not.toBe(uidA);
+
+  await b.getByRole('button', { name: 'I have a code' }).click();
+  await b.getByPlaceholder('lampe-tricot-hibou').fill(words);
+  await b.getByRole('button', { name: 'Restore' }).click();
+
+  // recoverIdentity() stores the recovered token, then reloads the page —
+  // poll (an evaluate can transiently fail mid-reload) until A's identity is
+  // in place: same uid, and A's name restored without retyping it.
+  await expect.poll(() => uidOf(b).catch(() => 'evaluating')).toBe(uidA);
+  await expect
+    .poll(() => b.evaluate(() => localStorage.getItem('jaffre-name')).catch(() => null))
+    .toBe('Marc-e2e');
+
+  // The restored identity is what the server sees too (request runs outside
+  // the page, so the reload can't race it).
+  let token = '';
+  await expect
+    .poll(() =>
+      b
+        .evaluate(() => {
+          const raw = localStorage.getItem('jaffre-token');
+          return raw === null ? null : (JSON.parse(raw) as { token: string }).token;
+        })
+        .then((t) => {
+          token = t ?? '';
+          return t;
+        })
+        .catch(() => null),
+    )
+    .not.toBeNull();
+  const res = await b.request.get('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const me = (await res.json()) as { userId: string; name: string };
+  expect(me.userId).toBe(uidA);
+  expect(me.name).toBe('Marc-e2e');
+
+  await contextB.close();
+});
+
+test('a wrong code shows the error and keeps the current identity', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto('/');
+  await expect(page.getByTestId('recovery-code')).toBeVisible();
+  const uidBefore = await uidOf(page);
+
+  await page.getByRole('button', { name: 'I have a code' }).click();
+  await page.getByPlaceholder('lampe-tricot-hibou').fill('aaaa-bbbb-cccc');
+  await page.getByRole('button', { name: 'Restore' }).click();
+
+  await expect(page.getByText("That code didn't match")).toBeVisible();
+  expect(await uidOf(page)).toBe(uidBefore);
+
+  await context.close();
+});
