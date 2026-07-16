@@ -60,14 +60,14 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps)
               <span className="flex gap-2">
                 <button
                   onClick={() => onSit(seat)}
-                  disabled={seated}
+                  disabled={started}
                   className={`rounded-lg border px-3 py-2 text-sm ${
-                    seated
+                    started
                       ? 'border-white/8 text-(--color-ivory)/30'
                       : 'border-(--color-accent)/50 text-(--color-lamplight) hover:bg-(--color-accent)/10 cursor-pointer'
                   }`}
                 >
-                  Sit here
+                  {seated ? 'Move here' : 'Sit here'}
                 </button>
                 <button
                   onClick={() => onAddBot(seat, 'normal')}
