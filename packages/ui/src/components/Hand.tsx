@@ -29,16 +29,21 @@ export interface HandProps {
   readonly onReorder?: (keys: readonly string[]) => void;
 }
 
+/** Drag a card up past this (px) to play it — the "throw it on the table" gesture. */
+const PLAY_DY = -60;
+
 /**
  * The player's fanned hand. A keyboard-first listbox: arrows rove, Enter
  * plays. Illegal cards stay focusable so their reason can be announced.
  *
- * When `onReorder` is set, cards can also be dragged left/right to rearrange
- * the fan. The drag is a plain motion pointer drag (NOT react-aria's DnD,
- * which leaves a document-level overlay that swallows later clicks): a tap
- * still plays, but a real drag flips a guard so the same pointer-up doesn't
- * also fire `onAction`, then computes the target slot from pointer-x vs the
- * other cards' centres and rewrites the order.
+ * Cards support two pointer gestures beyond the tap: drag left/right to
+ * rearrange the fan (when `onReorder` is set), and drag up past PLAY_DY to
+ * play a legal card. The drag is a plain motion pointer drag (NOT
+ * react-aria's DnD, which leaves a document-level overlay that swallows
+ * later clicks): a tap still plays, but a real drag flips a guard so the
+ * same pointer-up doesn't also fire `onAction`, then either plays (released
+ * high enough) or computes the target slot from pointer-x vs the other
+ * cards' centres and rewrites the order.
  */
 export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReorder }: HandProps) {
   const reorderable = onReorder !== undefined && cards.length > 1;
@@ -117,8 +122,11 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReor
                 Both are gated on no-reduced-motion. */}
             <motion.span
               layout
-              className={`inline-block${reorderable ? ' touch-none' : ''}`}
-              drag={reorderable ? 'x' : false}
+              className={`inline-block${reorderable || playable ? ' touch-none' : ''}`}
+              // Reorderable cards drag freely (x to file, y to play); a
+              // playable card in a non-reorderable hand still drags up to play.
+              drag={reorderable ? true : playable ? 'y' : false}
+              dragConstraints={{ top: -110, bottom: 0 }}
               dragSnapToOrigin
               dragElastic={0.4}
               dragMomentum={false}
@@ -127,7 +135,10 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReor
                 justDragged.current = true;
               }}
               onDragEnd={(_e: PointerEvent, info: PanInfo) => {
-                reorder(key, info);
+                // Released well above the fan: play the card (legal ones
+                // only). Anything else is a re-file within the hand.
+                if (playable && info.offset.y < PLAY_DY) onPlay?.(entry.card);
+                else if (reorderable) reorder(key, info);
                 // Release the play-suppression guard once react-aria's own
                 // pointer-up handling for this gesture has run.
                 setTimeout(() => {

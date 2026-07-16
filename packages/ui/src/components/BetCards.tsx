@@ -1,4 +1,3 @@
-import { motion, type PanInfo } from 'motion/react';
 import { useState } from 'react';
 import type { BidOption } from './BidPanel';
 
@@ -14,13 +13,11 @@ export interface BetCardsProps {
   readonly coaching?: boolean;
 }
 
-/** Drag a card up past this to commit the bid (pointer); Enter commits (keys). */
-const COMMIT_DY = -46;
-
 /**
  * A single bet "chip" card — deliberately NOT a playing card: a dark brass
  * token with a gold value, no suit, a Pass face, and a ★ when sans-atout is
- * on. You commit by dragging it up (like playing a card) or pressing Enter.
+ * on. Tap (or keyboard-Enter) commits — no drag gesture here, bids are a
+ * deliberate single choice.
  */
 function BetCard({
   label,
@@ -38,28 +35,15 @@ function BetCard({
   onCommit: () => void;
 }) {
   return (
-    <motion.button
+    <button
       type="button"
       disabled={!enabled}
       aria-label={pass ? 'Pass' : `Bid ${label}${sansAtout ? ' sans atout' : ''}`}
-      drag={enabled ? 'y' : false}
-      dragConstraints={{ top: -90, bottom: 0, left: 0, right: 0 }}
-      dragElastic={0.25}
-      dragSnapToOrigin
-      whileDrag={{ scale: 1.06 }}
-      onDragEnd={(_e: PointerEvent, info: PanInfo) => {
-        // A real drag suppresses the follow-up click, so committing here (when
-        // dragged up past the threshold) never double-fires with onClick.
-        if (info.offset.y < COMMIT_DY) onCommit();
-      }}
-      // Tap / keyboard-Enter commits too — drag-up is the flourish, not the
-      // only way (mobile taps + a11y need this, and it snaps back on a short
-      // drag since motion cancels the click).
       onClick={() => {
         if (enabled) onCommit();
       }}
-      className={`relative grid h-24 w-16 shrink-0 touch-none place-items-center rounded-xl border-2 font-display shadow-(--shadow-panel) max-sm:h-16 max-sm:w-11 ${
-        enabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-40 saturate-50'
+      className={`relative grid h-24 w-16 shrink-0 place-items-center rounded-xl border-2 font-display shadow-(--shadow-panel) transition-transform hover:-translate-y-1 max-sm:h-16 max-sm:w-11 ${
+        enabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-40 saturate-50'
       } ${
         pass
           ? 'border-(--color-ivory)/30 bg-(--color-felt-950) text-(--color-ivory)/85'
@@ -84,14 +68,14 @@ function BetCard({
           ★
         </span>
       )}
-    </motion.button>
+    </button>
   );
 }
 
 /**
- * Card-based auction: play a bet card (7–12 or Pass) by dragging it up. A ★
- * toggle switches every value card to sans-atout. Reuses the card gesture but
- * looks unmistakably different from the ivory playing cards in your hand.
+ * Card-based auction: tap a bet card (7–12 or Pass) to play it. A ★ toggle
+ * switches every value card to sans-atout. Looks unmistakably different from
+ * the ivory playing cards in your hand.
  */
 export function BetCards({
   options,
@@ -154,7 +138,7 @@ export function BetCards({
       </div>
 
       <span className="text-(length:--text-fluid-xs) text-(--color-ivory)/60">
-        Tap or drag a card up to bid
+        Tap a card to bid
       </span>
     </div>
   );

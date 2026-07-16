@@ -35,7 +35,13 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
         </p>
 
         {rounds.length > 0 && (
-          <div className="mt-4 max-h-56 overflow-y-auto rounded-lg bg-black/25 p-2 text-left text-xs">
+          // Keyboard-focusable so the overflow can be scrolled without a mouse.
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Round-by-round scores"
+            className="mt-4 max-h-56 overflow-y-auto rounded-lg bg-black/25 p-2 text-left text-xs"
+          >
             <table className="w-full tabular-nums">
               <thead className="text-(--color-ivory)/75">
                 <tr>

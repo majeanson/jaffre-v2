@@ -288,7 +288,13 @@ function ScorePad({
 
   return (
     <div className="w-full max-w-md overflow-hidden rounded-lg border border-white/10 bg-black/25">
-      <div className="max-h-52 overflow-y-auto">
+      {/* Keyboard-focusable so the overflow can be scrolled without a mouse. */}
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Round-by-round scoreboard"
+        className="max-h-52 overflow-y-auto"
+      >
         <table className="w-full table-fixed tabular-nums" data-testid="scorepad">
           <caption className="sr-only">Round-by-round scoreboard</caption>
           {cols}

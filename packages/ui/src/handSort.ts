@@ -15,3 +15,11 @@ const SUIT_ORDER: Record<CardData['suit'], number> = {
 export function sortByColour(cards: readonly CardData[]): CardData[] {
   return [...cards].sort((a, b) => SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit] || a.value - b.value);
 }
+
+/**
+ * Sort a hand by value, highest first (colour breaks ties) — for players who
+ * think in card strength rather than suits. Returns a new array.
+ */
+export function sortByHighest(cards: readonly CardData[]): CardData[] {
+  return [...cards].sort((a, b) => b.value - a.value || SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit]);
+}

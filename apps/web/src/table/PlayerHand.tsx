@@ -1,5 +1,5 @@
 import type { Card, Suit } from '@jaffre/engine';
-import { cardKey, Hand, sortByColour } from '@jaffre/ui';
+import { cardKey, Hand, sortByColour, sortByHighest } from '@jaffre/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { feedback, playClick } from '../audio/clicks.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
@@ -64,9 +64,17 @@ export function PlayerHand({
     return undefined;
   }, [cards.length]);
 
+  // Each press applies one of the two orders, alternating: colours ⇄ highest.
+  const [sortMode, setSortMode] = useState<'colour' | 'highest'>('colour');
+
   const sortHand = () => {
-    setOrder(sortByColour(cards).map(cardKey));
-    // A little cascade of clicks as the cards slide into place.
+    const sorted = (sortMode === 'colour' ? sortByColour : sortByHighest)(displayCards);
+    const keys = sorted.map(cardKey);
+    setOrder(keys);
+    setSortMode(sortMode === 'colour' ? 'highest' : 'colour');
+    // The click cascade only when cards actually move — a no-op sort is silent.
+    const changed = displayCards.some((c, i) => cardKey(c) !== keys[i]);
+    if (!changed) return;
     displayCards.forEach((_, i) => setTimeout(() => playClick('sort'), i * SORT_STAGGER_MS));
     feedback('sort', 6);
   };
@@ -78,10 +86,14 @@ export function PlayerHand({
           <button
             type="button"
             onClick={sortHand}
-            title="Sort your hand by colour"
+            title={
+              sortMode === 'colour'
+                ? 'Sort your hand by colour'
+                : 'Sort your hand by highest numbers'
+            }
             className={`mb-0.5 ${GHOST_BTN_SM}`}
           >
-            ⇅ Sort
+            ⇅ {sortMode === 'colour' ? 'Sort: colors' : 'Sort: highest'}
           </button>
         </div>
       )}
