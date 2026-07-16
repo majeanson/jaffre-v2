@@ -389,32 +389,58 @@ describe('GameRoom', () => {
       expect(actions.length).toBeGreaterThan(0);
 
       const players = await env.DB.prepare(
-        'SELECT seat, user_id, is_bot FROM game_players WHERE game_id = ?1 ORDER BY seat',
+        'SELECT seat, user_id, is_bot, name FROM game_players WHERE game_id = ?1 ORDER BY seat',
       )
         .bind(game.id)
-        .all<{ seat: number; user_id: string | null; is_bot: number }>();
+        .all<{ seat: number; user_id: string | null; is_bot: number; name: string }>();
       expect(players.results).toEqual([
-        { seat: 0, user_id: 'alice', is_bot: 0 },
-        { seat: 1, user_id: null, is_bot: 1 },
-        { seat: 2, user_id: null, is_bot: 1 },
-        { seat: 3, user_id: null, is_bot: 1 },
+        { seat: 0, user_id: 'alice', is_bot: 0, name: 'Alice' },
+        { seat: 1, user_id: null, is_bot: 1, name: 'Bot 2' },
+        { seat: 2, user_id: null, is_bot: 1, name: 'Bot 3' },
+        { seat: 3, user_id: null, is_bot: 1, name: 'Bot 4' },
       ]);
 
-      // /api/history surfaces the finished game for the human player.
+      // The engine scores at least one round in any completed game — the
+      // history row carries its round summaries as JSON.
+      const gameRow = await env.DB.prepare('SELECT round_summaries FROM games WHERE id = ?1')
+        .bind(game.id)
+        .first<{ round_summaries: string | null }>();
+      expect(gameRow?.round_summaries).not.toBeNull();
+      const summaries = JSON.parse(gameRow?.round_summaries ?? '[]') as unknown[];
+      expect(summaries.length).toBeGreaterThan(0);
+
+      // /api/history surfaces the finished game for the human player, with names.
       const historyResp = await SELF.fetch('https://example.com/api/history?u=alice');
       expect(historyResp.status).toBe(200);
       const history = (await historyResp.json()) as {
-        games: { id: string; roomCode: string; winnerTeam: number; yourSeat: number }[];
+        games: {
+          id: string;
+          roomCode: string;
+          winnerTeam: number;
+          yourSeat: number;
+          players: { seat: number; name: string; isBot: boolean }[];
+        }[];
       };
       const entry = history.games.find((g) => g.id === game.id);
       expect(entry).toMatchObject({ roomCode: room, winnerTeam: view.winner, yourSeat: 0 });
+      expect(entry?.players).toEqual([
+        { seat: 0, name: 'Alice', isBot: false },
+        { seat: 1, name: 'Bot 2', isBot: true },
+        { seat: 2, name: 'Bot 3', isBot: true },
+        { seat: 3, name: 'Bot 4', isBot: true },
+      ]);
 
-      // /api/replay returns the seed + ordered action log.
+      // /api/replay returns the seed + ordered action log + the same players.
       const replayResp = await SELF.fetch(`https://example.com/api/replay/${game.id}`);
       expect(replayResp.status).toBe(200);
-      const replay = (await replayResp.json()) as { seed: number; actions: unknown[] };
+      const replay = (await replayResp.json()) as {
+        seed: number;
+        actions: unknown[];
+        players: { seat: number; name: string; isBot: boolean }[];
+      };
       expect(replay.seed).toBe(game.seed);
       expect(replay.actions).toEqual(actions);
+      expect(replay.players).toEqual(entry?.players);
       await endQuiet(room, client);
     },
   );

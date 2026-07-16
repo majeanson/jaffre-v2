@@ -18,6 +18,7 @@ describe('gameRecordFrom', () => {
         roomCode: 'room-x',
         startedAt: 1000,
         seats: ['alice', { bot: true }, 'bob', { bot: true }],
+        names: { alice: 'Alice', bob: 'Bob' },
       },
       state,
       // Deliberately out of order — the record must sort by seq.
@@ -37,12 +38,50 @@ describe('gameRecordFrom', () => {
       score_0: 38,
       score_1: 62,
       action_log: JSON.stringify([a1, a2]),
+      round_summaries: null, // no rounds were scored in this staged state
       players: [
-        { seat: 0, user_id: 'alice', is_bot: 0 },
-        { seat: 1, user_id: null, is_bot: 1 },
-        { seat: 2, user_id: 'bob', is_bot: 0 },
-        { seat: 3, user_id: null, is_bot: 1 },
+        { seat: 0, user_id: 'alice', is_bot: 0, name: 'Alice' },
+        { seat: 1, user_id: null, is_bot: 1, name: 'Bot 2' },
+        { seat: 2, user_id: 'bob', is_bot: 0, name: 'Bob' },
+        { seat: 3, user_id: null, is_bot: 1, name: 'Bot 4' },
       ],
     });
+  });
+
+  it('serializes roundSummaries and falls back to a "Player" name for an unknown user', () => {
+    const summary: GameState['lastRoundSummary'] = {
+      roundIndex: 0,
+      contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+      contractMade: true,
+      trickPoints: [50, 12],
+      deltas: [8, -8],
+      scores: [8, -8],
+    };
+    const state: GameState = {
+      ...createGame(1),
+      phase: 'game_over',
+      winner: 0,
+      scores: [8, -8],
+      lastRoundSummary: summary,
+      roundSummaries: [summary],
+    };
+    const record = gameRecordFrom(
+      {
+        roomCode: 'room-y',
+        startedAt: null,
+        seats: ['alice', 'unknown-uid', { bot: true }, null],
+        names: { alice: 'Alice' },
+      },
+      state,
+      [],
+      { id: 'game-2', finishedAt: 3000 },
+    );
+    expect(record.round_summaries).toBe(JSON.stringify([summary]));
+    expect(record.players).toEqual([
+      { seat: 0, user_id: 'alice', is_bot: 0, name: 'Alice' },
+      { seat: 1, user_id: 'unknown-uid', is_bot: 0, name: 'Player' },
+      { seat: 2, user_id: null, is_bot: 1, name: 'Bot 3' },
+      { seat: 3, user_id: null, is_bot: 0, name: 'Player' },
+    ]);
   });
 });

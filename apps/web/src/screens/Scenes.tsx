@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { DEMO_HISTORY, DEMO_REPLAY, SCENES } from '../dev/scenes.js';
+import { DEMO_HISTORY, DEMO_REPLAY, DEMO_STATS, SCENES } from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { History } from './History.js';
 import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Replay } from './Replay.js';
+import { Stats } from './Stats.js';
 import { Table } from './Table.js';
 import { Visitor } from './Visitor.js';
 
@@ -59,6 +60,17 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <History
           key={current.id}
           demoGames={current.id === 'history-empty' ? [] : DEMO_HISTORY}
+          onLeave={onLeave}
+        />
+      )}
+      {current.screen === 'stats' && (
+        <Stats
+          key={current.id}
+          demoStats={
+            current.id === 'stats-empty'
+              ? { ...DEMO_STATS, games: 0, wins: 0, winRate: 0, bestPartner: null }
+              : DEMO_STATS
+          }
           onLeave={onLeave}
         />
       )}

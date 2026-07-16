@@ -7,6 +7,7 @@ import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
 import { Replay } from './screens/Replay.js';
 import { Scenes } from './screens/Scenes.js';
+import { Stats } from './screens/Stats.js';
 import { Table } from './screens/Table.js';
 import { Visitor } from './screens/Visitor.js';
 import { useGameStore } from './state/gameStore.js';
@@ -17,6 +18,7 @@ type Route =
   | { kind: 'room'; code: string }
   | { kind: 'scenes'; id: string | null }
   | { kind: 'history' }
+  | { kind: 'stats' }
   | { kind: 'replay'; gameId: string };
 
 function parseHash(): Route {
@@ -31,6 +33,7 @@ function parseHash(): Route {
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#history') return { kind: 'history' };
+  if (h === '#stats') return { kind: 'stats' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
   return { kind: 'home' };
@@ -81,6 +84,9 @@ export function App() {
   }
   if (route.kind === 'history') {
     return <History onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'stats') {
+    return <Stats onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'replay') {
     return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;

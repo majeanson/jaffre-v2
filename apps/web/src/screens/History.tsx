@@ -13,10 +13,22 @@ function formatDate(ms: number | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+/** "with Ginette · vs Marcel & Réal" — teammate first, then both opponents. */
+function rosterLine(game: HistoryGame): string | null {
+  const yourTeam = game.yourSeat % 2;
+  const teammate = game.players.find((p) => p.seat !== game.yourSeat && p.seat % 2 === yourTeam);
+  const opponents = game.players.filter((p) => p.seat % 2 !== yourTeam);
+  if (teammate === undefined && opponents.length === 0) return null;
+  const vs = opponents.map((p) => p.name).join(' & ');
+  if (teammate === undefined) return vs === '' ? null : `vs ${vs}`;
+  return vs === '' ? `with ${teammate.name}` : `with ${teammate.name} · vs ${vs}`;
+}
+
 /** One finished game as a link into its replay. */
 function GameRow({ game }: { readonly game: HistoryGame }) {
   const won = game.winnerTeam !== null && game.winnerTeam === game.yourSeat % 2;
   const decided = game.winnerTeam !== null;
+  const roster = rosterLine(game);
   return (
     <a
       href={`#replay/${game.id}`}
@@ -37,8 +49,9 @@ function GameRow({ game }: { readonly game: HistoryGame }) {
         <span className="block truncate font-semibold text-(--color-ivory)">
           Room {game.roomCode}
         </span>
-        <span className="block text-(length:--text-fluid-xs) text-(--color-ivory)/55">
+        <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ivory)/55">
           {formatDate(game.finishedAt)} · seat {game.yourSeat + 1}
+          {roster !== null ? ` · ${roster}` : ''}
         </span>
       </span>
       <span className="font-display text-lg tabular-nums text-(--color-ivory)/85">
