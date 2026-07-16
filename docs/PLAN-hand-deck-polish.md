@@ -4,17 +4,24 @@ Resume point for the design pass started 2026-07-16.
 
 **Already shipped** (do not redo): score header redesign, reconnect UX,
 history/replay, CI/deploy, and from this plan — **A** (punchy disabled cards),
-**D** (sound + haptics engine, off by default; wired to card play + bids),
-**E** (round summary + specials chips), **B** (deck deal — your hand flies in
-one card at a time), **C sort half** (colour-sort button with animated reflow +
-click cascade), **H** (seat change + lobby voice), and the **chat-triples bug**.
-A long-standing Home axe flake was also fixed (the a11y helper now settles
-finite animations before scanning + skips the native-`<select>` false positive).
+**B** (deck deal — hand flies in one card at a time), **C sort half** (colour-
+sort button + animated reflow + click cascade), **D** (sound/haptics engine,
+off by default; wired to play/bid/deal/sort), **E** (round summary + specials),
+**F** (bet cards — distinct brass chips, drag-up or tap to bid, ★ sans-atout),
+**G** (take over a bot mid-game + Visitor landing page), **H** (seat change +
+lobby voice), and the **chat-triples bug**. A long-standing Home axe flake was
+also fixed (a11y helper settles animations + skips the native-`<select>` false
+positive).
 
-**Still to build**: **C drag half** (manual drag-to-reorder the hand — the
-sort button is done; drag remains, see Workstream C), **F** (bet cards — must
-be visually distinct from playing cards), **G** (take-over + visitor page).
-Deal/sort/play/bid already fire click ticks; F should add its own.
+**Only remaining item**: **C drag half** — manual drag-to-reorder the hand.
+The colour-sort button already covers "tidy my hand"; this adds free rearrange.
+Note: the local display order + `motion layout` reflow already exist in
+`apps/web/src/table/PlayerHand.tsx` (the `order` state) — drag just needs to
+rewrite `order` from the pointer position. The Hand is a react-aria ListBox
+(keyboard play via arrows+Enter), so preserve that: prefer react-aria
+`useDragAndDrop` (keeps a11y + keyboard move) OR a pointer-drag that updates
+`order` and keeps Enter-to-play. Deserves focused attention — a janky drag is
+worse than none.
 
 Guiding intent (user's words): make playing cards feel **satisfying — ASMR /
 haptic / phone-style**: cards deal in one at a time, you can drag to sort your
