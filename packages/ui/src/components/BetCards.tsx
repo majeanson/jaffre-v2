@@ -58,7 +58,7 @@ function BetCard({
       onClick={() => {
         if (enabled) onCommit();
       }}
-      className={`relative grid h-24 w-16 shrink-0 touch-none place-items-center rounded-xl border-2 font-display shadow-(--shadow-panel) max-sm:h-20 max-sm:w-14 ${
+      className={`relative grid h-24 w-16 shrink-0 touch-none place-items-center rounded-xl border-2 font-display shadow-(--shadow-panel) max-sm:h-16 max-sm:w-11 ${
         enabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-40 saturate-50'
       } ${
         pass
@@ -67,7 +67,11 @@ function BetCard({
       } ${recommended ? 'outline outline-2 outline-(--color-lamplight) outline-offset-2' : ''}`}
     >
       <span
-        className={pass ? 'text-base font-bold tracking-wide uppercase' : 'text-3xl font-black'}
+        className={
+          pass
+            ? 'text-base font-bold tracking-wide uppercase max-sm:text-xs'
+            : 'text-3xl font-black max-sm:text-xl'
+        }
       >
         {label}
       </span>
@@ -120,7 +124,7 @@ export function BetCards({
         </button>
       </div>
 
-      <div role="group" aria-label="Bet cards" className="flex items-end gap-2 max-sm:gap-1.5">
+      <div role="group" aria-label="Bet cards" className="flex items-end gap-2 max-sm:gap-1">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const isRecommended =

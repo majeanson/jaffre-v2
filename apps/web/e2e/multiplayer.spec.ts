@@ -16,8 +16,8 @@ import type { Page } from '@playwright/test';
 async function actIfMyTurn(page: Page): Promise<void> {
   const pass = page.getByRole('button', { name: 'Pass' });
   if (await pass.isVisible()) {
-    const seven = page.getByRole('button', { name: '7', exact: true });
-    if (await seven.isEnabled()) {
+    const seven = page.getByRole('button', { name: 'Bid 7', exact: true });
+    if (await seven.isEnabled().catch(() => false)) {
       await seven.click();
     } else {
       await pass.click();
