@@ -87,6 +87,10 @@ export function PlayerHand({
       )}
       <Hand
         active={active}
+        onReorder={(keys) => {
+          setOrder(keys);
+          feedback('select', 4);
+        }}
         cards={displayCards.map((card) => ({
           card,
           disabled: !active || !legal.some((c) => c.suit === card.suit && c.value === card.value),
