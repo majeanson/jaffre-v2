@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import { GHOST_BTN_SM, GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { buildFrames, type ReplayFrame } from '../replay/buildFrames.js';
 import { fetchReplay, type ReplayData } from '../net/history.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -126,7 +126,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
           type="button"
           aria-label="Previous frame"
           onClick={() => setIdx(Math.max(0, clamped - 1))}
-          className={GHOST_BTN_SM}
+          className={GHOST_BTN_SM_DARK}
         >
           ‹
         </button>
@@ -134,7 +134,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
           type="button"
           aria-label={playing ? 'Pause' : 'Play'}
           onClick={() => setPlaying((p) => !p)}
-          className={GHOST_BTN_SM}
+          className={GHOST_BTN_SM_DARK}
         >
           {playing ? '❚❚' : '▶'}
         </button>
@@ -142,7 +142,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
           type="button"
           aria-label="Next frame"
           onClick={() => setIdx(Math.min(last, clamped + 1))}
-          className={GHOST_BTN_SM}
+          className={GHOST_BTN_SM_DARK}
         >
           ›
         </button>

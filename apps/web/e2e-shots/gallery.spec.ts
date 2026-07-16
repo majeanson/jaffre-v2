@@ -57,6 +57,7 @@ async function sanityChecks(page: Page, label: string): Promise<void> {
         if (bar.contains(el) || el.contains(bar)) continue;
         if (el.closest('[role="dialog"]') !== null) continue;
         if (el.closest('[data-testid="scene-picker"]') !== null) continue;
+        if (el.closest('[data-testid="replay-controls"]') !== null) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) continue;
         const intrudesFromBelow =

@@ -14,9 +14,7 @@ export function CoachHint({ tip }: CoachHintProps) {
         <span aria-hidden className="text-(--color-lamplight)">
           ✦
         </span>
-        <span className="text-(length:--text-fluid-sm) leading-snug text-(--color-ivory)/90">
-          {tip}
-        </span>
+        <span className="text-(length:--text-fluid-sm) leading-snug text-white/90">{tip}</span>
       </div>
     </div>
   );

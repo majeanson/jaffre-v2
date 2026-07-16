@@ -38,7 +38,7 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
           className={`absolute -top-3 -right-2 rounded-full px-2 py-0.5 text-[11px] font-bold shadow ${
             info.isContract
               ? 'bg-(--color-lamplight) text-(--color-felt-950)'
-              : 'bg-black/70 text-(--color-ivory)/80'
+              : 'bg-black/70 text-white/80'
           }`}
         >
           {info.bidText}

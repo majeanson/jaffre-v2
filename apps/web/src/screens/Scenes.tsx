@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { DEMO_HISTORY, DEMO_REPLAY, SCENES } from '../dev/scenes.js';
-import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { History } from './History.js';
 import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
@@ -82,7 +82,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <button
           type="button"
           onClick={() => step(-1)}
-          className={GHOST_BTN_SM}
+          className={GHOST_BTN_SM_DARK}
           aria-label="Previous scene"
         >
           ←
@@ -102,7 +102,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <button
           type="button"
           onClick={() => step(1)}
-          className={GHOST_BTN_SM}
+          className={GHOST_BTN_SM_DARK}
           aria-label="Next scene"
         >
           →

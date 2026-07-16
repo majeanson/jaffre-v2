@@ -29,7 +29,7 @@ export function TrickBanner({ banner }: TrickBannerProps) {
           {banner.points}
         </span>
         <span className="flex flex-col leading-tight">
-          <span className="font-display text-xl text-(--color-ivory) max-sm:text-lg">
+          <span className="font-display text-xl text-white max-sm:text-lg">
             {banner.isYou ? 'You take the trick!' : `${banner.winnerName} takes the trick`}
           </span>
           <span className="text-sm font-semibold max-sm:text-xs" style={{ color: team.color }}>
