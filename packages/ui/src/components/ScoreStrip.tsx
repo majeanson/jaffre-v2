@@ -8,6 +8,19 @@ export interface TeamSpecials {
   readonly brown: boolean; // the brown 0 (−2)
 }
 
+/** One finished round on the written scoreboard. */
+export interface ScoreboardRound {
+  /** 1-based round number, as written on the pad ("R3"). */
+  readonly round: number;
+  readonly bidderName: string;
+  readonly bidderTeam: 0 | 1;
+  readonly bid: number;
+  readonly sansAtout: boolean;
+  readonly made: boolean;
+  /** Points each team gained (or lost) this round. */
+  readonly deltas: readonly [number, number];
+}
+
 export interface ScoreStripProps {
   readonly teamNames: readonly [string, string];
   readonly scores: readonly [number, number];
@@ -18,7 +31,13 @@ export interface ScoreStripProps {
     readonly sansAtout: boolean;
     /** Trick points the contract team has taken so far this round. */
     readonly progress?: number;
+    /** Bidder's team, colors the bet on the written scoreboard. */
+    readonly team?: 0 | 1;
   } | null;
+  /** Finished rounds, oldest first — the written scoreboard rows. */
+  readonly rounds?: readonly ScoreboardRound[];
+  /** 1-based number of the round in progress (omit once the game is over). */
+  readonly currentRound?: number | undefined;
   readonly trump?: SuitId | null;
   readonly trumpDecided?: boolean;
   /** Trick points per team this round (expanded view). */
@@ -180,6 +199,198 @@ function TeamSide({
   );
 }
 
+const signed = (n: number): string => (n > 0 ? `+${String(n)}` : String(n));
+
+const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
+
+/** "Marcel 8 SA" in the bidder's team color, with a made/missed mark. */
+function BetCell({
+  name,
+  team,
+  bid,
+  sansAtout,
+  made,
+}: {
+  name: string;
+  team: 0 | 1;
+  bid: number;
+  sansAtout: boolean;
+  made?: boolean | undefined;
+}) {
+  return (
+    <span className="flex items-center justify-end gap-1 whitespace-nowrap">
+      <span
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ background: TEAM_VARS[team] }}
+        aria-hidden
+      />
+      <span className="truncate text-(--color-ivory)/85">
+        {name} <span className="font-semibold">{bid}</span>
+        {sansAtout ? <span className="text-(--color-lamplight)"> SA</span> : null}
+      </span>
+      {made !== undefined && (
+        <span
+          className={made ? 'text-(--color-ok)' : 'text-(--color-danger-text)'}
+          title={made ? 'Bet made' : 'Bet missed'}
+        >
+          {made ? '✓' : '✗'}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * The classic written scoreboard: one row per round with each team's points
+ * and the bet that drove them, a live row for the round underway, and the
+ * running totals across the bottom — just like a paper scorepad.
+ */
+function ScorePad({
+  teamNames,
+  scores,
+  target,
+  rounds,
+  currentRound,
+  roundPoints,
+  contract,
+}: {
+  teamNames: readonly [string, string];
+  scores: readonly [number, number];
+  target: number;
+  rounds: readonly ScoreboardRound[];
+  currentRound?: number | undefined;
+  roundPoints?: readonly [number, number] | undefined;
+  contract?: ScoreStripProps['contract'] | undefined;
+}) {
+  // While the round-over summary is up the round is already on the pad —
+  // only pencil in a live row for a round the history doesn't have yet.
+  const liveRound =
+    currentRound !== undefined && !rounds.some((r) => r.round === currentRound)
+      ? currentRound
+      : null;
+
+  // The totals bar is its own table (so the rounds can scroll under it) —
+  // identical fixed columns keep the two visually aligned as one pad.
+  const cols = (
+    <colgroup>
+      <col className="w-14" />
+      <col className="w-[19%]" />
+      <col className="w-[19%]" />
+      <col />
+    </colgroup>
+  );
+
+  const deltaCell = (d: number) => (
+    <span className={d < 0 ? 'text-(--color-danger-text)' : 'text-(--color-ivory)/90'}>
+      {signed(d)}
+    </span>
+  );
+
+  return (
+    <div className="w-full max-w-md overflow-hidden rounded-lg border border-white/10 bg-black/25">
+      <div className="max-h-52 overflow-y-auto">
+        <table className="w-full table-fixed tabular-nums" data-testid="scorepad">
+          <caption className="sr-only">Round-by-round scoreboard</caption>
+          {cols}
+          <thead className="sticky top-0 bg-(--color-felt-800)">
+            <tr className="border-b border-white/15 text-[10px] font-semibold tracking-[0.14em] uppercase">
+              <th scope="col" className="py-1.5 pl-3 text-left text-(--color-ivory)/55">
+                Round
+              </th>
+              {([0, 1] as const).map((team) => (
+                <th
+                  key={team}
+                  scope="col"
+                  className="py-1.5 text-center"
+                  style={{ color: TEAM_VARS[team] }}
+                >
+                  <span
+                    className="mr-1 inline-block size-1.5 rounded-full align-middle"
+                    style={{ background: TEAM_VARS[team] }}
+                    aria-hidden
+                  />
+                  {shortName(teamNames[team])}
+                </th>
+              ))}
+              <th scope="col" className="py-1.5 pr-3 text-right text-(--color-ivory)/55">
+                Bet
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rounds.map((r) => (
+              <tr key={r.round} className="border-b border-white/6 last:border-0">
+                <td className="py-1 pl-3 text-left text-(--color-ivory)/55">R{r.round}</td>
+                <td className="py-1 text-center">{deltaCell(r.deltas[0])}</td>
+                <td className="py-1 text-center">{deltaCell(r.deltas[1])}</td>
+                <td className="py-1 pr-3 text-right">
+                  <BetCell
+                    name={r.bidderName}
+                    team={r.bidderTeam}
+                    bid={r.bid}
+                    sansAtout={r.sansAtout}
+                    made={r.made}
+                  />
+                </td>
+              </tr>
+            ))}
+            {liveRound !== null && (
+              <tr className="text-(--color-ivory)/50">
+                <td className="py-1 pl-3 text-left">R{liveRound}</td>
+                <td className="py-1 text-center">{signed(roundPoints?.[0] ?? 0)}</td>
+                <td className="py-1 text-center">{signed(roundPoints?.[1] ?? 0)}</td>
+                <td className="py-1 pr-3 text-right">
+                  {contract != null ? (
+                    <BetCell
+                      name={contract.playerName}
+                      team={contract.team ?? 0}
+                      bid={contract.value}
+                      sansAtout={contract.sansAtout}
+                    />
+                  ) : (
+                    <span className="italic">bidding…</span>
+                  )}
+                </td>
+              </tr>
+            )}
+            {rounds.length === 0 && liveRound === null && (
+              <tr className="text-(--color-ivory)/45">
+                <td colSpan={4} className="py-2 text-center italic">
+                  no rounds played yet
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center border-t-2 border-white/20 bg-white/4 font-display">
+        <table className="w-full table-fixed tabular-nums">
+          {cols}
+          <tbody>
+            <tr>
+              <td className="py-1.5 pl-3 text-left text-[10px] font-semibold tracking-[0.14em] text-(--color-ivory)/55 uppercase">
+                Total
+              </td>
+              {([0, 1] as const).map((team) => (
+                <td
+                  key={team}
+                  className="py-1.5 text-center text-base font-semibold"
+                  style={{ color: TEAM_VARS[team] }}
+                >
+                  {scores[team]}
+                </td>
+              ))}
+              <td className="py-1.5 pr-3 text-right text-[10px] text-(--color-ivory)/55">
+                first to {target}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /** The trump suit, called out in its own color — the key fact of the round. */
 function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecided: boolean }) {
   if (!trumpDecided) return null;
@@ -219,6 +430,8 @@ export function ScoreStrip({
   roundPoints,
   trickCounts,
   specials,
+  rounds = [],
+  currentRound,
   action,
   actions,
   defaultDetailsOpen = false,
@@ -297,39 +510,15 @@ export function ScoreStrip({
 
       {open && (
         <div className="flex flex-col items-center gap-3 border-t border-white/8 px-4 pt-3 pb-4 text-xs">
-          <div className="grid w-full max-w-sm grid-cols-2 gap-2 text-center tabular-nums">
-            {([0, 1] as const).map((team) => (
-              <div key={team} className="rounded-lg bg-black/25 p-2.5">
-                <p className="font-semibold text-(--color-ivory)/90">
-                  <span
-                    className={`mr-1.5 inline-block size-2 rounded-full ${team === 0 ? 'bg-(--color-team-a)' : 'bg-(--color-team-b)'}`}
-                    aria-hidden
-                  />
-                  {teamNames[team]}
-                </p>
-                <p className="mt-1 font-display text-2xl text-(--color-ivory)">
-                  {scores[team]} <span className="text-sm text-(--color-ivory)/50">/ {target}</span>
-                </p>
-                {roundPoints !== undefined && (
-                  <p className="text-(--color-ivory)/70">
-                    {(roundPoints[team] ?? 0) >= 0 ? '+' : ''}
-                    {roundPoints[team]} pts this round
-                  </p>
-                )}
-                {trickCounts !== undefined && (
-                  <p className="text-(--color-ivory)/70">
-                    {trickCounts[team]} trick{trickCounts[team] === 1 ? '' : 's'} taken
-                  </p>
-                )}
-                {(specials?.[team]?.red ?? false) || (specials?.[team]?.brown ?? false) ? (
-                  <p className="mt-1 flex items-center justify-center gap-1">
-                    {specials?.[team]?.red === true && <SpecialChip kind="red" />}
-                    {specials?.[team]?.brown === true && <SpecialChip kind="brown" />}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          <ScorePad
+            teamNames={teamNames}
+            scores={scores}
+            target={target}
+            rounds={rounds}
+            currentRound={currentRound}
+            roundPoints={roundPoints}
+            contract={contract}
+          />
           {contract !== null && (
             <p className="text-(--color-ivory)/60">
               <span className="font-semibold text-(--color-ivory)/85">{contract.playerName}</span>{' '}

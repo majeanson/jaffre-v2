@@ -58,6 +58,7 @@ export function Table({
       <TopBar
         view={view}
         contract={derived.contractDisplay}
+        rounds={derived.scoreboardRounds}
         trickCounts={derived.trickCounts}
         specials={derived.teamSpecials}
         action={derived.headerAction}

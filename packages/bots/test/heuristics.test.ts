@@ -25,6 +25,7 @@ function view(partial: Partial<SeatView>): SeatView {
     roundPoints: [0, 0],
     scores: [0, 0],
     lastRoundSummary: null,
+    roundSummaries: [],
     winner: null,
     ...partial,
   };

@@ -16,6 +16,20 @@ describe('serialize / deserialize', () => {
     }
   });
 
+  it('migrates pre-roundSummaries states: recovers the last summary or an empty pad', () => {
+    const { states } = playFullGame(13);
+    const scored = states.find((s) => s.lastRoundSummary !== null);
+    if (scored === undefined) throw new Error('expected a scored state');
+
+    const legacy = (state: object): string => {
+      const clone = { ...state } as Record<string, unknown>;
+      delete clone['roundSummaries'];
+      return JSON.stringify(clone);
+    };
+    expect(deserialize(legacy(scored))?.roundSummaries).toEqual([scored.lastRoundSummary]);
+    expect(deserialize(legacy(createGame(42)))?.roundSummaries).toEqual([]);
+  });
+
   it('rejects malformed input without throwing', () => {
     expect(deserialize('not json')).toBeNull();
     expect(deserialize('null')).toBeNull();

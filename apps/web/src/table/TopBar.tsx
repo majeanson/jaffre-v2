@@ -1,15 +1,20 @@
 import type { SeatView } from '@jaffre/engine';
-import { ScoreStrip, type TeamSpecials } from '@jaffre/ui';
-import { GHOST_BTN } from '../components/buttonStyles.js';
+import { ScoreStrip, type ScoreboardRound, type TeamSpecials } from '@jaffre/ui';
 import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
+/** Ghost-pill chrome with a per-action tint so each control reads at a glance. */
+const TINT_BTN =
+  'cursor-pointer whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm hover:bg-white/8';
+
 export interface TopBarProps {
   readonly view: SeatView;
   readonly contract: ContractDisplay | null;
+  /** Finished rounds for the written scoreboard, oldest first. */
+  readonly rounds: readonly ScoreboardRound[];
   readonly trickCounts: readonly [number, number];
   readonly specials: readonly [TeamSpecials, TeamSpecials];
   readonly action: string;
@@ -29,6 +34,7 @@ export interface TopBarProps {
 export function TopBar({
   view,
   contract,
+  rounds,
   trickCounts,
   specials,
   action,
@@ -52,25 +58,30 @@ export function TopBar({
         roundPoints={view.roundPoints}
         trickCounts={trickCounts}
         specials={specials}
+        rounds={rounds}
+        currentRound={view.phase === 'game_over' ? undefined : view.roundIndex + 1}
         action={action}
         actions={
           <>
             <button
               onClick={onLeave}
-              className={`whitespace-nowrap px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`}
+              className={`${TINT_BTN} border-(--color-danger)/45 text-(--color-danger-text) hover:bg-(--color-danger)/12`}
             >
               ← Leave
             </button>
             <ThemeSwitcher />
             <SoundToggle />
-            <HelpButton label="Help" />
+            <HelpButton
+              label="Help"
+              className={`${TINT_BTN} border-(--color-ok)/45 text-(--color-ok) hover:bg-(--color-ok)/12`}
+            />
             <button
               type="button"
               aria-pressed={coachOn}
               onClick={onToggleCoach}
               title="Show a suggested move on your turn"
-              className={`whitespace-nowrap px-3 py-1.5 text-sm ${GHOST_BTN} ${
-                coachOn ? 'text-(--color-lamplight)' : 'text-(--color-ivory)/80'
+              className={`${TINT_BTN} border-(--color-lamplight)/45 text-(--color-lamplight) ${
+                coachOn ? 'bg-(--color-lamplight)/15' : ''
               }`}
             >
               {coachOn ? '✦ Coach on' : 'Coach'}
@@ -79,7 +90,9 @@ export function TopBar({
               type="button"
               aria-expanded={logOpen}
               onClick={onToggleLog}
-              className={`px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`}
+              className={`${TINT_BTN} border-(--color-team-b)/45 text-(--color-team-b) ${
+                logOpen ? 'bg-(--color-team-b)/15' : ''
+              }`}
             >
               {logOpen ? 'Hide log' : 'Log'}
             </button>

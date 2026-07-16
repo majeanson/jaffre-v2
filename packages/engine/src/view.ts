@@ -37,6 +37,8 @@ export interface SeatView {
   readonly roundPoints: readonly [number, number];
   readonly scores: readonly [number, number];
   readonly lastRoundSummary: RoundSummary | null;
+  /** Every scored round this game, oldest first — survives reconnects. */
+  readonly roundSummaries: readonly RoundSummary[];
   readonly winner: Team | null;
 }
 
@@ -59,6 +61,7 @@ export function viewFor(state: GameState, viewer: Viewer): SeatView {
     roundPoints: state.roundPoints,
     scores: state.scores,
     lastRoundSummary: state.lastRoundSummary,
+    roundSummaries: state.roundSummaries,
     winner: state.winner,
   };
 }

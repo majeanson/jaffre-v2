@@ -25,6 +25,7 @@ function dealRound(
   dealer: Seat,
   scores: readonly [number, number],
   lastRoundSummary: RoundSummary | null = null,
+  roundSummaries: readonly RoundSummary[] = [],
 ): GameState {
   return {
     schemaVersion: 1,
@@ -44,6 +45,7 @@ function dealRound(
     roundPoints: [0, 0],
     scores,
     lastRoundSummary,
+    roundSummaries,
     winner: null,
   };
 }
@@ -186,19 +188,20 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
   };
   events.push({ type: 'round_scored', summary });
 
+  const roundSummaries = [...state.roundSummaries, summary];
   const winner = decideWinner(scores, contractTeam);
 
   if (winner !== null) {
     events.push({ type: 'game_over', winner });
     return {
       ok: true,
-      state: { ...state, phase: 'game_over', scores, lastRoundSummary: summary, winner },
+      state: { ...state, phase: 'game_over', scores, lastRoundSummary: summary, roundSummaries, winner },
       events,
     };
   }
   return {
     ok: true,
-    state: { ...state, phase: 'round_over', scores, lastRoundSummary: summary },
+    state: { ...state, phase: 'round_over', scores, lastRoundSummary: summary, roundSummaries },
     events,
   };
 }
@@ -213,6 +216,7 @@ function advanceRound(state: GameState): Result {
     nextSeat(state.dealer),
     state.scores,
     state.lastRoundSummary,
+    state.roundSummaries,
   );
   return {
     ok: true,

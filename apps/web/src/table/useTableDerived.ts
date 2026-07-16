@@ -1,7 +1,7 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
-import type { BidOption, TeamSpecials, TrickPlayView } from '@jaffre/ui';
+import type { BidOption, ScoreboardRound, TeamSpecials, TrickPlayView } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -28,6 +28,8 @@ export interface ContractDisplay {
   readonly value: number;
   readonly sansAtout: boolean;
   readonly progress: number;
+  /** Bidder's team — colors the bet on the written scoreboard. */
+  readonly team: 0 | 1;
 }
 
 /** The trick result shown while a finished trick is held on the table. */
@@ -66,6 +68,8 @@ export interface TableDerived {
   readonly winnerPosition: 0 | 1 | 2 | 3 | null;
   readonly bidOptions: readonly BidOption[];
   readonly contractDisplay: ContractDisplay | null;
+  /** Finished rounds for the written scoreboard, oldest first. */
+  readonly scoreboardRounds: readonly ScoreboardRound[];
   readonly trickCounts: readonly [number, number];
   /** Specials each team has captured this round (header chips). */
   readonly teamSpecials: readonly [TeamSpecials, TeamSpecials];
@@ -143,8 +147,19 @@ export function useTableDerived(coachOn = false): TableDerived | null {
           value: view.contract.value,
           sansAtout: view.contract.sansAtout,
           progress: view.roundPoints[view.contract.seat % 2] ?? 0,
+          team: (view.contract.seat % 2) as 0 | 1,
         }
       : null;
+
+  const scoreboardRounds: ScoreboardRound[] = view.roundSummaries.map((r) => ({
+    round: r.roundIndex + 1,
+    bidderName: roster.seats[r.contract.seat]?.name ?? 'Player',
+    bidderTeam: (r.contract.seat % 2) as 0 | 1,
+    bid: r.contract.value,
+    sansAtout: r.contract.sansAtout,
+    made: r.contractMade,
+    deltas: r.deltas,
+  }));
 
   const trickCounts: readonly [number, number] = [
     view.capturedTricks.filter((t) => t.winner % 2 === 0).length,
@@ -211,6 +226,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     winnerPosition: heldTrick !== null ? toPosition(heldTrick.winner, viewer) : null,
     bidOptions,
     contractDisplay,
+    scoreboardRounds,
     trickCounts,
     teamSpecials: specialFlags,
     headerAction,

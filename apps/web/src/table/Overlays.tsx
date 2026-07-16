@@ -1,6 +1,5 @@
 import type { SeatView } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
-import { useGameStore } from '../state/gameStore.js';
 import { GameRecap } from './GameRecap.js';
 import { RoundSummaryOverlay } from './RoundSummaryOverlay.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -18,8 +17,6 @@ export interface OverlaysProps {
 
 /** Owns the modal layer: round summary between rounds, game recap at the end. */
 export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: OverlaysProps) {
-  // Every scored round this game — feeds the end-of-game recap.
-  const rounds = useGameStore((s) => s.roundHistory);
   const readySeats = roster.seats.map((s) => s?.ready ?? s?.isBot ?? false);
   return (
     <>
@@ -38,7 +35,7 @@ export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: Over
         <GameRecap
           winner={view.winner as 0 | 1}
           scores={view.scores}
-          rounds={rounds}
+          rounds={view.roundSummaries}
           names={roster.seats.map((s) => s?.name ?? '—')}
           onRematch={onRematch}
           onLeave={onLeave}

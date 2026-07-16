@@ -74,6 +74,8 @@ export interface GameState {
   readonly roundPoints: readonly [number, number];
   readonly scores: readonly [number, number];
   readonly lastRoundSummary: RoundSummary | null;
+  /** Every scored round this game, oldest first — the written scoreboard. */
+  readonly roundSummaries: readonly RoundSummary[];
   readonly winner: Team | null;
 }
 

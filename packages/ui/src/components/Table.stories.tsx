@@ -42,12 +42,42 @@ export const FullTable: Story = () => (
   <div className="mx-auto flex max-w-3xl flex-col items-center gap-6">
     <ScoreStrip
       teamNames={['North + South', 'East + West']}
-      scores={[27, 33]}
+      scores={[18, 16]}
       target={41}
-      contract={{ playerName: 'East', value: 8, sansAtout: true }}
+      contract={{ playerName: 'East', value: 8, sansAtout: true, team: 1 }}
       trump={null}
       trumpDecided
       roundPoints={[3, 4]}
+      currentRound={4}
+      rounds={[
+        {
+          round: 1,
+          bidderName: 'Claudette',
+          bidderTeam: 0,
+          bid: 7,
+          sansAtout: false,
+          made: true,
+          deltas: [9, 5],
+        },
+        {
+          round: 2,
+          bidderName: 'Marcel',
+          bidderTeam: 1,
+          bid: 9,
+          sansAtout: false,
+          made: false,
+          deltas: [5, -9],
+        },
+        {
+          round: 3,
+          bidderName: 'East',
+          bidderTeam: 1,
+          bid: 10,
+          sansAtout: true,
+          made: true,
+          deltas: [4, 20],
+        },
+      ]}
     />
     <div className="grid w-full grid-cols-3 items-center justify-items-center gap-2">
       <span />

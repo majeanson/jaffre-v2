@@ -29,5 +29,10 @@ export function deserialize(json: string): GameState | null {
   ) {
     return null;
   }
+  // States persisted before roundSummaries existed: recover what we can —
+  // the last summary if the state carried one, otherwise an empty pad.
+  if (!Array.isArray(s['roundSummaries'])) {
+    s['roundSummaries'] = s['lastRoundSummary'] != null ? [s['lastRoundSummary']] : [];
+  }
   return parsed as GameState;
 }
