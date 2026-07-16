@@ -1,4 +1,5 @@
 import { GameRoom } from './GameRoom.js';
+import { generateRecoveryCode, hashRecoveryCode } from './auth/recovery.js';
 import { isUsableSecret, mintToken, verifyToken } from './auth/session.js';
 import type { Env } from './env.js';
 
@@ -23,8 +24,15 @@ function noDb(): Response {
   return Response.json({ error: 'History is not configured (no D1 binding)' }, { status: 503 });
 }
 
-/** POST /api/auth/guest {name} → {userId, name, token}. Anonymous-first: no
- * password, just a minted identity the client stores locally. */
+/**
+ * POST /api/auth/guest {name} → {userId, name, token, exp, recoveryCode?}.
+ * Anonymous-first: no password, just a minted identity the client stores
+ * locally. The server token `uid` is the ONE canonical player id:
+ *   - Called WITH a valid Bearer token: re-mints a token for the SAME uid
+ *     (a name change is a rename, not a new identity).
+ *   - Called without one: mints a brand-new uid and a 3-word recovery code
+ *     (hash persisted, plaintext returned exactly this once).
+ */
 async function handleGuestAuth(request: Request, env: Env): Promise<Response> {
   if (!isUsableSecret(env.SESSION_SECRET)) return noSecret();
   let body: unknown;
@@ -41,23 +49,106 @@ async function handleGuestAuth(request: Request, env: Env): Promise<Response> {
     return Response.json({ error: 'name must be 1-20 characters' }, { status: 400 });
   }
   const trimmed = name.trim();
+
+  const existingToken = bearerToken(request);
+  const identity =
+    existingToken !== null ? await verifyToken(existingToken, env.SESSION_SECRET) : null;
+  if (identity !== null) {
+    // Rename-in-place: same uid, fresh token. Best-effort — the row may not
+    // exist (e.g. D1 was down at first mint), and that must not block play.
+    if (env.DB !== undefined) {
+      try {
+        await env.DB.prepare('UPDATE users SET name = ?1 WHERE id = ?2')
+          .bind(trimmed, identity.uid)
+          .run();
+      } catch (err) {
+        console.error('users rename failed', err);
+      }
+    }
+    const exp = Date.now() + SESSION_TTL_MS;
+    const token = await mintToken({ uid: identity.uid, name: trimmed, exp }, env.SESSION_SECRET);
+    return Response.json({ userId: identity.uid, name: trimmed, token, exp });
+  }
+
   const userId = crypto.randomUUID();
+  const recoveryCode = generateRecoveryCode();
+  const recoveryHash = await hashRecoveryCode(recoveryCode);
   // The users row is best-effort: identity is carried by the signed token, so
-  // a missing/failed D1 write must not block the guest from playing.
+  // a missing/failed D1 write must not block the guest from playing — but it
+  // does mean the recovery code would be useless (nothing to look it up
+  // against), so it's only handed back when the insert actually landed.
+  let dbOk = false;
   if (env.DB !== undefined) {
     try {
-      await env.DB.prepare('INSERT INTO users (id, name, created_at) VALUES (?1, ?2, ?3)')
-        .bind(userId, trimmed, Date.now())
+      await env.DB.prepare(
+        'INSERT INTO users (id, name, recovery_hash, created_at) VALUES (?1, ?2, ?3, ?4)',
+      )
+        .bind(userId, trimmed, recoveryHash, Date.now())
         .run();
+      dbOk = true;
     } catch (err) {
       console.error('[users] insert failed', err);
     }
   }
-  const token = await mintToken(
-    { uid: userId, name: trimmed, exp: Date.now() + SESSION_TTL_MS },
-    env.SESSION_SECRET,
-  );
-  return Response.json({ userId, name: trimmed, token });
+  const exp = Date.now() + SESSION_TTL_MS;
+  const token = await mintToken({ uid: userId, name: trimmed, exp }, env.SESSION_SECRET);
+  return Response.json({
+    userId,
+    name: trimmed,
+    token,
+    exp,
+    ...(dbOk ? { recoveryCode } : {}),
+  });
+}
+
+/**
+ * POST /api/auth/recover {code, name?} → same shape as guest (minus
+ * recoveryCode) for the uid whose recovery hash matches. 404 on miss.
+ */
+async function handleRecover(request: Request, env: Env): Promise<Response> {
+  if (!isUsableSecret(env.SESSION_SECRET)) return noSecret();
+  if (env.DB === undefined) return noDb();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Expected a JSON body' }, { status: 400 });
+  }
+  const code =
+    typeof body === 'object' && body !== null && 'code' in body
+      ? (body as { code: unknown }).code
+      : null;
+  if (typeof code !== 'string' || code.length < 1 || code.length > 64) {
+    return Response.json({ error: 'code must be 1-64 characters' }, { status: 400 });
+  }
+  const rawName =
+    typeof body === 'object' && body !== null && 'name' in body
+      ? (body as { name: unknown }).name
+      : null;
+  const name =
+    typeof rawName === 'string' && rawName.trim().length >= 1 && rawName.trim().length <= 20
+      ? rawName.trim()
+      : null;
+
+  const hash = await hashRecoveryCode(code);
+  const row = await env.DB.prepare('SELECT id, name FROM users WHERE recovery_hash = ?1')
+    .bind(hash)
+    .first<{ id: string; name: string }>();
+  if (row === null) return Response.json({ error: 'Unknown recovery code' }, { status: 404 });
+
+  const finalName = name ?? row.name;
+  if (name !== null) {
+    try {
+      await env.DB.prepare('UPDATE users SET name = ?1 WHERE id = ?2')
+        .bind(finalName, row.id)
+        .run();
+    } catch (err) {
+      console.error('users recover-rename failed', err);
+    }
+  }
+  const exp = Date.now() + SESSION_TTL_MS;
+  const token = await mintToken({ uid: row.id, name: finalName, exp }, env.SESSION_SECRET);
+  return Response.json({ userId: row.id, name: finalName, token, exp });
 }
 
 /** GET /api/auth/me — validates the Bearer token, echoes the identity. */
@@ -218,6 +309,9 @@ export default {
 
     if (url.pathname === '/api/auth/guest' && request.method === 'POST') {
       return handleGuestAuth(request, env);
+    }
+    if (url.pathname === '/api/auth/recover' && request.method === 'POST') {
+      return handleRecover(request, env);
     }
     if (url.pathname === '/api/auth/me' && request.method === 'GET') {
       return handleAuthMe(request, env);
