@@ -37,13 +37,17 @@ function ensureCtx(): AudioContext | null {
   return ctx;
 }
 
-// Resume the context on the first user gesture while sound is on.
+// Create/resume the context ONLY inside real user gestures — doing either
+// anywhere else (effects, timers) trips the browser autoplay policy and logs
+// "An AudioContext was prevented from starting automatically".
 if (typeof window !== 'undefined') {
-  const resume = (): void => {
-    if (soundEnabled() && ctx !== null && ctx.state === 'suspended') void ctx.resume();
+  const unlock = (): void => {
+    if (!soundEnabled()) return;
+    const c = ensureCtx();
+    if (c !== null && c.state === 'suspended') void c.resume();
   };
-  window.addEventListener('pointerdown', resume, { passive: true });
-  window.addEventListener('keydown', resume, { passive: true });
+  window.addEventListener('pointerdown', unlock, { passive: true });
+  window.addEventListener('keydown', unlock, { passive: true });
 }
 
 // One shared second of white noise — every card sound is a filtered slice.
@@ -96,12 +100,15 @@ function thump(c: AudioContext, when: number, freq: number, peak: number, tail: 
   osc.stop(when + tail + 0.02);
 }
 
-/** Play one card sound. No-op unless sound is enabled. */
+/**
+ * Play one card sound. No-op unless sound is enabled AND the context is
+ * already running (unlocked by a prior gesture) — never creates or resumes
+ * here, since plays can fire from timers where that would be blocked.
+ */
 export function playClick(kind: ClickKind): void {
   if (!soundEnabled()) return;
-  const c = ensureCtx();
-  if (c === null || master === null) return;
-  if (c.state === 'suspended') void c.resume();
+  const c = ctx;
+  if (c === null || master === null || c.state !== 'running') return;
   const now = c.currentTime;
   switch (kind) {
     case 'deal':
