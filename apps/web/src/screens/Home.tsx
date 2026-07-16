@@ -40,8 +40,10 @@ export function Home({ onPractice, onJoinRoom, helpOpen = false }: HomeProps) {
         />
       </div>
 
+      {/* Solid panel so the chrome text sits on a real background axe can read
+          (bare text over the felt gradient mis-flags for contrast). */}
       <div
-        className="rise-in flex items-center gap-3"
+        className="rise-in flex items-center gap-3 rounded-full border border-white/8 bg-(--color-felt-800) px-4 py-2 shadow-(--shadow-panel)"
         style={{ '--rise-delay': '280ms' } as CSSProperties}
       >
         <HelpButton defaultOpen={helpOpen} />

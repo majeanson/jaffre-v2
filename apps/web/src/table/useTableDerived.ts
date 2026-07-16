@@ -4,6 +4,7 @@ import type { Roster } from '@jaffre/protocol';
 import type { BidOption, TeamSpecials, TrickPlayView } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
+import { teamSpecialsFrom } from './specials.js';
 
 /** Everything a seat chip needs to render, already resolved from game state. */
 export interface SeatChipInfo {
@@ -150,21 +151,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     view.capturedTricks.filter((t) => t.winner % 2 === 1).length,
   ];
 
-  // Which team holds each scoring special this round (derived from the cards
-  // in their captured tricks) — the header calls them out per team.
-  const specialFlags: [TeamSpecials, TeamSpecials] = [
-    { red: false, brown: false },
-    { red: false, brown: false },
-  ];
-  for (const t of view.capturedTricks) {
-    const team = (t.winner % 2) as 0 | 1;
-    for (const c of t.cards) {
-      if (c.suit === 'red' && c.value === 0)
-        specialFlags[team] = { ...specialFlags[team], red: true };
-      if (c.suit === 'brown' && c.value === 0)
-        specialFlags[team] = { ...specialFlags[team], brown: true };
-    }
-  }
+  // Which team holds each scoring special this round — the header calls them out.
+  const specialFlags = teamSpecialsFrom(view.capturedTricks);
 
   // A one-line "what's happening now" for the score-strip center.
   const turnName = view.turn === me ? 'You' : (roster.seats[view.turn]?.name ?? 'Player');

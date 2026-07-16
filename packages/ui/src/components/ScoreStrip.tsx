@@ -39,7 +39,7 @@ export interface ScoreStripProps {
 const shortName = (name: string): string => name.replace(/^team\s+/i, '');
 
 /** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
-function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
+export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
   const isRed = kind === 'red';
   return (
     <span

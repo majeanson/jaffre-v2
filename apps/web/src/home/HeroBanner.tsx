@@ -51,7 +51,7 @@ export function HeroBanner() {
       <h1 className="relative z-10 -mt-[clamp(0.5rem,4.5vmin,3.2rem)] font-display text-[clamp(3.75rem,11vmin,7rem)] leading-none font-semibold tracking-tight text-(--color-lamplight) drop-shadow-[0_2px_0_rgb(0_0_0/0.35)] [text-shadow:0_0.03em_24px_rgb(0_0_0/0.45)]">
         Jaffre
       </h1>
-      <p className="relative z-10 mt-2 max-w-md text-center text-[clamp(0.8rem,1.8vmin,1rem)] text-(--color-ivory)/65">
+      <p className="relative z-10 mt-2 max-w-md text-center text-[clamp(0.8rem,1.8vmin,1rem)] text-(--color-ivory)/75">
         Trick-taking for four. Bid, land the contract, first team to 41.
       </p>
     </header>

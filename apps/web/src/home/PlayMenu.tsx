@@ -139,7 +139,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/25 px-3 py-2.5 text-(--color-ivory) placeholder:text-(--color-ivory)/30 focus:border-(--color-accent)"
+            className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/25 px-3 py-2.5 text-(--color-ivory) placeholder:text-(--color-ivory)/50 focus:border-(--color-accent)"
           />
           <button
             type="submit"

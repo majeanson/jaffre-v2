@@ -1,4 +1,5 @@
 import type { SeatView } from '@jaffre/engine';
+import { SpecialChip, type TeamSpecials } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 
 export interface RoundSummaryOverlayProps {
@@ -6,6 +7,8 @@ export interface RoundSummaryOverlayProps {
   readonly contractName: string;
   /** Player names by absolute seat (team t = seats t and t+2). */
   readonly names: readonly string[];
+  /** Specials captured per team this round (red 0 → +5, brown 0 → −2). */
+  readonly specials: readonly [TeamSpecials, TeamSpecials];
   /** Per-seat readiness for the next round (bots always ready). */
   readonly readySeats: readonly boolean[];
   /** True once YOU are ready (disables the button). */
@@ -13,16 +16,20 @@ export interface RoundSummaryOverlayProps {
   readonly onReady: () => void;
 }
 
+const TEAM_NAME = ['Team Sun', 'Team Moon'] as const;
+const teamColor = (t: 0 | 1): string => `var(--color-team-${t === 0 ? 'a' : 'b'})`;
+
 /**
- * Owns the round-end scoreboard, shown while the table pauses between rounds.
- * It is announced as a modal dialog and takes focus on mount so screen readers
- * land on it, then hands focus back when it auto-dismisses. It never traps
- * focus: there is nothing to interact with and it closes on its own.
+ * Owns the round-end scoreboard shown while the table waits for the next deal.
+ * A modal dialog: it takes focus on mount and hands it back on close. The
+ * headline reads the contract result at a glance; each team card shows its
+ * trick points (with any captured specials called out), delta, and new total.
  */
 export function RoundSummaryOverlay({
   summary,
   contractName,
   names,
+  specials,
   readySeats,
   youReady,
   onReady,
@@ -35,69 +42,105 @@ export function RoundSummaryOverlay({
       if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
     };
   }, []);
-  const team = summary.contract.seat % 2 === 0 ? 'Team Sun' : 'Team Moon';
+
+  const contractTeam = (summary.contract.seat % 2) as 0 | 1;
+  const made = summary.contractMade;
+
   return (
     <div
       ref={ref}
       tabIndex={-1}
-      className="fixed inset-0 z-40 grid place-items-center bg-black/50 outline-none"
+      className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label="Round summary"
     >
-      <div className="w-80 rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 text-center shadow-(--shadow-panel)">
-        <p className="font-display text-xl text-(--color-lamplight)">
+      <div className="w-[23rem] max-w-[92vw] rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 shadow-(--shadow-panel)">
+        <p className="text-center text-[11px] font-semibold tracking-[0.22em] text-(--color-ivory)/70 uppercase">
           Round {summary.roundIndex + 1}
         </p>
-        <p className="mt-2 text-(--color-ivory)">
-          {contractName} ({team}) {summary.contractMade ? 'MADE' : 'FAILED'}{' '}
-          {summary.contract.value}
-          {summary.contract.sansAtout ? ' sans atout' : ''}
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm tabular-nums">
+
+        {/* Contract result headline: ✓/✗, who, made/missed, for which team. */}
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <span
+            className={`grid size-9 shrink-0 place-items-center rounded-full text-xl font-black ${
+              made
+                ? 'bg-(--color-ok)/20 text-(--color-ok)'
+                : 'bg-(--color-danger)/20 text-(--color-danger-text)'
+            }`}
+          >
+            {made ? '✓' : '✗'}
+          </span>
+          <span className="text-left leading-tight">
+            <span className="block font-display text-lg text-(--color-ivory)">
+              {contractName} {made ? 'made' : 'missed'} {summary.contract.value}
+              {summary.contract.sansAtout ? ' SA' : ''}
+            </span>
+            <span
+              className="block text-(length:--text-fluid-xs) font-semibold"
+              style={{ color: teamColor(contractTeam) }}
+            >
+              {TEAM_NAME[contractTeam]}
+            </span>
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm tabular-nums">
           {([0, 1] as const).map((t) => {
-            const won = (summary.deltas[t] ?? 0) >= (summary.deltas[t === 0 ? 1 : 0] ?? 0);
+            const delta = summary.deltas[t] ?? 0;
+            const won = delta >= (summary.deltas[t === 0 ? 1 : 0] ?? 0);
+            const sp = specials[t];
             return (
               <div
                 key={t}
-                className={`rounded-lg bg-black/25 p-2 ${won ? 'ring-2' : 'opacity-80'}`}
-                style={
-                  won
-                    ? { ['--tw-ring-color' as string]: `var(--color-team-${t === 0 ? 'a' : 'b'})` }
-                    : undefined
-                }
+                className={`rounded-lg bg-black/25 p-2.5 ${won ? 'ring-2' : 'border border-white/5'}`}
+                style={won ? { ['--tw-ring-color' as string]: teamColor(t) } : undefined}
               >
                 <p
-                  className="font-semibold"
-                  style={{ color: `var(--color-team-${t === 0 ? 'a' : 'b'})` }}
+                  className="flex items-center justify-center gap-1.5 font-semibold"
+                  style={{ color: teamColor(t) }}
                 >
-                  {t === 0 ? 'Team Sun' : 'Team Moon'}
+                  <span
+                    aria-hidden
+                    className="size-2 rounded-full"
+                    style={{ background: teamColor(t) }}
+                  />
+                  {TEAM_NAME[t]}
                 </p>
-                <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/75">
+                <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ivory)/70">
                   {names[t]} & {names[t + 2]}
                 </p>
-                <p className="text-(--color-ivory)/80">{summary.trickPoints[t]} trick pts</p>
-                <p
-                  className={
-                    (summary.deltas[t] ?? 0) >= 0
-                      ? 'text-(--color-ok)'
-                      : 'text-(--color-danger-text)'
-                  }
-                >
-                  {(summary.deltas[t] ?? 0) >= 0 ? '+' : ''}
-                  {summary.deltas[t]}
+                <p className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-(--color-ivory)/80">
+                  {summary.trickPoints[t]} trick pts
+                  {sp.red && <SpecialChip kind="red" />}
+                  {sp.brown && <SpecialChip kind="brown" />}
                 </p>
-                <p className="font-display text-lg text-(--color-ivory)">{summary.scores[t]}</p>
+                <p
+                  className="mt-1 font-display text-lg font-semibold"
+                  style={{
+                    color: delta >= 0 ? 'var(--color-ok)' : 'var(--color-danger-text)',
+                  }}
+                >
+                  {delta >= 0 ? '+' : ''}
+                  {delta}
+                </p>
+                <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/55">
+                  total{' '}
+                  <span className="font-display text-base text-(--color-ivory)">
+                    {summary.scores[t]}
+                  </span>
+                </p>
               </div>
             );
           })}
         </div>
-        <div className="mt-4 flex flex-col items-center gap-2">
+
+        <div className="mt-5 flex flex-col items-center gap-2">
           <button
             type="button"
             onClick={onReady}
             disabled={youReady}
-            className={`rounded-(--radius-panel) px-8 py-3 font-semibold text-(length:--text-fluid-base) ${
+            className={`w-full rounded-(--radius-panel) px-8 py-3 font-semibold text-(length:--text-fluid-base) ${
               youReady
                 ? 'bg-white/10 text-(--color-ivory)/50'
                 : 'bg-(--color-lamplight) text-(--color-felt-950) hover:brightness-110 active:translate-y-px cursor-pointer'

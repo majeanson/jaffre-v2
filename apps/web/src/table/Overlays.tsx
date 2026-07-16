@@ -3,6 +3,7 @@ import type { Roster } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { GameRecap } from './GameRecap.js';
 import { RoundSummaryOverlay } from './RoundSummaryOverlay.js';
+import { teamSpecialsFrom } from './specials.js';
 
 export interface OverlaysProps {
   readonly view: SeatView;
@@ -27,6 +28,7 @@ export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: Over
           summary={view.lastRoundSummary}
           contractName={roster.seats[view.lastRoundSummary.contract.seat]?.name ?? 'Player'}
           names={roster.seats.map((s) => s?.name ?? '—')}
+          specials={teamSpecialsFrom(view.capturedTricks)}
           readySeats={readySeats}
           youReady={me !== null ? (readySeats[me] ?? false) : true}
           onReady={onReady}
