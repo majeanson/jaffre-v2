@@ -42,7 +42,7 @@ function BetCard({
       onClick={() => {
         if (enabled) onCommit();
       }}
-      className={`relative grid h-24 w-16 shrink-0 place-items-center rounded-xl border-2 font-display shadow-(--shadow-panel) transition-transform hover:-translate-y-1 max-sm:h-16 max-sm:w-11 ${
+      className={`relative grid w-[clamp(2.6rem,7vmin,4.2rem)] aspect-2/3 shrink-0 place-items-center rounded-xl border-2 font-display text-[clamp(0.8rem,2.1vmin,1.3rem)] shadow-(--shadow-panel) transition-transform hover:-translate-y-1 ${
         enabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-40 saturate-50'
       } ${
         pass
@@ -52,9 +52,7 @@ function BetCard({
     >
       <span
         className={
-          pass
-            ? 'text-base font-bold tracking-wide uppercase max-sm:text-xs'
-            : 'text-3xl font-black max-sm:text-xl'
+          pass ? 'text-[0.85em] font-bold tracking-wide uppercase' : 'text-[1.9em] font-black'
         }
       >
         {label}
@@ -62,7 +60,7 @@ function BetCard({
       {!pass && sansAtout && (
         <span
           aria-hidden
-          className="absolute top-1 right-1.5 text-xs text-(--color-lamplight)"
+          className="absolute top-[0.3em] right-[0.4em] text-[0.75em] text-(--color-lamplight)"
           title="Sans atout"
         >
           ★
@@ -90,15 +88,17 @@ export function BetCards({
   const recommendPass = coaching && recommended === null;
 
   return (
-    <div className="inline-flex max-w-full flex-col items-center gap-3 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800)/95 p-4 font-ui shadow-(--shadow-panel) max-sm:p-3">
+    <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800)/95 p-[clamp(0.6rem,1.8vmin,1.1rem)] font-ui shadow-(--shadow-panel)">
       <div className="flex w-full items-center justify-between gap-4">
-        <span className="font-display text-lg text-(--color-lamplight)">Play a bet</span>
+        <span className="font-display text-(length:--text-fluid-lg) text-(--color-lamplight)">
+          Play a bet
+        </span>
         <button
           type="button"
           aria-pressed={sansAtout}
           disabled={disabled}
           onClick={() => setSansAtout((v) => !v)}
-          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+          className={`rounded-lg border px-[0.9em] py-[0.45em] text-(length:--text-fluid-xs) font-semibold ${
             sansAtout
               ? 'border-(--color-lamplight) bg-(--color-lamplight)/15 text-(--color-lamplight)'
               : 'border-white/20 text-(--color-ivory)/80 hover:bg-white/8'
@@ -108,7 +108,7 @@ export function BetCards({
         </button>
       </div>
 
-      <div role="group" aria-label="Bet cards" className="flex items-end gap-2 max-sm:gap-1">
+      <div role="group" aria-label="Bet cards" className="flex items-end gap-[0.9vmin]">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const isRecommended =

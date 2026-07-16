@@ -6,9 +6,10 @@ import { TEAMS } from '../teams.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
-/** Ghost-pill chrome with a per-action tint so each control reads at a glance. */
+/** Ghost-pill chrome with a per-action tint so each control reads at a glance.
+ * Fluid text + em padding: scales with the viewport like the cards. */
 const TINT_BTN =
-  'cursor-pointer whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm hover:bg-white/8';
+  'cursor-pointer whitespace-nowrap rounded-lg border px-[0.9em] py-[0.45em] text-(length:--text-fluid-sm) hover:bg-white/8';
 
 export interface TopBarProps {
   readonly view: SeatView;

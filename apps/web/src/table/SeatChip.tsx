@@ -28,14 +28,14 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
         <span
           data-testid="botswap-countdown"
           role="status"
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-white shadow"
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/80 px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-semibold whitespace-nowrap text-white shadow"
         >
           {secondsLeft > 0 ? `Away — bot in ${formatCountdown(secondsLeft)}` : 'Bot taking over…'}
         </span>
       )}
       {info.bidText !== null && (
         <span
-          className={`absolute -top-3 -right-2 rounded-full px-2 py-0.5 text-[11px] font-bold shadow ${
+          className={`absolute -top-3 -right-2 rounded-full px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-bold shadow ${
             info.isContract
               ? 'bg-(--color-lamplight) text-(--color-felt-950)'
               : 'bg-black/70 text-white/80'

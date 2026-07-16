@@ -108,16 +108,16 @@ function TrickPile({
         {Array.from({ length: shown }, (_, i) => (
           <span
             key={i}
-            className="pop-in inline-block h-5 w-3.5 rounded-[3px] border-[1.5px] bg-(--color-card-back) shadow-sm"
+            className="pop-in inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-[1.5px] bg-(--color-card-back) shadow-sm"
             style={{ borderColor: colorVar }}
           />
         ))}
         {count === 0 && (
-          <span className="inline-block h-5 w-3.5 rounded-[3px] border-[1.5px] border-dashed border-white/20" />
+          <span className="inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-[1.5px] border-dashed border-white/20" />
         )}
       </span>
       <span
-        className="min-w-5 text-center font-display text-sm font-semibold tabular-nums"
+        className="min-w-[1.5em] text-center font-display font-semibold tabular-nums"
         style={{ color: colorVar }}
         aria-hidden
       >
@@ -165,22 +165,26 @@ function TeamSide({
       className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''}`}
     >
       <span className="flex flex-col items-center gap-0.5 leading-none">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full" style={{ background: colorVar }} aria-hidden />
-          <span className="text-[10px] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/70 uppercase">
+        <span className="flex items-center gap-[0.4em]">
+          <span
+            className="size-[0.65em] rounded-full"
+            style={{ background: colorVar }}
+            aria-hidden
+          />
+          <span className="text-[0.72em] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/70 uppercase">
             {name}
           </span>
         </span>
         <span
           data-testid={testId}
-          className="font-display text-2xl font-semibold tabular-nums max-sm:text-xl"
+          className="font-display text-(length:--text-fluid-xl) font-semibold tabular-nums"
           style={{ color: colorVar }}
         >
           <span key={score} className="score-flash inline-block">
             {score}
           </span>
         </span>
-        <span aria-hidden className="h-0.5 w-11 overflow-hidden rounded-full bg-white/10">
+        <span aria-hidden className="h-0.5 w-[3.2em] overflow-hidden rounded-full bg-white/10">
           <span
             className="block h-full rounded-full"
             style={{ width: `${String(pct)}%`, background: colorVar }}
@@ -299,7 +303,7 @@ function ScorePad({
           <caption className="sr-only">Round-by-round scoreboard</caption>
           {cols}
           <thead className="sticky top-0 bg-(--color-felt-800)">
-            <tr className="border-b border-white/15 text-[10px] font-semibold tracking-[0.14em] uppercase">
+            <tr className="border-b border-white/15 text-[0.85em] font-semibold tracking-[0.14em] uppercase">
               <th scope="col" className="py-1.5 pl-3 text-left text-(--color-ivory)/55">
                 Round
               </th>
@@ -374,19 +378,19 @@ function ScorePad({
           {cols}
           <tbody>
             <tr>
-              <td className="py-1.5 pl-3 text-left text-[10px] font-semibold tracking-[0.14em] text-(--color-ivory)/55 uppercase">
+              <td className="py-1.5 pl-3 text-left text-[0.85em] font-semibold tracking-[0.14em] text-(--color-ivory)/55 uppercase">
                 Total
               </td>
               {([0, 1] as const).map((team) => (
                 <td
                   key={team}
-                  className="py-1.5 text-center text-base font-semibold"
+                  className="py-1.5 text-center text-[1.3em] font-semibold"
                   style={{ color: TEAM_VARS[team] }}
                 >
                   {scores[team]}
                 </td>
               ))}
-              <td className="py-1.5 pr-3 text-right text-[10px] text-(--color-ivory)/55">
+              <td className="py-1.5 pr-3 text-right text-[0.85em] text-(--color-ivory)/55">
                 first to {target}
               </td>
             </tr>
@@ -402,7 +406,7 @@ function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecide
   if (!trumpDecided) return null;
   if (trump === null) {
     return (
-      <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-(--color-ivory)/85 uppercase">
+      <span className="rounded-md bg-white/10 px-[0.5em] py-[0.15em] text-[0.7em] font-bold tracking-wide text-(--color-ivory)/85 uppercase">
         No&nbsp;trump
       </span>
     );
@@ -411,7 +415,7 @@ function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecide
   return (
     <span
       title={`Trump: ${style.label}`}
-      className="grid size-6 place-items-center rounded-md border text-lg leading-none font-bold"
+      className="grid size-[1.7em] place-items-center rounded-md border text-[1.2em] leading-none font-bold"
       style={{ color: style.color, borderColor: style.color, background: `${style.color}22` }}
     >
       {style.glyph}
@@ -445,7 +449,7 @@ export function ScoreStrip({
   const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
-    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/90 font-ui text-sm shadow-(--shadow-panel)">
+    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/90 font-ui text-(length:--text-fluid-sm) shadow-(--shadow-panel)">
       <button
         type="button"
         aria-expanded={open}
@@ -469,13 +473,13 @@ export function ScoreStrip({
         {/* Center: the live state — action, bet, trump. No filler. */}
         <span className="flex min-w-0 flex-col items-center gap-1 px-1 leading-none">
           {action !== undefined && (
-            <span className="text-[9px] font-semibold tracking-[0.16em] whitespace-nowrap text-(--color-ivory)/55 uppercase max-sm:hidden">
+            <span className="text-[0.68em] font-semibold tracking-[0.16em] whitespace-nowrap text-(--color-ivory)/55 uppercase max-sm:hidden">
               {action}
             </span>
           )}
           <span className="flex min-w-0 items-center gap-2">
             {contract !== null ? (
-              <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory) tabular-nums max-sm:text-xs">
+              <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory) tabular-nums">
                 <span className="truncate">
                   {contract.playerName} {contract.value}
                   {contract.sansAtout ? ' SA' : ''}
@@ -487,7 +491,9 @@ export function ScoreStrip({
                 )}
               </span>
             ) : (
-              <span className="text-xs whitespace-nowrap text-(--color-ivory)/70">no bet yet</span>
+              <span className="text-[0.85em] whitespace-nowrap text-(--color-ivory)/70">
+                no bet yet
+              </span>
             )}
             <TrumpBadge trump={trump} trumpDecided={trumpDecided} />
           </span>
@@ -507,7 +513,7 @@ export function ScoreStrip({
           />
           <span
             aria-hidden
-            className={`grid size-6 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70 transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`grid size-[1.7em] shrink-0 place-items-center rounded-full border border-white/15 text-[0.7em] text-(--color-ivory)/70 transition-transform ${open ? 'rotate-180' : ''}`}
           >
             ▾
           </span>
@@ -515,7 +521,7 @@ export function ScoreStrip({
       </button>
 
       {open && (
-        <div className="flex flex-col items-center gap-3 border-t border-white/8 px-4 pt-3 pb-4 text-xs">
+        <div className="flex flex-col items-center gap-3 border-t border-white/8 px-4 pt-3 pb-4 text-(length:--text-fluid-xs)">
           <ScorePad
             teamNames={teamNames}
             scores={scores}

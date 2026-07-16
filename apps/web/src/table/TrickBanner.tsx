@@ -17,29 +17,30 @@ export function TrickBanner({ banner }: TrickBannerProps) {
       data-testid="trick-banner"
       className={`absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 ${special ? 'special-burst' : 'pop-in'}`}
     >
+      {/* Fluid: root font scales with the viewport, internals in em. */}
       <div
-        className="flex items-center gap-4 rounded-2xl border-2 bg-black/80 px-5 py-3 shadow-(--shadow-panel) max-sm:gap-3 max-sm:px-4 max-sm:py-2"
+        className="flex items-center gap-[1em] rounded-2xl border-2 bg-black/80 px-[1.2em] py-[0.7em] text-(length:--text-fluid-base) shadow-(--shadow-panel)"
         style={{ borderColor: team.color }}
       >
         <span
-          className="grid size-14 shrink-0 place-items-center rounded-xl font-display text-2xl font-black text-(--color-felt-950) max-sm:size-11 max-sm:text-xl"
+          className="grid size-[3.2em] shrink-0 place-items-center rounded-xl font-display text-[1.5em] font-black text-(--color-felt-950)"
           style={{ background: team.color }}
         >
           {banner.points > 0 ? '+' : ''}
           {banner.points}
         </span>
         <span className="flex flex-col leading-tight">
-          <span className="font-display text-xl text-white max-sm:text-lg">
+          <span className="font-display text-[1.25em] text-white">
             {banner.isYou ? 'You take the trick!' : `${banner.winnerName} takes the trick`}
           </span>
-          <span className="text-sm font-semibold max-sm:text-xs" style={{ color: team.color }}>
+          <span className="text-[0.85em] font-semibold" style={{ color: team.color }}>
             for {team.label}
             {/* Dark badge + suit border: a suit-color FILL can't carry
                 AA-readable 11px text (brown especially). */}
             {banner.specials.map((s) => (
               <span
                 key={s}
-                className={`ml-2 rounded-full border-2 bg-black/60 px-2 py-px text-[11px] font-black text-white ${
+                className={`ml-2 rounded-full border-2 bg-black/60 px-[0.6em] py-px text-[0.8em] font-black text-white ${
                   s === 'red_zero' ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
                 }`}
               >
