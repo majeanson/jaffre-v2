@@ -1,7 +1,8 @@
 import { chooseAction } from '@jaffre/bots';
-import type { GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
+import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
 import { applyAction, createGame, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
+import type { HistoryGame, ReplayData } from '../net/history.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
 import type { SceneId, SceneMeta } from './sceneManifest.js';
@@ -104,6 +105,55 @@ function drive(until: (state: GameState, lastEvents: readonly GameEvent[]) => bo
   }
   return { state, lastEvents, summaries };
 }
+
+/** A full seeded game as a (seed, actions) log — feeds the replay scene. */
+function buildDemoReplay(): ReplayData {
+  const rng = mulberry32(SEED ^ 0xb07);
+  let state = createGame(SEED);
+  const actions: Action[] = [];
+  for (let i = 0; i < 5000 && state.phase !== 'game_over'; i++) {
+    const action =
+      state.phase === 'round_over'
+        ? ({ type: 'continue' } as const)
+        : chooseAction(viewFor(state, state.turn), rng);
+    if (action === null) break;
+    const result = applyAction(state, action);
+    if (!result.ok) break;
+    actions.push(action);
+    state = result.state;
+  }
+  return { seed: SEED, actions };
+}
+
+/** Staged history rows for the "Your games" scene (fixed dates → deterministic). */
+export const DEMO_HISTORY: readonly HistoryGame[] = [
+  {
+    id: 'demo-1',
+    roomCode: 'salon',
+    finishedAt: 1_752_000_000_000,
+    winnerTeam: 0,
+    scores: [41, 33],
+    yourSeat: 0,
+  },
+  {
+    id: 'demo-2',
+    roomCode: 'kitchen',
+    finishedAt: 1_751_800_000_000,
+    winnerTeam: 1,
+    scores: [28, 44],
+    yourSeat: 0,
+  },
+  {
+    id: 'demo-3',
+    roomCode: 'cabin',
+    finishedAt: 1_751_600_000_000,
+    winnerTeam: 0,
+    scores: [42, 19],
+    yourSeat: 2,
+  },
+];
+
+export const DEMO_REPLAY: ReplayData = buildDemoReplay();
 
 export type Scene = SceneMeta & { readonly load: () => void };
 
@@ -213,6 +263,12 @@ const LOADERS: Record<SceneId, () => void> = {
     roster: READY_ROSTER,
   }),
   'game-over': gameScene('game-over', (s) => s.phase === 'game_over'),
+  // History/Replay render their own screens from demo props (not the store),
+  // so their loaders are no-ops — resetting here would race Replay's own
+  // frame injection (child effects run before this parent effect).
+  history: () => undefined,
+  'history-empty': () => undefined,
+  replay: () => undefined,
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

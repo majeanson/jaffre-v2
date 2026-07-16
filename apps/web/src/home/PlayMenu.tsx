@@ -163,6 +163,17 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
           <span className="font-semibold tracking-wide text-(--color-lamplight)">{resumeCode}</span>
         </a>
       )}
+
+      <a
+        href="#history"
+        className="rise-in flex items-center justify-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ivory)/70 hover:text-(--color-ivory) sm:col-span-2"
+        style={{ '--rise-delay': '300ms' } as CSSProperties}
+      >
+        <span aria-hidden className="text-(--color-lamplight)">
+          ♠
+        </span>
+        Your games
+      </a>
     </section>
   );
 }

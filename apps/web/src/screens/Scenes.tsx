@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { SCENES } from '../dev/scenes.js';
+import { DEMO_HISTORY, DEMO_REPLAY, SCENES } from '../dev/scenes.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import { History } from './History.js';
 import { Home } from './Home.js';
 import { Lobby } from './Lobby.js';
+import { Replay } from './Replay.js';
 import { Table } from './Table.js';
 
 export interface ScenesProps {
@@ -52,6 +54,16 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         />
       )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
+      {current.screen === 'history' && (
+        <History
+          key={current.id}
+          demoGames={current.id === 'history-empty' ? [] : DEMO_HISTORY}
+          onLeave={onLeave}
+        />
+      )}
+      {current.screen === 'replay' && (
+        <Replay key={current.id} gameId={null} demo={DEMO_REPLAY} onLeave={onLeave} />
+      )}
       {current.screen === 'table' && (
         <Table
           key={current.id}

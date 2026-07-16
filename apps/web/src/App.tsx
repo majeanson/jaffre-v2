@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
+import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
+import { Replay } from './screens/Replay.js';
 import { Scenes } from './screens/Scenes.js';
 import { Table } from './screens/Table.js';
 import { useGameStore } from './state/gameStore.js';
@@ -11,7 +13,9 @@ type Route =
   | { kind: 'home' }
   | { kind: 'practice'; seed: number | null }
   | { kind: 'room'; code: string }
-  | { kind: 'scenes'; id: string | null };
+  | { kind: 'scenes'; id: string | null }
+  | { kind: 'history' }
+  | { kind: 'replay'; gameId: string };
 
 function parseHash(): Route {
   const h = location.hash;
@@ -24,6 +28,9 @@ function parseHash(): Route {
   // '#scenes[/<id>]' — live-through every game phase instantly (design/dev tool).
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
+  if (h === '#history') return { kind: 'history' };
+  const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
+  if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
   return { kind: 'home' };
 }
 
@@ -63,6 +70,12 @@ export function App() {
   }
   if (route.kind === 'scenes') {
     return <Scenes sceneId={route.id} onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'history') {
+    return <History onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'replay') {
+    return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;
   }
   if (route.kind === 'room') {
     return started ? (
