@@ -117,7 +117,18 @@ export const useGameStore = create<GameStore>((set) => ({
   setSweep: (position) => set({ sweepTo: position }),
   clearHeldTrick: () => set({ heldTrick: null, sweepTo: null }),
   setRoster: (roster) => set({ roster }),
-  addChat: (entry) => set((s) => ({ chat: [...s.chat.slice(-99), entry] })),
+  addChat: (entry) =>
+    set((s) => {
+      // Idempotent: the same entry can be delivered more than once (relayed to
+      // several sockets for one user, replayed on reconnect, or already present
+      // in the welcome chatTail). Dedupe by (from, at, text) — the throttle
+      // guarantees genuine messages differ in `at`, so this never drops a real
+      // one. Fixes chat messages rendering multiple times.
+      if (s.chat.some((e) => e.at === entry.at && e.from === entry.from && e.text === entry.text)) {
+        return {};
+      }
+      return { chat: [...s.chat.slice(-99), entry] };
+    }),
   reset: () =>
     set({
       connection: 'idle',
