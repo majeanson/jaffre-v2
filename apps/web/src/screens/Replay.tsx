@@ -7,16 +7,22 @@ import { Table } from './Table.js';
 import type { Viewer } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 
-/** Names are not in the replay data — seats read as Player 1–4 (viewer = You). */
-const REPLAY_ROSTER: Roster = {
-  seats: [0, 1, 2, 3].map((i) => ({
-    name: `Player ${String(i + 1)}`,
-    isBot: false,
-    connected: true,
-  })),
-  spectators: 0,
-  started: true,
-};
+/** Roster from the game's stored players — falls back to "Player N" for any
+ * seat the server didn't have a name for (older rows predating M10). */
+function rosterFromPlayers(players: ReplayData['players']): Roster {
+  return {
+    seats: [0, 1, 2, 3].map((i) => {
+      const p = players?.find((pl) => pl.seat === i);
+      return {
+        name: p?.name ?? `Player ${String(i + 1)}`,
+        isBot: p?.isBot ?? false,
+        connected: true,
+      };
+    }),
+    spectators: 0,
+    started: true,
+  };
+}
 
 const STEP_MS = 800;
 
@@ -28,10 +34,10 @@ export interface ReplayProps {
 }
 
 /** Push one replay frame into the store, exactly as the network layer would. */
-function injectFrame(frame: ReplayFrame, viewer: Viewer, seq: number): void {
+function injectFrame(frame: ReplayFrame, viewer: Viewer, seq: number, roster: Roster): void {
   const store = useGameStore.getState();
   store.reset();
-  store.welcome(viewer, frame.view, seq, REPLAY_ROSTER, []);
+  store.welcome(viewer, frame.view, seq, roster, []);
   if (frame.summaries.length > 0) {
     store.applyEvents(
       frame.summaries.map((summary) => ({ type: 'round_scored' as const, summary })),
@@ -74,11 +80,12 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
 
   const last = Math.max(0, frames.length - 1);
   const clamped = Math.min(idx, last);
+  const roster = useMemo(() => rosterFromPlayers(data?.players), [data]);
 
   useEffect(() => {
     const frame = frames[clamped];
-    if (frame !== undefined) injectFrame(frame, viewer, clamped);
-  }, [frames, clamped, viewer]);
+    if (frame !== undefined) injectFrame(frame, viewer, clamped, roster);
+  }, [frames, clamped, viewer, roster]);
 
   useEffect(() => {
     if (!playing) return undefined;

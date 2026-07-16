@@ -2,7 +2,7 @@ import { chooseAction } from '@jaffre/bots';
 import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
-import type { HistoryGame, ReplayData } from '../net/history.js';
+import type { HistoryGame, ReplayData, Stats } from '../net/history.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
 import type { SceneId, SceneMeta } from './sceneManifest.js';
@@ -140,6 +140,20 @@ function buildDemoReplay(): ReplayData {
   return { seed: SEED, actions };
 }
 
+const DEMO_PLAYERS_SEAT0 = [
+  { seat: 0, name: 'You', isBot: false },
+  { seat: 1, name: 'Marcel', isBot: true },
+  { seat: 2, name: 'Ginette', isBot: false },
+  { seat: 3, name: 'Réal', isBot: true },
+];
+
+const DEMO_PLAYERS_SEAT2 = [
+  { seat: 0, name: 'Marcel', isBot: true },
+  { seat: 1, name: 'Réal', isBot: true },
+  { seat: 2, name: 'You', isBot: false },
+  { seat: 3, name: 'Ginette', isBot: false },
+];
+
 /** Staged history rows for the "Your games" scene (fixed dates → deterministic). */
 export const DEMO_HISTORY: readonly HistoryGame[] = [
   {
@@ -149,6 +163,7 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     winnerTeam: 0,
     scores: [41, 33],
     yourSeat: 0,
+    players: DEMO_PLAYERS_SEAT0,
   },
   {
     id: 'demo-2',
@@ -157,6 +172,7 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     winnerTeam: 1,
     scores: [28, 44],
     yourSeat: 0,
+    players: DEMO_PLAYERS_SEAT0,
   },
   {
     id: 'demo-3',
@@ -165,10 +181,22 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     winnerTeam: 0,
     scores: [42, 19],
     yourSeat: 2,
+    players: DEMO_PLAYERS_SEAT2,
   },
 ];
 
-export const DEMO_REPLAY: ReplayData = buildDemoReplay();
+export const DEMO_REPLAY: ReplayData = { ...buildDemoReplay(), players: DEMO_PLAYERS_SEAT0 };
+
+/** Staged "Your record" data for the stats scene. */
+export const DEMO_STATS: Stats = {
+  games: 14,
+  wins: 9,
+  winRate: 9 / 14,
+  bids: { attempted: 6, made: 4 },
+  sansAtout: { attempted: 2, made: 1 },
+  bestPartner: { name: 'Ginette', games: 6, wins: 4 },
+  streak: { current: 3, best: 5 },
+};
 
 export type Scene = SceneMeta & { readonly load: () => void };
 
@@ -287,11 +315,13 @@ const LOADERS: Record<SceneId, () => void> = {
     roster: READY_ROSTER,
   }),
   'game-over': gameScene('game-over', (s) => s.phase === 'game_over'),
-  // History/Replay render their own screens from demo props (not the store),
-  // so their loaders are no-ops — resetting here would race Replay's own
-  // frame injection (child effects run before this parent effect).
+  // History/Stats/Replay render their own screens from demo props (not the
+  // store), so their loaders are no-ops — resetting here would race Replay's
+  // own frame injection (child effects run before this parent effect).
   history: () => undefined,
   'history-empty': () => undefined,
+  stats: () => undefined,
+  'stats-empty': () => undefined,
   replay: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
 };

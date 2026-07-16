@@ -1,3 +1,4 @@
+import type { RoundSummary } from '@jaffre/engine';
 import { GameRoom } from './GameRoom.js';
 import { generateRecoveryCode, hashRecoveryCode } from './auth/recovery.js';
 import { isUsableSecret, mintToken, verifyToken } from './auth/session.js';
@@ -163,17 +164,66 @@ async function handleAuthMe(request: Request, env: Env): Promise<Response> {
   return Response.json({ userId: identity.uid, name: identity.name });
 }
 
+/**
+ * The uid a history/stats request is scoped to: a verified Bearer token when
+ * one is present, else the `?u=` fallback (mirrors the WS no-secret path).
+ * Returns `undefined` on an explicitly invalid token (caller should 401),
+ * `null` when no identity was supplied at all (caller should 400).
+ */
+async function resolveUserId(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<string | null | undefined> {
+  const token = bearerToken(request);
+  if (token !== null && isUsableSecret(env.SESSION_SECRET)) {
+    const uid = (await verifyToken(token, env.SESSION_SECRET))?.uid ?? null;
+    return uid ?? undefined;
+  }
+  return url.searchParams.get('u');
+}
+
+interface GamePlayer {
+  readonly seat: number;
+  readonly name: string;
+  readonly isBot: boolean;
+  readonly userId: string | null;
+}
+
+/** {seat, name, isBot, userId}[] per game_id, ordered by seat — shared by
+ * history, replay and stats (userId is dropped before it reaches the client
+ * in the history/replay responses; stats needs it for the partner lookup). */
+async function playersByGame(
+  env: Env,
+  gameIds: readonly string[],
+): Promise<Map<string, GamePlayer[]>> {
+  const map = new Map<string, GamePlayer[]>();
+  if (gameIds.length === 0 || env.DB === undefined) return map;
+  const placeholders = gameIds.map((_, i) => `?${String(i + 1)}`).join(', ');
+  const rows = await env.DB.prepare(
+    `SELECT game_id, seat, name, is_bot, user_id FROM game_players WHERE game_id IN (${placeholders}) ORDER BY seat`,
+  )
+    .bind(...gameIds)
+    .all<{
+      game_id: string;
+      seat: number;
+      name: string | null;
+      is_bot: number;
+      user_id: string | null;
+    }>();
+  for (const r of rows.results) {
+    const list = map.get(r.game_id) ?? [];
+    list.push({ seat: r.seat, name: r.name ?? 'Player', isBot: r.is_bot === 1, userId: r.user_id });
+    map.set(r.game_id, list);
+  }
+  return map;
+}
+
 /** GET /api/history?u=<userId> (or Bearer token) → last 20 finished games. */
 async function handleHistory(request: Request, env: Env, url: URL): Promise<Response> {
   if (env.DB === undefined) return noDb();
-  let userId: string | null = null;
-  const token = bearerToken(request);
-  if (token !== null && isUsableSecret(env.SESSION_SECRET)) {
-    userId = (await verifyToken(token, env.SESSION_SECRET))?.uid ?? null;
-    if (userId === null) return Response.json({ error: 'Invalid token' }, { status: 401 });
-  } else {
-    userId = url.searchParams.get('u');
-  }
+  const userId = await resolveUserId(request, env, url);
+  if (userId === undefined) return Response.json({ error: 'Invalid token' }, { status: 401 });
   if (userId === null || userId === '') {
     return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
   }
@@ -194,6 +244,10 @@ async function handleHistory(request: Request, env: Env, url: URL): Promise<Resp
       score_1: number | null;
       seat: number;
     }>();
+  const players = await playersByGame(
+    env,
+    rows.results.map((r) => r.id),
+  );
   return Response.json({
     games: rows.results.map((r) => ({
       id: r.id,
@@ -202,20 +256,136 @@ async function handleHistory(request: Request, env: Env, url: URL): Promise<Resp
       winnerTeam: r.winner_team,
       scores: [r.score_0, r.score_1],
       yourSeat: r.seat,
+      players: (players.get(r.id) ?? []).map((p) => ({
+        seat: p.seat,
+        name: p.name,
+        isBot: p.isBot,
+      })),
     })),
   });
 }
 
-/** GET /api/replay/:gameId → {seed, actions}. */
+/** GET /api/replay/:gameId → {seed, actions, players}. */
 async function handleReplay(env: Env, gameId: string): Promise<Response> {
   if (env.DB === undefined) return noDb();
   const row = await env.DB.prepare('SELECT seed, action_log FROM games WHERE id = ?1')
     .bind(gameId)
     .first<{ seed: number; action_log: string | null }>();
   if (row === null) return Response.json({ error: 'Unknown game' }, { status: 404 });
+  const players = await playersByGame(env, [gameId]);
   return Response.json({
     seed: row.seed,
     actions: row.action_log !== null ? (JSON.parse(row.action_log) as unknown) : [],
+    players: (players.get(gameId) ?? []).map((p) => ({
+      seat: p.seat,
+      name: p.name,
+      isBot: p.isBot,
+    })),
+  });
+}
+
+interface StatsRow {
+  readonly id: string;
+  readonly finished_at: number | null;
+  readonly winner_team: number | null;
+  readonly round_summaries: string | null;
+  readonly seat: number;
+}
+
+const EMPTY_STATS = {
+  games: 0,
+  wins: 0,
+  winRate: 0,
+  bids: { attempted: 0, made: 0 },
+  sansAtout: { attempted: 0, made: 0 },
+  bestPartner: null,
+  streak: { current: 0, best: 0 },
+};
+
+/**
+ * GET /api/stats?u=<userId> (or Bearer token) → aggregate record for that
+ * player, computed in JS from their finished games (kept out of SQL since
+ * bid/sans-atout stats require parsing each game's round_summaries JSON).
+ */
+async function handleStats(request: Request, env: Env, url: URL): Promise<Response> {
+  if (env.DB === undefined) return noDb();
+  const userId = await resolveUserId(request, env, url);
+  if (userId === undefined) return Response.json({ error: 'Invalid token' }, { status: 401 });
+  if (userId === null || userId === '') {
+    return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
+  }
+  // Ascending by finished_at: the streak walk needs oldest-first so the
+  // running count at the end of the loop IS the current (trailing) streak.
+  const rows = await env.DB.prepare(
+    `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, gp.seat
+     FROM games g JOIN game_players gp ON gp.game_id = g.id
+     WHERE gp.user_id = ?1 AND g.finished_at IS NOT NULL
+     ORDER BY g.finished_at ASC`,
+  )
+    .bind(userId)
+    .all<StatsRow>();
+  const games = rows.results;
+  if (games.length === 0) return Response.json(EMPTY_STATS);
+
+  const players = await playersByGame(
+    env,
+    games.map((g) => g.id),
+  );
+
+  let wins = 0;
+  let bidsAttempted = 0;
+  let bidsMade = 0;
+  let saAttempted = 0;
+  let saMade = 0;
+  let running = 0;
+  let best = 0;
+  const partners = new Map<string, { name: string; games: number; wins: number }>();
+
+  for (const g of games) {
+    const yourTeam = g.seat % 2;
+    const won = g.winner_team !== null && g.winner_team === yourTeam;
+    if (won) wins++;
+    running = won ? running + 1 : 0;
+    best = Math.max(best, running);
+
+    if (g.round_summaries !== null) {
+      const summaries = JSON.parse(g.round_summaries) as readonly RoundSummary[];
+      for (const s of summaries) {
+        if (s.contract.seat !== g.seat) continue;
+        bidsAttempted++;
+        if (s.contractMade) bidsMade++;
+        if (s.contract.sansAtout) {
+          saAttempted++;
+          if (s.contractMade) saMade++;
+        }
+      }
+    }
+
+    const teammate = (players.get(g.id) ?? []).find(
+      (p) => p.seat % 2 === yourTeam && p.seat !== g.seat && !p.isBot && p.userId !== null,
+    );
+    if (teammate?.userId !== null && teammate !== undefined) {
+      const entry = partners.get(teammate.userId) ?? { name: teammate.name, games: 0, wins: 0 };
+      entry.games++;
+      if (won) entry.wins++;
+      partners.set(teammate.userId, entry);
+    }
+  }
+
+  let bestPartner: { name: string; games: number; wins: number } | null = null;
+  for (const entry of partners.values()) {
+    if (entry.games < 2) continue;
+    if (bestPartner === null || entry.wins > bestPartner.wins) bestPartner = entry;
+  }
+
+  return Response.json({
+    games: games.length,
+    wins,
+    winRate: wins / games.length,
+    bids: { attempted: bidsAttempted, made: bidsMade },
+    sansAtout: { attempted: saAttempted, made: saMade },
+    bestPartner,
+    streak: { current: running, best },
   });
 }
 
@@ -318,6 +488,9 @@ export default {
     }
     if (url.pathname === '/api/history' && request.method === 'GET') {
       return handleHistory(request, env, url);
+    }
+    if (url.pathname === '/api/stats' && request.method === 'GET') {
+      return handleStats(request, env, url);
     }
     const replayMatch = /^\/api\/replay\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname);
     if (replayMatch !== null && request.method === 'GET') {

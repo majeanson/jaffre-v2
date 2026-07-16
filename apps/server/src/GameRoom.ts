@@ -599,6 +599,7 @@ export class GameRoom implements DurableObject {
         roomCode: this.meta.roomCode ?? 'unknown',
         startedAt: this.meta.startedAt ?? null,
         seats: this.meta.seats,
+        names: this.meta.names,
       },
       game,
       [...stored.values()],
@@ -607,8 +608,8 @@ export class GameRoom implements DurableObject {
     await db.batch([
       db
         .prepare(
-          `INSERT INTO games (id, room_code, seed, started_at, finished_at, winner_team, score_0, score_1, action_log)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+          `INSERT INTO games (id, room_code, seed, started_at, finished_at, winner_team, score_0, score_1, action_log, round_summaries)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
         )
         .bind(
           record.id,
@@ -620,13 +621,14 @@ export class GameRoom implements DurableObject {
           record.score_0,
           record.score_1,
           record.action_log,
+          record.round_summaries,
         ),
       ...record.players.map((p) =>
         db
           .prepare(
-            'INSERT INTO game_players (game_id, seat, user_id, is_bot) VALUES (?1, ?2, ?3, ?4)',
+            'INSERT INTO game_players (game_id, seat, user_id, is_bot, name) VALUES (?1, ?2, ?3, ?4, ?5)',
           )
-          .bind(record.id, p.seat, p.user_id, p.is_bot),
+          .bind(record.id, p.seat, p.user_id, p.is_bot, p.name),
       ),
     ]);
   }

@@ -4,7 +4,7 @@
  * the store here would drag the whole app into the test runner.
  */
 
-export type SceneScreen = 'table' | 'home' | 'lobby' | 'history' | 'replay' | 'visitor';
+export type SceneScreen = 'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -193,6 +193,18 @@ export const SCENE_METAS = [
     label: 'Your games — empty',
     screen: 'history',
     probe: 'text=No finished games yet',
+  },
+  {
+    id: 'stats',
+    label: 'Your record — stats',
+    screen: 'stats',
+    probe: 'role=heading[name="Your record"]',
+  },
+  {
+    id: 'stats-empty',
+    label: 'Your record — empty',
+    screen: 'stats',
+    probe: 'text=No games yet',
   },
   {
     id: 'replay',
