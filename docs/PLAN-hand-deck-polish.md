@@ -166,6 +166,95 @@ result read at a glance and match the new header language:
 - Keep it AA (dark dialog panel is themed felt, so ivory is OK there; only the
   permanently-dark pills need white — see the light-skin rule below).
 
+## Workstream F — card-based bidding ("play a bet card")
+
+Reuse the card mechanic for the auction so bidding feels like the rest of the
+game and it's obvious who bet what. Instead of the current bid buttons, the
+player **plays a bet card**: a small fan/row of value cards `7 8 9 10 11 12`
+plus a `Pass` card. A **sans-atout toggle** adds a star (★) to the chosen card
+so the declaration reads at a glance. The played bet card then sits by the
+bidder's seat (like the trick cards) so every player sees the standing bids.
+
+- **Same card component, different skin**: extend `PlayingCard` (or a thin
+  `BetCard` wrapper) with a "bet" variant — no suit glyph; a big value, a
+  `Pass` face, and a ★ badge when sans-atout is on. Keep the deal/hover/lift
+  and (once built) the click sound, so it feels identical to playing a card.
+- **Selection UX**: tap a value card to bid it; a persistent SA toggle
+  (star button) flips sans-atout before you commit; illegal bids (below the
+  current high bid) use the new punchy disabled state (Workstream A). Confirm
+  by playing the card (drag-up or tap), mirroring the play gesture.
+- **Show the bids on the table**: render each seat's bet card near its seat
+  chip during the auction (the bid bubble becomes an actual mini bet card).
+  This replaces the text bubble (`bidText` in `SeatChip`) with a `BetCard`.
+- Keeps the engine unchanged — still emits `place_bid` with `{value,
+sansAtout}` / `pass`. This is purely a presentation swap of `BidOverlay` /
+  `BidPanel`.
+
+Files: `apps/web/src/table/BidOverlay.tsx`, `packages/ui/src/components/
+BidPanel.tsx` (→ card row), new `packages/ui/src/components/BetCard.tsx` (or a
+`PlayingCard` bet variant), `SeatChip.tsx` (bid bubble → mini bet card),
+`useTableDerived.ts` (`bidOptions` already carries `{value, sansAtout}`; add a
+per-seat "played bet card" view). New scenes: `bet-cards` (auction, your turn
+— the bet-card fan + SA toggle) and update `auction-wait` to show seats'
+bet cards. Bots' bids render as bet cards too.
+
+## Workstream G — take over a bot mid-game (human replaces a bot)
+
+Let a person joining a room in progress **sit into a bot's seat** and take
+control, instead of only spectating. The engine is owner-agnostic — a seat is
+just `meta.seats[seat]` — so this is a room-state swap, essentially the inverse
+of the existing disconnect bot-swap.
+
+- **Server** (`apps/server/src/GameRoom.ts` `onSit`): today sitting an occupied
+  seat returns `SEAT_TAKEN`. Allow sitting a **bot-owned** seat: set
+  `meta.seats[seat] = att.userId`, clear any `disconnectedSince` for it,
+  persist, broadcast roster, and send the taker a fresh `welcome` (their new
+  seat view + hand). The seat's hand/tricks/turn all carry over untouched. On
+  that seat's turn the alarm now sees a connected human and waits (no bot move)
+  — already handled by `isBotOwner`/`disconnectDeadline` logic.
+- **Client**: in the roster, show bot seats as **"Take over"** targets (a button
+  on the seat, or via the existing `SeatPicker` in the lobby extended to the
+  in-game roster). Reuse the `{t:'sit', seat}` message. Confirm the taker
+  immediately sees the bot's hand.
+- **Visitor landing page**: when you arrive at a room that's already in progress
+  (viewer = spectator), show a clear **"Visitor" screen** first instead of
+  dropping you straight onto the felt — the table state at a glance (who's
+  playing, scores, which seats are bots) with primary actions: **Replace a bot**
+  (per bot seat: "Take Bot 2's seat"), **Watch** (continue as spectator), and
+  **Leave**. This is the natural home for the take-over affordance. It's a new
+  route/screen shown when `viewer === 'spectator' && roster.started`, sitting
+  between the Lobby (not started) and the Table (you're seated). New
+  `apps/web/src/screens/Visitor.tsx`; `App.tsx` chooses it for a started room
+  when you're not seated. New scene: `visitor`.
+- **Edge cases**: only allow while `started` and not `game_over`; disallow
+  taking a seat a _connected human_ already holds (keep `SEAT_TAKEN` for those);
+  decide whether taking over is open to any spectator or gated (open for now).
+  Difficulty label on the seat disappears once a human owns it.
+- Symmetric nicety: the reverse ("hand my seat to a bot / leave and let a bot
+  finish") already exists via disconnect → bot-swap; optionally add an explicit
+  "add bot to my seat" later.
+
+Files: `GameRoom.ts` (`onSit` swap path + a room test: bot seat → human take
+over → that seat's next turn is not bot-played), `packages/protocol` (no change
+— reuse `sit`), `apps/web/src/room/SeatPicker.tsx` / `SeatChip.tsx` (take-over
+affordance), roster rendering. New scene: `takeover` (roster showing a bot seat
+with a "Take over" button) or fold into a lobby/roster scene.
+
+## Known bugs to fix
+
+- **Chat "triples"** — messages render multiple times (each shown ~3×, see the
+  chat screenshot). The send/broadcast path looks single-shot
+  (`useChatSend` → one `{t:'chat'}`; server `onChat` broadcasts one `{t:'chat',
+entry}` to each joined socket; `gameStore.addChat` appends). Leads to check:
+  (1) does the same user have **multiple live sockets** (reconnect/keepalive
+  leaving stale sockets so the broadcast hits the browser N times)? Check
+  `webSocketClose` cleanup + the new 30s keepalive; (2) **welcome `chatTail`
+  vs live events** — on join the store sets `chat = chatTail`; if a live `chat`
+  event for an already-in-tail message also appends, it double/triples. Add a
+  dedupe by (from, at, text) or an id; (3) React re-mount re-subscribing. Repro
+  in a room with two browsers, watch the network frames, then fix at the source
+  (prefer server single-broadcast + client idempotent append with a msg id).
+
 ## Cross-cutting rules (already established — keep following)
 
 - **Light-skin contrast**: on permanently-dark surfaces (`bg-black/50`+) use
@@ -187,11 +276,13 @@ result read at a glance and match the new header language:
 
 ## Suggested order
 
-A (disabled restyle, quick win) → E (overlay polish, contained) → D (sound
-engine + toggle, unlocks the ASMR feel) → B (deal animation, uses D) → C (drag
-
-- colour sort, uses D). B and C are the big creative pieces; prototype feel
-  early and iterate in `npm run shots` / a live `#practice` game.
+A (disabled restyle, quick win) → E (overlay polish) → **chat-triples bug** (fix
+before more chat/room work) → D (sound engine + toggle, unlocks the ASMR feel) →
+B (deal animation, uses D) → F (bet cards, reuses the card + deal + sound work)
+→ C (drag + colour sort, uses D) → G (take-over + visitor page, mostly
+independent — can slot in anytime after the bug fix). B, C, F are the big
+creative pieces; prototype feel early and iterate in `npm run shots` / a live
+`#practice` game.
 
 ## Open questions for the user
 
@@ -201,3 +292,10 @@ engine + toggle, unlocks the ASMR feel) → B (deal animation, uses D) → C (dr
 - Should manual drag order **persist** only for the round, or auto-re-sort each
   new deal?
 - Deck deal: deal all four players visually, or only _your_ hand flies in?
+- Bet cards: keep the current bid buttons as a fallback, or fully replace them?
+  Confirm gesture — tap the card, or drag it up like playing a card?
+- Take-over: open to any spectator, or only the room creator / invited? Should a
+  taken-over bot's accumulated score/tricks just carry to the human (yes,
+  simplest) — confirm.
+- Visitor page: always shown to spectators of a started room, or only when there
+  are bot seats available to replace?
