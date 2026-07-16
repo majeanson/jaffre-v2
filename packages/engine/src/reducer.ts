@@ -195,7 +195,14 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
     events.push({ type: 'game_over', winner });
     return {
       ok: true,
-      state: { ...state, phase: 'game_over', scores, lastRoundSummary: summary, roundSummaries, winner },
+      state: {
+        ...state,
+        phase: 'game_over',
+        scores,
+        lastRoundSummary: summary,
+        roundSummaries,
+        winner,
+      },
       events,
     };
   }
