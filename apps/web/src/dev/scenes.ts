@@ -51,6 +51,18 @@ const SPECTATOR_ROSTER: Roster = {
   started: true,
 };
 
+/** A started room with two takeable bot seats (1 and 3) — the visitor scene. */
+const VISITOR_ROSTER: Roster = {
+  seats: [
+    { name: 'Alice', isBot: false, connected: true },
+    { name: 'Marcel', isBot: true, connected: true },
+    { name: 'Bob', isBot: false, connected: true },
+    { name: 'Réal', isBot: true, connected: true },
+  ],
+  spectators: 1,
+  started: true,
+};
+
 const LOBBY_OPEN: Roster = {
   seats: [
     { name: 'You', isBot: false, connected: true },
@@ -278,6 +290,7 @@ const LOADERS: Record<SceneId, () => void> = {
   history: () => undefined,
   'history-empty': () => undefined,
   replay: () => undefined,
+  visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

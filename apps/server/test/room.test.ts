@@ -733,4 +733,32 @@ describe('GameRoom', () => {
     expect(view.view.hand).toEqual([]);
     await endQuiet(room, alice, carol);
   });
+
+  it('lets a spectator take over a bot seat mid-game, but not a taken human seat', async () => {
+    const room = 'room-takeover';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    await setupStartedGame(alice); // seat 0 human + 3 bots, phase bidding
+
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    const bobWelcome = await bob.next('welcome');
+    expect(bobWelcome.viewer).toBe('spectator');
+
+    // Take over seat 1, a bot seat.
+    bob.send({ t: 'sit', seat: 1 });
+    const welcome = await bob.next('welcome');
+    expect(welcome.viewer).toBe(1);
+    expect(welcome.view).not.toBeNull();
+    expect(welcome.view?.hand.length).toBeGreaterThan(0);
+
+    const roster = await bob.next('roster');
+    expect(roster.roster.seats[1]).toMatchObject({ isBot: false, name: 'Bob', connected: true });
+
+    // Alice's own seat is a connected human — not takeable.
+    bob.send({ t: 'sit', seat: 0 });
+    const taken = await bob.next('error');
+    expect(taken.code).toBe('SEAT_TAKEN');
+
+    await endQuiet(room, alice, bob);
+  });
 });
