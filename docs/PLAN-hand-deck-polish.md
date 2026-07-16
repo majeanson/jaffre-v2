@@ -3,15 +3,18 @@
 Resume point for the design pass started 2026-07-16.
 
 **Already shipped** (do not redo): score header redesign, reconnect UX,
-history/replay, CI/deploy, and — from this plan — **Workstream A** (punchy
-disabled cards), **Workstream E** (round summary + specials chips),
-**Workstream H** (seat change + lobby voice), and the **chat-triples bug**
-(idempotent append). A long-standing Home axe flake was also fixed (the shared
-a11y helper now settles finite entrance animations before scanning, and skips
-the native-`<select>` contrast false positive).
+history/replay, CI/deploy, and from this plan — **A** (punchy disabled cards),
+**D** (sound + haptics engine, off by default; wired to card play + bids),
+**E** (round summary + specials chips), **B** (deck deal — your hand flies in
+one card at a time), **C sort half** (colour-sort button with animated reflow +
+click cascade), **H** (seat change + lobby voice), and the **chat-triples bug**.
+A long-standing Home axe flake was also fixed (the a11y helper now settles
+finite animations before scanning + skips the native-`<select>` false positive).
 
-**Still to build**: D (sound), B (deck deal), F (bet cards), C (drag/colour
-sort), G (take-over + visitor page). These are the big creative pieces.
+**Still to build**: **C drag half** (manual drag-to-reorder the hand — the
+sort button is done; drag remains, see Workstream C), **F** (bet cards — must
+be visually distinct from playing cards), **G** (take-over + visitor page).
+Deal/sort/play/bid already fire click ticks; F should add its own.
 
 Guiding intent (user's words): make playing cards feel **satisfying — ASMR /
 haptic / phone-style**: cards deal in one at a time, you can drag to sort your
