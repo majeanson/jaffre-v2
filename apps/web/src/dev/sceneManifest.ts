@@ -12,6 +12,7 @@ export interface SceneUi {
   readonly scoreDetailsOpen?: boolean;
   readonly lastTrickOpen?: boolean;
   readonly chatOpen?: boolean;
+  readonly helpOpen?: boolean;
 }
 
 export interface SceneMeta {
@@ -37,6 +38,13 @@ export const SCENE_METAS = [
     label: 'Home — title screen',
     screen: 'home',
     probe: 'role=heading[name="Jaffre"]',
+  },
+  {
+    id: 'home-help',
+    label: 'Home — how to play',
+    screen: 'home',
+    ui: { helpOpen: true },
+    probe: 'role=dialog[name="How to play"]',
   },
   {
     id: 'lobby-open',

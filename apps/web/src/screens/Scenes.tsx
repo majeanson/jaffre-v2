@@ -43,7 +43,14 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
   return (
     <>
       {/* key remounts per scene so initial-state props (open panels) re-apply. */}
-      {current.screen === 'home' && <Home key={current.id} onPractice={noop} onJoinRoom={noop} />}
+      {current.screen === 'home' && (
+        <Home
+          key={current.id}
+          onPractice={noop}
+          onJoinRoom={noop}
+          helpOpen={current.ui?.helpOpen ?? false}
+        />
+      )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
       {current.screen === 'table' && (
         <Table

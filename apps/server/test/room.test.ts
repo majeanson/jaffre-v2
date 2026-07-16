@@ -394,6 +394,58 @@ describe('GameRoom', () => {
     },
   );
 
+  it(
+    'holds round_over until a connected human sends ready — alarms never auto-advance it',
+    { timeout: 60_000 },
+    async () => {
+      const room = 'room-readygate';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      let view = await setupStartedGame(client);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      const rng = mulberry32(9);
+
+      // Play the round out (same drive as the full-game test), stopping the
+      // moment the room reaches round_over.
+      const deadline = Date.now() + 50_000;
+      while ((await snapshot(stub)).phase !== 'round_over') {
+        expect(Date.now()).toBeLessThan(deadline);
+        view = client.latestView() ?? view;
+        const humanTurn = (view.phase === 'bidding' || view.phase === 'playing') && view.turn === 0;
+        if (humanTurn) {
+          const action = chooseAction(view, rng);
+          expect(action).not.toBeNull();
+          if (action === null) break;
+          client.send({ t: 'action', action: toWire(action) });
+          const reply = await client.nextAny(['view', 'error']);
+          if (reply.t === 'view') view = reply.view;
+        } else {
+          const ran = await runDurableObjectAlarm(stub);
+          if (ran) view = (await client.next('view')).view;
+          else await sleep(20);
+        }
+      }
+
+      // Alice is CONNECTED: no amount of alarm wakes may deal the next round.
+      const before = await snapshot(stub);
+      for (let i = 0; i < 5; i++) {
+        await runDurableObjectAlarm(stub);
+        await sleep(20);
+      }
+      const held = await snapshot(stub);
+      expect(held.phase).toBe('round_over');
+      expect(held.seq).toBe(before.seq);
+
+      // Her ready is the one thing that advances it.
+      client.send({ t: 'ready' });
+      const next = await pollUntil(async () => {
+        const snap = await snapshot(stub);
+        return snap.phase !== 'round_over' ? snap : undefined;
+      }, 'the next round to deal');
+      expect(next.phase === 'bidding' || next.phase === 'playing').toBe(true);
+      await endQuiet(room, client);
+    },
+  );
+
   it('reconnects to the same seat with a snapshot-first welcome', async () => {
     const room = 'room-reconnect';
     const client = await Client.connect(room, 'alice', 'Alice');

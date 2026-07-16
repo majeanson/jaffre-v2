@@ -68,7 +68,7 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   expect(match).not.toBeNull();
   const teamA = match?.[1] ?? '';
   const teamB = match?.[2] ?? '';
-  // Minimal strip shows "A — B" scores as plain numbers.
-  const strip = page.getByTestId('score-strip');
-  await expect(strip).toContainText(new RegExp(`${teamA}\\s*—\\s*${teamB}`));
+  // Each team's headline score on the strip shows the cumulative total.
+  await expect(page.getByTestId('team-score-0')).toHaveText(teamA);
+  await expect(page.getByTestId('team-score-1')).toHaveText(teamB);
 });

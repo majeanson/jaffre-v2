@@ -27,7 +27,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
   };
 
   return (
-    <section aria-label="Play" className="grid w-full gap-3 sm:grid-cols-2">
+    <section aria-label="Play" className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
       <button
         type="button"
         onClick={onPractice}

@@ -25,9 +25,12 @@ export interface ScoreStripProps {
   readonly defaultDetailsOpen?: boolean;
 }
 
+/** "Team Sun" → "Sun": the dot already carries the team identity. */
+const shortName = (name: string): string => name.replace(/^team\s+/i, '');
+
 /**
  * One team's tricks this round: a pile of face-down mini cards + the round
- * points. The at-a-glance answer to "how is this round going".
+ * points, grouped in an inset tray so they read as one "this round" unit.
  */
 function TrickPile({
   count,
@@ -45,10 +48,9 @@ function TrickPile({
   const shown = Math.min(count, 8);
   return (
     <span
-      className={`flex items-center gap-1.5 ${mirrored ? 'flex-row-reverse' : ''}`}
+      className={`flex items-center gap-1.5 rounded-lg bg-black/20 px-1.5 py-1 ${mirrored ? 'flex-row-reverse' : ''}`}
       aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round`}
     >
-      <span className="size-2 shrink-0 rounded-full" style={{ background: colorVar }} aria-hidden />
       <span
         className={`flex items-center ${mirrored ? 'flex-row-reverse -space-x-1.5 space-x-reverse' : '-space-x-1.5'}`}
         aria-hidden
@@ -65,7 +67,7 @@ function TrickPile({
         )}
       </span>
       <span
-        className="min-w-6 text-center font-display text-base font-semibold tabular-nums"
+        className="min-w-5 text-center font-display text-sm font-semibold tabular-nums"
         style={{ color: colorVar }}
         aria-hidden
       >
@@ -77,9 +79,69 @@ function TrickPile({
 }
 
 /**
- * The top bar. Collapsed: this round first — trick piles + bet + trump, the
- * game total small. The whole bar is the toggle; expanding grows the SAME
- * bar with full details and the app controls.
+ * One team's half of the scoreboard: named and color-dotted, the GAME score
+ * as the headline number with a thin race-to-target bar under it, and the
+ * round tray beside it.
+ */
+function TeamSide({
+  name,
+  score,
+  target,
+  count,
+  points,
+  colorVar,
+  mirrored = false,
+  testId,
+}: {
+  name: string;
+  score: number;
+  target: number;
+  count: number;
+  points: number;
+  colorVar: string;
+  mirrored?: boolean;
+  testId: string;
+}) {
+  const pct = Math.max(0, Math.min(100, (score / target) * 100));
+  return (
+    <span
+      className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''}`}
+    >
+      <span className="flex flex-col items-center gap-0.5 leading-none">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-full" style={{ background: colorVar }} aria-hidden />
+          <span className="text-[10px] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/60 uppercase">
+            {name}
+          </span>
+        </span>
+        <span
+          data-testid={testId}
+          className="font-display text-2xl font-semibold tabular-nums max-sm:text-xl"
+          style={{ color: colorVar }}
+        >
+          <span key={score} className="score-flash inline-block">
+            {score}
+          </span>
+        </span>
+        {/* The race to the target, at a glance. */}
+        <span aria-hidden className="h-0.5 w-11 overflow-hidden rounded-full bg-white/10">
+          <span
+            className="block h-full rounded-full"
+            style={{ width: `${pct}%`, background: colorVar }}
+          />
+        </span>
+      </span>
+      <TrickPile count={count} points={points} colorVar={colorVar} label={name} mirrored={mirrored} />
+    </span>
+  );
+}
+
+/**
+ * The top bar, read as a scoreboard: each team's side is labeled (dot +
+ * name) with the game total as the big number, the round's trick tray next
+ * to it, and the bet on a labeled plaque in the middle. The whole bar is
+ * the toggle; expanding grows the SAME bar with full details and the app
+ * controls.
  */
 export function ScoreStrip({
   teamNames,
@@ -95,77 +157,85 @@ export function ScoreStrip({
 }: ScoreStripProps) {
   const [open, setOpen] = useState(defaultDetailsOpen);
 
+  const trumpBadge = trumpDecided ? (
+    trump === null ? (
+      <span className="text-[11px] font-semibold whitespace-nowrap text-(--color-ivory)/80">
+        no trump
+      </span>
+    ) : (
+      <span className="text-lg leading-none font-bold" style={{ color: SUIT_STYLES[trump].color }}>
+        {SUIT_STYLES[trump].glyph}
+        <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
+      </span>
+    )
+  ) : null;
+
   return (
-    <div className="w-fit min-w-[min(20rem,92vw)] max-w-full rounded-(--radius-panel) bg-(--color-felt-800)/90 border border-white/8 shadow-(--shadow-panel) font-ui text-sm">
+    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/90 font-ui text-sm shadow-(--shadow-panel)">
       <button
         type="button"
         aria-expanded={open}
         aria-label="Score details"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center justify-center gap-x-4 px-4 py-2 max-sm:gap-x-2.5 max-sm:px-2.5 max-sm:py-1.5"
+        className="grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-3.5 py-1.5 max-sm:gap-x-2 max-sm:px-2 max-sm:py-1"
       >
-        {/* This round comes first: each team's captured tricks as a pile. */}
-        <TrickPile
-          count={trickCounts?.[0] ?? 0}
-          points={roundPoints?.[0] ?? 0}
-          colorVar="var(--color-team-a)"
-          label={teamNames[0]}
-        />
+        <span className="flex justify-start">
+          <TeamSide
+            name={shortName(teamNames[0])}
+            score={scores[0]}
+            target={target}
+            count={trickCounts?.[0] ?? 0}
+            points={roundPoints?.[0] ?? 0}
+            colorVar="var(--color-team-a)"
+            testId="team-score-0"
+          />
+        </span>
 
-        <span className="flex min-w-0 flex-col items-center leading-tight">
-          <span className="flex min-w-0 items-center gap-2">
-            {contract !== null && (
-              <span className="truncate font-semibold text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
-                <span className="font-normal text-(--color-ivory)/55">bet</span>{' '}
+        {/* Center plaque: the one contract everyone plays against. */}
+        <span className="flex min-w-0 flex-col items-center gap-0.5 px-1 leading-none">
+          <span className="text-[9px] font-semibold tracking-[0.22em] text-(--color-ivory)/45 uppercase">
+            {contract !== null ? 'bet' : 'auction'}
+          </span>
+          {contract !== null ? (
+            <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory)/90 tabular-nums max-sm:text-xs">
+              <span className="truncate">
                 {contract.playerName} {contract.value}
                 {contract.sansAtout ? ' SA' : ''}
-                {contract.progress !== undefined && (
-                  <span className="ml-1 text-(--color-lamplight)">
-                    {contract.progress}/{contract.value}
-                  </span>
-                )}
               </span>
-            )}
-            {trumpDecided &&
-              (trump === null ? (
-                <span className="whitespace-nowrap text-xs font-semibold text-(--color-ivory)/80">
-                  no trump
+              {contract.progress !== undefined && (
+                <span className="text-(--color-lamplight)">
+                  {contract.progress}/{contract.value}
                 </span>
-              ) : (
-                <span className="text-lg font-bold" style={{ color: SUIT_STYLES[trump].color }}>
-                  {SUIT_STYLES[trump].glyph}
-                  <span className="sr-only">Trump: {SUIT_STYLES[trump].label}</span>
-                </span>
-              ))}
-          </span>
-          {/* The game total rides along small — players mostly know it. */}
-          <span
-            className="text-[11px] tabular-nums text-(--color-ivory)/55"
-            aria-label={`${teamNames[0]} ${scores[0]}, ${teamNames[1]} ${scores[1]}`}
-          >
-            <span key={scores[0]} className="score-flash inline-block">
-              {scores[0]}
+              )}
+              {trumpBadge}
             </span>
-            {' — '}
-            <span key={`b${scores[1]}`} className="score-flash inline-block">
-              {scores[1]}
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs text-(--color-ivory)/65">
+              bidding…{trumpBadge}
             </span>
+          )}
+          <span className="text-[10px] whitespace-nowrap text-(--color-ivory)/45">
+            first to {target}
           </span>
         </span>
 
-        <TrickPile
-          count={trickCounts?.[1] ?? 0}
-          points={roundPoints?.[1] ?? 0}
-          colorVar="var(--color-team-b)"
-          label={teamNames[1]}
-          mirrored
-        />
-
-        <span
-          aria-hidden
-          className="grid size-6 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70"
-        >
-          {open ? '▲' : '▼'}
+        <span className="flex items-center justify-end gap-2.5 max-sm:gap-1.5">
+          <TeamSide
+            name={shortName(teamNames[1])}
+            score={scores[1]}
+            target={target}
+            count={trickCounts?.[1] ?? 0}
+            points={roundPoints?.[1] ?? 0}
+            colorVar="var(--color-team-b)"
+            mirrored
+            testId="team-score-1"
+          />
+          <span
+            aria-hidden
+            className={`grid size-6 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] text-(--color-ivory)/70 transition-transform ${open ? 'rotate-180' : ''}`}
+          >
+            ▾
+          </span>
         </span>
       </button>
 
@@ -181,7 +251,10 @@ export function ScoreStrip({
                   />
                   {teamNames[team]}
                 </p>
-                <p className="mt-1 font-display text-2xl text-(--color-ivory)">{scores[team]}</p>
+                <p className="mt-1 font-display text-2xl text-(--color-ivory)">
+                  {scores[team]}{' '}
+                  <span className="text-sm text-(--color-ivory)/50">/ {target}</span>
+                </p>
                 {roundPoints !== undefined && (
                   <p className="text-(--color-ivory)/70">
                     {(roundPoints[team] ?? 0) >= 0 ? '+' : ''}

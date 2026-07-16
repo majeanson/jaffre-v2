@@ -7,6 +7,8 @@ export interface HelpButtonProps {
   readonly label?: string;
   /** Full chrome override for tighter spots (e.g. the lobby footer). */
   readonly className?: string;
+  /** Mount with the sheet already open (scene viewer). */
+  readonly defaultOpen?: boolean;
 }
 
 /**
@@ -16,8 +18,9 @@ export interface HelpButtonProps {
 export function HelpButton({
   label = 'How to play',
   className = `px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`,
+  defaultOpen = false,
 }: HelpButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const triggerRef = useRef<HTMLButtonElement>(null);
   return (
     <>

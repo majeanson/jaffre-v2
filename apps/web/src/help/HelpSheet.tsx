@@ -1,5 +1,6 @@
 import { PlayingCard, SUIT_STYLES } from '@jaffre/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { TEAMS } from '../teams.js';
 
 export interface HelpSheetProps {
@@ -61,7 +62,10 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
     return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  return (
+  // Portaled to <body>: an animated (transformed) ancestor — e.g. Home's
+  // rise-in footer — would otherwise become the containing block and pin
+  // this "fullscreen" sheet to itself.
+  return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center p-3 sm:p-6">
       <div
         aria-hidden
@@ -93,7 +97,13 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
           </button>
         </header>
 
-        <div className="space-y-3 overflow-y-auto px-5 py-4">
+        {/* Scrollable region must be keyboard-focusable (axe). */}
+        <div
+          role="region"
+          aria-label="Rules"
+          tabIndex={0}
+          className="space-y-3 overflow-y-auto px-5 py-4"
+        >
           <Rule title="The basics">
             <p>
               Four players, two teams — <Strong>you and the player across from you</Strong> (
@@ -190,6 +200,7 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
           </Rule>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

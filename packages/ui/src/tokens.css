@@ -210,6 +210,10 @@
     }
   }
 
+  /* All entrance animations must END at `transform: none`: fill-mode `both`
+   * retains the last keyframe forever, and any retained transform — even an
+   * identity one — makes the element a containing block that captures
+   * position:fixed descendants (e.g. the help sheet inside a rise-in div). */
   @keyframes jaffre-pop {
     0% {
       transform: scale(0.5) translateY(8px);
@@ -220,7 +224,7 @@
       opacity: 1;
     }
     100% {
-      transform: scale(1);
+      transform: none;
     }
   }
 
@@ -230,7 +234,7 @@
       opacity: 0;
     }
     100% {
-      transform: translateY(0) rotate(0deg) scale(1);
+      transform: none;
       opacity: 1;
     }
   }
@@ -241,7 +245,7 @@
       opacity: 0;
     }
     100% {
-      transform: translateY(0);
+      transform: none;
       opacity: 1;
     }
   }

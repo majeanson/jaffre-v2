@@ -9,10 +9,12 @@ import { lastRoom, playerName, setPlayerName } from '../net/socket.js';
 export interface HomeProps {
   readonly onPractice: () => void;
   readonly onJoinRoom: (code: string) => void;
+  /** Mount with the help sheet already open (scene viewer). */
+  readonly helpOpen?: boolean;
 }
 
 /** The title screen: brand moment on top, play actions as panels, quiet chrome below. */
-export function Home({ onPractice, onJoinRoom }: HomeProps) {
+export function Home({ onPractice, onJoinRoom, helpOpen = false }: HomeProps) {
   const [name, setName] = useState(playerName());
   const resumeCode = lastRoom();
 
@@ -42,7 +44,7 @@ export function Home({ onPractice, onJoinRoom }: HomeProps) {
         className="rise-in flex items-center gap-3"
         style={{ '--rise-delay': '280ms' } as CSSProperties}
       >
-        <HelpButton />
+        <HelpButton defaultOpen={helpOpen} />
         <ThemeSwitcher />
       </div>
     </main>
