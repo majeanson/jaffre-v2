@@ -5,6 +5,7 @@ export * from './components/Hand';
 export * from './components/Seat';
 export * from './components/TrickArea';
 export * from './components/BidPanel';
+export * from './components/BetCards';
 export * from './components/ScoreStrip';
 export * from './components/ChatPanel';
 export * from './components/VoiceBar';

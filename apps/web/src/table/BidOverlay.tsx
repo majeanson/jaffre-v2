@@ -1,6 +1,6 @@
 import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
-import { BidPanel, type BidOption } from '@jaffre/ui';
+import { BetCards, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
 
 export interface BidOverlayProps {
@@ -19,7 +19,7 @@ export function BidOverlay({ options, onAction, recommended = null }: BidOverlay
       : null;
   return (
     <div className="absolute inset-0 z-20 grid place-items-center">
-      <BidPanel
+      <BetCards
         options={options}
         coaching={coaching}
         recommended={recommendedOption}
