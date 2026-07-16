@@ -240,6 +240,42 @@ over → that seat's next turn is not bot-played), `packages/protocol` (no chang
 affordance), roster rendering. New scene: `takeover` (roster showing a bot seat
 with a "Take over" button) or fold into a lobby/roster scene.
 
+## Workstream H — change seat in team selection + voice in the lobby
+
+Two small lobby upgrades. **Both are mostly wired already** (verified this
+session):
+
+- **Change seat**: the server `onSit` (`GameRoom.ts`) already supports moving —
+  it clears the user's current seat before seating them in the new one, and
+  only rejects occupied seats / after `started`. The **only blocker is the
+  client**: `apps/web/src/room/SeatPicker.tsx` disables "Sit here" with
+  `disabled={seated}`. Fix = allow it while not `started` (disable on `started`
+  instead) and relabel to **"Move here"** when already seated. One-line-ish
+  change; no protocol/server work. (Optional: also let you swap with another
+  human by mutual consent later — out of scope now, only move to empty seats.)
+- **Voice in the lobby**: the RTC mesh is global — `rtc.ts` registers the
+  handler at import and the server relays `{t:'rtc'}` between **seated**
+  players, which lobby sitters are. Voice works pre-game; it's just not
+  mounted. `Comms` (table) renders the `VoiceBar` today. Plan:
+  1. Extract `useVoicePeers` out of `apps/web/src/table/Comms.tsx` into
+     `apps/web/src/voice/useVoicePeers.ts`, and add a small
+     `apps/web/src/voice/VoiceControls.tsx` (the `VoiceBar` + join/leave/mute
+     wiring, taking `me: number`). Reuse it in `Comms`.
+  2. Render `<VoiceControls me={viewer} />` in `Lobby.tsx` when
+     `typeof viewer === 'number'` (seated only — spectators have no seat).
+  3. **Teardown**: voice is global module state that persists across the
+     lobby→table remount (good — talk carries into the game). But leaving the
+     room _from the lobby_ never unmounts `Table`, so its `leaveVoice()` never
+     runs → mesh leak. Move voice teardown up to the room route: call
+     `leaveVoice()` in `App.tsx`'s room-effect cleanup (alongside `disconnect()`
+     - `reset()`); `leaveVoice` is idempotent so keeping Table's is harmless.
+  4. Scenes: the existing `lobby-full`/`lobby-open` scenes seat viewer 0, so
+     the voice bar will now appear there and be axe-checked — spot-check both
+     skins. Optionally a `lobby-voice` scene with a joined/peer state.
+
+  Note: the deprecated attempt this session left these reverted — reference
+  only. Real teardown + the extract are the substance.
+
 ## Known bugs to fix
 
 - **Chat "triples"** — messages render multiple times (each shown ~3×, see the
@@ -280,9 +316,10 @@ A (disabled restyle, quick win) → E (overlay polish) → **chat-triples bug** 
 before more chat/room work) → D (sound engine + toggle, unlocks the ASMR feel) →
 B (deal animation, uses D) → F (bet cards, reuses the card + deal + sound work)
 → C (drag + colour sort, uses D) → G (take-over + visitor page, mostly
-independent — can slot in anytime after the bug fix). B, C, F are the big
-creative pieces; prototype feel early and iterate in `npm run shots` / a live
-`#practice` game.
+independent — can slot in anytime after the bug fix). **H (seat change + lobby
+voice) is small and independent — a good quick win any time.** B, C, F are the
+big creative pieces; prototype feel early and iterate in `npm run shots` / a
+live `#practice` game.
 
 ## Open questions for the user
 
