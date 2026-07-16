@@ -63,7 +63,10 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           initialUi={current.ui}
         />
       )}
-      <div className="fixed bottom-2 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)">
+      <div
+        data-testid="scene-picker"
+        className="fixed bottom-2 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)"
+      >
         <button
           type="button"
           onClick={() => step(-1)}
