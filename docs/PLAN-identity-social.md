@@ -83,7 +83,7 @@ The server token `uid` becomes the single canonical player id.
 - Every new visual state → a scene in `sceneManifest.ts` + `scenes.ts` with a
   probe (axe-checked by `scenes.spec.ts`).
 - Verify per change: `npm run format && npm run lint && npm run typecheck &&
-  npm test`, plus targeted e2e. Migrations are forward-only additive.
+npm test`, plus targeted e2e. Migrations are forward-only additive.
 - Engine package keeps 100% coverage; server changes need vitest coverage in
   `apps/server/test`.
 
