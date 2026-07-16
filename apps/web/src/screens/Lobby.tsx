@@ -4,6 +4,7 @@ import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { useGameStore } from '../state/gameStore.js';
+import { VoiceControls } from '../voice/VoiceControls.js';
 
 export interface LobbyProps {
   readonly code: string;
@@ -48,6 +49,15 @@ export function Lobby({ code, onLeave }: LobbyProps) {
         >
           {full ? 'Start the game' : 'Waiting for 4 players…'}
         </button>
+
+        {typeof viewer === 'number' && (
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="text-[11px] font-semibold tracking-widest text-(--color-ivory)/40 uppercase">
+              Table voice
+            </span>
+            <VoiceControls me={viewer} />
+          </div>
+        )}
 
         <ChatPanel entries={chat} onSend={sendChat} />
 

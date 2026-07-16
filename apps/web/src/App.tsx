@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
+import { leaveVoice } from './voice/rtc.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
@@ -52,6 +53,9 @@ export function App() {
     if (route.kind === 'room') {
       connect(route.code);
       return () => {
+        // Tear the voice mesh down at the room boundary — it persists across the
+        // lobby→table remount, so leaving from either must clean it up.
+        leaveVoice();
         disconnect();
         useGameStore.getState().reset();
       };
