@@ -2,7 +2,8 @@ import type { Card, Suit } from '@jaffre/engine';
 import { cardKey, Hand, sortByColour, sortByValue } from '@jaffre/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { feedback, playClick } from '../audio/clicks.js';
-import { GHOST_BTN } from '../components/buttonStyles.js';
+import { IconButton } from '../components/IconButton.js';
+import { IconSort } from '../components/icons.js';
 
 const DEAL_STAGGER_MS = 90; // matches the deal-in keyframe stagger in tokens.css
 const SORT_STAGGER_MS = 45; // the satisfying cascade when tidying the hand
@@ -83,20 +84,15 @@ export function PlayerHand({
     <div className="shrink-0 pb-1">
       {cards.length > 1 && (
         <div className="flex justify-end px-2">
-          {/* Icon-only, sized like the cards' scale steps so it shrinks on phones. */}
-          <button
-            type="button"
+          <IconButton
+            label={
+              sortMode === 'colour' ? 'Sort your hand by colour' : 'Sort your hand by value, 0 to 7'
+            }
             onClick={sortHand}
-            aria-label={
-              sortMode === 'colour' ? 'Sort your hand by colour' : 'Sort your hand by value, 0 to 7'
-            }
-            title={
-              sortMode === 'colour' ? 'Sort your hand by colour' : 'Sort your hand by value, 0 to 7'
-            }
-            className={`mb-0.5 grid size-[clamp(1.75rem,4.5vmin,2.5rem)] place-items-center text-(length:--text-fluid-base) text-(--color-ivory)/75 ${GHOST_BTN}`}
+            className="mb-0.5"
           >
-            ⇅
-          </button>
+            <IconSort />
+          </IconButton>
         </div>
       )}
       <Hand

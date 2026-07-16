@@ -35,7 +35,7 @@ function Chip({ name, connected, muted, speaking }: VoicePeerChip) {
       />
       {name}
       {!connected && <span className="text-(--color-ivory)/40">no voice</span>}
-      {connected && muted && <span title="Muted">🔇</span>}
+      {connected && muted && <span className="text-(--color-ivory)/40">muted</span>}
     </span>
   );
 }
@@ -64,7 +64,7 @@ export function VoiceBar({
             : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer'
         }`}
       >
-        {status === 'joining' ? 'Joining…' : '🎙 Join voice'}
+        {status === 'joining' ? 'Joining…' : 'Join voice'}
       </button>
     );
   }

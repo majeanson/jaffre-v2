@@ -18,6 +18,7 @@ import {
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { leaveVoice } from '../voice/rtc.js';
+import { VoiceControls } from '../voice/VoiceControls.js';
 
 export interface TableProps {
   readonly onAction: (action: ClientAction) => void;
@@ -72,6 +73,7 @@ export function Table({
             return !on;
           })
         }
+        voice={online && me !== null ? <VoiceControls me={me} /> : undefined}
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
       <Stage
@@ -86,6 +88,7 @@ export function Table({
           myTurn && (
             <BidOverlay
               options={derived.bidOptions}
+              order={derived.auctionOrder}
               onAction={onAction}
               recommended={derived.coach?.bid ?? null}
             />
@@ -104,7 +107,7 @@ export function Table({
         you={seatInfo(0)}
         lastTrick={derived.lastTrick}
         defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
-        comms={online && <Comms me={me} defaultChatOpen={initialUi?.chatOpen ?? false} />}
+        comms={online && <Comms defaultChatOpen={initialUi?.chatOpen ?? false} />}
       />
       <GameLogPanel
         lines={log.map((l) => l.text)}

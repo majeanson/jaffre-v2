@@ -1,7 +1,13 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
-import type { BidOption, ScoreboardRound, TeamSpecials, TrickPlayView } from '@jaffre/ui';
+import type {
+  AuctionTurn,
+  BidOption,
+  ScoreboardRound,
+  TeamSpecials,
+  TrickPlayView,
+} from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -67,6 +73,8 @@ export interface TableDerived {
   /** Table-relative position of the held trick's winning card, for highlight. */
   readonly winnerPosition: 0 | 1 | 2 | 3 | null;
   readonly bidOptions: readonly BidOption[];
+  /** The four seats in bidding order with their declarations (bidding only). */
+  readonly auctionOrder: readonly AuctionTurn[];
   readonly contractDisplay: ContractDisplay | null;
   /** Finished rounds for the written scoreboard, oldest first. */
   readonly scoreboardRounds: readonly ScoreboardRound[];
@@ -138,6 +146,26 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       ? legalBidChoices(view.bids).flatMap((c) =>
           c.kind === 'bid' ? [{ value: c.value, sansAtout: c.sansAtout }] : [],
         )
+      : [];
+
+  // The auction as it progresses around the table, left of the dealer first.
+  const auctionOrder: AuctionTurn[] =
+    view.phase === 'bidding'
+      ? [0, 1, 2, 3].map((i) => {
+          const seat = (view.dealer + 1 + i) % 4;
+          const entry = view.bids.find((b) => b.seat === seat);
+          return {
+            name: seat === me ? 'You' : (roster.seats[seat]?.name ?? 'Player'),
+            you: seat === me,
+            bid:
+              entry === undefined
+                ? null
+                : entry.choice.kind === 'pass'
+                  ? 'Pass'
+                  : `${String(entry.choice.value)}${entry.choice.sansAtout ? ' SA' : ''}`,
+            current: view.turn === seat,
+          };
+        })
       : [];
 
   const contractDisplay: ContractDisplay | null =
@@ -225,6 +253,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     heldBanner,
     winnerPosition: heldTrick !== null ? toPosition(heldTrick.winner, viewer) : null,
     bidOptions,
+    auctionOrder,
     contractDisplay,
     scoreboardRounds,
     trickCounts,

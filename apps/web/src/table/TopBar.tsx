@@ -1,15 +1,13 @@
 import type { SeatView } from '@jaffre/engine';
 import { ScoreStrip, type ScoreboardRound, type TeamSpecials } from '@jaffre/ui';
+import { useState, type ReactNode } from 'react';
 import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
+import { IconButton, ICON_BTN_NEUTRAL } from '../components/IconButton.js';
+import { IconGear, IconList, IconQuestion, IconSignOut, IconSparkle } from '../components/icons.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
-
-/** Ghost-pill chrome with a per-action tint so each control reads at a glance.
- * Fluid text + em padding: scales with the viewport like the cards. */
-const TINT_BTN =
-  'cursor-pointer whitespace-nowrap rounded-lg border px-[0.9em] py-[0.45em] text-(length:--text-fluid-sm) hover:bg-white/8';
 
 export interface TopBarProps {
   readonly view: SeatView;
@@ -24,13 +22,16 @@ export interface TopBarProps {
   readonly onToggleLog: () => void;
   readonly coachOn: boolean;
   readonly onToggleCoach: () => void;
+  /** Voice controls (online rooms) — lives inside the Options drawer. */
+  readonly voice?: ReactNode;
   /** Scene viewer: mount with the details panel already expanded. */
   readonly defaultDetailsOpen?: boolean;
 }
 
 /**
  * Owns the top bar. Collapsed it is just the score strip; expanding it
- * reveals details plus the app controls (leave, skin, log).
+ * reveals the scorepad plus two icon controls — Leave and Options — with
+ * everything else (skin, sound, help, coach, log, voice) inside Options.
  */
 export function TopBar({
   view,
@@ -44,8 +45,10 @@ export function TopBar({
   onToggleLog,
   coachOn,
   onToggleCoach,
+  voice,
   defaultDetailsOpen = false,
 }: TopBarProps) {
+  const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
       <ScoreStrip
@@ -64,39 +67,46 @@ export function TopBar({
         action={action}
         actions={
           <>
-            <button
-              onClick={onLeave}
-              className={`${TINT_BTN} border-(--color-danger)/45 text-(--color-danger-text) hover:bg-(--color-danger)/12`}
+            <IconButton danger label="Leave table" onClick={onLeave}>
+              <IconSignOut />
+            </IconButton>
+            <IconButton
+              label="Options"
+              active={optionsOpen}
+              aria-expanded={optionsOpen}
+              onClick={() => setOptionsOpen((o) => !o)}
             >
-              ← Leave
-            </button>
-            <ThemeSwitcher />
-            <SoundToggle />
-            <HelpButton
-              label="Help"
-              className={`${TINT_BTN} border-(--color-ok)/45 text-(--color-ok) hover:bg-(--color-ok)/12`}
-            />
-            <button
-              type="button"
-              aria-pressed={coachOn}
-              onClick={onToggleCoach}
-              title="Show a suggested move on your turn"
-              className={`${TINT_BTN} border-(--color-lamplight)/45 text-(--color-lamplight) ${
-                coachOn ? 'bg-(--color-lamplight)/15' : ''
-              }`}
-            >
-              {coachOn ? '✦ Coach on' : 'Coach'}
-            </button>
-            <button
-              type="button"
-              aria-expanded={logOpen}
-              onClick={onToggleLog}
-              className={`${TINT_BTN} border-(--color-team-b)/45 text-(--color-team-b) ${
-                logOpen ? 'bg-(--color-team-b)/15' : ''
-              }`}
-            >
-              {logOpen ? 'Hide log' : 'Log'}
-            </button>
+              <IconGear />
+            </IconButton>
+            {optionsOpen && (
+              <div
+                data-testid="options-drawer"
+                className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
+              >
+                <ThemeSwitcher />
+                <SoundToggle />
+                <HelpButton label="How to play" className={ICON_BTN_NEUTRAL}>
+                  <IconQuestion />
+                </HelpButton>
+                <IconButton
+                  label="Coach — suggest a move on your turn"
+                  aria-pressed={coachOn}
+                  active={coachOn}
+                  onClick={onToggleCoach}
+                >
+                  <IconSparkle />
+                </IconButton>
+                <IconButton
+                  label="Game log"
+                  aria-expanded={logOpen}
+                  active={logOpen}
+                  onClick={onToggleLog}
+                >
+                  <IconList />
+                </IconButton>
+                {voice}
+              </div>
+            )}
           </>
         }
       />

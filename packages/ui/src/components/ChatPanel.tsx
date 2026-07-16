@@ -157,10 +157,27 @@ export function ChatPanel({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
+        aria-label="Chat"
+        title="Chat"
         data-testid="chat-toggle"
-        className="relative rounded-lg border border-white/15 px-3 py-2 text-xs text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
+        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-lg border text-(length:--text-fluid-base) transition-colors ${
+          open
+            ? 'border-(--color-lamplight)/50 bg-(--color-lamplight)/12 text-(--color-lamplight)'
+            : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8'
+        }`}
       >
-        Chat
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="size-[1.2em]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 5.5h16v11H9l-4 3.5v-3.5H4z" />
+        </svg>
         {unread > 0 && (
           <span
             data-testid="chat-unread"

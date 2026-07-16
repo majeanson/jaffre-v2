@@ -1,17 +1,19 @@
 import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
-import { BetCards, type BidOption } from '@jaffre/ui';
+import { BetCards, type AuctionTurn, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
 
 export interface BidOverlayProps {
   readonly options: readonly BidOption[];
+  /** The four seats in bidding order — who bid what, who's up, who waits. */
+  readonly order?: readonly AuctionTurn[];
   readonly onAction: (action: ClientAction) => void;
   /** The Coach's suggested bid on this turn, when it's switched on. */
   readonly recommended?: BidChoice | null;
 }
 
 /** Owns the centered auction controls shown over the stage on your bidding turn. */
-export function BidOverlay({ options, onAction, recommended = null }: BidOverlayProps) {
+export function BidOverlay({ options, order, onAction, recommended = null }: BidOverlayProps) {
   const coaching = recommended !== null;
   const recommendedOption: BidOption | null =
     recommended !== null && recommended.kind === 'bid'
@@ -21,6 +23,7 @@ export function BidOverlay({ options, onAction, recommended = null }: BidOverlay
     <div className="absolute inset-0 z-20 grid place-items-center">
       <BetCards
         options={options}
+        {...(order !== undefined ? { order } : {})}
         coaching={coaching}
         recommended={recommendedOption}
         onPass={() => {

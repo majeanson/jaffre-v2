@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import type { BidOption } from './BidPanel';
 
+/** One player's slot in the auction, in bidding order. */
+export interface AuctionTurn {
+  readonly name: string;
+  readonly you: boolean;
+  /** The declaration ("Pass", "8 SA") once made; null while still to come. */
+  readonly bid: string | null;
+  /** True for the seat bidding right now. */
+  readonly current: boolean;
+}
+
 export interface BetCardsProps {
   /** Legal raises right now (pass is always legal). */
   readonly options: readonly BidOption[];
+  /** The four seats in bidding order — shows who bid what and who's next. */
+  readonly order?: readonly AuctionTurn[];
   readonly onPass: () => void;
   readonly onBid: (option: BidOption) => void;
   readonly disabled?: boolean;
@@ -77,6 +89,7 @@ function BetCard({
  */
 export function BetCards({
   options,
+  order,
   onPass,
   onBid,
   disabled = false,
@@ -107,6 +120,49 @@ export function BetCards({
           {sansAtout ? '★ Sans atout' : '☆ Sans atout'}
         </button>
       </div>
+
+      {order !== undefined && order.length > 0 && (
+        // The auction in turn order: who already declared what, whose turn it
+        // is (lit), and who still waits — the round's progression at a glance.
+        <ol
+          aria-label="Bidding order"
+          className="flex w-full flex-wrap items-center justify-center gap-x-1 gap-y-1 text-(length:--text-fluid-xs)"
+        >
+          {order.map((t, i) => (
+            <li key={i} className="flex items-center gap-1">
+              {i > 0 && (
+                <span aria-hidden className="text-(--color-ivory)/30">
+                  →
+                </span>
+              )}
+              <span
+                className={`flex items-center gap-[0.4em] rounded-full border px-[0.7em] py-[0.2em] whitespace-nowrap ${
+                  t.current
+                    ? 'border-(--color-lamplight) bg-(--color-lamplight)/12 text-(--color-lamplight)'
+                    : 'border-white/10 text-(--color-ivory)/70'
+                }`}
+              >
+                <span className={t.you ? 'font-bold' : ''}>{t.name}</span>
+                {t.bid !== null ? (
+                  <span
+                    className={`font-semibold ${
+                      t.bid === 'Pass' ? 'text-(--color-ivory)/45' : 'text-(--color-lamplight)'
+                    }`}
+                  >
+                    {t.bid}
+                  </span>
+                ) : (
+                  !t.current && (
+                    <span aria-label="still to bid" className="text-(--color-ivory)/40">
+                      …
+                    </span>
+                  )
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
 
       <div role="group" aria-label="Bet cards" className="flex items-end gap-[0.9vmin]">
         {values.map((value) => {
