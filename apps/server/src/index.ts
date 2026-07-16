@@ -50,7 +50,7 @@ async function handleGuestAuth(request: Request, env: Env): Promise<Response> {
         .bind(userId, trimmed, Date.now())
         .run();
     } catch (err) {
-      console.error('users insert failed', err);
+      console.error('[users] insert failed', err);
     }
   }
   const token = await mintToken(
@@ -128,6 +128,46 @@ async function handleReplay(env: Env, gameId: string): Promise<Response> {
   });
 }
 
+const TELEMETRY_MAX_BYTES = 4 * 1024;
+
+/**
+ * POST /api/telemetry {kind, message, stack?, url?, ua?} → 204. First-party,
+ * no-storage client error reporting: log one line so Workers Logs captures
+ * it. Body is size-capped and loosely shape-checked — this must never throw
+ * on malformed input from a misbehaving client.
+ */
+async function handleTelemetry(request: Request): Promise<Response> {
+  const lengthHeader = request.headers.get('Content-Length');
+  if (lengthHeader !== null && Number(lengthHeader) > TELEMETRY_MAX_BYTES) {
+    return new Response('Payload too large', { status: 413 });
+  }
+  const raw = await request.text();
+  if (raw.length > TELEMETRY_MAX_BYTES) {
+    return new Response('Payload too large', { status: 413 });
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return Response.json({ error: 'Expected a JSON body' }, { status: 400 });
+  }
+  if (typeof body !== 'object' || body === null) {
+    return Response.json({ error: 'Expected a JSON object' }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.kind !== 'string' || typeof b.message !== 'string') {
+    return Response.json({ error: 'kind and message must be strings' }, { status: 400 });
+  }
+  console.error('[client]', {
+    kind: b.kind,
+    message: b.message,
+    stack: typeof b.stack === 'string' ? b.stack : undefined,
+    url: typeof b.url === 'string' ? b.url : undefined,
+    ua: typeof b.ua === 'string' ? b.ua : undefined,
+  });
+  return new Response(null, { status: 204 });
+}
+
 /**
  * GET /api/ice → { iceServers } for the voice mesh. STUN always; when a
  * Cloudflare Realtime TURN key is configured, adds short-lived TURN
@@ -188,6 +228,9 @@ export default {
     const replayMatch = /^\/api\/replay\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname);
     if (replayMatch !== null && request.method === 'GET') {
       return handleReplay(env, replayMatch[1] as string);
+    }
+    if (url.pathname === '/api/telemetry' && request.method === 'POST') {
+      return handleTelemetry(request);
     }
 
     // /ws/:roomCode — WebSocket upgrade routed to the room's Durable Object.
