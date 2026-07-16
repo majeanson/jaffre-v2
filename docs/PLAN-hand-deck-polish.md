@@ -1,8 +1,17 @@
 # Plan — tactile hand, deck deal, sound, and overlay polish
 
-Resume point for the design pass started 2026-07-16. Everything below is
-**not yet built** except where noted. Commits already landed this session:
-score header redesign (`a1ff638`), reconnect UX, history/replay, CI/deploy.
+Resume point for the design pass started 2026-07-16.
+
+**Already shipped** (do not redo): score header redesign, reconnect UX,
+history/replay, CI/deploy, and — from this plan — **Workstream A** (punchy
+disabled cards), **Workstream E** (round summary + specials chips),
+**Workstream H** (seat change + lobby voice), and the **chat-triples bug**
+(idempotent append). A long-standing Home axe flake was also fixed (the shared
+a11y helper now settles finite entrance animations before scanning, and skips
+the native-`<select>` contrast false positive).
+
+**Still to build**: D (sound), B (deck deal), F (bet cards), C (drag/colour
+sort), G (take-over + visitor page). These are the big creative pieces.
 
 Guiding intent (user's words): make playing cards feel **satisfying — ASMR /
 haptic / phone-style**: cards deal in one at a time, you can drag to sort your
