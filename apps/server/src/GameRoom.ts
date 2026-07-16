@@ -52,6 +52,10 @@ interface Meta {
   botSwapMs?: number;
   /** Per-seat readiness for the next round (round_over phase only). */
   readyNextRound?: [boolean, boolean, boolean, boolean];
+  /** Standing-table tally across games at this room: [Sun wins, Moon wins],
+   * incremented at each game_over. Reset only when the room empties for
+   * good (a fresh DO, never in place). */
+  seriesWins: [number, number];
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -69,7 +73,7 @@ interface LogEntry {
 }
 
 function emptyMeta(): Meta {
-  return { seats: [null, null, null, null], names: {}, started: false };
+  return { seats: [null, null, null, null], names: {}, started: false, seriesWins: [0, 0] };
 }
 
 function isBotOwner(owner: SeatOwner): owner is BotOwner {
@@ -102,7 +106,9 @@ export class GameRoom implements DurableObject {
       this.ctx.storage.get<number>('seq'),
       this.ctx.storage.get<ChatEntry[]>('chat'),
     ]);
-    this.meta = meta ?? emptyMeta();
+    // Spread over emptyMeta() so legacy persisted metas (pre-seriesWins) still
+    // satisfy the current shape without a migration.
+    this.meta = { ...emptyMeta(), ...meta };
     this.game = game !== undefined ? deserialize(game) : null;
     this.seq = seq ?? 0;
     this.chat = chat ?? [];
@@ -563,6 +569,12 @@ export class GameRoom implements DurableObject {
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
     if (game.phase === 'game_over') {
+      if (game.winner !== null) {
+        const wins: [number, number] = [...this.meta.seriesWins] as [number, number];
+        wins[game.winner] += 1;
+        this.meta.seriesWins = wins;
+        await this.ctx.storage.put('meta', this.meta);
+      }
       // History write is strictly best-effort: awaited (so tests observe it)
       // but fully guarded — D1 being absent or failing never breaks the room.
       try {
@@ -570,6 +582,9 @@ export class GameRoom implements DurableObject {
       } catch (err) {
         console.error('game history write failed', err);
       }
+      // Broadcast so every client's GameRecap picks up the freshly-incremented
+      // standing-table tally without waiting for the next roster-triggering event.
+      this.broadcastRoster({});
     }
     await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
   }
@@ -703,7 +718,12 @@ export class GameRoom implements DurableObject {
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;
-    return { seats, spectators, started: this.meta.started };
+    return {
+      seats,
+      spectators,
+      started: this.meta.started,
+      seriesWins: this.meta.seriesWins,
+    };
   }
 
   private broadcastRoster(opts: { skip?: WebSocket; exclude?: WebSocket }): void {

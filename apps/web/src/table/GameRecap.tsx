@@ -6,12 +6,22 @@ export interface GameRecapProps {
   readonly scores: readonly [number, number];
   readonly rounds: readonly SeatView['lastRoundSummary'][];
   readonly names: readonly string[];
+  /** Standing-table tally across games at this room: [Sun wins, Moon wins]. */
+  readonly seriesWins?: readonly [number, number] | undefined;
   readonly onRematch?: (() => void) | undefined;
   readonly onLeave: () => void;
 }
 
 /** Owns the end-of-game recap: winner, round-by-round breakdown, rematch or leave. */
-export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }: GameRecapProps) {
+export function GameRecap({
+  winner,
+  scores,
+  rounds,
+  names,
+  seriesWins,
+  onRematch,
+  onLeave,
+}: GameRecapProps) {
   return (
     <div
       role="dialog"
@@ -33,6 +43,13 @@ export function GameRecap({ winner, scores, rounds, names, onRematch, onLeave }:
         <p className="mt-1 text-(--color-ivory)/80 tabular-nums">
           {scores[0]} — {scores[1]}
         </p>
+        {seriesWins !== undefined && (
+          <p className="mt-1 text-xs text-(--color-ivory)/55 tabular-nums">
+            Tonight: <span style={{ color: 'var(--color-team-a)' }}>Sun {seriesWins[0]}</span>
+            {' — '}
+            <span style={{ color: 'var(--color-team-b)' }}>Moon {seriesWins[1]}</span>
+          </p>
+        )}
 
         {rounds.length > 0 && (
           // Keyboard-focusable so the overflow can be scrolled without a mouse.

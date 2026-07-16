@@ -88,6 +88,9 @@ export interface Roster {
   readonly seats: readonly (RosterSeat | null)[];
   readonly spectators: number;
   readonly started: boolean;
+  /** Standing-table tally across games at this room: [Sun wins, Moon wins],
+   * reset only when the room empties for good. */
+  readonly seriesWins?: readonly [number, number];
 }
 
 export interface ChatEntry {

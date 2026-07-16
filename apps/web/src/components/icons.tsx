@@ -95,6 +95,16 @@ export function IconList() {
   );
 }
 
+/** Share: box with an arrow pointing out the top. */
+export function IconShare() {
+  return (
+    <Svg>
+      <path d="M12 15V4M8 8l4-4 4 4" />
+      <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" />
+    </Svg>
+  );
+}
+
 /** Sound on: speaker with waves. */
 export function IconSpeaker({ muted = false }: { muted?: boolean }) {
   return (

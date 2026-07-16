@@ -24,6 +24,8 @@ export interface TopBarProps {
   readonly onToggleCoach: () => void;
   /** Voice controls (online rooms) — lives inside the Options drawer. */
   readonly voice?: ReactNode;
+  /** Share-this-table button (online rooms) — lives inside the Options drawer. */
+  readonly share?: ReactNode;
   /** Scene viewer: mount with the details panel already expanded. */
   readonly defaultDetailsOpen?: boolean;
 }
@@ -46,6 +48,7 @@ export function TopBar({
   coachOn,
   onToggleCoach,
   voice,
+  share,
   defaultDetailsOpen = false,
 }: TopBarProps) {
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
@@ -105,6 +108,7 @@ export function TopBar({
                   <IconList />
                 </IconButton>
                 {voice}
+                {share}
               </div>
             )}
           </>
