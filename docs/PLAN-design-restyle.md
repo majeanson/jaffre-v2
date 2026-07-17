@@ -1,5 +1,16 @@
 # Phase 4 — "Refined Arcade Violet" design restyle
 
+> **Status (2026-07-16): SHIPPED to main + prod.** All seven workstreams built
+> from the written handoff and merged (`89b5e6a`); live on jaffre.marcportal.com.
+> Built from the written spec (no pixel mockups were on disk), so W5–W7 — which
+> this plan first marked "blocked on design" — are faithful interpretations the
+> design pass may still refine. Known follow-ups: swap the licensed **Visitor**
+> TTF in for the Pixelify stand-in (`--font-arcade-display`); add a **QR** code
+> to the share sheet (needs a dependency-free encoder); add a **nemesis**/worst-
+> partner stat (needs `/api/stats` support); "name taken" is a visual-only scene
+> (guests aren't name-unique server-side); light-skin arcade surfaces render via
+> the flipping `--color-ap-*` tokens but weren't independently axe-verified.
+
 Bring the claude.ai/design pass into the app: a juicy violet product skin
 (Balatro-style card juice on a Sentry-style violet shell) applied across the
 identity + social surfaces built in Phases 1–3.
