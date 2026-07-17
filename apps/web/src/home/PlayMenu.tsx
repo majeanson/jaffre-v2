@@ -22,6 +22,10 @@ function nextDifficulty(current: BotDifficulty): BotDifficulty {
   return DIFFICULTY_ORDER[(i + 1) % DIFFICULTY_ORDER.length] as BotDifficulty;
 }
 
+/** Distinct tints for the seat-stack avatars so a table of bots doesn't read as
+ * one grey block of identical "B"s — each seat gets its own hue by position. */
+const BOT_TINTS = ['#8a7fe0', '#5aa6c4', '#7bb98f', '#d8a24a'] as const;
+
 export interface PlayMenuProps {
   readonly onPractice: () => void;
   readonly onJoinRoom: (code: string) => void;
@@ -64,7 +68,7 @@ function TableCard({
             <span key={i} className={i === 0 ? '' : '-ml-2'}>
               <AvatarChip
                 name={s.name}
-                color={s.isBot ? 'var(--color-ap-muted)' : undefined}
+                color={s.isBot ? BOT_TINTS[i % BOT_TINTS.length] : undefined}
                 size="sm"
               />
             </span>
@@ -116,38 +120,26 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
       className="grid w-full grid-cols-1 gap-3 font-arcade-ui sm:grid-cols-2"
     >
       <div
-        className="rise-in flex flex-col gap-2"
+        className="rise-in group relative flex flex-col gap-3 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-(--color-ap-ink) shadow-(--shadow-ap-lg) max-sm:p-4"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
       >
-        <button
-          type="button"
-          onClick={onPractice}
-          className="group relative cursor-pointer overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-left text-(--color-ap-ink) shadow-(--shadow-ap-lg) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-105 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none max-sm:p-4"
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-8 -right-6 font-arcade-display text-[7rem] leading-none opacity-15 transition-transform duration-(--duration-play) group-hover:-rotate-12"
         >
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -top-8 -right-6 font-arcade-display text-[7rem] leading-none opacity-15 transition-transform duration-(--duration-play) group-hover:-rotate-12"
-          >
-            ♠
-          </span>
-          <span className="block font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase">
-            Practice vs bots
-          </span>
-          <span className="mt-1 block text-(length:--text-fluid-sm) font-medium opacity-80">
-            Deal yourself in — three bots fill the table.
-          </span>
-          <span
-            aria-hidden
-            className="mt-4 inline-block font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide transition-transform duration-(--duration-flick) group-hover:translate-x-1"
-          >
-            Play now →
-          </span>
-        </button>
+          ♠
+        </span>
+        <span className="block font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase">
+          Practice vs bots
+        </span>
+        {/* The three bots live right inside the pill — tap one to cycle its
+            difficulty. (Nested here as real buttons, so the pill itself can't
+            be one big button; "Play now" is the action.) */}
         <div
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
           aria-label="Bot difficulty"
         >
-          <span>Opponents:</span>
+          <span className="font-arcade-display uppercase tracking-wide opacity-70">Opponents</span>
           {([0, 1, 2] as const).map((seat) => (
             <button
               key={seat}
@@ -159,6 +151,16 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={onPractice}
+          className="mt-1 inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+        >
+          Play now
+          <span aria-hidden className="transition-transform duration-(--duration-flick) group-hover:translate-x-1">
+            →
+          </span>
+        </button>
       </div>
 
       <Panel
@@ -173,10 +175,10 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         </Cta>
         <div
           aria-hidden
-          className="flex items-center gap-3 text-(length:--text-fluid-xs) text-(--color-ap-muted)"
+          className="flex items-center gap-3 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-muted)"
         >
           <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-          or join with a code
+          With code
           <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
         </div>
         <form
@@ -189,7 +191,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="room code"
+            placeholder="early-newt-os"
             aria-label="Room code"
             autoCapitalize="none"
             autoCorrect="off"
@@ -227,12 +229,12 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
       )}
 
       <div
-        className="rise-in flex items-center justify-center gap-4 sm:col-span-2"
+        className="rise-in flex flex-wrap items-center justify-center gap-3 sm:col-span-2"
         style={{ '--rise-delay': '300ms' } as CSSProperties}
       >
         <a
           href="#history"
-          className="flex items-center gap-2 px-4 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-muted) hover:text-(--color-ap-text)"
+          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ♠
@@ -241,7 +243,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         </a>
         <a
           href="#stats"
-          className="flex items-center gap-2 px-4 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-muted) hover:text-(--color-ap-text)"
+          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ★

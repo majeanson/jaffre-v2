@@ -73,6 +73,7 @@ export function App() {
   if (route.kind === 'practice') {
     return (
       <Table
+        dev
         onAction={sendLocalAction}
         onLeave={() => (location.hash = '')}
         onRematch={() => startLocalGame()}
@@ -108,6 +109,7 @@ export function App() {
     return started ? (
       <Table
         online
+        dev
         roomCode={route.code}
         onAction={(action) => send({ t: 'action', action })}
         onLeave={() => (location.hash = '')}

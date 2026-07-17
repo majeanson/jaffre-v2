@@ -48,9 +48,6 @@ export function HeroBanner() {
       <h1 className="relative z-10 -mt-[clamp(0.15rem,1.4vmin,0.8rem)] font-arcade-display text-[clamp(2.4rem,7.5vmin,4.5rem)] leading-none tracking-tight text-(--color-ap-gold) drop-shadow-[3px_3px_0_var(--color-ap-ink)]">
         Jaffre
       </h1>
-      <p className="relative z-10 mt-2 max-w-md text-center font-arcade-ui text-[clamp(0.8rem,1.8vmin,1rem)] text-(--color-ap-muted)">
-        Trick-taking for four. Bid, land the contract, first team to 41.
-      </p>
     </header>
   );
 }

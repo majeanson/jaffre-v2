@@ -202,6 +202,54 @@ export function PixelWave({ label }: PixelWaveProps) {
   );
 }
 
+export interface SelectOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+export interface SelectProps {
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly options: readonly SelectOption[];
+  /** Accessible name (there's no visible label baked in). */
+  readonly label?: string;
+  readonly className?: string;
+  readonly id?: string;
+}
+
+/**
+ * The shell's dropdown — the one arcade-skinned `<select>` reused everywhere a
+ * choice is picked (skin switcher, seat view, scene picker). 2px ink border,
+ * panel fill, hard shadow, custom ▼ caret. `appearance-none` so the native
+ * widget's system background can't leak (axe samples our token colours, not the
+ * OS chrome).
+ */
+export function Select({ value, onChange, options, label, className = '', id }: SelectProps) {
+  return (
+    <span className={`relative inline-flex items-center ${className}`}>
+      <select
+        id={id}
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer appearance-none rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) py-[0.5em] pr-[2em] pl-[0.75em] font-arcade-ui text-[0.95em] text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover) focus:bg-(--color-ap-panel-hover)"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-[0.7em] text-[0.6em] text-(--color-ap-muted)"
+      >
+        ▼
+      </span>
+    </span>
+  );
+}
+
 export interface CtaProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'primary' | 'secondary';
 }
@@ -275,6 +323,11 @@ export interface PlayerCardProps {
   readonly onPaint?: (dataUrl: string) => void;
   /** A previously-saved painting (data URL) to render into the canvas. */
   readonly paint?: string;
+  /** When provided, the centre name renders as an inline editable field so the
+   *  player can rename right on the card (fires on each keystroke). */
+  readonly onName?: (name: string) => void;
+  /** Persist the edited name — called on blur. */
+  readonly onNameCommit?: () => void;
 }
 
 /**
@@ -282,7 +335,15 @@ export interface PlayerCardProps {
  * foil sweep + idle wobble, and — when editable — a paintable canvas layer
  * (brush = chosen colour, eraser via destination-out, clear).
  */
-export function PlayerCard({ name, color, editable = false, onPaint, paint }: PlayerCardProps) {
+export function PlayerCard({
+  name,
+  color,
+  editable = false,
+  onPaint,
+  paint,
+  onName,
+  onNameCommit,
+}: PlayerCardProps) {
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -368,9 +429,23 @@ export function PlayerCard({ name, color, editable = false, onPaint, paint }: Pl
         {/* centre block */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.6em] p-[1em]">
           <AvatarChip name={name} color={color} size="lg" />
-          <span className="max-w-full truncate font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink)">
-            {name}
-          </span>
+          {onName !== undefined ? (
+            <input
+              value={name}
+              onChange={(e) => onName(e.target.value)}
+              onBlur={onNameCommit}
+              maxLength={20}
+              aria-label="Your name"
+              placeholder="Player"
+              // Sit above the paint canvas so the field stays clickable; the
+              // canvas only captures pointers in paint mode anyway.
+              className="relative z-10 w-full min-w-0 bg-transparent text-center font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink) outline-none placeholder:text-(--color-ap-ink)/40 focus:underline"
+            />
+          ) : (
+            <span className="max-w-full truncate font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink)">
+              {name}
+            </span>
+          )}
         </div>
         {/* paint layer on top */}
         <canvas

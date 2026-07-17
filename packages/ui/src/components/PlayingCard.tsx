@@ -1,6 +1,7 @@
 import type { CardData } from '../types.js';
 import { cardLabel, SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
+import { Bonhomme } from './Bonhomme.js';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
@@ -79,15 +80,23 @@ export function PlayingCard({
         {card.value}
       </span>
 
-      {/* Suit mark, centred. */}
+      {/* Centre mark: the specials get their OG bonhomme, everyone else the
+          geometric suit shape. */}
       <span className="absolute inset-0 grid place-items-center">
-        <SuitShape suit={card.suit} size="2em" />
+        {isRedZero ? (
+          <Bonhomme kind="joffre" size="2.9em" />
+        ) : isBrownZero ? (
+          <Bonhomme kind="allemagne" size="2.9em" />
+        ) : (
+          <SuitShape suit={card.suit} size="2em" />
+        )}
       </span>
 
-      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). */}
+      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). Top-right,
+          mirroring the rank corner, so the bonhomme keeps the centre. */}
       {bonus !== null && size !== 'sm' && (
         <span
-          className={`absolute left-1/2 bottom-[8%] -translate-x-1/2 rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
+          className={`absolute top-[4%] right-[5%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
             isRedZero ? 'bg-(--color-ap-ok) text-(--color-ap-ink)' : 'bg-[#7a2230] text-white'
           }`}
         >

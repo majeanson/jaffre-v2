@@ -20,6 +20,7 @@ import {
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
+import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
 
 export interface TableProps {
   readonly onAction: (action: ClientAction) => void;
@@ -39,6 +40,8 @@ export interface TableProps {
   /** Reserve space at the bottom so a fixed overlay (e.g. the replay transport
    * bar) sits clear of the hand instead of covering it. */
   readonly bottomInset?: boolean;
+  /** Real play (App) → show the dev console; scenes/replay leave it off. */
+  readonly dev?: boolean;
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
@@ -49,6 +52,7 @@ export function Table({
   onSwapSeats,
   online = false,
   bottomInset = false,
+  dev = false,
   roomCode,
   frozenHold = false,
   initialUi,
@@ -141,6 +145,7 @@ export function Table({
           recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}
         />
       )}
+      {dev && DEV_CONSOLE_ENABLED && <DevConsole />}
     </main>
   );
 }

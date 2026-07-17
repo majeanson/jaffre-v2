@@ -3,6 +3,7 @@ import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+import { Comms } from '../table/Comms.js';
 
 export interface VisitorProps {
   readonly code: string;
@@ -79,6 +80,11 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
 
   return (
     <main className="grid min-h-screen place-items-center bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text)">
+      {/* Visitors can chat with the table before they sit — the popover opens
+          upward from the bottom-right toggle. */}
+      <div className="fixed right-4 bottom-4 z-40">
+        <Comms />
+      </div>
       <div className="flex w-full max-w-md flex-col gap-6">
         <header className="flex flex-col items-center gap-3 text-center">
           <div className="font-arcade-display text-[2em] leading-none tracking-[0.06em] text-(--color-ap-gold)">
