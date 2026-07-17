@@ -399,6 +399,8 @@ interface StatsRow {
   readonly finished_at: number | null;
   readonly winner_team: number | null;
   readonly round_summaries: string | null;
+  readonly score_0: number;
+  readonly score_1: number;
   readonly seat: number;
 }
 
@@ -406,9 +408,11 @@ const EMPTY_STATS = {
   games: 0,
   wins: 0,
   winRate: 0,
+  netPoints: 0,
   bids: { attempted: 0, made: 0 },
   sansAtout: { attempted: 0, made: 0 },
   bestPartner: null,
+  nemesis: null,
   streak: { current: 0, best: 0 },
 };
 
@@ -427,7 +431,7 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
   // Ascending by finished_at: the streak walk needs oldest-first so the
   // running count at the end of the loop IS the current (trailing) streak.
   const rows = await env.DB.prepare(
-    `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, gp.seat
+    `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, g.score_0, g.score_1, gp.seat
      FROM games g JOIN game_players gp ON gp.game_id = g.id
      WHERE gp.user_id = ?1 AND g.finished_at IS NOT NULL
      ORDER BY g.finished_at ASC`,
@@ -443,6 +447,7 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
   );
 
   let wins = 0;
+  let netPoints = 0;
   let bidsAttempted = 0;
   let bidsMade = 0;
   let saAttempted = 0;
@@ -450,11 +455,15 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
   let running = 0;
   let best = 0;
   const partners = new Map<string, { name: string; games: number; wins: number }>();
+  // Opponents you've faced: "losses" counts games they beat you → your nemesis.
+  const opponents = new Map<string, { name: string; games: number; losses: number }>();
 
   for (const g of games) {
     const yourTeam = g.seat % 2;
     const won = g.winner_team !== null && g.winner_team === yourTeam;
     if (won) wins++;
+    // Net points: your team's final margin summed across every finished game.
+    netPoints += yourTeam === 0 ? g.score_0 - g.score_1 : g.score_1 - g.score_0;
     running = won ? running + 1 : 0;
     best = Math.max(best, running);
 
@@ -471,7 +480,8 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
       }
     }
 
-    const teammate = (players.get(g.id) ?? []).find(
+    const roster = players.get(g.id) ?? [];
+    const teammate = roster.find(
       (p) => p.seat % 2 === yourTeam && p.seat !== g.seat && !p.isBot && p.userId !== null,
     );
     if (teammate?.userId !== null && teammate !== undefined) {
@@ -479,6 +489,16 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
       entry.games++;
       if (won) entry.wins++;
       partners.set(teammate.userId, entry);
+    }
+
+    // Both opponents (the other team's humans) get credit for beating you.
+    const decided = g.winner_team !== null;
+    for (const p of roster) {
+      if (p.seat % 2 === yourTeam || p.isBot || p.userId === null) continue;
+      const entry = opponents.get(p.userId) ?? { name: p.name, games: 0, losses: 0 };
+      entry.games++;
+      if (decided && !won) entry.losses++;
+      opponents.set(p.userId, entry);
     }
   }
 
@@ -488,13 +508,22 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
     if (bestPartner === null || entry.wins > bestPartner.wins) bestPartner = entry;
   }
 
+  // Nemesis: the opponent (min 2 games faced) who has beaten you the most.
+  let nemesis: { name: string; games: number; losses: number } | null = null;
+  for (const entry of opponents.values()) {
+    if (entry.games < 2 || entry.losses === 0) continue;
+    if (nemesis === null || entry.losses > nemesis.losses) nemesis = entry;
+  }
+
   return Response.json({
     games: games.length,
     wins,
     winRate: wins / games.length,
+    netPoints,
     bids: { attempted: bidsAttempted, made: bidsMade },
     sansAtout: { attempted: saAttempted, made: saMade },
     bestPartner,
+    nemesis,
     streak: { current: running, best },
   });
 }

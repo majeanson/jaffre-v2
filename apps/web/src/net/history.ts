@@ -36,13 +36,23 @@ export interface StatsPartner {
   readonly wins: number;
 }
 
+/** The opponent who has beaten you most (min 2 games faced). */
+export interface StatsNemesis {
+  readonly name: string;
+  readonly games: number;
+  readonly losses: number;
+}
+
 export interface Stats {
   readonly games: number;
   readonly wins: number;
   readonly winRate: number;
+  /** Your team's final-score margin summed across every finished game. */
+  readonly netPoints: number;
   readonly bids: { readonly attempted: number; readonly made: number };
   readonly sansAtout: { readonly attempted: number; readonly made: number };
   readonly bestPartner: StatsPartner | null;
+  readonly nemesis: StatsNemesis | null;
   readonly streak: { readonly current: number; readonly best: number };
 }
 
@@ -79,9 +89,11 @@ const EMPTY_STATS: Stats = {
   games: 0,
   wins: 0,
   winRate: 0,
+  netPoints: 0,
   bids: { attempted: 0, made: 0 },
   sansAtout: { attempted: 0, made: 0 },
   bestPartner: null,
+  nemesis: null,
   streak: { current: 0, best: 0 },
 };
 

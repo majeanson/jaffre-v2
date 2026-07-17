@@ -102,21 +102,40 @@ export function GameRecap({
         {seats !== undefined && (
           <div className="mt-5 text-left">
             <p className={label('')}>Still at the table</p>
-            <ul className="mt-[0.5em] flex flex-wrap gap-x-4 gap-y-2">
-              {seats.map(
-                (s, i) =>
-                  s !== null && (
-                    <li key={i} className="flex items-center gap-[0.4em]">
-                      <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} size="sm" />
-                      <span className="font-arcade-ui text-[0.85em] text-(--color-ap-text)">
-                        {s.name}
-                        <span className="ml-[0.4em] text-[0.85em] text-(--color-ap-muted)">
-                          {s.connected ? 'here' : 'away'}
-                        </span>
+            {/* One status chip per seat — Ready (here) / Away / Left (empty), so
+                the rematch reads who's coming back at a glance. */}
+            <ul className="mt-[0.6em] flex justify-between gap-2">
+              {[0, 1, 2, 3].map((i) => {
+                const s = seats[i] ?? null;
+                const status =
+                  s === null
+                    ? { word: 'Left', tone: 'text-(--color-ap-muted)' }
+                    : s.connected
+                      ? { word: 'Ready', tone: 'text-(--color-ap-ok)' }
+                      : { word: 'Away', tone: 'text-(--color-ap-muted)' };
+                return (
+                  <li key={i} className="flex flex-col items-center gap-1.5">
+                    {s === null ? (
+                      <span
+                        aria-hidden
+                        className="grid size-[2.75em] place-items-center rounded-(--radius-ap-control) border-2 border-dashed border-(--color-ap-muted)/60 font-arcade-display text-[1.2em] text-(--color-ap-muted)"
+                      >
+                        —
                       </span>
-                    </li>
-                  ),
-              )}
+                    ) : (
+                      <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} />
+                    )}
+                    <span className="max-w-[5rem] truncate font-arcade-ui text-[0.78em] font-semibold text-(--color-ap-text)">
+                      {s?.name ?? 'Empty'}
+                    </span>
+                    <span
+                      className={`font-arcade-display text-[0.7em] uppercase tracking-wide ${status.tone}`}
+                    >
+                      {status.word}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

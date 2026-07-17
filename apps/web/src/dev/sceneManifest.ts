@@ -259,6 +259,12 @@ export const SCENE_METAS = [
     probe: 'text=Recent games',
   },
   {
+    id: 'stats-loading',
+    label: 'Your record — loading',
+    screen: 'stats',
+    probe: 'text=Dealing…',
+  },
+  {
     id: 'replay',
     label: 'Replay viewer',
     screen: 'replay',

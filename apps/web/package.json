@@ -15,6 +15,7 @@
     "@jaffre/engine": "*",
     "@jaffre/protocol": "*",
     "@jaffre/ui": "*",
+    "qrcode-generator": "^2.0.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zustand": "^5.0.4"

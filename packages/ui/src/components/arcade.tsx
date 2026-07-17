@@ -89,14 +89,17 @@ export interface AvatarChipProps {
   /** The player's chosen colour (paint) — fills the chip. Defaults to violet. */
   readonly color?: string | undefined;
   readonly size?: keyof typeof AVATAR_SIZES;
+  /** Mark this chip as the actionable one (the seat you can take) — a violet
+   * glow pulse in place of the flat shadow. */
+  readonly highlight?: boolean;
 }
 
 /** Square rounded chip with the player's initial in the display face. */
-export function AvatarChip({ name, color, size = 'md' }: AvatarChipProps) {
+export function AvatarChip({ name, color, size = 'md', highlight = false }: AvatarChipProps) {
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display leading-none text-(--color-ap-ink) shadow-(--shadow-ap-sm) ${AVATAR_SIZES[size]}`}
+      className={`grid shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display leading-none text-(--color-ap-ink) ${highlight ? 'ap-glow' : 'shadow-(--shadow-ap-sm)'} ${AVATAR_SIZES[size]}`}
       style={{ background: color ?? 'var(--color-ap-violet)' }}
     >
       <span aria-hidden>{initial}</span>
@@ -122,7 +125,7 @@ export interface StatPanelProps {
   readonly value: ReactNode;
   readonly label: string;
   /** Highlight the number in gold (e.g. win rate) instead of the body text. */
-  readonly tone?: 'default' | 'gold' | 'ok' | 'danger';
+  readonly tone?: 'default' | 'gold' | 'ok' | 'danger' | 'violet';
   readonly sub?: ReactNode;
 }
 
@@ -131,6 +134,7 @@ const STAT_TONE: Record<NonNullable<StatPanelProps['tone']>, string> = {
   gold: 'text-(--color-ap-gold)',
   ok: 'text-(--color-ap-ok)',
   danger: 'text-(--color-ap-danger-text)',
+  violet: 'text-(--color-ap-violet-soft)',
 };
 
 /** A panel with a big display number and an uppercase muted label. */
@@ -150,6 +154,50 @@ export function StatPanel({ value, label, tone = 'default', sub }: StatPanelProp
           {sub}
         </div>
       )}
+    </div>
+  );
+}
+
+const PXWAVE_COLORS = [
+  'var(--color-ap-violet)',
+  'var(--color-ap-gold)',
+  'var(--color-ap-violet)',
+  'var(--color-ap-ok)',
+  'var(--color-ap-violet)',
+  'var(--color-ap-gold)',
+  'var(--color-ap-violet)',
+] as const;
+
+export interface PixelWaveProps {
+  /** The status word under the blocks (e.g. "Dealing…"). */
+  readonly label: string;
+}
+
+/**
+ * The arcade loading indicator: a row of pixel blocks bobbing in a wave, with a
+ * status word. Announced politely; the blocks are decorative and sit still
+ * under reduced motion.
+ */
+export function PixelWave({ label }: PixelWaveProps) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-col items-center gap-[0.9em] py-[0.6em]"
+    >
+      <div className="flex items-end gap-[0.4em]">
+        {PXWAVE_COLORS.map((c, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className="ap-pxwave size-[0.9em] border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm)"
+            style={{ background: c, animationDelay: `${String(i * 0.1)}s` }}
+          />
+        ))}
+      </div>
+      <span className="font-arcade-display text-[1.05em] uppercase tracking-wide text-(--color-ap-muted)">
+        {label}
+      </span>
     </div>
   );
 }

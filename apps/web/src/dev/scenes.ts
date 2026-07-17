@@ -192,9 +192,11 @@ export const DEMO_STATS: Stats = {
   games: 14,
   wins: 9,
   winRate: 9 / 14,
+  netPoints: 180,
   bids: { attempted: 6, made: 4 },
   sansAtout: { attempted: 2, made: 1 },
   bestPartner: { name: 'Ginette', games: 6, wins: 4 },
+  nemesis: { name: 'Marcel', games: 8, losses: 5 },
   streak: { current: 3, best: 5 },
 };
 
@@ -204,9 +206,11 @@ export const DEMO_STATS_NEW: Stats = {
   games: 2,
   wins: 1,
   winRate: 0.5,
+  netPoints: -20,
   bids: { attempted: 0, made: 0 },
   sansAtout: { attempted: 0, made: 0 },
   bestPartner: null,
+  nemesis: null,
   streak: { current: 0, best: 1 },
 };
 
@@ -215,9 +219,11 @@ export const DEMO_STATS_VETERAN: Stats = {
   games: 128,
   wins: 84,
   winRate: 84 / 128,
+  netPoints: 430,
   bids: { attempted: 96, made: 71 },
   sansAtout: { attempted: 22, made: 14 },
   bestPartner: { name: 'Réal', games: 44, wins: 33 },
+  nemesis: { name: 'Marcel', games: 20, losses: 12 },
   streak: { current: 6, best: 11 },
 };
 
@@ -386,6 +392,7 @@ const LOADERS: Record<SceneId, () => void> = {
   'stats-empty': () => undefined,
   'stats-new': () => undefined,
   'stats-veteran': () => undefined,
+  'stats-loading': () => undefined,
   replay: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.

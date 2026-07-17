@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, StatPanel } from '@jaffre/ui';
+import { AvatarChip, Cta, PixelWave, StatPanel } from '@jaffre/ui';
 import {
   fetchHistory,
   fetchStats,
   type HistoryGame,
   type Stats as StatsData,
 } from '../net/history.js';
+import { getProfile } from '../net/auth.js';
+import { playerName } from '../net/socket.js';
 
 export interface StatsProps {
   readonly onLeave: () => void;
@@ -13,12 +15,13 @@ export interface StatsProps {
   readonly demoStats?: StatsData;
   /** Scene viewer: staged recent games feeding the sparkline + scorepad. */
   readonly demoGames?: readonly HistoryGame[];
+  /** Scene viewer: hold the screen in its loading (pixel-wave) state. */
+  readonly demoLoading?: boolean;
 }
 
-/** "made X of Y" — the shared shape for bid/sans-atout accuracy lines. */
-function accuracyLine(label: string, made: number, attempted: number): string {
-  if (attempted === 0) return `${label}: no contracts yet`;
-  return `${label}: made ${String(made)} of ${String(attempted)}`;
+/** made/attempted as a whole-percent, or null when nothing's been attempted. */
+function accuracyPct(made: number, attempted: number): number | null {
+  return attempted === 0 ? null : Math.round((made / attempted) * 100);
 }
 
 /** Did you win this game? Your team is your seat's parity (0&2 vs 1&3). */
@@ -35,13 +38,14 @@ function yourScore(game: HistoryGame): readonly [number, number] {
 /**
  * A tiny inline win/loss sparkline — a <polyline> that rides high on a win and
  * low on a loss across the most recent games (oldest → newest, left → right),
- * with an ink baseline and ok/danger dots. No external lib; purely decorative,
- * so the accessible summary lives in the wrapping figure's caption.
+ * with an ink baseline and ok/danger dots. Gold stroke to sit on the ivory
+ * record-book. No external lib; purely decorative, so the accessible summary
+ * lives in the wrapping figure's caption.
  */
 function Sparkline({ results }: { readonly results: readonly boolean[] }) {
-  const w = 132;
-  const h = 34;
-  const padX = 5;
+  const w = 300;
+  const h = 40;
+  const padX = 6;
   const top = 6;
   const bot = h - 6;
   const n = results.length;
@@ -51,7 +55,7 @@ function Sparkline({ results }: { readonly results: readonly boolean[] }) {
   return (
     <svg
       viewBox={`0 0 ${String(w)} ${String(h)}`}
-      className="h-[2.4em] w-full"
+      className="h-[2.6em] w-full"
       preserveAspectRatio="none"
       aria-hidden
     >
@@ -69,8 +73,8 @@ function Sparkline({ results }: { readonly results: readonly boolean[] }) {
         <polyline
           points={line}
           fill="none"
-          stroke="var(--color-ap-violet)"
-          strokeWidth={2}
+          stroke="var(--color-ap-gold-deep)"
+          strokeWidth={2.5}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
@@ -80,7 +84,7 @@ function Sparkline({ results }: { readonly results: readonly boolean[] }) {
           key={i}
           cx={x(i)}
           cy={y(win)}
-          r={2.6}
+          r={3}
           fill={win ? 'var(--color-ap-ok)' : 'var(--color-ap-danger)'}
           stroke="var(--color-ap-ink)"
           strokeWidth={1}
@@ -120,15 +124,65 @@ function ScorepadRow({ game }: { readonly game: HistoryGame }) {
 const SHELL_NOTE =
   'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
 
-/** "Your record": the arcade record-book — hero win rate, bid accuracy, a
- * social panel, a ruled scorepad of recent games and a form sparkline. */
-export function Stats({ onLeave, demoStats, demoGames }: StatsProps) {
+/** A muted uppercase micro-label — reused across the record's panels. */
+const MICRO_LABEL =
+  'font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)';
+
+/** One social fact (best partner / nemesis) — an avatar + name + relation. */
+function SocialPanel({
+  heading,
+  headingClass,
+  chipColor,
+  name,
+  relation,
+  testId,
+  empty,
+}: {
+  readonly heading: string;
+  readonly headingClass: string;
+  readonly chipColor: string;
+  readonly name: string | undefined;
+  readonly relation: string;
+  readonly testId: string;
+  readonly empty: string;
+}) {
+  return (
+    <div className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
+      <div
+        className={`mb-[0.6em] font-arcade-ui text-[0.68em] font-semibold uppercase tracking-[0.14em] ${headingClass}`}
+      >
+        {heading}
+      </div>
+      {name === undefined ? (
+        <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">{empty}</p>
+      ) : (
+        <div className="flex items-center gap-[0.7em]">
+          <AvatarChip name={name} color={chipColor} size="sm" />
+          <div className="min-w-0 font-arcade-ui">
+            <div
+              data-testid={testId}
+              className="truncate font-arcade-display text-[1em] uppercase text-(--color-ap-text)"
+            >
+              {name}
+            </div>
+            <div className="text-[0.8em] tabular-nums text-(--color-ap-muted)">{relation}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "Your record": the arcade record-book — an ivory ruled hero (win rate +
+ * form sparkline), the headline numbers, bid accuracy, the people you sit
+ * with, and a ruled scorepad of recent games. */
+export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: StatsProps) {
   const [stats, setStats] = useState<StatsData | null>(demoStats ?? null);
   const [games, setGames] = useState<readonly HistoryGame[] | null>(demoGames ?? null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (demoStats !== undefined) return;
+    if (demoStats !== undefined || demoLoading) return;
     let live = true;
     fetchStats()
       .then((s) => live && setStats(s))
@@ -141,7 +195,7 @@ export function Stats({ onLeave, demoStats, demoGames }: StatsProps) {
     return () => {
       live = false;
     };
-  }, [demoStats]);
+  }, [demoStats, demoLoading]);
 
   // Oldest → newest, capped, for a left-to-right "recent form" reading.
   const recent =
@@ -153,13 +207,20 @@ export function Stats({ onLeave, demoStats, demoGames }: StatsProps) {
           .slice(-12);
   const recentWins = recent.filter(youWon).length;
 
+  const bidPct = stats === null ? null : accuracyPct(stats.bids.made, stats.bids.attempted);
+  const saPct =
+    stats === null ? null : accuracyPct(stats.sansAtout.made, stats.sansAtout.attempted);
+
   return (
     <main className="min-h-dvh overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <header className="flex items-center justify-between gap-4">
-          <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-            Your record
-          </h1>
+          <div className="flex items-center gap-[0.5em]">
+            <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
+            <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
+              Your record
+            </h1>
+          </div>
           <Cta variant="secondary" onClick={onLeave}>
             Home
           </Cta>
@@ -170,101 +231,133 @@ export function Stats({ onLeave, demoStats, demoGames }: StatsProps) {
             Your record needs the online server. Play a room game and it will show up here.
           </p>
         ) : stats === null ? (
-          <p className={SHELL_NOTE} aria-live="polite">
-            Loading…
-          </p>
+          <div className={SHELL_NOTE}>
+            <PixelWave label="Dealing…" />
+          </div>
         ) : stats.games === 0 ? (
-          <p className={SHELL_NOTE}>No games yet — play one!</p>
+          <div className={SHELL_NOTE}>
+            <div className="font-arcade-display text-[1.3em] uppercase text-(--color-ap-ok)">
+              No games yet
+            </div>
+            <p className="mt-[0.5em]">
+              Play your first hand and the book starts filling in — win rate, streak, and the people
+              you sit with.
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* Hero fact: win rate (gold) + recent-form sparkline. */}
-            <section className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.1em] shadow-(--shadow-ap-lg)">
+            {/* Hero fact: an ivory ruled record-book page — win rate (gold) +
+                recent-form sparkline. The card face stays ivory in both skins,
+                so its text is ink, not the flipping --color-ap-text. */}
+            <section
+              className="rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) p-[1.1em] shadow-(--shadow-ap-lg)"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(transparent 0 27px, rgb(11 7 19 / 0.07) 27px 28px)',
+              }}
+            >
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <div className="font-arcade-display text-[3em] leading-none tabular-nums text-(--color-ap-gold)">
+                  <div className="font-arcade-ui text-[0.7em] font-bold uppercase tracking-[0.16em] text-(--color-ap-ink)/55">
+                    Win rate · all time
+                  </div>
+                  <div className="mt-[0.15em] font-arcade-display text-[3.6em] leading-[0.9] tabular-nums text-(--color-ap-gold-deep)">
                     {Math.round(stats.winRate * 100)}%
                   </div>
-                  <div className="mt-[0.4em] font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-                    win rate
-                  </div>
                 </div>
-                <div className="text-right font-arcade-display text-[1.4em] tabular-nums text-(--color-ap-text)">
-                  {stats.wins}
-                  <span className="mx-[0.25em] text-(--color-ap-muted)">/</span>
-                  {stats.games}
-                  <div className="mt-[0.2em] font-arcade-ui text-[0.5em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-                    games won
-                  </div>
+                <div className="flex items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ok) px-[0.6em] py-[0.35em] font-arcade-display text-[1em] tabular-nums text-(--color-ap-ink) shadow-(--shadow-ap-sm)">
+                  {stats.wins} won
                 </div>
               </div>
               {recent.length > 0 && (
-                <figure className="mt-[0.9em]">
+                <figure className="mt-[0.5em]">
                   <Sparkline results={recent.map(youWon)} />
-                  <figcaption className="mt-[0.3em] font-arcade-ui text-[0.72em] text-(--color-ap-muted)">
-                    Recent form — {recentWins} of last {recent.length} won
+                  <figcaption className="mt-[0.2em] font-arcade-ui text-[0.72em] text-(--color-ap-ink)/55">
+                    Last {recent.length} games — {recentWins} won.
                   </figcaption>
                 </figure>
               )}
             </section>
 
-            {/* Streak — one section so "current" + "best" read together. */}
-            <section className="grid grid-cols-2 gap-4">
-              <StatPanel value={stats.streak.current} label="current streak" />
-              <StatPanel value={stats.streak.best} label="best streak" />
+            {/* Headline numbers: games, net points, best streak. */}
+            <section className="grid grid-cols-3 gap-3 max-sm:gap-2">
+              <StatPanel value={stats.games} label="games" />
+              <StatPanel
+                value={`${stats.netPoints >= 0 ? '+' : ''}${String(stats.netPoints)}`}
+                label="net points"
+                tone="violet"
+              />
+              <StatPanel value={stats.streak.best} label="best streak" tone="ok" />
             </section>
 
-            {/* Bid accuracy. */}
-            <section className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-              <StatPanel
-                value={
-                  stats.bids.attempted === 0 ? '—' : `${stats.bids.made}/${stats.bids.attempted}`
-                }
-                label="contracts"
-                sub={accuracyLine('Contracts', stats.bids.made, stats.bids.attempted)}
-              />
-              <StatPanel
-                value={
-                  stats.sansAtout.attempted === 0
-                    ? '—'
-                    : `${stats.sansAtout.made}/${stats.sansAtout.attempted}`
-                }
-                label="sans atout"
-                sub={accuracyLine('Sans atout', stats.sansAtout.made, stats.sansAtout.attempted)}
-              />
-            </section>
-
-            {/* Social fact: best partner. (Nemesis/worst-partner is a
-                follow-up — the /api/stats shape doesn't provide it yet.) */}
+            {/* Bid accuracy — one headline % over a striped fill bar. */}
             <section className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
-              <div className="mb-[0.6em] font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-                Best partner
+              <div className="mb-[0.6em] flex items-baseline justify-between gap-3">
+                <span className={MICRO_LABEL}>Bid accuracy</span>
+                <span className="font-arcade-display text-[1.3em] tabular-nums text-(--color-ap-gold)">
+                  {bidPct === null ? '—' : `${String(bidPct)}%`}
+                </span>
               </div>
-              {stats.bestPartner === null ? (
-                <p className="font-arcade-ui text-[0.9em] text-(--color-ap-text)/80">
-                  Play a few games with the same teammate to find out.
+              {bidPct === null ? (
+                <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">
+                  Contracts: no contracts yet — name one and see how you do.
                 </p>
               ) : (
-                <div className="flex items-center gap-[0.8em]">
-                  <AvatarChip name={stats.bestPartner.name} />
-                  <div className="font-arcade-ui text-[0.95em] text-(--color-ap-text)">
+                <>
+                  <div className="h-[0.9em] overflow-hidden rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) shadow-(--shadow-ap-sm)">
                     <div
-                      data-testid="best-partner-name"
-                      className="font-arcade-display text-[1.1em] uppercase text-(--color-ap-text)"
-                    >
-                      {stats.bestPartner.name}
-                    </div>
-                    <div className="tabular-nums text-(--color-ap-muted)">
-                      {stats.bestPartner.wins} wins in {stats.bestPartner.games} games
-                    </div>
+                      className="h-full"
+                      style={{
+                        width: `${String(bidPct)}%`,
+                        backgroundImage:
+                          'repeating-linear-gradient(45deg, var(--color-ap-gold) 0 7px, var(--color-ap-gold-deep) 7px 14px)',
+                      }}
+                    />
                   </div>
-                </div>
+                  <div className="mt-[0.6em] font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+                    You make the contract {stats.bids.made} of {stats.bids.attempted} times you name
+                    it{saPct === null ? '' : ` · ${String(saPct)}% at sans atout`}.
+                  </div>
+                </>
               )}
+            </section>
+
+            {/* Social facts: best partner + nemesis, side by side. */}
+            <section className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+              <SocialPanel
+                heading="Best partner"
+                headingClass="text-(--color-ap-ok)"
+                chipColor="var(--color-suit-green)"
+                name={stats.bestPartner?.name}
+                relation={
+                  stats.bestPartner === null
+                    ? ''
+                    : `${stats.bestPartner.wins} wins in ${stats.bestPartner.games} games`
+                }
+                testId="best-partner-name"
+                empty="Play a few games with the same teammate to find out."
+              />
+              <SocialPanel
+                heading="Nemesis"
+                headingClass="text-(--color-ap-danger-text)"
+                chipColor="var(--color-suit-blue)"
+                name={stats.nemesis?.name}
+                relation={
+                  stats.nemesis === null
+                    ? ''
+                    : `beats you ${stats.nemesis.losses} of ${stats.nemesis.games}`
+                }
+                testId="nemesis-name"
+                empty="No one has your number yet — keep it that way."
+              />
             </section>
 
             {/* Scorepad — ruled ledger of recent games. */}
             {recent.length > 0 && (
               <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)">
-                <div className="border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
+                <div
+                  className={`border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] ${MICRO_LABEL}`}
+                >
                   Recent games
                 </div>
                 <table className="w-full border-collapse">

@@ -7,11 +7,15 @@
 > design pass may still refine. The **home/identity** surface got a follow-up
 > polish pass (`d00e48d`): Silkscreen display font, condensed layout with a
 > `Customize` disclosure, and reusable `Panel`/`Collapsible` kit primitives.
-> Known follow-ups: swap the licensed **Visitor** TTF in for the **Silkscreen**
-> stand-in (`--font-arcade-display`); the three social surfaces
-> (Stats/Invite/Standing-table) await the design tool's Turn 6 mockups; add a
-> **QR** code to the share sheet (needs a dependency-free encoder); add a
-> **nemesis**/worst-partner stat (needs `/api/stats` support); "name taken" is a
+> **Turn 6 shipped (W5–W7, this pass):** the design tool's 6a–6k mockups landed
+> and Stats / Invite+Share / Standing-table are now built to them — including the
+> share-sheet **QR** (bundled `qrcode-generator`) and the **nemesis** + net-points
+> `/api/stats` fields. See W5–W7 below for what's done and what's deferred
+> (per-game scorepad grid, SWAP SEATS, the multi-table "Your tables" row — each
+> needs a deeper data model).
+>
+> Remaining follow-ups: swap the licensed **Visitor** TTF in for the
+> **Silkscreen** stand-in (`--font-arcade-display`); "name taken" is a
 > visual-only scene (guests aren't name-unique server-side); the arcade shell is
 > one look that only flips light↔dark (juicy == dark on these surfaces — make it
 > skin-aware if that's wanted).
@@ -132,23 +136,37 @@ Make the chosen color/paint durable and shared across screens.
 - Tests: server vitest for the color round-trip; e2e for persistence across a
   fresh context (mirrors the recovery-flow test).
 
-### W5 — Stats "Your record" restyle — BLOCKED on design
+### W5 — Stats "Your record" restyle — SHIPPED (Turn 6 · 6a)
 
-Record-book motif: hero fact (win rate / streak) → bid accuracy → social facts
-(best partner / nemesis) → game list; sparkline; brand-new / veteran / empty
-states. New motifs needed beyond the kit: a ruled/tabular scorepad and a
-sparkline. `Stats.tsx` already has the data + functional layout from Phase 1.
+Built to the delivered 6a mockup: ivory ruled record-book hero (gold win rate +
+form `Sparkline`), a 3-up headline row (Games / **Net points** / Best streak),
+one bid-accuracy % over a striped fill bar, **Best partner + Nemesis** side by
+side, a ruled scorepad of recent games, and a `PixelWave` ("Dealing…") loading
+state (new `stats-loading` scene). Two **safe additive `/api/stats` fields** now
+back this: `netPoints` (your team's summed final margin) and `nemesis` (the
+opponent, min 2 games, who's beaten you most) — server + vitest in
+`apps/server/test/stats.test.ts`. The player's own `users.color` fills the
+header avatar chip.
 
-### W6 — Invite & join restyle — BLOCKED on design
+### W6 — Invite & join restyle — SHIPPED (Turn 6 · 6c/6d)
 
-Join landing (who invited, mini 4-seat table diagram, sit / watch / take over a
-bot seat — must read in 3s) + inviter share sheet (link, QR, warm copy).
-`Visitor.tsx` + `ShareButton.tsx` already carry the behavior.
+Join landing (`Visitor.tsx`): "{host} wants you" header, the takeable seat
+**previews you** (name + saved colour) with a violet `ap-glow` pulse, and a hero
+"Sit down" over the mini 4-seat diagram. Share sheet (`ShareSheet.tsx`): the
+"Pull up a chair" bottom sheet with a **real scan-to-join QR** (bundled
+`qrcode-generator`, offline / CSP-safe — no CDN), the room code as ivory
+`WordPlate`s, the link with one-tap copy, and Text / Email / More hand-off
+targets (`sms:` / `mailto:` / Web Share).
 
-### W7 — Standing table / rematch restyle — BLOCKED on design
+### W7 — Standing table / rematch restyle — SHIPPED (Turn 6 · 6e, partial)
 
-Between-games tally as a scorepad of games, who's still here, Rematch hero
-action; a home "Your tables" row. `GameRecap.tsx` already tallies `seriesWins`.
+`GameRecap.tsx` now shows the "Still at the table" roster as per-seat status
+chips (Ready / Away / Left) ahead of the hero Rematch. **Deferred (need a deeper
+data model, per the fidelity-scope decision):** the per-game scorepad grid
+(6e/6i — only the aggregate `seriesWins` tally is tracked, not per-game series
+scores), the **SWAP SEATS** action (no seat-swap protocol / handler exists), and
+the multi-table home **"Your tables"** row (6f — the app tracks a single
+`lastRoom`, not multiple live tables).
 
 ## Cross-cutting rules (unchanged)
 

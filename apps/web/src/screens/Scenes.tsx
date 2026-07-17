@@ -124,30 +124,41 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onLeave={onLeave}
         />
       )}
-      {current.screen === 'stats' && (
-        <Stats
-          key={current.id}
-          demoStats={
-            current.id === 'stats-empty'
-              ? { ...DEMO_STATS, games: 0, wins: 0, winRate: 0, bestPartner: null }
-              : current.id === 'stats-new'
-                ? DEMO_STATS_NEW
-                : current.id === 'stats-veteran'
-                  ? DEMO_STATS_VETERAN
-                  : DEMO_STATS
-          }
-          demoGames={
-            current.id === 'stats-empty'
-              ? []
-              : current.id === 'stats-new'
-                ? DEMO_HISTORY_NEW
-                : current.id === 'stats-veteran'
-                  ? DEMO_HISTORY_VETERAN
-                  : DEMO_HISTORY
-          }
-          onLeave={onLeave}
-        />
-      )}
+      {current.screen === 'stats' &&
+        (current.id === 'stats-loading' ? (
+          <Stats key={current.id} demoLoading onLeave={onLeave} />
+        ) : (
+          <Stats
+            key={current.id}
+            demoStats={
+              current.id === 'stats-empty'
+                ? {
+                    ...DEMO_STATS,
+                    games: 0,
+                    wins: 0,
+                    winRate: 0,
+                    netPoints: 0,
+                    bestPartner: null,
+                    nemesis: null,
+                  }
+                : current.id === 'stats-new'
+                  ? DEMO_STATS_NEW
+                  : current.id === 'stats-veteran'
+                    ? DEMO_STATS_VETERAN
+                    : DEMO_STATS
+            }
+            demoGames={
+              current.id === 'stats-empty'
+                ? []
+                : current.id === 'stats-new'
+                  ? DEMO_HISTORY_NEW
+                  : current.id === 'stats-veteran'
+                    ? DEMO_HISTORY_VETERAN
+                    : DEMO_HISTORY
+            }
+            onLeave={onLeave}
+          />
+        ))}
       {current.screen === 'replay' && (
         <Replay key={current.id} gameId={null} demo={DEMO_REPLAY} onLeave={onLeave} />
       )}

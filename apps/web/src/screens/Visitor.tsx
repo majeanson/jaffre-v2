@@ -1,6 +1,8 @@
 import { AvatarChip, Cta } from '@jaffre/ui';
 import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
+import { getProfile } from '../net/auth.js';
+import { playerName } from '../net/socket.js';
 
 export interface VisitorProps {
   readonly code: string;
@@ -28,17 +30,27 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   const { roster, view } = useGameStore();
   const scores = view?.scores;
   // Whoever is first seated and human "owns" this table — the landing greets a
-  // visitor by name, falling back to the raw room code.
+  // visitor in their name, falling back to the raw room code.
   const host = roster?.seats.find((s): s is RosterSeat => s !== null && !s.isBot);
-  const title = host !== undefined ? `${host.name}’s table` : `Room ${code}`;
+
+  // A bot seat is your way in; the first is highlighted as "your" seat and
+  // previews you — your name + chosen colour, the way the felt will show it.
+  const botSeats = SEATS.filter((seat) => roster?.seats[seat]?.isBot === true);
+  const yourSeat = botSeats[0];
+  const me = playerName();
+  const myColor = getProfile().color ?? undefined;
 
   // One seat cell of the diagram: chip + name + a text label (team, and "Bot"
-  // / "Away" tags) so nothing rides on colour alone.
+  // / "Away" tags) so nothing rides on colour alone. The seat you'd take glows
+  // and shows you.
   const seatCell = (seat: number) => {
     const info = roster?.seats[seat] ?? null;
     const team = teamOf(seat);
-    const tags =
-      info === null
+    const takeable = seat === yourSeat;
+    const displayName = takeable ? me : (info?.name ?? 'Open seat');
+    const tags = takeable
+      ? 'You · sit here'
+      : info === null
         ? 'Open'
         : [info.isBot ? 'Bot' : null, team.name, info.connected ? null : 'Away']
             .filter((t): t is string => t !== null)
@@ -48,29 +60,47 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
         data-testid={`visitor-seat-${seat}`}
         className="flex flex-col items-center gap-1 text-center"
       >
-        <AvatarChip name={info?.name ?? 'Open seat'} />
+        <AvatarChip
+          name={displayName}
+          color={takeable ? myColor : undefined}
+          highlight={takeable}
+        />
         <span className="max-w-[7rem] truncate font-arcade-ui text-[0.9em] font-semibold text-(--color-ap-text)">
-          {info?.name ?? 'Open seat'}
+          {displayName}
         </span>
-        <span className="font-arcade-ui text-[0.72em] font-semibold uppercase tracking-wide text-(--color-ap-muted)">
+        <span
+          className={`font-arcade-ui text-[0.72em] font-semibold uppercase tracking-wide ${takeable ? 'text-(--color-ap-gold)' : 'text-(--color-ap-muted)'}`}
+        >
           {tags}
         </span>
       </div>
     );
   };
 
-  const botSeats = SEATS.filter((seat) => roster?.seats[seat]?.isBot === true);
-
   return (
     <main className="grid min-h-screen place-items-center bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text)">
       <div className="flex w-full max-w-md flex-col gap-6">
-        <header className="text-center">
-          <h1 className="font-arcade-display text-[2.4em] leading-none text-(--color-ap-gold)">
-            {title}
-          </h1>
-          <p className="mt-2 font-arcade-ui text-[0.95em] text-(--color-ap-muted)">
-            Game in progress — take a seat or just watch.
-          </p>
+        <header className="flex flex-col items-center gap-3 text-center">
+          <div className="font-arcade-display text-[2em] leading-none tracking-[0.06em] text-(--color-ap-gold)">
+            Jaffré
+          </div>
+          {host !== undefined ? (
+            <div className="flex items-center gap-3">
+              <AvatarChip name={host.name} size="lg" />
+              <div className="text-left">
+                <h1 className="font-arcade-display text-[1.2em] uppercase leading-tight text-(--color-ap-text)">
+                  {host.name} wants you
+                </h1>
+                <div className="font-arcade-ui text-[0.9em] text-(--color-ap-muted)">
+                  at the table — one seat open.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <h1 className="font-arcade-display text-[1.4em] uppercase text-(--color-ap-text)">
+              Room {code}
+            </h1>
+          )}
         </header>
 
         {/* Mini four-seat table: partners sit across, the way the felt does. */}
@@ -117,15 +147,19 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
           {botSeats.map((seat) => {
             const info = roster?.seats[seat];
             if (info === undefined || info === null) return null;
+            // The first open seat is the hero "Sit down"; any others read as
+            // "take over <bot>'s seat" so the primary action stays singular.
+            const primary = seat === yourSeat;
             return (
               <Cta
                 key={seat}
                 type="button"
+                variant={primary ? 'primary' : 'secondary'}
                 data-testid={`take-seat-${seat}`}
                 onClick={() => onSit(seat)}
-                className="w-full"
+                className={primary ? 'w-full py-[0.9em] text-[1.3em]' : 'w-full'}
               >
-                Take {info.name}&rsquo;s seat
+                {primary ? 'Sit down' : `Take over ${info.name}’s seat`}
               </Cta>
             );
           })}

@@ -97,6 +97,7 @@
   --color-ap-violet: #7a6ff0; /* primary CTA */
   --color-ap-violet-soft: #a897f0; /* accents, badges, notification dots */
   --color-ap-gold: #f2b712; /* wordmark, win-rate stat */
+  --color-ap-gold-deep: #d99a00; /* gold that reads on the ivory card face; constant across skins */
   --color-ap-text: #ebe6f5;
   --color-ap-muted: #9a8fbf;
   --color-ap-ok: #58b884;
@@ -355,6 +356,21 @@
     overflow: hidden;
   }
 
+  /* Loading = a wave of pixel blocks bobbing in sequence (the arcade take on a
+   * skeleton). Blocks sit at rest, dimmed, under reduced motion. Stagger each
+   * block with an inline `animation-delay`. */
+  .ap-pxwave {
+    opacity: 0.25;
+  }
+
+  /* A soft violet pulse marking the seat you can take. Under reduced motion it
+   * settles to a steady ring (still clearly "this one"). */
+  .ap-glow {
+    box-shadow:
+      var(--shadow-ap-sm),
+      0 0 0 3px rgb(122 111 240 / 0.5);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .ap-wobble {
       animation: ap-wobble 4.4s ease-in-out infinite;
@@ -374,6 +390,12 @@
       mix-blend-mode: screen;
       animation: ap-foil 4.6s linear infinite;
     }
+    .ap-pxwave {
+      animation: ap-pxwave 1s ease-in-out infinite;
+    }
+    .ap-glow {
+      animation: ap-glow 3s ease-in-out infinite;
+    }
   }
 
   @keyframes ap-wobble {
@@ -392,6 +414,32 @@
     }
     100% {
       background-position: -30% 0;
+    }
+  }
+
+  @keyframes ap-pxwave {
+    0%,
+    100% {
+      opacity: 0.25;
+      transform: translateY(0);
+    }
+    45% {
+      opacity: 1;
+      transform: translateY(-0.4em);
+    }
+  }
+
+  @keyframes ap-glow {
+    0%,
+    100% {
+      box-shadow:
+        var(--shadow-ap-sm),
+        0 0 0 3px rgb(122 111 240 / 0.35);
+    }
+    50% {
+      box-shadow:
+        var(--shadow-ap-sm),
+        0 0 22px 2px rgb(122 111 240 / 0.55);
     }
   }
 }
