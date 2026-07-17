@@ -1,9 +1,10 @@
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/instrument-sans';
-// Arcade skin type: Pixelify Sans (display) + Rubik (UI). Pixelify stands in
-// for the design's "Visitor" pixel face until the licensed Visitor TTF is
-// dropped in; swap the --font-display family in the arcade token block then.
-import '@fontsource-variable/pixelify-sans';
+// Arcade shell type: Silkscreen (display — the compact-pixel stand-in for the
+// design's "Visitor" face; swap in the licensed Visitor TTF via the arcade
+// --font-arcade-display token later) + Rubik (UI).
+import '@fontsource/silkscreen';
+import '@fontsource/silkscreen/700.css';
 import '@fontsource-variable/rubik';
 import '@jaffre/ui/tokens.css';
 import { JaffreMotionConfig } from '@jaffre/ui';

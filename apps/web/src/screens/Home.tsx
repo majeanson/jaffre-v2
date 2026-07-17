@@ -61,7 +61,7 @@ export function Home({
   const shownPaint = staged ? identityStage.paint : profile.paint;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-[clamp(1.25rem,3.5vmin,2.5rem)] overflow-x-clip bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) max-sm:p-4">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) max-sm:p-4">
       <HeroBanner />
 
       <ProfileCard

@@ -88,7 +88,7 @@
    * live in the --color-ap-* namespace and FLIP under [data-theme='light'];
    * the type / border / shadow / radius tokens are constant across skins so the
    * shell reads the same everywhere. Card faces reuse --color-card-face. */
-  --font-arcade-display: 'Pixelify Sans Variable', 'Visitor', ui-monospace, monospace;
+  --font-arcade-display: 'Silkscreen', 'Visitor', ui-monospace, monospace;
   --font-arcade-ui: 'Rubik Variable', ui-sans-serif, system-ui, sans-serif;
   --color-ap-ground: #181225;
   --color-ap-panel: #221a35;

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
-import { Cta } from '@jaffre/ui';
+import { Cta, Panel } from '@jaffre/ui';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -29,9 +29,6 @@ export interface PlayMenuProps {
   /** Series tally for the resume room when known: [Sun wins, Moon wins]. */
   readonly resumeSeries?: readonly [number, number] | undefined;
 }
-
-const PANEL =
-  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)';
 
 /**
  * The title-screen actions in the arcade shell: practice (primary), play with
@@ -108,8 +105,8 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
         </div>
       </div>
 
-      <div
-        className={`rise-in flex flex-col gap-3 p-5 max-sm:p-4 ${PANEL}`}
+      <Panel
+        className="rise-in flex flex-col gap-3 p-5 max-sm:p-4"
         style={{ '--rise-delay': '140ms' } as CSSProperties}
       >
         <span className="font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase text-(--color-ap-text)">
@@ -150,11 +147,11 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
             Join room
           </button>
         </form>
-      </div>
+      </Panel>
 
       {resumeCode !== null && (
-        <div
-          className="rise-in flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui shadow-(--shadow-ap) max-sm:p-4 sm:col-span-2"
+        <Panel
+          className="rise-in flex flex-col gap-3 p-5 font-arcade-ui max-sm:p-4 sm:col-span-2"
           style={{ '--rise-delay': '220ms' } as CSSProperties}
         >
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -177,7 +174,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
               Resume
             </Cta>
           </div>
-        </div>
+        </Panel>
       )}
 
       <div
@@ -186,7 +183,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
       >
         <a
           href="#history"
-          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ap-muted) hover:text-(--color-ap-text)"
+          className="flex items-center gap-2 px-4 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-muted) hover:text-(--color-ap-text)"
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ♠
@@ -195,7 +192,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
         </a>
         <a
           href="#stats"
-          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ap-muted) hover:text-(--color-ap-text)"
+          className="flex items-center gap-2 px-4 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-muted) hover:text-(--color-ap-text)"
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ★
