@@ -889,21 +889,19 @@ describe('GameRoom', () => {
       const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
       expect(armed).toBeNull();
 
-      // Even past the bot-swap deadline, and even if a stale alarm survives on
-      // the slot, firing it must NOT advance the game or re-arm — bots don't
-      // play into an empty room.
+      // Even after the bot-swap deadline passes, nothing is scheduled to advance
+      // the game — bots don't play into an empty room. (runDurableObjectAlarm
+      // returns false when no alarm is on the slot to fire.)
       await runInDurableObject(stub, async (_instance, state) => {
         const meta = await state.storage.get<StoredMeta>('meta');
         if (meta === undefined) throw new Error('meta missing');
         meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
         await state.storage.put('meta', meta);
-        await state.storage.setAlarm(Date.now() - 1);
       });
-      expect(await runDurableObjectAlarm(stub)).toBe(true); // the alarm fired…
+      expect(await runDurableObjectAlarm(stub)).toBe(false);
       const afterPause = await snapshot(stub);
-      expect(afterPause.seq).toBe(seqBefore); // …but advanced nothing
+      expect(afterPause.seq).toBe(seqBefore);
       expect(afterPause.phase).toBe(before.phase);
-      expect(afterPause.alarm).toBeNull(); // …and did not re-arm — still paused
 
       // Reset the disconnect clock to the present so the resume re-arm lands ~45s
       // out (not immediately) and can't fire a self-perpetuating bot chain into

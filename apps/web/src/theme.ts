@@ -1,12 +1,25 @@
+import type { Lang } from '@jaffre/ui';
 import type { Cosmetic } from './cosmetics.js';
 
 /** Skin system: a theme is a [data-theme] token block in packages/ui tokens.css.
- * Themes are cosmetics too — free or unlocked from stats (Phase 2 adds locked
- * ones). `dark` is the default (no `data-theme` attribute). */
+ * Themes are cosmetics too — free or unlocked from stats. `dark` is the default
+ * (no `data-theme` attribute). */
 export const THEMES: readonly Cosmetic[] = [
   { id: 'dark', label: 'Classic dark', free: true },
   { id: 'light', label: 'Classic light', free: true },
   { id: 'juicy', label: 'Juicy', free: true },
+  { id: 'sepia', label: 'Sepia', free: true },
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    free: false,
+    unlock: (s) => s.games >= 10,
+    requirement: (s, lang: Lang) => ({
+      text: lang === 'fr' ? 'Jouez 10 parties' : 'Play 10 games',
+      have: s.games,
+      need: 10,
+    }),
+  },
 ];
 
 /** Ids are open now (the catalog grows) — validated against THEMES at runtime. */

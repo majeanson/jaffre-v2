@@ -13,6 +13,10 @@ import type { Stats } from './net/history.js';
  * prod. Flip to false (or gate behind ?dev) to make unlocks play-earned. */
 export const DEV_UNLOCK_ALL = true;
 
+/** Tiny inline picker for the two requirement strings (the catalog is the only
+ * place these live, so a full Record table would be overkill). */
+const t = (lang: Lang, en: string, fr: string): string => (lang === 'fr' ? fr : en);
+
 export interface Cosmetic {
   readonly id: string;
   readonly label: string;
@@ -41,8 +45,39 @@ export function resolve(id: string | null, ownedIds: Set<string>, fallback: stri
 // ── Card skins ──────────────────────────────────────────────────────────────
 // The default `arcade` skin declares NO token block and NO renderer (the "no
 // data-card-skin attribute" state), so the active theme's own card tokens show
-// through until the player picks a real skin. Phase 2 adds the rest.
-export const CARD_SKINS: readonly Cosmetic[] = [{ id: 'arcade', label: 'Arcade', free: true }];
+// through until the player picks a real skin. The others are `[data-card-skin]`
+// token blocks in tokens.css, some paired with a CARD_SKIN_RENDERERS entry.
+export const CARD_SKINS: readonly Cosmetic[] = [
+  { id: 'arcade', label: 'Arcade', free: true },
+  { id: 'classic-og', label: 'Classic OG', free: true },
+  { id: 'noir', label: 'Noir', free: true },
+  {
+    id: 'lamplight-foil',
+    label: 'Lamplight Foil',
+    free: false,
+    unlock: (s) => s.games >= 25 || s.streak.best >= 5,
+    requirement: (s, lang) => {
+      const byGames = { text: t(lang, 'Play 25 games', 'Jouez 25 parties'), have: s.games, need: 25 };
+      const byStreak = { text: t(lang, 'Win 5 in a row', 'Gagnez 5 fois de suite'), have: s.streak.best, need: 5 };
+      // Show whichever path the player is closest to completing.
+      return byGames.have / byGames.need >= byStreak.have / byStreak.need ? byGames : byStreak;
+    },
+  },
+  {
+    id: 'neon',
+    label: 'Neon',
+    free: false,
+    unlock: (s) => s.games >= 20 && s.winRate >= 0.6,
+    requirement: (s, lang) =>
+      s.games < 20
+        ? { text: t(lang, 'Play 20 games', 'Jouez 20 parties'), have: s.games, need: 20 }
+        : {
+            text: t(lang, 'Reach a 60% win rate', 'Atteignez 60 % de victoires'),
+            have: Math.round(s.winRate * 100),
+            need: 60,
+          },
+  },
+];
 
 export const DEFAULT_CARD_SKIN = 'arcade';
 const CARD_SKIN_KEY = 'jaffre-card-skin';

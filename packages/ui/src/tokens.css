@@ -192,14 +192,128 @@
   --table-backdrop: radial-gradient(1100px 720px at 50% 22%, #34215c, var(--color-ap-ground) 70%);
 }
 
+/* Sepia: a warm parchment reading-room — amber felt, aged-paper cards, sepia
+ * inks. Free. */
+:root[data-theme='sepia'] {
+  --color-felt-950: #2a1e10;
+  --color-felt-900: #3a2a16;
+  --color-felt-800: #4c381e;
+  --color-felt-700: #5e4726;
+  --color-lamplight: #e8b866;
+  --color-lamplight-dim: #bd9350;
+  --color-team-a: #e8b866;
+  --color-team-b: #cf8f5a;
+  --color-accent: #e8b866;
+  --color-card-face: #f4e8cf;
+  --color-card-face-shade: #e6d5b2;
+  --color-card-back: #7a4a24;
+  --color-card-back-line: #9c6a3c;
+  --color-suit-red: #b3402f;
+  --color-suit-brown: #8a5a22;
+  --color-suit-green: #4a7a3a;
+  --color-suit-blue: #3d6a86;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #4a3620, var(--color-ap-ground) 72%);
+  --color-ap-ground: #241a10;
+  --color-ap-panel: #332616;
+  --color-ap-panel-hover: #40301c;
+  --color-ap-text: #f2e6cf;
+  --color-ap-muted: #b79f7d;
+  --color-ap-gold: #e8b866;
+  --color-ap-violet: #c58a4a;
+  --color-ap-violet-soft: #d6a86a;
+}
+
+/* Midnight: an inky blue-black parlor, cooler than classic dark. Unlockable. */
+:root[data-theme='midnight'] {
+  --color-felt-950: #05070f;
+  --color-felt-900: #0a0e1c;
+  --color-felt-800: #111a30;
+  --color-felt-700: #1a2744;
+  --color-lamplight: #86b6ff;
+  --color-lamplight-dim: #5f88c4;
+  --color-team-a: #86b6ff;
+  --color-team-b: #7ce0d0;
+  --color-accent: #86b6ff;
+  --color-card-face: #eef1f8;
+  --color-card-face-shade: #dbe0ec;
+  --color-card-back: #1c2c52;
+  --color-card-back-line: #34508c;
+  --color-suit-red: #e0556a;
+  --color-suit-brown: #c79150;
+  --color-suit-green: #3fb58c;
+  --color-suit-blue: #5b8bff;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #131f3c, var(--color-ap-ground) 72%);
+  --color-ap-ground: #080c18;
+  --color-ap-panel: #121a2e;
+  --color-ap-panel-hover: #1a2540;
+  --color-ap-text: #e6ecf8;
+  --color-ap-muted: #8b9bc0;
+  --color-ap-violet: #5b8bff;
+  --color-ap-violet-soft: #93b4ff;
+  --color-ap-gold: #86b6ff;
+}
+
 /* ── Card skins — a second cosmetic axis (`[data-card-skin]`), independent of
  * the theme. These blocks MUST stay BELOW all [data-theme] blocks: same
  * specificity, so source order wins — a chosen card skin overrides the theme's
  * card-token subset (--color-card-face/-shade, --color-card-back/-line, suits).
  * The default `arcade` skin declares NO block (no attribute), so the theme
  * keeps full control of the card look until the player picks a skin. Shape/art
- * changes beyond colour come from the CardSkinContext renderers, not here.
- * (Phase 2 adds classic-og / noir / lamplight-foil / neon here.) */
+ * changes beyond colour come from the CardSkinContext renderers, not here. */
+
+/* Classic OG: warm parchment face, bottle-green back, muted traditional inks —
+ * the printed look of the original deck. Paired with the `classic-og` renderer
+ * (framed pips). */
+:root[data-card-skin='classic-og'] {
+  --color-card-face: #f0e4c4;
+  --color-card-face-shade: #e1d0a4;
+  --color-card-back: #14512f;
+  --color-card-back-line: #2c7a4c;
+  --color-suit-red: #b62f2f;
+  --color-suit-brown: #8a5a1a;
+  --color-suit-green: #17754f;
+  --color-suit-blue: #274b9c;
+}
+
+/* Noir: a monochrome deck — pale slate face, charcoal back, four distinct greys
+ * for the suits (the SHAPE carries the suit, never the colour). Pure token skin,
+ * no renderer — proves the recolour-only path. */
+:root[data-card-skin='noir'] {
+  --color-card-face: #e8e8ec;
+  --color-card-face-shade: #d0d0d6;
+  --color-card-back: #17171c;
+  --color-card-back-line: #38383f;
+  --color-suit-red: #26262c;
+  --color-suit-brown: #5c5c66;
+  --color-suit-green: #414149;
+  --color-suit-blue: #787882;
+}
+
+/* Lamplight foil: warm gilded face + gold back; the `lamplight-foil` renderer
+ * adds the moving sheen. Unlockable. */
+:root[data-card-skin='lamplight-foil'] {
+  --color-card-face: #fbf1d6;
+  --color-card-face-shade: #eddcac;
+  --color-card-back: #6a4a12;
+  --color-card-back-line: #a9822f;
+  --color-suit-red: #c23b2f;
+  --color-suit-brown: #9c6a1e;
+  --color-suit-green: #1c7a5c;
+  --color-suit-blue: #2f5aa8;
+}
+
+/* Neon: a dark card face with candy-bright suits + a hot-pink back; the `neon`
+ * renderer makes each mark glow. Unlockable. */
+:root[data-card-skin='neon'] {
+  --color-card-face: #131024;
+  --color-card-face-shade: #1d1836;
+  --color-card-back: #ff2d8e;
+  --color-card-back-line: #ff6fb4;
+  --color-suit-red: #ff3d6e;
+  --color-suit-brown: #ffb020;
+  --color-suit-green: #24f0b0;
+  --color-suit-blue: #46b4ff;
+}
 
 @layer base {
   /* Game-like page: no pinch/double-tap zoom, no text selection or long-press
