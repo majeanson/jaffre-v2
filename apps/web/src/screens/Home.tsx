@@ -12,12 +12,15 @@ export interface HomeProps {
   readonly onJoinRoom: (code: string) => void;
   /** Mount with the help sheet already open (scene viewer). */
   readonly helpOpen?: boolean;
+  /** Scene viewer only: stage a "Your tables" resume row with a series tally. */
+  readonly demoResume?:
+    { readonly code: string; readonly series?: readonly [number, number] } | undefined;
 }
 
 /** The title screen: brand moment on top, play actions as panels, quiet chrome below. */
-export function Home({ onPractice, onJoinRoom, helpOpen = false }: HomeProps) {
+export function Home({ onPractice, onJoinRoom, helpOpen = false, demoResume }: HomeProps) {
   const [name, setName] = useState(playerName());
-  const resumeCode = lastRoom();
+  const resumeCode = demoResume?.code ?? lastRoom();
 
   const saveName = () => setPlayerName(name.trim() === '' ? 'Player' : name.trim());
 
@@ -40,6 +43,7 @@ export function Home({ onPractice, onJoinRoom, helpOpen = false }: HomeProps) {
             onJoinRoom(code);
           }}
           resumeCode={resumeCode}
+          resumeSeries={demoResume?.series}
         />
       </div>
 

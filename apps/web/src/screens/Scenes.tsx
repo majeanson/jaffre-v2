@@ -53,6 +53,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
+          demoResume={current.id === 'your-tables' ? { code: 'salon', series: [3, 2] } : undefined}
         />
       )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}

@@ -47,6 +47,12 @@ export const SCENE_METAS = [
     probe: 'role=dialog[name="How to play"]',
   },
   {
+    id: 'your-tables',
+    label: 'Home — your tables (resume)',
+    screen: 'home',
+    probe: 'role=button[name="Resume"]',
+  },
+  {
     id: 'lobby-open',
     label: 'Lobby — seats open',
     screen: 'lobby',
