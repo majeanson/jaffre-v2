@@ -57,30 +57,6 @@ export function PlayingCard({
   const isBrownZero = card.suit === 'brown' && card.value === 0;
   const bonus = isRedZero ? '+5' : isBrownZero ? '−2' : null;
 
-  // A skin may replace the WHOLE face with painted art (e.g. the OG deck). When
-  // it does, the image IS the card — corner ranks, centre mark and bonus chip
-  // all come baked into the art, so we render only the image inside the frame.
-  const faceArt = renderers.face?.(card) ?? null;
-  if (faceArt !== null) {
-    return (
-      <div
-        role="img"
-        aria-label={cardLabel(card, lang)}
-        style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
-        className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
-          raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'
-        } ${
-          recommended
-            ? 'outline outline-[0.16em] outline-(--color-ap-violet) outline-offset-[0.12em]'
-            : ''
-        } ${dimmed ? 'scale-[0.94] saturate-[0.7]' : ''}`}
-      >
-        {faceArt}
-        {dimmed && <span aria-hidden className="absolute inset-0 bg-(--color-felt-950)/45" />}
-      </div>
-    );
-  }
-
   return (
     <div
       role="img"

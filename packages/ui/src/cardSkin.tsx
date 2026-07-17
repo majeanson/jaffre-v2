@@ -1,4 +1,4 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { CardData, SuitId } from './types.js';
 import { SUIT_STYLES } from './types.js';
 import { SuitShape } from './components/SuitShape.js';
@@ -13,18 +13,10 @@ import { Bonhomme } from './components/Bonhomme.js';
  * Absent slots fall back to PlayingCard's default SuitShape/Bonhomme.
  */
 export interface CardSkinRenderers {
-  /** Replaces the centred mark (suit shape / special-card figure). */
+  /** Replaces the centred mark (suit shape / special-card figure / OG art). */
   readonly centerMark?: (card: CardData, size: string) => ReactNode;
   /** Replaces a standalone suit mark (legend / trump indicator). */
   readonly suitMark?: (suit: SuitId, size: string) => ReactNode;
-  /**
-   * Replaces the ENTIRE card face (e.g. a painted OG deck image). When it
-   * returns a node for a card, PlayingCard renders only that node inside the
-   * frame — no corner ranks, no centre mark, no bonus chip. Return `null` to
-   * fall back to the normal composed face for that card (lets a skin do full
-   * art on just a few cards, like the OG figures on the two 0s).
-   */
-  readonly face?: (card: CardData) => ReactNode | null;
 }
 
 export interface CardSkinValue {
@@ -62,25 +54,26 @@ function defaultCenter(card: CardData, size: string): ReactNode {
 }
 
 /**
- * The original 2022 Jaffré deck: each suit is a WWI nation whose painted
- * pixel-art card face lives in `apps/web/public/og-cards/<prefix>_<value>.png`.
- * red = France (Général Joffre on the 0), brown = Allemagne, blue = Angleterre,
- * green = Russie. `image-rendering: pixelated` keeps the 100×100 art crisp when
- * scaled up; `object-contain` shows the whole card (the rank stays readable)
- * over the skin's card-face colour. (These are the ONLY raster assets in the
- * app — every other card is pure CSS/SVG.)
+ * The original hand-printed Jaffré art (photographed from the old deck): every
+ * colour has an ornate EMBLEM tile and a portrait BONHOMME, inked on cream
+ * paper. Files: `apps/web/public/og-cards/<suit>_<emblem|bon>.jpg` — the suit
+ * id IS the colour name (red/brown/green/blue). The 0-card of each suit shows
+ * its bonhomme; 1–7 show the emblem. `mix-blend-mode: darken` melts the photo's
+ * cream paper into the card's own (slightly darker) cream face, so only the
+ * printed ink shows — the art reads as part of ONE card, not a pasted-on photo.
+ * The rank numerals + bonus chip are still drawn by PlayingCard, so the card
+ * stays legible. (These are the ONLY raster assets in the app.)
  */
-const OG_PREFIX: Record<SuitId, string> = { red: 'fr', brown: 'al', green: 'ru', blue: 'an' };
-
-function ogFace(card: CardData): ReactNode {
+function ogArt(card: CardData): ReactNode {
+  const bon = card.value === 0;
   return (
     <img
-      src={`/og-cards/${OG_PREFIX[card.suit]}_${String(card.value)}.png`}
+      src={`/og-cards/${card.suit}_${bon ? 'bon' : 'emblem'}.jpg`}
       alt=""
       aria-hidden
       draggable={false}
-      className="pointer-events-none h-full w-full select-none object-contain"
-      style={{ imageRendering: 'pixelated' }}
+      className="pointer-events-none select-none object-contain"
+      style={{ width: bon ? '84%' : '66%', mixBlendMode: 'darken' }}
     />
   );
 }
@@ -88,38 +81,19 @@ function ogFace(card: CardData): ReactNode {
 /**
  * Renderer implementations keyed by skin id (kept in the kit because they
  * compose kit-only primitives — SuitShape, Bonhomme, OG art, and skin marks).
- * A skin with no entry here is a pure token recolour (arcade, noir). Every
- * renderer keeps the two specials recognisable (bonhomme or the OG figure card).
+ * A skin with no entry here is a pure token recolour (arcade, noir).
  */
 export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
-  // Classic OG: a taste of the old deck — the two 0-cards show their REAL OG
-  // figure art (Général Joffre / Allemagne); every other card keeps the arcade
-  // parchment face with the suit mark framed in a thin inked ring, like an old
-  // printed pip.
+  // Classic OG: a taste of the old deck — every 0-card shows its REAL portrait
+  // bonhomme; the 1–7 keep the arcade suit shape. A free hint of the full deck.
   'classic-og': {
-    face: (card) =>
-      card.value === 0 && (card.suit === 'red' || card.suit === 'brown') ? ogFace(card) : null,
-    centerMark: (card, size) => {
-      if (card.value === 0 && (card.suit === 'red' || card.suit === 'brown')) {
-        return defaultCenter(card, size);
-      }
-      const ring: CSSProperties = {
-        width: `calc(${size} * 1.75)`,
-        height: `calc(${size} * 1.75)`,
-        border: '0.09em solid var(--color-ap-ink)',
-        borderRadius: '999px',
-        boxShadow: 'inset 0 0 0 0.055em var(--color-card-back)',
-      };
-      return (
-        <span className="grid place-items-center" style={ring}>
-          <SuitShape suit={card.suit} size={size} />
-        </span>
-      );
-    },
+    centerMark: (card, size) =>
+      card.value === 0 ? ogArt(card) : <SuitShape suit={card.suit} size={size} />,
   },
-  // OG Deck: the complete original painted deck — every card is its OG face.
+  // OG Deck: the complete original deck — 0 = the bonhomme portrait, 1–7 = the
+  // ornate emblem tile, with our own corner numerals. Cream card, printed ink.
   'og-deck': {
-    face: (card) => ogFace(card),
+    centerMark: (card) => ogArt(card),
   },
   // Lamplight foil: a slow diagonal sheen sweeps across the mark (decorative,
   // auto-disabled under reduced motion by the .ap-foil rule).

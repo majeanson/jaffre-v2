@@ -278,12 +278,13 @@
  * keeps full control of the card look until the player picks a skin. Shape/art
  * changes beyond colour come from the CardSkinContext renderers, not here. */
 
-/* Classic OG: warm parchment face, bottle-green back, muted traditional inks —
- * the printed look of the original deck. Paired with the `classic-og` renderer
- * (framed pips). */
+/* Classic OG: aged-paper face (a touch darker than the photographed art so the
+ * `darken`-blended bonhommes melt into it seamlessly), bottle-green back, inks
+ * matched to the printed emblem colours. Renderer puts the real portrait
+ * bonhomme on every 0-card; 1–7 keep the arcade suit shape. */
 [data-card-skin='classic-og']:is(:root, :root *) {
-  --color-card-face: #f0e4c4;
-  --color-card-face-shade: #e1d0a4;
+  --color-card-face: #e6dcc1;
+  --color-card-face-shade: #d6c8a4;
   --color-card-back: #14512f;
   --color-card-back-line: #2c7a4c;
   --color-suit-red: #b62f2f;
@@ -319,19 +320,19 @@
   --color-suit-blue: #2f5aa8;
 }
 
-/* OG Deck: the full painted original deck. Faces are raster art (the `og-deck`
- * renderer), so the card-face colour is just the matte behind the contained
- * image; the back + suit tokens carry the OG orange/tan pattern colours and the
- * nation hues (used by the CSS back + any SuitShape legend). Unlockable. */
+/* OG Deck: the full original deck — aged-paper face matched to the photographed
+ * art so the `darken`-blended emblem tiles + portrait bonhommes read as printed
+ * ink on the card itself (no photo rectangle). Corner numerals + the CSS back
+ * take the emblem-ink colours. Unlockable. */
 [data-card-skin='og-deck']:is(:root, :root *) {
-  --color-card-face: #c79a5e;
-  --color-card-face-shade: #b0854a;
-  --color-card-back: #cf5a2a;
-  --color-card-back-line: #e07b47;
-  --color-suit-red: #d43a3a;
-  --color-suit-brown: #7a5a3a;
-  --color-suit-green: #3f9e57;
-  --color-suit-blue: #3a63c4;
+  --color-card-face: #e6dcc1;
+  --color-card-face-shade: #d6c8a4;
+  --color-card-back: #b23a2b;
+  --color-card-back-line: #cf5a44;
+  --color-suit-red: #b62f2f;
+  --color-suit-brown: #8a5320;
+  --color-suit-green: #1f7a55;
+  --color-suit-blue: #262f7a;
 }
 
 /* Neon: a dark card face with candy-bright suits + a hot-pink back; the `neon`
