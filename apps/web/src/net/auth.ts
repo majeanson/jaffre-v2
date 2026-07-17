@@ -13,6 +13,34 @@ interface StoredToken {
 
 const KEY = 'jaffre-token';
 const RECOVERY_KEY = 'jaffre-recovery';
+const PROFILE_KEY = 'jaffre-profile';
+
+/** The look of your card: chosen palette colour + an optional painted canvas
+ * (data URL). Cached locally so the identity screen paints instantly, and
+ * kept in sync with the server on every mint / recover / save. */
+export interface Profile {
+  readonly color: string | null;
+  readonly paint: string | null;
+}
+
+const EMPTY_PROFILE: Profile = { color: null, paint: null };
+
+/** The cached colour + painting for this browser's current identity. */
+export function getProfile(): Profile {
+  const raw = localStorage.getItem(PROFILE_KEY);
+  if (raw === null) return EMPTY_PROFILE;
+  try {
+    const p = JSON.parse(raw) as Partial<Profile>;
+    return { color: p.color ?? null, paint: p.paint ?? null };
+  } catch {
+    return EMPTY_PROFILE;
+  }
+}
+
+function storeProfile(p: Profile): Profile {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  return p;
+}
 
 export async function getGuestToken(name: string): Promise<StoredToken | null> {
   const cached = read();
@@ -37,9 +65,12 @@ export async function getGuestToken(name: string): Promise<StoredToken | null> {
       name: string;
       token: string;
       recoveryCode?: string;
+      color?: string | null;
+      paint?: string | null;
     };
     const stored = storeToken(data);
     if (data.recoveryCode !== undefined) localStorage.setItem(RECOVERY_KEY, data.recoveryCode);
+    storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
     return stored;
   } catch {
     return null;
@@ -62,10 +93,51 @@ export async function recoverIdentity(code: string, name?: string): Promise<Stor
       body: JSON.stringify(name !== undefined ? { code, name } : { code }),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { userId: string; name: string; token: string };
-    return storeToken(data);
+    const data = (await res.json()) as {
+      userId: string;
+      name: string;
+      token: string;
+      color?: string | null;
+      paint?: string | null;
+    };
+    const stored = storeToken(data);
+    // A recovered identity carries its colour + painting to the new device.
+    storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
+    return stored;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Persist a colour and/or painting for the current identity. Optimistically
+ * updates the local cache first (so the UI reflects the choice immediately),
+ * then POSTs it under the Bearer token. Returns the saved profile, or the
+ * local cache unchanged when there is no token / the request fails.
+ */
+export async function saveProfile(patch: {
+  color?: string | null;
+  paint?: string | null;
+}): Promise<Profile> {
+  const current = getProfile();
+  const optimistic: Profile = {
+    color: patch.color !== undefined ? patch.color : current.color,
+    paint: patch.paint !== undefined ? patch.paint : current.paint,
+  };
+  storeProfile(optimistic);
+  const token = read()?.token;
+  if (token === undefined) return optimistic;
+  try {
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) return optimistic; // 503 no-secret / 401 — keep the local look
+    const data = (await res.json()) as { color?: string | null; paint?: string | null };
+    return storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
+  } catch {
+    return optimistic;
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { DEMO_HISTORY, DEMO_REPLAY, DEMO_STATS, SCENES } from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { History } from './History.js';
-import { Home } from './Home.js';
+import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
@@ -21,6 +21,34 @@ const goTo = (id: string) => {
   location.hash = `#scenes/${id}`;
 };
 
+/** Deterministic staged identities for the home identity scenes. */
+const IDENTITY_STAGES: Record<string, IdentityStage> = {
+  identity: {
+    name: 'Marc',
+    color: '#7a6ff0',
+    paint: null,
+    recovery: { kind: 'code', code: 'lampe-tricot-hibou' },
+  },
+  'identity-light': {
+    name: 'Ginette',
+    color: '#f2b712',
+    paint: null,
+    recovery: { kind: 'code', code: 'renard-flute-cabane' },
+  },
+  'identity-loading': {
+    name: 'Marc',
+    color: null,
+    paint: null,
+    recovery: { kind: 'loading' },
+  },
+  'identity-recover-error': {
+    name: 'Marc',
+    color: null,
+    paint: null,
+    recovery: { kind: 'recover-error' },
+  },
+};
+
 /**
  * Owns the scene viewer (#scenes/<id>): live-through every phase and screen
  * of a game instantly — the real components rendering staged engine states,
@@ -35,6 +63,18 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
 
   useEffect(() => {
     current?.load();
+  }, [current]);
+
+  // Some scenes force a skin (e.g. the light-skin identity variant). Apply it
+  // on mount and restore the prior theme when leaving the scene.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.dataset['theme'];
+    if (current?.theme === 'light') root.dataset['theme'] = 'light';
+    return () => {
+      if (prev === undefined) delete root.dataset['theme'];
+      else root.dataset['theme'] = prev;
+    };
   }, [current]);
 
   if (current === undefined) return null;
@@ -53,6 +93,9 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
+          {...(IDENTITY_STAGES[current.id] !== undefined
+            ? { identityStage: IDENTITY_STAGES[current.id] }
+            : {})}
         />
       )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}

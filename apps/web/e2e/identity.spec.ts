@@ -104,6 +104,68 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   await contextB.close();
 });
 
+/** The Bearer token this page currently holds, or null. */
+async function tokenOf(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const raw = localStorage.getItem('jaffre-token');
+    return raw === null ? null : (JSON.parse(raw) as { token: string }).token;
+  });
+}
+
+test('a chosen colour persists server-side and follows a recovery into a fresh browser', async ({
+  browser,
+}) => {
+  // Browser A: mint an identity, then pick a palette colour for the card.
+  const contextA = await browser.newContext();
+  const a = await contextA.newPage();
+  await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Colour-e2e'));
+  await a.goto('/');
+  const codeEl = a.getByTestId('recovery-code');
+  await expect(codeEl).toBeVisible(); // mint done → a token exists to auth the save
+  const wordsA = (await codeEl.innerText()).trim();
+  expect(wordsA).toMatch(CODE_RE);
+
+  const CHOSEN = '#f2b712';
+  await a.getByRole('button', { name: `Colour ${CHOSEN}` }).click();
+
+  const tokenA = await tokenOf(a);
+  expect(tokenA).not.toBeNull();
+  const uidA = await uidOf(a);
+  // The server persisted the colour under A's identity (POST /api/profile).
+  await expect
+    .poll(async () => {
+      const res = await a.request.get('/api/auth/me', {
+        headers: { Authorization: `Bearer ${tokenA ?? ''}` },
+      });
+      return ((await res.json()) as { color: string | null }).color;
+    })
+    .toBe(CHOSEN);
+  await contextA.close();
+
+  // Browser B: a fresh context recovers A's identity — the colour comes along.
+  const contextB = await browser.newContext();
+  const b = await contextB.newPage();
+  await b.goto('/');
+  await expect(b.getByTestId('recovery-code')).toBeVisible();
+  await b.getByRole('button', { name: 'I have a code' }).click();
+  await b.getByPlaceholder('lampe-tricot-hibou').fill(wordsA);
+  await b.getByRole('button', { name: 'Restore' }).click();
+
+  await expect.poll(() => uidOf(b).catch(() => 'evaluating')).toBe(uidA);
+  // Locally cached under the recovered identity…
+  await expect
+    .poll(() =>
+      b
+        .evaluate(() => {
+          const raw = localStorage.getItem('jaffre-profile');
+          return raw === null ? null : (JSON.parse(raw) as { color: string | null }).color;
+        })
+        .catch(() => null),
+    )
+    .toBe(CHOSEN);
+  await contextB.close();
+});
+
 test('a wrong code shows the error and keeps the current identity', async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
