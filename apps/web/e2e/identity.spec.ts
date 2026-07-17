@@ -126,6 +126,8 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   expect(wordsA).toMatch(CODE_RE);
 
   const CHOSEN = '#f2b712';
+  // The palette lives inside the "Customize" disclosure — open it first.
+  await a.getByRole('button', { name: /Customize/ }).click();
   await a.getByRole('button', { name: `Colour ${CHOSEN}` }).click();
 
   const tokenA = await tokenOf(a);
