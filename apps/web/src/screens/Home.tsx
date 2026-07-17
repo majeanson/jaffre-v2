@@ -26,8 +26,7 @@ export interface HomeProps {
   readonly helpOpen?: boolean;
   /** Scene viewer only: stage a "Your tables" resume row with a series tally. */
   readonly demoResume?:
-    | { readonly code: string; readonly series?: readonly [number, number] }
-    | undefined;
+    { readonly code: string; readonly series?: readonly [number, number] } | undefined;
   /** Scene viewer: force the identity into a staged state. */
   readonly identityStage?: IdentityStage;
 }
