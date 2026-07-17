@@ -30,13 +30,37 @@ export interface CollectionProps {
   readonly demoStats?: Stats;
 }
 
+/** sessionStorage key holding the route to return to when the gallery closes —
+ * set by SkinLink so opening Skins mid-game and going back lands you in the
+ * game, not on Home. */
+export const COLLECTION_RETURN_KEY = 'jaffre-collection-return';
+
+/** Where the gallery's back button should go: the stashed route (a game in
+ * progress), or Home when there isn't one. Consumes the stash. */
+export function collectionReturnHash(): string {
+  const back = sessionStorage.getItem(COLLECTION_RETURN_KEY);
+  sessionStorage.removeItem(COLLECTION_RETURN_KEY);
+  return back !== null && back !== '#collection' ? back : '';
+}
+
 const T: Record<
   Lang,
-  { title: string; home: string; cardSkins: string; themes: string; showAll: string; blurb: string }
+  {
+    title: string;
+    home: string;
+    preview: string;
+    previewHint: string;
+    cardSkins: string;
+    themes: string;
+    showAll: string;
+    blurb: string;
+  }
 > = {
   en: {
     title: 'Collection',
     home: 'Home',
+    preview: 'How it looks',
+    previewHint: 'Your equipped skin + theme, together.',
     cardSkins: 'Card skins',
     themes: 'Themes',
     showAll: 'Show all (dev)',
@@ -45,6 +69,8 @@ const T: Record<
   fr: {
     title: 'Collection',
     home: 'Accueil',
+    preview: 'Aperçu',
+    previewHint: 'Ton habillage + thème équipés, ensemble.',
     cardSkins: 'Habillages de cartes',
     themes: 'Thèmes',
     showAll: 'Tout afficher (dev)',
@@ -52,6 +78,11 @@ const T: Record<
       'Débloque des habillages et des thèmes en jouant. Équipe ceux que tu possèdes — ils suivent ton compte.',
   },
 };
+
+/** Look up a cosmetic's display label by id (for the preview caption). */
+function labelOf(catalog: readonly Cosmetic[], id: string): string {
+  return catalog.find((c) => c.id === id)?.label ?? id;
+}
 
 /** Sample hand for a preview — one special (red 0 = Joffre) + two plain cards
  * so both the bonhomme and the geometric marks show under each skin. */
@@ -106,6 +137,46 @@ function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin
       <CardSkinProvider value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }}>
         <PlayingCard card={{ suit: 'red', value: 0 }} size="sm" />
       </CardSkinProvider>
+    </div>
+  );
+}
+
+/**
+ * The "How it looks" preview — the ONE place the equipped combination is shown
+ * together. Scopes BOTH the current theme (`data-theme`) and the current card
+ * skin to a felt scene with the two team chips + a fanned hand, so players see
+ * the real table look before the selection grids (which each preview a single
+ * cosmetic in isolation, and so never shift when the other axis changes).
+ */
+function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly theme: string }) {
+  const themeAttrs = theme === DEFAULT_THEME ? {} : { 'data-theme': theme };
+  const skinAttrs = cardSkin === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': cardSkin };
+  return (
+    <div
+      {...themeAttrs}
+      className="flex flex-col items-center gap-[0.9em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-felt-800) p-[1.1em]"
+    >
+      <div className="flex items-center gap-[0.6em]">
+        <span
+          className="size-[1.1em] rounded-full border-2 border-(--color-ap-ink)"
+          style={{ background: 'var(--color-team-a)' }}
+        />
+        <span
+          className="size-[1.1em] rounded-full border-2 border-(--color-ap-ink)"
+          style={{ background: 'var(--color-team-b)' }}
+        />
+      </div>
+      <div {...skinAttrs}>
+        <CardSkinProvider value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }}>
+          <div className="flex items-end justify-center">
+            {SAMPLE.map((card, i) => (
+              <div key={i} style={{ marginLeft: i === 0 ? 0 : '-1.1em', zIndex: i }}>
+                <PlayingCard card={card} size="md" tilt={(i - 1) * 8} />
+              </div>
+            ))}
+          </div>
+        </CardSkinProvider>
+      </div>
     </div>
   );
 }
@@ -178,8 +249,10 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
   const cardTiles = buildTiles(CARD_SKINS, ownedCards, cardSkin, stats, lang, (id) => (
     <CardSkinPreview id={id} />
   ));
+  // Theme tiles preview against a FIXED reference skin (the default), so picking
+  // a card skin never re-renders every theme tile — each grid shows one axis.
   const themeTiles = buildTiles(THEMES, ownedThemes, theme, stats, lang, (id) => (
-    <ThemePreview id={id} cardSkin={cardSkin} />
+    <ThemePreview id={id} cardSkin={DEFAULT_CARD_SKIN} />
   ));
 
   return (
@@ -206,6 +279,19 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
             {t.showAll}
           </label>
         </div>
+
+        <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">
+              {t.preview}
+            </h2>
+            <span className="truncate font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
+              {labelOf(CARD_SKINS, cardSkin)} · {labelOf(THEMES, theme)}
+            </span>
+          </div>
+          <LivePreview cardSkin={cardSkin} theme={theme} />
+          <p className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">{t.previewHint}</p>
+        </Panel>
 
         <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">
           <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">

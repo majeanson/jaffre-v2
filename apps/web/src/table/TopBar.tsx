@@ -12,7 +12,7 @@ import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { IconButton, ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconGear, IconList, IconQuestion, IconSignOut, IconSparkle } from '../components/icons.js';
-import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
+import { SkinLink } from '../components/SkinLink.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
@@ -114,7 +114,7 @@ export function TopBar({
                 data-testid="options-drawer"
                 className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
               >
-                <ThemeSwitcher />
+                <SkinLink />
                 <LangSwitcher />
                 <SoundToggle />
                 <HelpButton label={t.howToPlay} className={ICON_BTN_NEUTRAL}>

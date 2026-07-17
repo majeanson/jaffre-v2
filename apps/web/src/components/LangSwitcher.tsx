@@ -3,7 +3,8 @@ import { applyLang, LANGS } from '../lang.js';
 
 const LABEL: Record<Lang, string> = { en: 'Language', fr: 'Langue' };
 
-/** Language picker — mirrors ThemeSwitcher; applyLang re-renders the app root. */
+/** Language picker — the one inline chrome dropdown; applyLang re-renders the
+ * app root. (Skins/themes moved to the Collection gallery — see SkinLink.) */
 export function LangSwitcher() {
   const lang = useLang();
   return (

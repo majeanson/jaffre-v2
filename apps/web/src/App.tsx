@@ -5,7 +5,7 @@ import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
-import { Collection } from './screens/Collection.js';
+import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
@@ -124,7 +124,7 @@ function AppRoutes() {
     return <Stats onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'collection') {
-    return <Collection onLeave={() => (location.hash = '')} />;
+    return <Collection onLeave={() => (location.hash = collectionReturnHash())} />;
   }
   if (route.kind === 'replay') {
     return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;

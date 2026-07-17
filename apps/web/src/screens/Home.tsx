@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { LangSwitcher } from '../components/LangSwitcher.js';
-import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
+import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
@@ -105,7 +105,7 @@ export function Home({
         style={{ '--rise-delay': '280ms' } as CSSProperties}
       >
         <HelpButton defaultOpen={helpOpen} />
-        <ThemeSwitcher />
+        <SkinLink />
         <LangSwitcher />
       </div>
     </main>

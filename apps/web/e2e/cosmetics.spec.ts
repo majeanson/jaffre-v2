@@ -16,6 +16,14 @@ test('home links to the Collection gallery', async ({ page }) => {
   expect(new URL(page.url()).hash).toBe('#collection');
 });
 
+test('the Skins chrome link redirects to the Collection gallery', async ({ page }) => {
+  await page.goto('/');
+  // The former "Skin" dropdown is now just a link into the gallery.
+  await page.getByRole('link', { name: 'Skins' }).click();
+  await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('#collection');
+});
+
 test('equipping a free card skin applies it and persists across reload', async ({ page }) => {
   await page.goto('/#collection');
   await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
