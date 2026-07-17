@@ -86,10 +86,10 @@ export function ChatPanel({
   const panel = (
     <div
       data-testid="chat-panel"
-      className="flex w-full flex-col gap-1.5 rounded-(--radius-panel) border border-white/8 bg-black/25 p-2"
+      className="flex w-full flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) p-2"
     >
       <div className="flex items-center justify-between px-1">
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-(--color-ivory)/45">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-(--color-ap-muted)">
           Chat
         </span>
         {collapsible && (
@@ -97,7 +97,7 @@ export function ChatPanel({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Collapse chat"
-            className="rounded px-1.5 text-xs text-(--color-ivory)/50 hover:text-(--color-ivory) cursor-pointer"
+            className="rounded px-1.5 text-xs text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
           >
             ✕
           </button>
@@ -109,13 +109,13 @@ export function ChatPanel({
         role="region"
         aria-label="Chat messages"
         tabIndex={0}
-        className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ivory)/85"
+        className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ap-text)"
       >
-        {entries.length === 0 && <p className="text-(--color-ivory)/40">No messages yet.</p>}
+        {entries.length === 0 && <p className="text-(--color-ap-muted)">No messages yet.</p>}
         {entries.map((e, i) => (
           <p key={i} className="break-words">
-            <span className="tabular-nums text-(--color-ivory)/40">{hhmm(e.at)}</span>{' '}
-            <span className="font-bold text-(--color-lamplight)">{e.from}</span>{' '}
+            <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at)}</span>{' '}
+            <span className="font-bold text-(--color-ap-violet-soft)">{e.from}</span>{' '}
             <span>{e.text}</span>
           </p>
         ))}
@@ -135,16 +135,16 @@ export function ChatPanel({
           placeholder="Message…"
           aria-label="Chat message"
           data-testid="chat-input"
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-(--color-ivory) placeholder:text-(--color-ivory)/30"
+          className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-2.5 py-1.5 text-xs text-(--color-ap-text) placeholder:text-(--color-ap-muted)"
         />
         <button
           type="submit"
-          className="rounded-lg border border-white/15 px-2.5 py-1.5 text-xs text-(--color-ivory)/80 hover:bg-white/8 cursor-pointer"
+          className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1.5 text-xs text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer"
         >
           Send
         </button>
       </form>
-      {hint && <p className="px-1 text-[11px] text-(--color-lamplight)/80">Slow down…</p>}
+      {hint && <p className="px-1 text-[11px] text-(--color-ap-gold)">Slow down…</p>}
     </div>
   );
 
@@ -160,10 +160,10 @@ export function ChatPanel({
         aria-label="Chat"
         title="Chat"
         data-testid="chat-toggle"
-        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-lg border text-(length:--text-fluid-base) transition-colors ${
+        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-base) transition-colors ${
           open
-            ? 'border-(--color-lamplight)/50 bg-(--color-lamplight)/12 text-(--color-lamplight)'
-            : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8'
+            ? 'border-(--color-ap-violet) bg-(--color-ap-violet)/12 text-(--color-ap-violet)'
+            : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
         }`}
       >
         <svg
@@ -181,7 +181,7 @@ export function ChatPanel({
         {unread > 0 && (
           <span
             data-testid="chat-unread"
-            className="absolute -top-2 -right-2 grid min-w-4.5 place-items-center rounded-full bg-(--color-lamplight) px-1 text-[10px] font-bold text-(--color-felt-950)"
+            className="absolute -top-2 -right-2 grid min-w-4.5 place-items-center rounded-full bg-(--color-ap-gold) px-1 text-[10px] font-bold text-(--color-ap-ink)"
           >
             {unread > 99 ? '99+' : unread}
           </span>

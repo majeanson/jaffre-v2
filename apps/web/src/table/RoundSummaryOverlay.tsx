@@ -1,5 +1,5 @@
 import type { SeatView } from '@jaffre/engine';
-import { SpecialChip, type TeamSpecials } from '@jaffre/ui';
+import { Cta, SpecialChip, type TeamSpecials } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 
 export interface RoundSummaryOverlayProps {
@@ -55,27 +55,26 @@ export function RoundSummaryOverlay({
       aria-modal="true"
       aria-label="Round summary"
     >
-      <div className="w-[23rem] max-w-[92vw] rounded-(--radius-panel) border border-(--color-accent)/40 bg-(--color-felt-800) p-6 shadow-(--shadow-panel)">
-        <p className="text-center text-[11px] font-semibold tracking-[0.22em] text-(--color-ivory)/70 uppercase">
+      <div className="w-[23rem] max-w-[92vw] rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
+        <p className="text-center font-arcade-display text-[11px] tracking-[0.2em] text-(--color-ap-muted) uppercase">
           Round {summary.roundIndex + 1}
         </p>
 
         {/* Contract result headline: ✓/✗, who, made/missed, for which team. */}
         <div className="mt-2 flex items-center justify-center gap-3">
           <span
-            className={`grid size-9 shrink-0 place-items-center rounded-full text-xl font-black ${
-              made
-                ? 'bg-(--color-ok)/20 text-(--color-ok)'
-                : 'bg-(--color-danger)/20 text-(--color-danger-text)'
+            className={`grid size-9 shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-xl text-(--color-ap-ink) ${
+              made ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'
             }`}
           >
             {made ? '✓' : '✗'}
           </span>
           <span className="text-left leading-tight">
-            <span className="block font-display text-lg text-(--color-ivory)">
+            <span className="block font-arcade-display text-lg uppercase text-(--color-ap-text)">
               {contractName} {made ? 'made' : 'missed'} {summary.contract.value}
               {summary.contract.sansAtout ? ' SA' : ''}
             </span>
+            {/* Team colour flips WITH the skin, staying legible on the ground. */}
             <span
               className="block text-(length:--text-fluid-xs) font-semibold"
               style={{ color: teamColor(contractTeam) }}
@@ -93,7 +92,7 @@ export function RoundSummaryOverlay({
             return (
               <div
                 key={t}
-                className={`rounded-lg bg-black/25 p-2.5 ${won ? 'ring-2' : 'border border-white/5'}`}
+                className={`rounded-(--radius-ap-panel) border-2 bg-(--color-ap-panel) p-2.5 ${won ? 'border-(--color-ap-ink) ring-2' : 'border-(--color-ap-ink)'}`}
                 style={won ? { ['--tw-ring-color' as string]: teamColor(t) } : undefined}
               >
                 <p
@@ -107,26 +106,23 @@ export function RoundSummaryOverlay({
                   />
                   {TEAM_NAME[t]}
                 </p>
-                <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ivory)/70">
+                <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
                   {names[t]} & {names[t + 2]}
                 </p>
-                <p className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-(--color-ivory)/80">
+                <p className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-(--color-ap-text)/85">
                   {summary.trickPoints[t]} trick pts
                   {sp.red && <SpecialChip kind="red" />}
                   {sp.brown && <SpecialChip kind="brown" />}
                 </p>
-                <p
-                  className="mt-1 font-display text-lg font-semibold"
-                  style={{
-                    color: delta >= 0 ? 'var(--color-ok)' : 'var(--color-danger-text)',
-                  }}
-                >
+                {/* Neutral ink/text for AA on the flipping panel — made/missed
+                    is carried by the ✓/✗ headline, the won-ring, and the sign. */}
+                <p className="mt-1 font-arcade-display text-lg text-(--color-ap-text)">
                   {delta >= 0 ? '+' : ''}
                   {delta}
                 </p>
-                <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/55">
+                <p className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
                   total{' '}
-                  <span className="font-display text-base text-(--color-ivory)">
+                  <span className="font-arcade-display text-base text-(--color-ap-text)">
                     {summary.scores[t]}
                   </span>
                 </p>
@@ -136,22 +132,12 @@ export function RoundSummaryOverlay({
         </div>
 
         <div className="mt-5 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={onReady}
-            disabled={youReady}
-            className={`w-full rounded-(--radius-panel) px-8 py-3 font-semibold text-(length:--text-fluid-base) ${
-              youReady
-                ? 'bg-white/10 text-(--color-ivory)/50'
-                : 'bg-(--color-lamplight) text-(--color-felt-950) hover:brightness-110 active:translate-y-px cursor-pointer'
-            }`}
-          >
+          <Cta type="button" onClick={onReady} disabled={youReady} className="w-full">
             {youReady ? 'Waiting for the others…' : 'Ready for the next round'}
-          </button>
-          {/* Unready stays at the base 70% ivory — dimming further fails AA. */}
-          <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ivory)/70">
+          </Cta>
+          <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
             {names.map((n, seat) => (
-              <span key={seat} className={readySeats[seat] ? 'text-(--color-ivory)' : ''}>
+              <span key={seat} className={readySeats[seat] ? 'text-(--color-ap-text)' : ''}>
                 {readySeats[seat] ? '✓' : '…'} {n}
               </span>
             ))}

@@ -18,7 +18,7 @@ export function Toast({ message, onDone, durationMs = 2000 }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className="pop-in fixed inset-x-0 bottom-6 z-[70] mx-auto w-fit rounded-lg bg-(--color-felt-950)/95 px-4 py-2.5 text-sm font-medium text-(--color-ivory) shadow-(--shadow-panel)"
+      className="pop-in fixed inset-x-0 bottom-6 z-[70] mx-auto w-fit rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-ui text-sm font-medium text-(--color-ap-text) shadow-(--shadow-ap)"
     >
       {message}
     </div>

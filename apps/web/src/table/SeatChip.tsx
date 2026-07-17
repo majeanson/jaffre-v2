@@ -12,7 +12,7 @@ export interface SeatChipProps {
 /** Owns one player's nameplate + floating bid bubble around the table. */
 export function SeatChip({ info, compact = false }: SeatChipProps) {
   const secondsLeft = useCountdown(info?.botSwapAt ?? null);
-  if (info === null) return <span className="text-sm text-(--color-ivory)/40">empty</span>;
+  if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">empty</span>;
   return (
     <span className="relative inline-block max-w-full min-w-0">
       <Seat
@@ -28,17 +28,17 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
         <span
           data-testid="botswap-countdown"
           role="status"
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/80 px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-semibold whitespace-nowrap text-white shadow"
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-arcade-ui font-semibold whitespace-nowrap text-(--color-ap-text) shadow-(--shadow-ap-sm)"
         >
           {secondsLeft > 0 ? `Away — bot in ${formatCountdown(secondsLeft)}` : 'Bot taking over…'}
         </span>
       )}
       {info.bidText !== null && (
         <span
-          className={`absolute -top-3 -right-2 rounded-full px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-bold shadow ${
+          className={`absolute -top-3 -right-2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.6em] py-[0.15em] text-(length:--text-fluid-xs) font-arcade-display shadow-(--shadow-ap-sm) ${
             info.isContract
-              ? 'bg-(--color-lamplight) text-(--color-felt-950)'
-              : 'bg-black/70 text-white/80'
+              ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+              : 'bg-(--color-ap-panel) text-(--color-ap-text)'
           }`}
         >
           {info.bidText}

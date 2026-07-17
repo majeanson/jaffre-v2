@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { SuitId } from '../types.js';
 import { SUIT_STYLES } from '../types.js';
+import { SuitShape } from './SuitShape.js';
 
 /** Which scoring specials a team has captured this round. */
 export interface TeamSpecials {
@@ -57,16 +58,19 @@ export interface ScoreStripProps {
 /** "Team Sun" → "Sun": the dot already carries the team identity. */
 const shortName = (name: string): string => name.replace(/^team\s+/i, '');
 
+const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
+/** Deep team colours that meet AA on the ivory scorepad's cream header in BOTH
+ * skins (the felt team vars are light in the dark skin and vanish on cream). */
+const TEAM_INK = ['#8a5c00', '#1c5f78'] as const;
+
 /** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
 export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
   const isRed = kind === 'red';
   return (
     <span
       title={isRed ? 'Red 0 captured · +5' : 'Brown 0 captured · −2'}
-      className={`rounded-full border px-1 text-[9px] font-black leading-tight text-white ${
-        isRed
-          ? 'border-(--color-suit-red) bg-(--color-suit-red)/30'
-          : 'border-(--color-suit-brown) bg-(--color-suit-brown)/30'
+      className={`rounded-(--radius-ap-inner) border-2 bg-(--color-ap-ink) px-1 font-arcade-display text-[9px] leading-tight text-white ${
+        isRed ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
       }`}
     >
       {isRed ? '+5' : '−2'}
@@ -96,7 +100,7 @@ function TrickPile({
   const shown = Math.min(count, 8);
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-lg bg-black/20 px-1.5 py-1 ${mirrored ? 'flex-row-reverse' : ''}`}
+      className={`flex items-center gap-1.5 rounded-(--radius-ap-inner) bg-(--color-ap-ink)/15 px-1.5 py-1 ${mirrored ? 'flex-row-reverse' : ''}`}
       aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
         special?.red ? ', captured the red 0 for +5' : ''
       }${special?.brown ? ', captured the brown 0 for −2' : ''}`}
@@ -110,16 +114,16 @@ function TrickPile({
         {Array.from({ length: shown }, (_, i) => (
           <span
             key={i}
-            className="pop-in inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-[1.5px] bg-(--color-card-back) shadow-sm"
+            className="pop-in inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-2 bg-(--color-card-back) shadow-(--shadow-ap-sm)"
             style={{ borderColor: colorVar }}
           />
         ))}
         {count === 0 && (
-          <span className="inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-[1.5px] border-dashed border-white/20" />
+          <span className="inline-block h-[1.5em] w-[1.05em] rounded-[3px] border-2 border-dashed border-(--color-ap-muted)/40" />
         )}
       </span>
       <span
-        className="min-w-[1.5em] text-center font-display font-semibold tabular-nums"
+        className="min-w-[1.5em] text-center font-arcade-display tabular-nums"
         style={{ color: colorVar }}
         aria-hidden
       >
@@ -139,7 +143,7 @@ function TrickPile({
   );
 }
 
-/** One team's half of the scoreboard: dot + name, the game score, race bar. */
+/** One team's half of the scoreboard: sun/moon token + score + race bar. */
 function TeamSide({
   name,
   score,
@@ -169,26 +173,29 @@ function TeamSide({
       <span className="flex flex-col items-center gap-0.5 leading-none">
         <span className="flex items-center gap-[0.4em]">
           <span
-            className="size-[0.65em] rounded-full"
+            className="size-[0.6em] rounded-full"
             style={{ background: colorVar }}
             aria-hidden
           />
-          <span className="text-[0.72em] font-semibold tracking-[0.14em] whitespace-nowrap text-(--color-ivory)/70 uppercase">
+          <span className="font-arcade-display text-[0.62em] tracking-[0.12em] whitespace-nowrap text-(--color-ap-muted) uppercase">
             {name}
           </span>
         </span>
         <span
           data-testid={testId}
-          className="font-display text-(length:--text-fluid-xl) font-semibold tabular-nums"
+          className="font-arcade-display text-(length:--text-fluid-lg) tabular-nums"
           style={{ color: colorVar }}
         >
           <span key={score} className="score-flash inline-block">
             {score}
           </span>
         </span>
-        <span aria-hidden className="h-0.5 w-[3.2em] overflow-hidden rounded-full bg-white/10">
+        <span
+          aria-hidden
+          className="h-1 w-[3.2em] overflow-hidden rounded-full border border-(--color-ap-ink) bg-(--color-ap-ink)/20"
+        >
           <span
-            className="block h-full rounded-full"
+            className="block h-full"
             style={{ width: `${String(pct)}%`, background: colorVar }}
           />
         </span>
@@ -207,9 +214,7 @@ function TeamSide({
 
 const signed = (n: number): string => (n > 0 ? `+${String(n)}` : String(n));
 
-const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
-
-/** "Marcel 8 SA" in the bidder's team color, with a made/missed mark. */
+/** "Marcel 8 SA" with a suit-dot team mark and a made/missed tick — on ivory. */
 function BetCell({
   name,
   team,
@@ -227,16 +232,16 @@ function BetCell({
     <span className="flex items-center justify-end gap-1 whitespace-nowrap">
       <span
         className="size-1.5 shrink-0 rounded-full"
-        style={{ background: TEAM_VARS[team] }}
+        style={{ background: TEAM_INK[team] }}
         aria-hidden
       />
-      <span className="truncate text-(--color-ivory)/85">
-        {name} <span className="font-semibold">{bid}</span>
-        {sansAtout ? <span className="text-(--color-lamplight)"> SA</span> : null}
+      <span className="truncate text-(--color-ap-ink)/85">
+        {name} <span className="font-arcade-display">{bid}</span>
+        {sansAtout ? <span className="text-(--color-ap-gold-deep)"> SA</span> : null}
       </span>
       {made !== undefined && (
         <span
-          className={made ? 'text-(--color-ok)' : 'text-(--color-danger-text)'}
+          className={made ? 'text-(--color-suit-green)' : 'text-(--color-suit-red)'}
           title={made ? 'Bet made' : 'Bet missed'}
         >
           {made ? '✓' : '✗'}
@@ -247,9 +252,9 @@ function BetCell({
 }
 
 /**
- * The classic written scoreboard: one row per round with each team's points
- * and the bet that drove them, a live row for the round underway, and the
- * running totals across the bottom — just like a paper scorepad.
+ * The classic written scoreboard on an ivory ruled pad: one row per round with
+ * each team's points and the bet that drove them, a live row for the round
+ * underway, and the running totals across the bottom. Ivory face → ink text.
  */
 function ScorePad({
   teamNames,
@@ -268,15 +273,11 @@ function ScorePad({
   roundPoints?: readonly [number, number] | undefined;
   contract?: ScoreStripProps['contract'] | undefined;
 }) {
-  // While the round-over summary is up the round is already on the pad —
-  // only pencil in a live row for a round the history doesn't have yet.
   const liveRound =
     currentRound !== undefined && !rounds.some((r) => r.round === currentRound)
       ? currentRound
       : null;
 
-  // The totals bar is its own table (so the rounds can scroll under it) —
-  // identical fixed columns keep the two visually aligned as one pad.
   const cols = (
     <colgroup>
       <col className="w-14" />
@@ -287,52 +288,62 @@ function ScorePad({
   );
 
   const deltaCell = (d: number) => (
-    <span className={d < 0 ? 'text-(--color-danger-text)' : 'text-(--color-ivory)/90'}>
+    <span
+      className={`font-arcade-display ${d < 0 ? 'text-(--color-suit-red)' : 'text-(--color-ap-ink)'}`}
+    >
       {signed(d)}
     </span>
   );
 
+  const headCell =
+    'py-1.5 font-arcade-ui text-[0.85em] font-bold tracking-[0.12em] uppercase text-(--color-ap-ink)/70';
+
   return (
-    <div className="w-full max-w-md overflow-hidden rounded-lg border border-white/10 bg-black/25">
-      {/* Keyboard-focusable so the overflow can be scrolled without a mouse. */}
+    <div className="w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap)">
       <div
         tabIndex={0}
         role="region"
         aria-label="Round-by-round scoreboard"
         className="max-h-52 overflow-y-auto"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(transparent 0 27px, rgb(11 7 19 / 0.06) 27px 28px)',
+        }}
       >
         <table className="w-full table-fixed tabular-nums" data-testid="scorepad">
           <caption className="sr-only">Round-by-round scoreboard</caption>
           {cols}
-          <thead className="sticky top-0 bg-(--color-felt-800)">
-            <tr className="border-b border-white/15 text-[0.85em] font-semibold tracking-[0.14em] uppercase">
-              <th scope="col" className="py-1.5 pl-3 text-left text-(--color-ivory)/55">
+          <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-[#efe6cf]">
+            <tr>
+              <th scope="col" className={`${headCell} pl-3 text-left`}>
                 Round
               </th>
               {([0, 1] as const).map((team) => (
                 <th
                   key={team}
                   scope="col"
-                  className="py-1.5 text-center"
-                  style={{ color: TEAM_VARS[team] }}
+                  className="py-1.5 text-center font-arcade-ui text-[0.85em] font-bold tracking-[0.1em] uppercase"
+                  style={{ color: TEAM_INK[team] }}
                 >
                   <span
                     className="mr-1 inline-block size-1.5 rounded-full align-middle"
-                    style={{ background: TEAM_VARS[team] }}
+                    style={{ background: TEAM_INK[team] }}
                     aria-hidden
                   />
                   {shortName(teamNames[team])}
                 </th>
               ))}
-              <th scope="col" className="py-1.5 pr-3 text-right text-(--color-ivory)/55">
+              <th scope="col" className={`${headCell} pr-3 text-right`}>
                 Bet
               </th>
             </tr>
           </thead>
           <tbody>
             {rounds.map((r) => (
-              <tr key={r.round} className="border-b border-white/6 last:border-0">
-                <td className="py-1 pl-3 text-left text-(--color-ivory)/55">R{r.round}</td>
+              <tr key={r.round} className="border-b border-(--color-ap-ink)/10 last:border-0">
+                <td className="py-1 pl-3 text-left font-arcade-ui text-(--color-ap-ink)/60">
+                  R{r.round}
+                </td>
                 <td className="py-1 text-center">{deltaCell(r.deltas[0])}</td>
                 <td className="py-1 text-center">{deltaCell(r.deltas[1])}</td>
                 <td className="py-1 pr-3 text-right">
@@ -347,10 +358,14 @@ function ScorePad({
               </tr>
             ))}
             {liveRound !== null && (
-              <tr className="text-(--color-ivory)/50">
-                <td className="py-1 pl-3 text-left">R{liveRound}</td>
-                <td className="py-1 text-center">{signed(roundPoints?.[0] ?? 0)}</td>
-                <td className="py-1 text-center">{signed(roundPoints?.[1] ?? 0)}</td>
+              <tr className="text-(--color-ap-ink)/55">
+                <td className="py-1 pl-3 text-left font-arcade-ui">R{liveRound}</td>
+                <td className="py-1 text-center font-arcade-display">
+                  {signed(roundPoints?.[0] ?? 0)}
+                </td>
+                <td className="py-1 text-center font-arcade-display">
+                  {signed(roundPoints?.[1] ?? 0)}
+                </td>
                 <td className="py-1 pr-3 text-right">
                   {contract != null ? (
                     <BetCell
@@ -366,7 +381,7 @@ function ScorePad({
               </tr>
             )}
             {rounds.length === 0 && liveRound === null && (
-              <tr className="text-(--color-ivory)/45">
+              <tr className="text-(--color-ap-ink)/50">
                 <td colSpan={4} className="py-2 text-center italic">
                   no rounds played yet
                 </td>
@@ -375,24 +390,22 @@ function ScorePad({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center border-t-2 border-white/20 bg-white/4 font-display">
+      <div className="flex items-center border-t-2 border-(--color-ap-ink) bg-[#efe6cf]">
         <table className="w-full table-fixed tabular-nums">
           {cols}
           <tbody>
             <tr>
-              <td className="py-1.5 pl-3 text-left text-[0.85em] font-semibold tracking-[0.14em] text-(--color-ivory)/55 uppercase">
-                Total
-              </td>
+              <td className={`${headCell} pl-3 text-left`}>Total</td>
               {([0, 1] as const).map((team) => (
                 <td
                   key={team}
-                  className="py-1.5 text-center text-[1.3em] font-semibold"
-                  style={{ color: TEAM_VARS[team] }}
+                  className="py-1.5 text-center font-arcade-display text-[1.3em]"
+                  style={{ color: TEAM_INK[team] }}
                 >
                   {scores[team]}
                 </td>
               ))}
-              <td className="py-1.5 pr-3 text-right text-[0.85em] text-(--color-ivory)/55">
+              <td className="py-1.5 pr-3 text-right font-arcade-ui text-[0.85em] text-(--color-ap-ink)/70">
                 first to {target}
               </td>
             </tr>
@@ -403,12 +416,12 @@ function ScorePad({
   );
 }
 
-/** The trump suit, called out in its own color — the key fact of the round. */
+/** The trump suit, called out with its mark + color — the key fact of the round. */
 function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecided: boolean }) {
   if (!trumpDecided) return null;
   if (trump === null) {
     return (
-      <span className="rounded-md bg-white/10 px-[0.5em] py-[0.15em] text-[0.7em] font-bold tracking-wide text-(--color-ivory)/85 uppercase">
+      <span className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase">
         No&nbsp;trump
       </span>
     );
@@ -417,20 +430,19 @@ function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecide
   return (
     <span
       title={`Trump: ${style.label}`}
-      className="grid size-[1.7em] place-items-center rounded-md border text-[1.2em] leading-none font-bold"
-      style={{ color: style.color, borderColor: style.color, background: `${style.color}22` }}
+      className="grid size-[1.7em] place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel)"
     >
-      {style.glyph}
+      <SuitShape suit={trump} size="0.9em" />
       <span className="sr-only">Trump {style.label}</span>
     </span>
   );
 }
 
 /**
- * The top bar, read as a scoreboard: each team's side (dot, name, game score,
- * race bar) with its round trick tray, and a center that shows only what
- * matters right now — whose turn it is, the bet, and the trump. Tap to expand
- * for full details and the app controls.
+ * The top bar, read as a scoreboard: each team's side (token, game score, race
+ * bar) with its round trick tray, and a center that shows only what matters
+ * right now — whose turn it is, the bet, and the trump. Tap to expand for full
+ * details and the app controls.
  */
 export function ScoreStrip({
   teamNames,
@@ -451,7 +463,7 @@ export function ScoreStrip({
   const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
-    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/90 font-ui text-(length:--text-fluid-sm) shadow-(--shadow-panel)">
+    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui text-(length:--text-fluid-sm) shadow-(--shadow-ap)">
       <button
         type="button"
         aria-expanded={open}
@@ -467,7 +479,7 @@ export function ScoreStrip({
             count={trickCounts?.[0] ?? 0}
             points={roundPoints?.[0] ?? 0}
             special={specials?.[0]}
-            colorVar="var(--color-team-a)"
+            colorVar={TEAM_VARS[0]}
             testId="team-score-0"
           />
         </span>
@@ -475,25 +487,25 @@ export function ScoreStrip({
         {/* Center: the live state — action, bet, trump. No filler. */}
         <span className="flex min-w-0 flex-col items-center gap-1 px-1 leading-none">
           {action !== undefined && (
-            <span className="text-[0.68em] font-semibold tracking-[0.16em] whitespace-nowrap text-(--color-ivory)/55 uppercase max-sm:hidden">
+            <span className="font-arcade-display text-[0.62em] tracking-[0.14em] whitespace-nowrap text-(--color-ap-violet-soft) uppercase max-sm:hidden">
               {action}
             </span>
           )}
           <span className="flex min-w-0 items-center gap-2">
             {contract !== null ? (
-              <span className="flex min-w-0 items-center gap-1.5 font-semibold whitespace-nowrap text-(--color-ivory) tabular-nums">
-                <span className="truncate">
+              <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-(--color-ap-text) tabular-nums">
+                <span className="truncate font-arcade-display uppercase">
                   {contract.playerName} {contract.value}
                   {contract.sansAtout ? ' SA' : ''}
                 </span>
                 {contract.progress !== undefined && (
-                  <span className="text-(--color-lamplight)">
+                  <span className="font-arcade-display text-(--color-ap-muted)">
                     {contract.progress}/{contract.value}
                   </span>
                 )}
               </span>
             ) : (
-              <span className="text-[0.85em] whitespace-nowrap text-(--color-ivory)/70">
+              <span className="text-[0.85em] whitespace-nowrap text-(--color-ap-muted)">
                 no bet yet
               </span>
             )}
@@ -509,13 +521,13 @@ export function ScoreStrip({
             count={trickCounts?.[1] ?? 0}
             points={roundPoints?.[1] ?? 0}
             special={specials?.[1]}
-            colorVar="var(--color-team-b)"
+            colorVar={TEAM_VARS[1]}
             mirrored
             testId="team-score-1"
           />
           <span
             aria-hidden
-            className={`grid size-[1.7em] shrink-0 place-items-center rounded-full border border-white/15 text-[0.7em] text-(--color-ivory)/70 transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`grid size-[1.7em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-[0.7em] text-(--color-ap-muted) transition-transform ${open ? 'rotate-180' : ''}`}
           >
             ▾
           </span>
@@ -523,7 +535,7 @@ export function ScoreStrip({
       </button>
 
       {open && (
-        <div className="flex flex-col items-center gap-3 border-t border-white/8 px-4 pt-3 pb-4 text-(length:--text-fluid-xs)">
+        <div className="flex flex-col items-center gap-3 border-t-2 border-(--color-ap-ink) px-4 pt-3 pb-4 text-(length:--text-fluid-xs)">
           <ScorePad
             teamNames={teamNames}
             scores={scores}
@@ -534,10 +546,10 @@ export function ScoreStrip({
             contract={contract}
           />
           {contract !== null && (
-            <p className="text-(--color-ivory)/60">
-              <span className="font-semibold text-(--color-ivory)/85">{contract.playerName}</span>{' '}
+            <p className="text-(--color-ap-muted)">
+              <span className="font-semibold text-(--color-ap-text)">{contract.playerName}</span>{' '}
               must take{' '}
-              <span className="font-semibold text-(--color-ivory)/85">{contract.value}</span> trick
+              <span className="font-semibold text-(--color-ap-text)">{contract.value}</span> trick
               points{contract.sansAtout ? ' with no trump (stake ×2)' : ''}
             </p>
           )}

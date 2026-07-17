@@ -23,19 +23,19 @@ export interface VoiceBarProps {
 function Chip({ name, connected, muted, speaking }: VoicePeerChip) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-shadow duration-(--duration-flick) ${
+      className={`inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[11px] transition-shadow duration-(--duration-flick) ${
         speaking && connected
-          ? 'border-(--color-lamplight) text-(--color-ivory) shadow-[0_0_8px_var(--color-lamplight)]'
-          : 'border-white/12 text-(--color-ivory)/70'
+          ? 'border-(--color-ap-violet) text-(--color-ap-text) ring-2 ring-(--color-ap-violet)'
+          : 'border-(--color-ap-ink) text-(--color-ap-muted)'
       }`}
     >
       <span
         aria-hidden
-        className={`size-1.5 rounded-full ${connected ? 'bg-(--color-ok)' : 'bg-(--color-danger)'}`}
+        className={`size-1.5 rounded-full ${connected ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'}`}
       />
       {name}
-      {!connected && <span className="text-(--color-ivory)/40">no voice</span>}
-      {connected && muted && <span className="text-(--color-ivory)/40">muted</span>}
+      {!connected && <span className="text-(--color-ap-muted)">no voice</span>}
+      {connected && muted && <span className="text-(--color-ap-muted)">muted</span>}
     </span>
   );
 }
@@ -58,10 +58,10 @@ export function VoiceBar({
         onClick={onJoin}
         disabled={status === 'joining'}
         data-testid="voice-join"
-        className={`rounded-lg border px-3 py-2 text-xs ${
+        className={`rounded-(--radius-ap-control) border-2 px-3 py-2 text-xs ${
           status === 'joining'
-            ? 'border-white/8 text-(--color-ivory)/40'
-            : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer'
+            ? 'border-(--color-ap-ink) text-(--color-ap-muted)'
+            : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer'
         }`}
       >
         {status === 'joining' ? 'Joining…' : 'Join voice'}
@@ -71,7 +71,7 @@ export function VoiceBar({
 
   if (status === 'error') {
     return (
-      <p data-testid="voice-error" className="max-w-52 text-[11px] text-(--color-danger)/90">
+      <p data-testid="voice-error" className="max-w-52 text-[11px] text-(--color-ap-danger-text)">
         {errorMessage ?? 'Voice unavailable — the game continues without it.'}
       </p>
     );
@@ -80,11 +80,11 @@ export function VoiceBar({
   return (
     <div
       data-testid="voice-bar"
-      className="flex flex-wrap items-center gap-1.5 rounded-(--radius-panel) border border-white/8 bg-black/25 px-2 py-1.5"
+      className="flex flex-wrap items-center gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) px-2 py-1.5"
     >
       <span
         data-testid="voice-live"
-        className="text-[10px] font-semibold uppercase tracking-widest text-(--color-ok)"
+        className="text-[10px] font-semibold uppercase tracking-widest text-(--color-ap-ok)"
       >
         Live
       </span>
@@ -96,10 +96,10 @@ export function VoiceBar({
         type="button"
         onClick={onToggleMute}
         data-testid="voice-mute"
-        className={`rounded-lg border px-2 py-1 text-[11px] cursor-pointer ${
+        className={`rounded-(--radius-ap-control) border-2 px-2 py-1 text-[11px] cursor-pointer ${
           muted
-            ? 'border-(--color-danger)/60 text-(--color-danger)'
-            : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8'
+            ? 'border-(--color-ap-danger) text-(--color-ap-danger-text)'
+            : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
         }`}
       >
         {muted ? 'Unmute' : 'Mute'}
@@ -108,7 +108,7 @@ export function VoiceBar({
         type="button"
         onClick={onLeave}
         data-testid="voice-leave"
-        className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-(--color-ivory)/75 hover:bg-white/8 cursor-pointer"
+        className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2 py-1 text-[11px] text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer"
       >
         Leave
       </button>

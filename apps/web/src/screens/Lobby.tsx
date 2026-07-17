@@ -1,4 +1,4 @@
-import { ChatPanel } from '@jaffre/ui';
+import { ChatPanel, Cta } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
@@ -23,10 +23,12 @@ export function Lobby({ code, onLeave }: LobbyProps) {
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">
-            <h1 className="font-display text-3xl text-(--color-lamplight)">Room {code}</h1>
+            <h1 className="font-arcade-display text-3xl uppercase text-(--color-ap-gold)">
+              Room {code}
+            </h1>
             <ShareButton code={code} />
           </div>
-          <p className="mt-1 text-sm text-(--color-ivory)/55">
+          <p className="mt-1 text-sm text-(--color-ap-muted)">
             {connection === 'open'
               ? 'Share this code with your table.'
               : connection === 'reconnecting'
@@ -42,21 +44,13 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
         />
 
-        <button
-          onClick={() => send({ t: 'start' })}
-          disabled={!full}
-          className={`rounded-(--radius-panel) px-4 py-3.5 font-semibold shadow-(--shadow-panel) ${
-            full
-              ? 'bg-(--color-lamplight) text-(--color-felt-950) hover:brightness-110 cursor-pointer'
-              : 'bg-white/8 text-(--color-ivory)/35'
-          }`}
-        >
+        <Cta onClick={() => send({ t: 'start' })} disabled={!full} className="w-full">
           {full ? 'Start the game' : 'Waiting for 4 players…'}
-        </button>
+        </Cta>
 
         {typeof viewer === 'number' && (
           <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[11px] font-semibold tracking-widest text-(--color-ivory)/40 uppercase">
+            <span className="text-[11px] font-semibold tracking-widest text-(--color-ap-muted) uppercase">
               Table voice
             </span>
             <VoiceControls me={viewer} />
@@ -68,13 +62,13 @@ export function Lobby({ code, onLeave }: LobbyProps) {
         <div className="flex items-center justify-center gap-5">
           <button
             onClick={onLeave}
-            className="text-sm text-(--color-ivory)/50 hover:text-(--color-ivory)/80 cursor-pointer"
+            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
           >
             ← Back home
           </button>
           <HelpButton
             label="How to play"
-            className="text-sm text-(--color-ivory)/50 hover:text-(--color-ivory)/80 cursor-pointer"
+            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
           />
         </div>
       </div>

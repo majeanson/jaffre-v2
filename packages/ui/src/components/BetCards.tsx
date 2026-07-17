@@ -26,10 +26,10 @@ export interface BetCardsProps {
 }
 
 /**
- * A single bet "chip" card — deliberately NOT a playing card: a dark brass
- * token with a gold value, no suit, a Pass face, and a ★ when sans-atout is
- * on. Tap (or keyboard-Enter) commits — no drag gesture here, bids are a
- * deliberate single choice.
+ * A single bet tile — an ivory card with a big Silkscreen value (per the 7b
+ * design), or a dark PASS face. The Coach's pick takes a violet ring + lift.
+ * Tap (or keyboard-Enter) commits — no drag gesture here, bids are a deliberate
+ * single choice.
  */
 function BetCard({
   label,
@@ -54,25 +54,21 @@ function BetCard({
       onClick={() => {
         if (enabled) onCommit();
       }}
-      className={`relative grid w-[clamp(2.6rem,7vmin,4.2rem)] aspect-2/3 shrink-0 place-items-center rounded-xl border-2 font-display text-[clamp(0.8rem,2.1vmin,1.3rem)] shadow-(--shadow-panel) transition-transform hover:-translate-y-1 ${
-        enabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-40 saturate-50'
+      className={`relative grid w-[clamp(2.6rem,7vmin,4.2rem)] aspect-2/3 shrink-0 place-items-center rounded-(--radius-ap-inner) border-[3px] border-(--color-ap-ink) font-arcade-display text-[clamp(0.8rem,2.1vmin,1.3rem)] shadow-(--shadow-ap) transition-transform hover:-translate-y-1 ${
+        enabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-45 saturate-50'
       } ${
         pass
-          ? 'border-(--color-ivory)/30 bg-(--color-felt-950) text-(--color-ivory)/85'
-          : 'border-(--color-lamplight) bg-linear-to-b from-(--color-felt-900) to-(--color-felt-950) text-(--color-lamplight)'
-      } ${recommended ? 'outline outline-2 outline-(--color-lamplight) outline-offset-2' : ''}`}
+          ? 'bg-(--color-ap-panel) text-(--color-ap-muted)'
+          : 'bg-(--color-card-face) text-(--color-ap-ink)'
+      } ${recommended ? 'outline outline-[3px] outline-(--color-ap-violet) outline-offset-2 -translate-y-1' : ''}`}
     >
-      <span
-        className={
-          pass ? 'text-[0.85em] font-bold tracking-wide uppercase' : 'text-[1.9em] font-black'
-        }
-      >
+      <span className={pass ? 'text-[0.9em] tracking-wide uppercase' : 'text-[1.9em]'}>
         {label}
       </span>
       {!pass && sansAtout && (
         <span
           aria-hidden
-          className="absolute top-[0.3em] right-[0.4em] text-[0.75em] text-(--color-lamplight)"
+          className="absolute top-[0.3em] right-[0.4em] text-[0.75em] text-(--color-ap-gold-deep)"
           title="Sans atout"
         >
           ★
@@ -101,9 +97,9 @@ export function BetCards({
   const recommendPass = coaching && recommended === null;
 
   return (
-    <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800)/95 p-[clamp(0.6rem,1.8vmin,1.1rem)] font-ui shadow-(--shadow-panel)">
+    <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg)">
       <div className="flex w-full items-center justify-between gap-4">
-        <span className="font-display text-(length:--text-fluid-lg) text-(--color-lamplight)">
+        <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
           Play a bet
         </span>
         <button
@@ -111,11 +107,11 @@ export function BetCards({
           aria-pressed={sansAtout}
           disabled={disabled}
           onClick={() => setSansAtout((v) => !v)}
-          className={`rounded-lg border px-[0.9em] py-[0.45em] text-(length:--text-fluid-xs) font-semibold ${
+          className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.9em] py-[0.45em] font-arcade-display text-(length:--text-fluid-xs) uppercase shadow-(--shadow-ap-sm) ${
             sansAtout
-              ? 'border-(--color-lamplight) bg-(--color-lamplight)/15 text-(--color-lamplight)'
-              : 'border-white/20 text-(--color-ivory)/80 hover:bg-white/8'
-          } cursor-pointer`}
+              ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+              : 'bg-(--color-ap-panel) text-(--color-ap-violet-soft) hover:bg-(--color-ap-panel-hover)'
+          }`}
         >
           {sansAtout ? '★ Sans atout' : '☆ Sans atout'}
         </button>
@@ -131,29 +127,29 @@ export function BetCards({
           {order.map((t, i) => (
             <li key={i} className="flex items-center gap-1">
               {i > 0 && (
-                <span aria-hidden className="text-(--color-ivory)/30">
+                <span aria-hidden className="text-(--color-ap-muted)/50">
                   →
                 </span>
               )}
               <span
-                className={`flex items-center gap-[0.4em] rounded-full border px-[0.7em] py-[0.2em] whitespace-nowrap ${
+                className={`flex items-center gap-[0.4em] rounded-full border-2 px-[0.7em] py-[0.2em] whitespace-nowrap ${
                   t.current
-                    ? 'border-(--color-lamplight) bg-(--color-lamplight)/12 text-(--color-lamplight)'
-                    : 'border-white/10 text-(--color-ivory)/70'
+                    ? 'border-(--color-ap-violet) text-(--color-ap-text)'
+                    : 'border-(--color-ap-ink) text-(--color-ap-muted)'
                 }`}
               >
-                <span className={t.you ? 'font-bold' : ''}>{t.name}</span>
+                <span className={t.you ? 'font-bold text-(--color-ap-text)' : ''}>{t.name}</span>
                 {t.bid !== null ? (
                   <span
-                    className={`font-semibold ${
-                      t.bid === 'Pass' ? 'text-(--color-ivory)/45' : 'text-(--color-lamplight)'
+                    className={`font-arcade-display ${
+                      t.bid === 'Pass' ? 'text-(--color-ap-muted)' : 'text-(--color-ap-gold)'
                     }`}
                   >
                     {t.bid}
                   </span>
                 ) : (
                   !t.current && (
-                    <span aria-label="still to bid" className="text-(--color-ivory)/40">
+                    <span aria-label="still to bid" className="text-(--color-ap-muted)/60">
                       …
                     </span>
                   )
@@ -193,7 +189,7 @@ export function BetCards({
         />
       </div>
 
-      <span className="text-(length:--text-fluid-xs) text-(--color-ivory)/60">
+      <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
         Tap a card to bid
       </span>
     </div>

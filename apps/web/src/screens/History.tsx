@@ -32,34 +32,34 @@ function GameRow({ game }: { readonly game: HistoryGame }) {
   return (
     <a
       href={`#replay/${game.id}`}
-      className="flex items-center gap-3 rounded-(--radius-panel) border border-white/8 bg-(--color-felt-800)/70 px-4 py-3 transition-colors hover:border-white/20 hover:bg-(--color-felt-800)"
+      className="flex items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
     >
       <span
-        className={`grid w-14 shrink-0 place-items-center rounded-lg py-1 font-display text-sm font-bold ${
+        className={`inline-block shrink-0 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.5em] py-1 text-center font-arcade-display text-sm uppercase shadow-(--shadow-ap-sm) ${
           !decided
-            ? 'bg-white/10 text-(--color-ivory)/70'
+            ? 'bg-(--color-ap-panel-hover) text-(--color-ap-muted)'
             : won
-              ? 'bg-(--color-ok)/20 text-(--color-ok)'
-              : 'bg-(--color-danger)/20 text-(--color-danger-text)'
+              ? 'bg-(--color-ap-ok) text-(--color-ap-ink)'
+              : 'bg-(--color-ap-danger) text-(--color-ap-ink)'
         }`}
       >
         {decided ? (won ? 'Won' : 'Lost') : '—'}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold text-(--color-ivory)">
+        <span className="block truncate font-semibold text-(--color-ap-text)">
           Room {game.roomCode}
         </span>
-        <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ivory)/55">
+        <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ap-muted)">
           {formatDate(game.finishedAt)} · seat {game.yourSeat + 1}
           {roster !== null ? ` · ${roster}` : ''}
         </span>
       </span>
-      <span className="font-display text-lg tabular-nums text-(--color-ivory)/85">
+      <span className="font-arcade-display text-lg tabular-nums text-(--color-ap-text)">
         {game.scores[0]}
-        <span className="mx-1 text-(--color-ivory)/40">—</span>
+        <span className="mx-1 text-(--color-ap-muted)">—</span>
         {game.scores[1]}
       </span>
-      <span aria-hidden className="text-(--color-ivory)/40">
+      <span aria-hidden className="text-(--color-ap-muted)">
         ›
       </span>
     </a>
@@ -86,7 +86,7 @@ export function History({ onLeave, demoGames }: HistoryProps) {
     <main className="table-felt min-h-dvh overflow-y-auto p-6 max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <header className="flex items-center justify-between gap-4">
-          <h1 className="font-display text-(length:--text-fluid-2xl) font-semibold text-(--color-lamplight)">
+          <h1 className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)">
             Your games
           </h1>
           <a
@@ -95,20 +95,20 @@ export function History({ onLeave, demoGames }: HistoryProps) {
               e.preventDefault();
               onLeave();
             }}
-            className="text-sm text-(--color-ivory)/60 hover:text-(--color-ivory)"
+            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text)"
           >
             ← Home
           </a>
         </header>
 
         {error ? (
-          <p className="rounded-(--radius-panel) border border-white/8 bg-black/20 p-6 text-center text-(--color-ivory)/70">
+          <p className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-6 text-center text-(--color-ap-muted) shadow-(--shadow-ap)">
             History needs the online server. Play a room game and it will show up here.
           </p>
         ) : games === null ? (
-          <p className="p-6 text-center text-(--color-ivory)/50">Loading…</p>
+          <p className="p-6 text-center text-(--color-ap-muted)">Loading…</p>
         ) : games.length === 0 ? (
-          <p className="rounded-(--radius-panel) border border-white/8 bg-black/20 p-6 text-center text-(--color-ivory)/70">
+          <p className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-6 text-center text-(--color-ap-muted) shadow-(--shadow-ap)">
             No finished games yet. Finish a game and it will appear here to replay.
           </p>
         ) : (

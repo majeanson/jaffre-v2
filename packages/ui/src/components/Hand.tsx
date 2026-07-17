@@ -105,7 +105,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReor
             // react-aria drops the aria-disabled prop above, but forwards
             // data-* — tests and tooling read playability from this.
             data-playable={playable || undefined}
-            className={`group rounded-(--radius-card) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
+            className={`group rounded-(--radius-ap-inner) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
               entry.recommended === true ? '-translate-y-3' : ''
             } ${
               reorderable

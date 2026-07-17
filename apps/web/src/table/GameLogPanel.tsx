@@ -31,12 +31,12 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
         {latest}
       </div>
       {visible && (
-        <div className="fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-950)/95 shadow-(--shadow-panel)">
+        <div className="fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui shadow-(--shadow-ap-lg)">
           <button
             type="button"
             aria-label="Close log"
             onClick={onClose}
-            className="absolute top-1 right-1 z-10 grid size-7 place-items-center rounded-full text-(--color-ivory)/70 hover:bg-white/10 cursor-pointer"
+            className="absolute top-1 right-1 z-10 grid size-7 cursor-pointer place-items-center rounded-(--radius-ap-inner) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover)"
           >
             ✕
           </button>
@@ -46,7 +46,7 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
             role="region"
             aria-label="Game log"
             tabIndex={0}
-            className="h-32 overflow-y-auto px-4 py-2 pr-9 text-xs leading-5 text-(--color-ivory)/75"
+            className="h-32 overflow-y-auto px-4 py-2 pr-9 text-xs leading-5 text-(--color-ap-text)/80"
           >
             {lines.slice(-40).map((text, i) => (
               <p key={i}>{text}</p>

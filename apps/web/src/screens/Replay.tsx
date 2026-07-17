@@ -101,12 +101,8 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
     return (
       <main className="table-felt grid min-h-dvh place-items-center p-6 text-center">
         <div className="flex flex-col items-center gap-3">
-          <p className="text-(--color-ivory)/75">This replay could not be loaded.</p>
-          <button
-            type="button"
-            onClick={onLeave}
-            className={`px-4 py-2 text-sm text-(--color-ivory)/80 ${GHOST_BTN_SM}`}
-          >
+          <p className="font-arcade-ui text-(--color-ap-muted)">This replay could not be loaded.</p>
+          <button type="button" onClick={onLeave} className={GHOST_BTN_SM}>
             ← Back
           </button>
         </div>
@@ -117,7 +113,9 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
   if (frames.length === 0) {
     return (
       <main className="table-felt grid min-h-dvh place-items-center">
-        <p className="animate-pulse text-(--color-ivory)/60">Loading replay…</p>
+        <p className="animate-pulse font-arcade-display uppercase tracking-wide text-(--color-ap-muted)">
+          Loading replay…
+        </p>
       </main>
     );
   }
@@ -127,7 +125,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
       <Table key="replay" onAction={() => undefined} onLeave={onLeave} />
       <div
         data-testid="replay-controls"
-        className="fixed bottom-2 left-1/2 z-[60] flex w-[min(94vw,40rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-white/12 bg-black/85 px-4 py-2 text-white shadow-(--shadow-panel) max-sm:gap-2 max-sm:px-3"
+        className="fixed bottom-2 left-1/2 z-[60] flex w-[min(94vw,40rem)] -translate-x-1/2 items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-ui text-white shadow-(--shadow-ap) max-sm:gap-2 max-sm:px-3"
       >
         <button
           type="button"
@@ -163,7 +161,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
             setPlaying(false);
             setIdx(Number(e.target.value));
           }}
-          className="min-w-0 flex-1 accent-(--color-lamplight)"
+          className="min-w-0 flex-1 accent-(--color-ap-violet)"
         />
         <span
           data-testid="replay-frame"
@@ -175,7 +173,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
           aria-label="View as"
           value={viewer}
           onChange={(e) => setViewer(Number(e.target.value) as Viewer)}
-          className="shrink-0 cursor-pointer rounded-lg border border-white/15 bg-black/40 px-1.5 py-1 text-xs text-white max-sm:hidden"
+          className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-black/40 px-1.5 py-1 text-xs text-white max-sm:hidden"
         >
           {[0, 1, 2, 3].map((s) => (
             <option key={s} value={s} className="text-black">

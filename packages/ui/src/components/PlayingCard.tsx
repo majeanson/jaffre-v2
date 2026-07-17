@@ -1,12 +1,14 @@
 import type { CardData } from '../types.js';
 import { cardLabel, SUIT_STYLES } from '../types.js';
+import { SuitShape } from './SuitShape.js';
 
 export type CardSize = 'sm' | 'md' | 'lg';
 
 /**
  * Fluid sizing: cards scale with the viewport (vmin) so the table reads from
- * a TV across the room and still fits a phone. Chunky-illustrated look:
- * thick ink border, big centered glyph, corner value plates, slight depth.
+ * a TV across the room and still fits a phone. Arcade look: ivory face, 3px
+ * ink border, zero-blur hard shadow, Silkscreen rank in the corners, and the
+ * suit's geometric mark (never colour alone) centred.
  */
 const SIZE_CLASSES: Record<CardSize, string> = {
   sm: 'w-[clamp(2.1rem,5vmin,3.4rem)] text-[clamp(0.55rem,1.3vmin,0.8rem)]',
@@ -20,7 +22,7 @@ export interface PlayingCardProps {
   readonly faceDown?: boolean;
   readonly raised?: boolean;
   readonly dimmed?: boolean;
-  /** The Coach's suggested card — draws a golden halo around it. */
+  /** The Coach's suggested card — draws a violet ring around it. */
   readonly recommended?: boolean;
   /** Small deterministic tilt (degrees) for a hand-held look. */
   readonly tilt?: number;
@@ -40,7 +42,7 @@ export function PlayingCard({
       <div
         aria-hidden
         style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
-        className={`${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-card) shadow-(--shadow-card) border-[0.18em] border-(--color-ink) bg-(--color-card-back) bg-[repeating-linear-gradient(135deg,var(--color-card-back-line)_0_0.2em,transparent_0.2em_0.55em)]`}
+        className={`${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) shadow-(--shadow-ap) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-back) bg-[repeating-linear-gradient(135deg,var(--color-card-back-line)_0_0.22em,transparent_0.22em_0.6em)]`}
       />
     );
   }
@@ -54,63 +56,47 @@ export function PlayingCard({
     <div
       role="img"
       aria-label={cardLabel(card)}
-      style={{
-        color: suit.color,
-        ...(tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : {}),
-      }}
-      className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-card) border-[0.18em] border-(--color-ink) bg-linear-to-b from-(--color-card-face) to-(--color-card-face-shade) font-ui transition-[transform,box-shadow] duration-(--duration-flick) ${
-        raised ? 'shadow-(--shadow-card-raised) -translate-y-2' : 'shadow-(--shadow-card)'
+      style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
+      className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
+        raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'
       } ${
         recommended
-          ? 'outline outline-[0.16em] outline-(--color-lamplight) outline-offset-[0.12em]'
+          ? 'outline outline-[0.16em] outline-(--color-ap-violet) outline-offset-[0.12em]'
           : ''
-      } ${dimmed ? 'scale-[0.94] saturate-[0.65]' : ''} ${isBrownZero ? 'brightness-95' : ''}`}
+      } ${dimmed ? 'scale-[0.94] saturate-[0.7]' : ''}`}
     >
-      {/* Special halo: rays for the red zero, cracks-dark vignette for brown */}
-      {isRedZero && (
-        <span
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgb(255_200_60/0.5),transparent_58%)]"
-        />
-      )}
-      {isBrownZero && (
-        <span
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,transparent_35%,rgb(40_25_10/0.22)_100%)]"
-        />
-      )}
-
-      {/* Corner value plates */}
+      {/* Corner ranks — Silkscreen numerals in the suit colour. */}
       <span
-        className="absolute top-[3%] left-[5%] grid place-items-center rounded-[0.3em] px-[0.28em] py-[0.08em] font-black leading-none tabular-nums text-[1.05em] text-(--color-card-face)"
-        style={{ background: suit.color }}
+        className="absolute top-[5%] left-[7%] font-arcade-display leading-none tabular-nums text-[1.05em]"
+        style={{ color: suit.color }}
       >
         {card.value}
       </span>
       <span
-        className="absolute bottom-[3%] right-[5%] grid rotate-180 place-items-center rounded-[0.3em] px-[0.28em] py-[0.08em] font-black leading-none tabular-nums text-[1.05em] text-(--color-card-face)"
-        style={{ background: suit.color }}
+        className="absolute bottom-[5%] right-[7%] rotate-180 font-arcade-display leading-none tabular-nums text-[1.05em]"
+        style={{ color: suit.color }}
       >
         {card.value}
       </span>
 
-      {/* Big center glyph with letterpress depth */}
-      <span className="absolute inset-0 grid place-items-center text-[2.6em] leading-none drop-shadow-[0_0.06em_0_rgb(0_0_0/0.3)]">
-        {suit.glyph}
+      {/* Suit mark, centred. */}
+      <span className="absolute inset-0 grid place-items-center">
+        <SuitShape suit={card.suit} size="2em" />
       </span>
 
+      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). */}
       {bonus !== null && size !== 'sm' && (
         <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-[8%] rounded-full border-[0.12em] border-(--color-card-face) px-[0.5em] py-[0.1em] text-[0.78em] font-black tracking-wide text-(--color-card-face)"
-          style={{ background: suit.color }}
+          className={`absolute left-1/2 bottom-[8%] -translate-x-1/2 rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
+            isRedZero ? 'bg-(--color-ap-ok) text-(--color-ap-ink)' : 'bg-[#7a2230] text-white'
+          }`}
         >
           {bonus}
         </span>
       )}
 
-      {/* Not playable now: sink the card into the felt (skin-adaptive — felt is
-          near-black in dark skins, linen in the light one) instead of a ghostly
-          fade, so it reads "parked" but stays crisp and legible. */}
+      {/* Not playable now: sink the card into the felt (skin-adaptive) so it
+          reads "parked" but stays crisp and legible. */}
       {dimmed && <span aria-hidden className="absolute inset-0 bg-(--color-felt-950)/45" />}
     </div>
   );

@@ -10,9 +10,15 @@ export interface SeatProps {
 }
 
 /**
- * A player nameplate around the table. Fluid: the root font-size scales with
- * the viewport (like the cards) and every internal size is in em, so the
- * whole plate grows and shrinks as one proportional unit.
+ * A player nameplate around the table, in the arcade shell: an ink-bordered
+ * panel with a hard shadow, a square team-colour avatar with a Silkscreen
+ * initial, and the name. The active player's plate takes a violet border.
+ * Fluid: the root font-size scales with the viewport and everything inside is
+ * in em, so the plate grows and shrinks as one unit.
+ *
+ * The avatar initial uses `--color-felt-950` (not the constant `--color-ap-ink`)
+ * because the team colour flips light↔dark per skin — the felt token flips the
+ * opposite way, keeping the initial legible in all three skins.
  */
 export function Seat({
   name,
@@ -27,36 +33,42 @@ export function Seat({
   return (
     <div
       title={compact ? name : undefined}
-      className={`inline-flex max-w-full items-center gap-[0.6em] rounded-(--radius-panel) px-[0.8em] py-[0.5em] text-(length:--text-fluid-sm) bg-(--color-felt-800)/80 shadow-(--shadow-panel) border transition-colors duration-(--duration-flick) ${
-        compact ? 'max-sm:gap-0 max-sm:rounded-full max-sm:p-[0.3em]' : ''
-      } ${isTurn ? 'border-(--color-accent)' : 'border-white/8'}`}
+      className={`inline-flex max-w-full items-center gap-[0.6em] rounded-(--radius-ap-control) border-2 bg-(--color-ap-panel) px-[0.55em] py-[0.4em] text-(length:--text-fluid-sm) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) ${
+        compact ? 'max-sm:gap-0 max-sm:p-[0.3em]' : ''
+      } ${isTurn ? 'border-(--color-ap-violet)' : 'border-(--color-ap-ink)'}`}
     >
       <span
         aria-hidden
-        className={`relative grid size-[2.3em] shrink-0 place-items-center rounded-full font-display font-semibold text-[1.15em] text-(--color-felt-950) ${
+        className={`relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[1.05em] text-(--color-felt-950) shadow-(--shadow-ap-sm) ${
           team === 0 ? 'bg-(--color-team-a)' : 'bg-(--color-team-b)'
-        } ${isTurn ? 'ring-2 ring-(--color-accent) ring-offset-2 ring-offset-(--color-felt-900)' : ''}`}
+        }`}
       >
         {initial}
         <span
           title={connected ? 'Connected' : 'Disconnected'}
-          className={`absolute -bottom-[0.06em] -right-[0.06em] size-[0.62em] rounded-full border border-(--color-felt-950) ${
-            connected ? 'bg-(--color-ok)' : 'bg-(--color-danger)'
+          className={`absolute -bottom-[0.12em] -right-[0.12em] size-[0.6em] rounded-full border-2 border-(--color-ap-ink) ${
+            connected ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'
           }`}
         />
       </span>
       {compact && <span className="sr-only">{name}</span>}
       <span className={`flex min-w-0 items-center gap-[0.4em] ${compact ? 'max-sm:hidden' : ''}`}>
-        <span className="truncate font-semibold text-(--color-ivory)">{name}</span>
-        {isBot && (
-          <span className="text-[0.62em] uppercase tracking-widest text-(--color-ivory)/50">
-            bot
+        <span className="truncate font-arcade-ui font-semibold text-(--color-ap-text)">{name}</span>
+        {isTurn ? (
+          <span className="font-arcade-display text-[0.6em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
+            Playing
           </span>
+        ) : (
+          isBot && (
+            <span className="font-arcade-display text-[0.58em] uppercase tracking-[0.1em] text-(--color-ap-muted)">
+              bot
+            </span>
+          )
         )}
         {isDealer && (
           <span
             title="Dealer"
-            className="grid size-[1.15em] shrink-0 place-items-center rounded-full bg-(--color-lamplight)/20 text-[0.62em] font-black text-(--color-lamplight)"
+            className="grid size-[1.25em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) font-arcade-display text-[0.6em] text-(--color-ap-ink)"
           >
             D<span className="sr-only">ealer</span>
           </span>

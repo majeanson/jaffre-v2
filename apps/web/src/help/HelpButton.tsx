@@ -19,7 +19,7 @@ export interface HelpButtonProps {
  */
 export function HelpButton({
   label = 'How to play',
-  className = `px-3 py-1.5 text-sm text-(--color-ivory)/80 ${GHOST_BTN}`,
+  className = `px-3 py-1.5 text-sm text-(--color-ap-text) ${GHOST_BTN}`,
   defaultOpen = false,
   children,
 }: HelpButtonProps) {

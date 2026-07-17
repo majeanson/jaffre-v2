@@ -1,4 +1,4 @@
-import { PlayingCard, SUIT_STYLES } from '@jaffre/ui';
+import { PlayingCard, SUIT_STYLES, SuitShape } from '@jaffre/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { TEAMS } from '../teams.js';
@@ -12,11 +12,11 @@ const FOCUSABLE =
 
 function Rule({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
-    <section className="rounded-(--radius-panel) border border-white/8 bg-black/20 p-4">
-      <h3 className="font-display text-(length:--text-fluid-lg) font-semibold text-(--color-lamplight)">
+    <section className="rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-4 shadow-(--shadow-ap-sm)">
+      <h3 className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
         {title}
       </h3>
-      <div className="mt-1.5 space-y-2 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ivory)/80">
+      <div className="mt-1.5 space-y-2 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ap-text)/85">
         {children}
       </div>
     </section>
@@ -24,7 +24,7 @@ function Rule({ title, children }: { readonly title: string; readonly children: 
 }
 
 function Strong({ children }: { readonly children: ReactNode }) {
-  return <strong className="font-semibold text-(--color-ivory)">{children}</strong>;
+  return <strong className="font-semibold text-(--color-ap-text)">{children}</strong>;
 }
 
 function Tip({ label, children }: { readonly label: string; readonly children: ReactNode }) {
@@ -85,12 +85,12 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
-        className="pop-in relative flex max-h-[min(88dvh,60rem)] w-[min(96vw,46rem)] flex-col overflow-hidden rounded-(--radius-panel) border border-white/10 bg-(--color-felt-900) shadow-(--shadow-panel)"
+        className="pop-in relative flex max-h-[min(88dvh,60rem)] w-[min(96vw,46rem)] flex-col overflow-hidden rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) font-arcade-ui shadow-(--shadow-ap-hero)"
       >
-        <header className="flex items-center justify-between gap-4 border-b border-white/8 px-5 py-3.5">
+        <header className="flex items-center justify-between gap-4 border-b-2 border-(--color-ap-ink) px-5 py-3.5">
           <h2
             id="help-title"
-            className="font-display text-(length:--text-fluid-2xl) font-semibold text-(--color-lamplight)"
+            className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)"
           >
             How to play
           </h2>
@@ -99,7 +99,7 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
             type="button"
             aria-label="Close help"
             onClick={onClose}
-            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-white/15 text-(--color-ivory)/80 hover:bg-white/10"
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
           >
             ✕
           </button>
@@ -121,10 +121,8 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
             <p aria-hidden className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
               {(['red', 'brown', 'green', 'blue'] as const).map((suit) => (
                 <span key={suit} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="text-lg leading-none" style={{ color: SUIT_STYLES[suit].color }}>
-                    {SUIT_STYLES[suit].glyph}
-                  </span>
-                  <span className="text-(length:--text-fluid-xs) text-(--color-ivory)/60">
+                  <SuitShape suit={suit} size="1.05em" />
+                  <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
                     {SUIT_STYLES[suit].label}
                   </span>
                 </span>
@@ -165,14 +163,14 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-2">
               <figure className="flex flex-col items-center gap-1.5">
                 <PlayingCard card={{ suit: 'red', value: 0 }} />
-                <figcaption className="text-(length:--text-fluid-xs) text-(--color-ivory)/70">
-                  Red 0 · <span className="font-semibold text-(--color-ok)">+5 points</span>
+                <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                  Red 0 · <span className="font-semibold text-(--color-suit-green)">+5 points</span>
                 </figcaption>
               </figure>
               <figure className="flex flex-col items-center gap-1.5">
                 <PlayingCard card={{ suit: 'brown', value: 0 }} />
-                <figcaption className="text-(length:--text-fluid-xs) text-(--color-ivory)/70">
-                  Brown 0 · <span className="font-semibold text-(--color-danger)">−2 points</span>
+                <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                  Brown 0 · <span className="font-semibold text-(--color-suit-red)">−2 points</span>
                 </figcaption>
               </figure>
             </div>
@@ -208,29 +206,29 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
           </Rule>
 
           <div className="flex items-center gap-3 pt-1" aria-hidden>
-            <span className="h-px flex-1 bg-white/10" />
-            <span className="text-(length:--text-fluid-xs) tracking-wide text-(--color-ivory)/40">
+            <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
+            <span className="text-(length:--text-fluid-xs) tracking-wide text-(--color-ap-muted)">
               for when you&rsquo;ve played a few rounds
             </span>
-            <span className="h-px flex-1 bg-white/10" />
+            <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
           </div>
 
-          <details className="group rounded-(--radius-panel) border border-white/8 bg-black/20">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-panel) p-4 hover:bg-white/5">
-              <span className="font-display text-(length:--text-fluid-lg) font-semibold text-(--color-lamplight)">
+          <details className="group rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-ap-card) p-4 hover:bg-(--color-ap-panel-hover)">
+              <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
                 Advanced strategy
-                <span className="ml-2 align-middle text-(length:--text-fluid-xs) font-normal text-(--color-ivory)/40">
+                <span className="ml-2 align-middle text-(length:--text-fluid-xs) font-normal text-(--color-ap-muted)">
                   optional
                 </span>
               </span>
               <span
                 aria-hidden
-                className="text-(--color-ivory)/50 transition-transform duration-(--duration-flick) group-open:rotate-90"
+                className="text-(--color-ap-muted) transition-transform duration-(--duration-flick) group-open:rotate-90"
               >
                 ▸
               </span>
             </summary>
-            <div className="space-y-2 border-t border-white/8 px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ivory)/80">
+            <div className="space-y-2 border-t-2 border-(--color-ap-ink) px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ap-text)/85">
               <Tip label="Bidding is about your best suit.">
                 Size up your hand once for each suit as trump — your longest, strongest suit is your
                 real strength. Then bid the <Strong>smallest number that wins the auction</Strong>:

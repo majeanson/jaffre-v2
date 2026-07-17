@@ -30,6 +30,12 @@ export function Stage({
 }: StageProps) {
   return (
     <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
+      {/* The green felt playing surface — a discrete oval on the arcade ground,
+          with the seat chips sitting on its rim and the trick resolving inside. */}
+      <div
+        aria-hidden
+        className="felt-oval pointer-events-none absolute inset-[7%] rounded-[46%] max-sm:inset-[9%]"
+      />
       {/* Trick insets keep cards clear of the seat chips; cards render above
           chips as a fallback so a chip never covers a played card. */}
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[22%] max-sm:inset-y-[14%]">

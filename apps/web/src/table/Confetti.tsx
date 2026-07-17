@@ -2,7 +2,8 @@ const CONFETTI_COLORS = [
   'var(--color-suit-red)',
   'var(--color-suit-green)',
   'var(--color-suit-blue)',
-  'var(--color-lamplight)',
+  'var(--color-ap-violet-soft)',
+  'var(--color-ap-gold)',
 ];
 
 /** Owns the celebration: a dozen falling pieces over the winner card. CSS-only; reduced-motion hides the fall. */

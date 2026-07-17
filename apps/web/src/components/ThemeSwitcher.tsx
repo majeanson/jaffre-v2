@@ -5,7 +5,7 @@ import { applyTheme, currentTheme, THEMES, type ThemeId } from '../theme.js';
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<ThemeId>(currentTheme());
   return (
-    <label className="flex items-center gap-1.5 text-xs text-(--color-ivory)/70">
+    <label className="flex items-center gap-1.5 font-arcade-ui text-xs text-(--color-ap-muted)">
       <span className="max-sm:sr-only">Skin</span>
       {/* appearance-none so the select honors our background-color: the native
           widget paints a system bg that axe samples (mis-flagging the ivory
@@ -19,7 +19,7 @@ export function ThemeSwitcher() {
             applyTheme(next);
             setTheme(next);
           }}
-          className="cursor-pointer appearance-none rounded-lg border border-white/15 bg-(--color-felt-800) py-1.5 pr-6 pl-2 text-xs text-(--color-ivory)"
+          className="cursor-pointer appearance-none rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) py-1.5 pr-6 pl-2 font-arcade-ui text-xs text-(--color-ap-text) shadow-(--shadow-ap-sm)"
         >
           {THEMES.map((t) => (
             <option key={t.id} value={t.id}>
@@ -29,7 +29,7 @@ export function ThemeSwitcher() {
         </select>
         <span
           aria-hidden
-          className="pointer-events-none absolute right-2 text-[8px] text-(--color-ivory)/60"
+          className="pointer-events-none absolute right-2 text-[8px] text-(--color-ap-muted)"
         >
           ▼
         </span>

@@ -10,12 +10,13 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   readonly children: ReactNode;
 }
 
-/** Base chrome for a small square icon button — shared with icon-styled triggers. */
+/** Base chrome for a small square icon button — shared with icon-styled triggers.
+ * Arcade shell: 2px ink border, hard shadow. */
 export const ICON_BTN_BASE =
-  'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 cursor-pointer place-items-center rounded-lg border text-(length:--text-fluid-base) transition-colors';
+  'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors';
 
 /** The neutral (idle) icon-button look, as a plain class string. */
-export const ICON_BTN_NEUTRAL = `${ICON_BTN_BASE} border-white/15 text-(--color-ivory)/75 hover:bg-white/8`;
+export const ICON_BTN_NEUTRAL = `${ICON_BTN_BASE} bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)`;
 
 /**
  * The one small square icon button used across the table chrome — hover-bar
@@ -37,10 +38,10 @@ export function IconButton({
       title={label}
       className={`${ICON_BTN_BASE} ${
         danger
-          ? 'border-(--color-danger)/45 text-(--color-danger-text) hover:bg-(--color-danger)/12'
+          ? 'border-(--color-ap-danger) bg-(--color-ap-panel) text-(--color-ap-danger-text) hover:bg-(--color-ap-panel-hover)'
           : active
-            ? 'border-(--color-lamplight)/50 bg-(--color-lamplight)/12 text-(--color-lamplight)'
-            : 'border-white/15 text-(--color-ivory)/75 hover:bg-white/8'
+            ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+            : 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
       } ${className}`}
       {...rest}
     >

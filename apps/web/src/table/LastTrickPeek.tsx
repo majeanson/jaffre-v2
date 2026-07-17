@@ -58,7 +58,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
         Last trick
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800) p-3 shadow-(--shadow-panel)">
+        <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 shadow-(--shadow-ap-lg)">
           <div className="relative size-[clamp(9rem,22vmin,13rem)]">
             {trick.plays.map((play) => (
               <span
@@ -73,7 +73,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
               </span>
             ))}
           </div>
-          <p className="text-center text-(length:--text-fluid-xs) text-(--color-ivory)/70 whitespace-nowrap">
+          <p className="text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted) whitespace-nowrap">
             {trick.winnerName} · {trick.points > 0 ? '+' : ''}
             {trick.points} pt{Math.abs(trick.points) === 1 ? '' : 's'}
           </p>

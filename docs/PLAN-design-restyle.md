@@ -13,10 +13,12 @@
 > `/api/stats` fields, the between-games **per-game scorepad** + **Swap seats**
 > action, and the multi-table home **"Your tables"** row. See W5–W7 below.
 >
-> **Next up (not started):** bring the arcade shell into the **in-game playing
-> table** (the felt surface — its own felt/suit/team token system, deliberately
-> untouched so far) and give **"how to play"** (the help sheet) the arcade
-> treatment.
+> **Turn 7 + 8 shipped (full-app reskin):** the designer added Turn 7 (in-game
+> table: live trick / bidding / HUD+scoreboard / card-token kit) and Turn 8 (how
+> to play), and the WHOLE app is now in the arcade language — the felt board, all
+> table components, Lobby/Replay/History, and the help sheet. The green felt is
+> kept as a discrete oval on the arcade ground; suit = colour + shape and
+> Sun/Moon team colours are preserved. See "Turn 7/8 — full reskin" below.
 >
 > Remaining follow-ups: swap the licensed **Visitor** TTF in for the
 > **Silkscreen** stand-in (`--font-arcade-display`); "name taken" is a
@@ -182,6 +184,37 @@ to re-pair the table between games. The follow-up data-model work is now done:
   on every roster in `socket.ts`. `PlayMenu` renders the row of table cards
   (avatar stack, tonight's tally, Resume). Live turn-status is **not** shown (no
   offline source); the row leads with recency instead.
+
+### W8 — Full-app reskin: in-game table + how-to-play (Turn 7 + 8) — SHIPPED
+
+The remaining LEGACY felt surfaces are now in the arcade language, per the
+designer's Turn 7 (in-game table) and Turn 8 (how to play) mockups. Approach:
+**keep the green felt as a discrete oval** on the arcade ground (`.felt-oval` +
+a redefined `--table-backdrop` in all three skins); keep the felt/suit/team
+semantic tokens (they carry playability + per-skin correctness); change only the
+chrome to arcade (ink borders, zero-blur hard shadows, Silkscreen numerals,
+arcade panels/HUD). **Suit = colour + shape** (new shared `SuitShape` —
+circle/rounded-square/triangle/diamond) and **Sun/Moon team colours** preserved.
+
+- Shared kit: `PlayingCard` (ivory + ink + hard shadow + Silkscreen rank +
+  `SuitShape`), `Seat` (arcade nameplate; avatar initial uses `--color-felt-950`
+  so it stays legible on the flipping team colour), `ScoreStrip` (arcade HUD +
+  ivory ruled round scoreboard), `BetCards` (ivory number tiles, 7b),
+  `SuitShape`, `IconButton`/`buttonStyles`/`Toast`/`ThemeSwitcher`/`Confetti`.
+- Table pieces: `Stage` (felt oval), `SeatChip`, `TrickBanner`, `CoachHint`,
+  `GameLogPanel`, `LastTrickPeek`, `ConnectionBanner`, `WaitingScreen`,
+  `RoundSummaryOverlay`, `Hand`.
+- Screens: `Lobby`, `Replay` (control bar), `History`, `ChatPanel`, `VoiceBar`,
+  `HelpButton` + **`HelpSheet` (Turn 8)**.
+- **Contrast rules that bit us** (all fixed, axe-clean in both skins): on the
+  ivory scorepad use deep constant team inks (`#8a5c00` / `#1c5f78`), not the
+  flipping team vars; `SpecialChip` is a permanently-dark ink pill (white text +
+  suit border) since the mid-tone suit colours fail as text/fill at small sizes;
+  the round-summary delta uses `--color-ap-text` (made/missed carried by the
+  ✓/✗ badge + sign) because no single green is AA on both the dark and white
+  panel. New token `--color-ap-gold-deep` used for gold on ivory.
+- Verified: 46 unit tests, 42 scene e2e (axe both skins), shots across
+  dark/light/juicy × phone/desktop.
 
 ## Cross-cutting rules (unchanged)
 
