@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
+import { Cta } from '@jaffre/ui';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -25,6 +26,8 @@ export interface PlayMenuProps {
   readonly onJoinRoom: (code: string) => void;
   /** The last room this browser sat at, if any. */
   readonly resumeCode: string | null;
+  /** Series tally for the resume room when known: [Sun wins, Moon wins]. */
+  readonly resumeSeries?: readonly [number, number] | undefined;
 }
 
 const PANEL =
@@ -34,7 +37,7 @@ const PANEL =
  * The title-screen actions: practice (primary), play with friends
  * (create-a-room + join-by-code), and a resume strip when applicable.
  */
-export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) {
+export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: PlayMenuProps) {
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
 
@@ -151,17 +154,31 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode }: PlayMenuProps) 
       </div>
 
       {resumeCode !== null && (
-        <a
-          href={`#room/${resumeCode}`}
-          className="rise-in flex items-center justify-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ivory)/80 hover:text-(--color-ivory) sm:col-span-2"
+        <div
+          className="rise-in flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui shadow-(--shadow-ap) max-sm:p-4 sm:col-span-2"
           style={{ '--rise-delay': '220ms' } as CSSProperties}
         >
-          <span aria-hidden className="text-(--color-lamplight)">
-            ↻
-          </span>
-          Resume last room ·{' '}
-          <span className="font-semibold tracking-wide text-(--color-lamplight)">{resumeCode}</span>
-        </a>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <span className="font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase text-(--color-ap-text)">
+              Your tables
+            </span>
+            {resumeSeries !== undefined && (
+              <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) tabular-nums">
+                Tonight: <span style={{ color: 'var(--color-team-a)' }}>Sun {resumeSeries[0]}</span>
+                {' — '}
+                <span style={{ color: 'var(--color-team-b)' }}>Moon {resumeSeries[1]}</span>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate font-arcade-display text-[1.15em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
+              {resumeCode}
+            </span>
+            <Cta type="button" onClick={() => onJoinRoom(resumeCode)}>
+              Resume
+            </Cta>
+          </div>
+        </div>
       )}
 
       <div

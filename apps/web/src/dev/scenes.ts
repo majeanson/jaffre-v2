@@ -249,6 +249,7 @@ const midTrick = (s: GameState) => s.phase === 'playing' && s.currentTrick.lengt
 const LOADERS: Record<SceneId, () => void> = {
   home: () => useGameStore.getState().reset(),
   'home-help': () => useGameStore.getState().reset(),
+  'your-tables': () => useGameStore.getState().reset(),
   'lobby-open': () => injectLobby(LOBBY_OPEN, 'open'),
   'lobby-full': () => injectLobby(LOBBY_FULL, 'open'),
   'lobby-reconnecting': () => injectLobby(LOBBY_FULL, 'reconnecting'),
