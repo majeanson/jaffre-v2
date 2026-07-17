@@ -34,7 +34,9 @@ test('staged stats scene shows the full aggregate record', async ({ page }) => {
   await expect(page.getByText('games won')).toBeVisible();
   await expect(page.getByText('Contracts: made 4 of 6')).toBeVisible();
   await expect(page.getByText('Sans atout: made 1 of 2')).toBeVisible();
-  await expect(page.getByText('Ginette')).toBeVisible();
+  // AvatarChip carries an sr-only copy of the name, so scope the name check to
+  // the visible label to avoid a strict-mode double match.
+  await expect(page.getByTestId('best-partner-name')).toHaveText('Ginette');
   await expect(page.getByText('4 wins in 6 games')).toBeVisible();
 
   const current = page.locator('section', { hasText: 'current streak' });

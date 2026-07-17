@@ -207,6 +207,18 @@ export const SCENE_METAS = [
     probe: 'text=No games yet',
   },
   {
+    id: 'stats-new',
+    label: 'Your record — brand new',
+    screen: 'stats',
+    probe: 'text=no contracts yet',
+  },
+  {
+    id: 'stats-veteran',
+    label: 'Your record — veteran',
+    screen: 'stats',
+    probe: 'text=Recent games',
+  },
+  {
     id: 'replay',
     label: 'Replay viewer',
     screen: 'replay',
