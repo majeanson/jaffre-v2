@@ -39,9 +39,11 @@ land.
       initial only → "Bot 1/2/3" all read "B". Derive a stable per-player color +
       keep the initial (and disambiguate identical initials by a hash of the full
       name → different hue/one-glyph). No four identical chips.
-- [ ] **A4. Real name, not always "Toi".** Seat labels use the player's own name;
-      only the CURRENT viewer's seat may append "(toi)" — never replace the name with
-      "Toi"/"You". Files: `Seat.tsx`, i18n.
+- [x] **A4. Real name, not always "Toi".** Table seats now show the real name +
+      a small "(toi)" marker on the viewer's seat (no more "You"/"Toi" replacing
+      the name). Practice names the human seat with `playerName()`. Files:
+      `useTableDerived.ts`, `Seat.tsx`, `SeatChip.tsx`, `localGame.ts`. TODO: the
+      lobby `SeatPicker` still says "You" — fold into Phase E.
 
 ## Phase B — Card skin clarity ✅
 

@@ -58,6 +58,9 @@ const T: Record<
 /** Everything a seat chip needs to render, already resolved from game state. */
 export interface SeatChipInfo {
   readonly name: string;
+  /** This is the viewer's own seat — the chip marks it "(toi)" without hiding
+   * the real name. */
+  readonly isYou: boolean;
   readonly team: 0 | 1;
   readonly isTurn: boolean;
   readonly isDealer: boolean;
@@ -279,7 +282,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     const info = roster.seats[seat];
     if (info == null) return null;
     return {
-      name: seat === me ? t.you : info.name,
+      name: info.name,
+      isYou: seat === me,
       team: (seat % 2) as 0 | 1,
       isTurn: view.turn === seat && view.phase !== 'game_over',
       isDealer: view.dealer === seat,

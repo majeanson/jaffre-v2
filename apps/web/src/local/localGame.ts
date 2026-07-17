@@ -4,6 +4,7 @@ import { chooseAction } from '@jaffre/bots';
 import type { ClientAction } from '@jaffre/protocol';
 import type { Roster } from '@jaffre/protocol';
 import { loadPracticeBots, PRACTICE_BOT_NAMES, type PracticeBots } from '../home/practiceBots.js';
+import { playerName } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
 
 /**
@@ -22,7 +23,7 @@ let botDifficulties: PracticeBots = ['normal', 'normal', 'normal'];
 function localRoster(bots: PracticeBots): Roster {
   return {
     seats: [
-      { name: 'You', isBot: false, connected: true },
+      { name: playerName(), isBot: false, connected: true },
       { name: PRACTICE_BOT_NAMES[0], isBot: true, connected: true, difficulty: bots[0] },
       { name: PRACTICE_BOT_NAMES[1], isBot: true, connected: true, difficulty: bots[1] },
       { name: PRACTICE_BOT_NAMES[2], isBot: true, connected: true, difficulty: bots[2] },

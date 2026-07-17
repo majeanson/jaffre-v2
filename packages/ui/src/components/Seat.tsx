@@ -7,6 +7,7 @@ const T: Record<
     disconnected: string;
     playing: string;
     bot: string;
+    you: string;
     dealer: string;
     dealerInitial: string;
     dealerRest: string;
@@ -18,6 +19,7 @@ const T: Record<
     disconnected: 'Disconnected',
     playing: 'Playing',
     bot: 'bot',
+    you: 'you',
     dealer: 'Dealer',
     dealerInitial: 'D',
     dealerRest: 'ealer',
@@ -28,6 +30,7 @@ const T: Record<
     disconnected: 'Déconnecté',
     playing: 'Joue',
     bot: 'bot',
+    you: 'toi',
     dealer: 'Brasseur',
     dealerInitial: 'B',
     dealerRest: 'rasseur',
@@ -41,6 +44,8 @@ export interface SeatProps {
   readonly isTurn?: boolean;
   readonly isDealer?: boolean;
   readonly isBot?: boolean;
+  /** The viewer's own seat — keeps the real name, appends a "(you)" marker. */
+  readonly isYou?: boolean;
   readonly connected?: boolean;
   /** On small screens, collapse to the avatar only (name stays for SR/title). */
   readonly compact?: boolean;
@@ -63,6 +68,7 @@ export function Seat({
   isTurn = false,
   isDealer = false,
   isBot = false,
+  isYou = false,
   connected = true,
   compact = false,
 }: SeatProps) {
@@ -92,6 +98,11 @@ export function Seat({
       {compact && <span className="sr-only">{name}</span>}
       <span className={`flex min-w-0 items-center gap-[0.4em] ${compact ? 'max-sm:hidden' : ''}`}>
         <span className="truncate font-arcade-ui font-semibold text-(--color-ap-text)">{name}</span>
+        {isYou && (
+          <span className="shrink-0 font-arcade-display text-[0.55em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
+            ({t.you})
+          </span>
+        )}
         {isTurn ? (
           <span className="font-arcade-display text-[0.6em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
             {t.playing}

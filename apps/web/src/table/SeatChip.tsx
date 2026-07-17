@@ -39,6 +39,7 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
         isTurn={info.isTurn}
         isDealer={info.isDealer}
         isBot={info.isBot}
+        isYou={info.isYou}
         connected={info.connected}
       />
       {secondsLeft !== null && (
