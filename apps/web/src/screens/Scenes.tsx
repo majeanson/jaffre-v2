@@ -1,8 +1,18 @@
 import { useEffect } from 'react';
-import { DEMO_HISTORY, DEMO_REPLAY, DEMO_STATS, SCENES } from '../dev/scenes.js';
+import {
+  DEMO_HISTORY,
+  DEMO_HISTORY_NEW,
+  DEMO_HISTORY_VETERAN,
+  DEMO_REPLAY,
+  DEMO_STATS,
+  DEMO_STATS_NEW,
+  DEMO_STATS_VETERAN,
+  SCENES,
+} from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
+import { ShareSheet } from '../components/ShareSheet.js';
 import { History } from './History.js';
-import { Home } from './Home.js';
+import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
@@ -21,6 +31,41 @@ const goTo = (id: string) => {
   location.hash = `#scenes/${id}`;
 };
 
+/** Deterministic staged identities for the home identity scenes. */
+const IDENTITY_STAGES: Record<string, IdentityStage> = {
+  identity: {
+    name: 'Marc',
+    color: '#7a6ff0',
+    paint: null,
+    recovery: { kind: 'code', code: 'lampe-tricot-hibou' },
+  },
+  'identity-light': {
+    name: 'Ginette',
+    color: '#f2b712',
+    paint: null,
+    recovery: { kind: 'code', code: 'renard-flute-cabane' },
+  },
+  'identity-loading': {
+    name: 'Marc',
+    color: null,
+    paint: null,
+    recovery: { kind: 'loading' },
+  },
+  'identity-recover-error': {
+    name: 'Marc',
+    color: null,
+    paint: null,
+    recovery: { kind: 'recover-error' },
+  },
+  'identity-name-taken': {
+    name: 'Marc',
+    color: '#e05252',
+    paint: null,
+    recovery: { kind: 'code', code: 'lampe-tricot-hibou' },
+    nameError: "That name's taken here — try another.",
+  },
+};
+
 /**
  * Owns the scene viewer (#scenes/<id>): live-through every phase and screen
  * of a game instantly — the real components rendering staged engine states,
@@ -35,6 +80,18 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
 
   useEffect(() => {
     current?.load();
+  }, [current]);
+
+  // Some scenes force a skin (e.g. the light-skin identity variant). Apply it
+  // on mount and restore the prior theme when leaving the scene.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.dataset['theme'];
+    if (current?.theme === 'light') root.dataset['theme'] = 'light';
+    return () => {
+      if (prev === undefined) delete root.dataset['theme'];
+      else root.dataset['theme'] = prev;
+    };
   }, [current]);
 
   if (current === undefined) return null;
@@ -53,6 +110,10 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
+          demoResume={current.id === 'your-tables' ? { code: 'salon', series: [3, 2] } : undefined}
+          {...(IDENTITY_STAGES[current.id] !== undefined
+            ? { identityStage: IDENTITY_STAGES[current.id] }
+            : {})}
         />
       )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
@@ -69,7 +130,20 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           demoStats={
             current.id === 'stats-empty'
               ? { ...DEMO_STATS, games: 0, wins: 0, winRate: 0, bestPartner: null }
-              : DEMO_STATS
+              : current.id === 'stats-new'
+                ? DEMO_STATS_NEW
+                : current.id === 'stats-veteran'
+                  ? DEMO_STATS_VETERAN
+                  : DEMO_STATS
+          }
+          demoGames={
+            current.id === 'stats-empty'
+              ? []
+              : current.id === 'stats-new'
+                ? DEMO_HISTORY_NEW
+                : current.id === 'stats-veteran'
+                  ? DEMO_HISTORY_VETERAN
+                  : DEMO_HISTORY
           }
           onLeave={onLeave}
         />
@@ -79,6 +153,12 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'visitor' && (
         <Visitor key={current.id} code="scene" onSit={noop} onWatch={noop} onLeave={onLeave} />
+      )}
+      {current.screen === 'share' && (
+        <>
+          <main className="min-h-screen bg-(--color-ap-ground)" />
+          <ShareSheet key={current.id} code="scene" onCopy={noop} onClose={onLeave} />
+        </>
       )}
       {current.screen === 'table' && (
         <Table
@@ -93,7 +173,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       <div
         data-testid="scene-picker"
-        className="fixed bottom-2 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)"
+        className="fixed bottom-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)"
       >
         <button
           type="button"

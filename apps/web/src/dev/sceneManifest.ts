@@ -4,7 +4,8 @@
  * the store here would drag the whole app into the test runner.
  */
 
-export type SceneScreen = 'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor';
+export type SceneScreen =
+  'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor' | 'share';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -26,6 +27,8 @@ export interface SceneMeta {
   /** Keep a held trick on screen indefinitely. */
   readonly frozenHold?: boolean;
   readonly ui?: SceneUi;
+  /** Force a skin for this scene (default: the stored theme, i.e. dark). */
+  readonly theme?: 'light';
   /** Playwright locator that must be visible once the scene renders. */
   readonly probe: string;
   /** Playwright locator that must NOT be visible in this scene. */
@@ -45,6 +48,43 @@ export const SCENE_METAS = [
     screen: 'home',
     ui: { helpOpen: true },
     probe: 'role=dialog[name="How to play"]',
+  },
+  {
+    id: 'your-tables',
+    label: 'Home — your tables (resume)',
+    screen: 'home',
+    probe: 'role=button[name="Resume"]',
+  },
+  {
+    id: 'identity',
+    label: 'Identity — new player (recovery words)',
+    screen: 'home',
+    probe: 'text=get your name and games back',
+  },
+  {
+    id: 'identity-light',
+    label: 'Identity — light skin',
+    screen: 'home',
+    theme: 'light',
+    probe: 'text=get your name and games back',
+  },
+  {
+    id: 'identity-loading',
+    label: 'Identity — minting (shimmer)',
+    screen: 'home',
+    probe: 'text=Minting your words',
+  },
+  {
+    id: 'identity-recover-error',
+    label: 'Identity — code not found',
+    screen: 'home',
+    probe: "text=That code didn't match",
+  },
+  {
+    id: 'identity-name-taken',
+    label: 'Identity — name taken',
+    screen: 'home',
+    probe: "text=That name's taken",
   },
   {
     id: 'lobby-open',
@@ -207,6 +247,18 @@ export const SCENE_METAS = [
     probe: 'text=No games yet',
   },
   {
+    id: 'stats-new',
+    label: 'Your record — brand new',
+    screen: 'stats',
+    probe: 'text=no contracts yet',
+  },
+  {
+    id: 'stats-veteran',
+    label: 'Your record — veteran',
+    screen: 'stats',
+    probe: 'text=Recent games',
+  },
+  {
     id: 'replay',
     label: 'Replay viewer',
     screen: 'replay',
@@ -217,6 +269,12 @@ export const SCENE_METAS = [
     label: 'Visitor — take a bot seat',
     screen: 'visitor',
     probe: '[data-testid="take-seat-1"]',
+  },
+  {
+    id: 'share-sheet',
+    label: 'Invite — share sheet',
+    screen: 'share',
+    probe: 'role=dialog[name="Invite to your table"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

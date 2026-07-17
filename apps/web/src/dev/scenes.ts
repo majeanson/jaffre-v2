@@ -198,6 +198,61 @@ export const DEMO_STATS: Stats = {
   streak: { current: 3, best: 5 },
 };
 
+/** Brand-new player: a game or two in, no contracts bid, no steady partner —
+ * exercises the "no contracts yet" + null-partner copy and a stub sparkline. */
+export const DEMO_STATS_NEW: Stats = {
+  games: 2,
+  wins: 1,
+  winRate: 0.5,
+  bids: { attempted: 0, made: 0 },
+  sansAtout: { attempted: 0, made: 0 },
+  bestPartner: null,
+  streak: { current: 0, best: 1 },
+};
+
+/** Veteran player: a long record with a full scorepad + a rich sparkline. */
+export const DEMO_STATS_VETERAN: Stats = {
+  games: 128,
+  wins: 84,
+  winRate: 84 / 128,
+  bids: { attempted: 96, made: 71 },
+  sansAtout: { attempted: 22, made: 14 },
+  bestPartner: { name: 'Réal', games: 44, wins: 33 },
+  streak: { current: 6, best: 11 },
+};
+
+/** Fixed-timestamp game rows so the sparkline/scorepad stage deterministically.
+ * `wins`/losses are encoded via winnerTeam relative to yourSeat's parity. */
+function demoGameRow(i: number, roomCode: string, yourSeat: number, won: boolean): HistoryGame {
+  const yourTeam = yourSeat % 2;
+  const winnerTeam = won ? yourTeam : 1 - yourTeam;
+  const you = 30 + ((i * 7) % 12);
+  const them = won ? you - 3 - (i % 4) : you + 4 + (i % 3);
+  const scores: [number, number] = yourTeam === 0 ? [you, them] : [them, you];
+  return {
+    id: `vet-${String(i)}`,
+    roomCode,
+    finishedAt: 1_752_000_000_000 - i * 3_600_000,
+    winnerTeam,
+    scores,
+    yourSeat,
+    players: yourSeat === 0 ? DEMO_PLAYERS_SEAT0 : DEMO_PLAYERS_SEAT2,
+  };
+}
+
+const VET_ROOMS = ['salon', 'cabin', 'kitchen', 'chalet', 'porch', 'attic', 'garage', 'dock'];
+
+/** Newest-first (like the real /api/history) — the screen re-sorts for form. */
+export const DEMO_HISTORY_VETERAN: readonly HistoryGame[] = Array.from({ length: 8 }, (_, i) =>
+  demoGameRow(i, VET_ROOMS[i] ?? 'salon', i % 2 === 0 ? 0 : 2, i % 3 !== 0),
+);
+
+/** A brand-new player's one-or-two rows. */
+export const DEMO_HISTORY_NEW: readonly HistoryGame[] = [
+  demoGameRow(0, 'salon', 0, true),
+  demoGameRow(1, 'kitchen', 2, false),
+];
+
 export type Scene = SceneMeta & { readonly load: () => void };
 
 const cache = new Map<string, Snapshot>();
@@ -249,6 +304,13 @@ const midTrick = (s: GameState) => s.phase === 'playing' && s.currentTrick.lengt
 const LOADERS: Record<SceneId, () => void> = {
   home: () => useGameStore.getState().reset(),
   'home-help': () => useGameStore.getState().reset(),
+  'your-tables': () => useGameStore.getState().reset(),
+  // Identity scenes render Home with a staged identity (props, not the store).
+  identity: () => useGameStore.getState().reset(),
+  'identity-light': () => useGameStore.getState().reset(),
+  'identity-loading': () => useGameStore.getState().reset(),
+  'identity-recover-error': () => useGameStore.getState().reset(),
+  'identity-name-taken': () => useGameStore.getState().reset(),
   'lobby-open': () => injectLobby(LOBBY_OPEN, 'open'),
   'lobby-full': () => injectLobby(LOBBY_FULL, 'open'),
   'lobby-reconnecting': () => injectLobby(LOBBY_FULL, 'reconnecting'),
@@ -322,8 +384,12 @@ const LOADERS: Record<SceneId, () => void> = {
   'history-empty': () => undefined,
   stats: () => undefined,
   'stats-empty': () => undefined,
+  'stats-new': () => undefined,
+  'stats-veteran': () => undefined,
   replay: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
+  // The share sheet renders from its own props (no engine state) — no-op.
+  'share-sheet': () => undefined,
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({
