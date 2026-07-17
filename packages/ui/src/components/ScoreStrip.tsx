@@ -545,13 +545,13 @@ export function ScoreStrip({
   const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
-    <div className="w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui text-(length:--text-fluid-sm) shadow-(--shadow-ap)">
+    <div className="relative w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui text-(length:--text-fluid-sm) shadow-(--shadow-ap)">
       <button
         type="button"
         aria-expanded={open}
         aria-label={t.scoreDetails}
         onClick={() => setOpen((o) => !o)}
-        className="grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-3.5 py-1.5 max-sm:gap-x-2 max-sm:px-2 max-sm:py-1"
+        className="relative z-40 grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-3.5 py-1.5 max-sm:gap-x-2 max-sm:px-2 max-sm:py-1"
       >
         <span className="flex justify-start">
           <TeamSide
@@ -617,29 +617,42 @@ export function ScoreStrip({
       </button>
 
       {open && (
-        <div className="flex flex-col items-center gap-3 border-t-2 border-(--color-ap-ink) px-4 pt-3 pb-4 text-(length:--text-fluid-xs)">
-          <ScorePad
-            teamNames={teamNames}
-            scores={scores}
-            target={target}
-            rounds={rounds}
-            currentRound={currentRound}
-            roundPoints={roundPoints}
-            contract={contract}
+        <>
+          {/* Dismiss layer: a tap anywhere off the panel collapses it. Sits
+              below the panel + header (z-40) so both stay interactive. */}
+          <button
+            type="button"
+            aria-label={t.scoreDetails}
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-30 cursor-default"
           />
-          {contract !== null && (
-            <p className="text-(--color-ap-muted)">
-              <span className="font-semibold text-(--color-ap-text)">{contract.playerName}</span>{' '}
-              {t.mustTake}{' '}
-              <span className="font-semibold text-(--color-ap-text)">{contract.value}</span>{' '}
-              {t.trickPoints}
-              {contract.sansAtout ? t.noTrumpStake : ''}
-            </p>
-          )}
-          {actions !== undefined && (
-            <div className="flex flex-wrap items-center justify-center gap-2">{actions}</div>
-          )}
-        </div>
+          {/* The full details float as a dropdown over the table instead of
+              displacing it — the collapsed strip keeps its place in flow. */}
+          <div className="absolute top-[calc(100%+0.5rem)] left-1/2 z-40 flex w-[min(28rem,94vw)] -translate-x-1/2 flex-col items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 pt-4 pb-4 text-(length:--text-fluid-xs) shadow-(--shadow-ap-lg)">
+            <ScorePad
+              teamNames={teamNames}
+              scores={scores}
+              target={target}
+              rounds={rounds}
+              currentRound={currentRound}
+              roundPoints={roundPoints}
+              contract={contract}
+            />
+            {contract !== null && (
+              <p className="text-(--color-ap-muted)">
+                <span className="font-semibold text-(--color-ap-text)">{contract.playerName}</span>{' '}
+                {t.mustTake}{' '}
+                <span className="font-semibold text-(--color-ap-text)">{contract.value}</span>{' '}
+                {t.trickPoints}
+                {contract.sansAtout ? t.noTrumpStake : ''}
+              </p>
+            )}
+            {actions !== undefined && (
+              <div className="flex flex-wrap items-center justify-center gap-2">{actions}</div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

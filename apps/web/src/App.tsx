@@ -53,6 +53,11 @@ export function App() {
   useEffect(() => {
     const onChange = () => setCardSkin(currentCardSkin());
     window.addEventListener(CARD_SKIN_EVENT, onChange);
+    // Re-sync once now: a descendant's mount effect (e.g. the scene viewer
+    // forcing a card skin) can fire CARD_SKIN_EVENT before this listener is
+    // attached — child effects run before the parent's. Reading the current
+    // value here catches that missed initial change.
+    onChange();
     return () => window.removeEventListener(CARD_SKIN_EVENT, onChange);
   }, []);
   const skin = useMemo(

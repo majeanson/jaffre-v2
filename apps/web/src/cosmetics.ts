@@ -55,7 +55,20 @@ export function resolve(id: string | null, ownedIds: Set<string>, fallback: stri
 // token blocks in tokens.css, some paired with a CARD_SKIN_RENDERERS entry.
 export const CARD_SKINS: readonly Cosmetic[] = [
   { id: 'arcade', label: 'Arcade', free: true },
+  // The old 2022 deck as a progression: Classic OG (free) puts the real OG
+  // figure art on the two 0-cards; OG Deck unlocks the FULL painted deck.
   { id: 'classic-og', label: 'Classic OG', free: true },
+  {
+    id: 'og-deck',
+    label: 'OG Deck',
+    free: false,
+    unlock: (s) => s.games >= 15,
+    requirement: (s, lang) => ({
+      text: t(lang, 'Play 15 games', 'Jouez 15 parties'),
+      have: s.games,
+      need: 15,
+    }),
+  },
   { id: 'noir', label: 'Noir', free: true },
   {
     id: 'lamplight-foil',

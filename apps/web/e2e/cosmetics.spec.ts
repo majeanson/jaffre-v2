@@ -36,6 +36,19 @@ test('equipping a free card skin applies it and persists across reload', async (
   await expect(html).not.toHaveAttribute('data-card-skin', /.*/);
 });
 
+test('the OG deck renders real painted card-face images', async ({ page }) => {
+  await page.goto('/#scenes/og-deck');
+  await expect(page.locator('[role="option"][data-playable="true"]').first()).toBeVisible();
+  // The face is a real PNG from the old deck — assert one actually decoded
+  // (naturalWidth > 0 catches a broken path / missing asset).
+  const img = page.locator('img[src*="/og-cards/"]').first();
+  await expect(img).toBeVisible();
+  const loaded = await img.evaluate(
+    (el) => (el as HTMLImageElement).complete && (el as HTMLImageElement).naturalWidth > 0,
+  );
+  expect(loaded).toBe(true);
+});
+
 test('a locked skin shows its requirement and cannot be equipped', async ({ browser }) => {
   const context = await browser.newContext(); // fresh identity → no games played
   const page = await context.newPage();

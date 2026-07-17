@@ -22,10 +22,18 @@ export function UtilityRow({
   comms,
 }: UtilityRowProps) {
   return (
-    <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center gap-2 py-1">
-      <SeatChip info={you} />
-      {lastTrick !== null && <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />}
-      <span className="ml-auto flex items-center gap-2">{comms}</span>
+    <div className="relative z-30 grid w-full max-w-[min(96vw,100rem)] grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
+      <span className="flex items-center gap-2 justify-self-start">
+        {lastTrick !== null && (
+          <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
+        )}
+      </span>
+      {/* Your own seat, centered under the felt — the bottom seat mirroring the
+          top opponent, so all four players read as sat around the table. */}
+      <span className="justify-self-center">
+        <SeatChip info={you} />
+      </span>
+      <span className="flex items-center gap-2 justify-self-end">{comms}</span>
     </div>
   );
 }

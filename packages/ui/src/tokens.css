@@ -200,7 +200,13 @@
   --shadow-card: 0 2px 0 rgb(0 0 0 / 0.5), 0 8px 20px rgb(120 40 255 / 0.35);
   --shadow-card-raised: 0 3px 0 rgb(0 0 0 / 0.55), 0 16px 34px rgb(120 40 255 / 0.5);
   --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 10px 30px rgb(30 0 80 / 0.65);
-  --table-backdrop: radial-gradient(1100px 720px at 50% 22%, #34215c, var(--color-ap-ground) 70%);
+  /* Distinct electric-violet ground — this is what sets Juicy apart from the
+   * (much darker) classic dark shell; the candy/neon suits above stay as they
+   * are. The product panels lift to a brighter violet-plum too. */
+  --color-ap-ground: #2a1358;
+  --color-ap-panel: #3a1f7a;
+  --color-ap-panel-hover: #472a8e;
+  --table-backdrop: radial-gradient(1150px 760px at 50% 20%, #6a34c8, var(--color-ap-ground) 66%);
 }
 
 /* Sepia: a warm parchment reading-room — amber felt, aged-paper cards, sepia
@@ -311,6 +317,21 @@
   --color-suit-brown: #9c6a1e;
   --color-suit-green: #1c7a5c;
   --color-suit-blue: #2f5aa8;
+}
+
+/* OG Deck: the full painted original deck. Faces are raster art (the `og-deck`
+ * renderer), so the card-face colour is just the matte behind the contained
+ * image; the back + suit tokens carry the OG orange/tan pattern colours and the
+ * nation hues (used by the CSS back + any SuitShape legend). Unlockable. */
+[data-card-skin='og-deck']:is(:root, :root *) {
+  --color-card-face: #c79a5e;
+  --color-card-face-shade: #b0854a;
+  --color-card-back: #cf5a2a;
+  --color-card-back-line: #e07b47;
+  --color-suit-red: #d43a3a;
+  --color-suit-brown: #7a5a3a;
+  --color-suit-green: #3f9e57;
+  --color-suit-blue: #3a63c4;
 }
 
 /* Neon: a dark card face with candy-bright suits + a hot-pink back; the `neon`

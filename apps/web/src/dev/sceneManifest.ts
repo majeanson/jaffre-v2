@@ -297,6 +297,13 @@ export const SCENE_METAS = [
     cardSkin: 'classic-og',
     probe: '[role="option"][data-playable="true"]',
   },
+  {
+    id: 'og-deck',
+    label: 'Play — full OG deck',
+    screen: 'table',
+    cardSkin: 'og-deck',
+    probe: '[role="option"][data-playable="true"]',
+  },
 ] as const satisfies readonly SceneMeta[];
 
 export type SceneId = (typeof SCENE_METAS)[number]['id'];

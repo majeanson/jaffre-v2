@@ -439,6 +439,11 @@ const LOADERS: Record<SceneId, () => void> = {
     'classic-og-deck',
     (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
   ),
+  // Full painted OG deck (card skin applied by the Scenes shell from meta).
+  'og-deck': gameScene(
+    'og-deck',
+    (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
+  ),
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({
