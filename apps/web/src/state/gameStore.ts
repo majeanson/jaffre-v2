@@ -2,6 +2,7 @@ import type { Card, GameEvent, SeatView, Viewer } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
 import { create } from 'zustand';
 import { announce } from '../a11y/announcer.js';
+import { currentLang } from '../lang.js';
 
 export type Connection = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -73,7 +74,7 @@ export const useGameStore = create<GameStore>((set) => ({
   applyEvents: (events, seq, view) =>
     set((s) => {
       const names = seatNames(s.roster);
-      const lines = events.map((e) => ({ id: logId++, text: announce(e, names) }));
+      const lines = events.map((e) => ({ id: logId++, text: announce(e, names, currentLang()) }));
       const trickWon = events.find((e) => e.type === 'trick_won');
       const lastPlay = [...events].reverse().find((e) => e.type === 'card_played');
       // Hold the completed trick (previous 3 cards + the closing card) so the

@@ -1,5 +1,41 @@
 import { useState } from 'react';
+import { useLang, type Lang } from '../i18n.js';
 import type { BidOption } from './BidPanel';
+
+const T: Record<
+  Lang,
+  {
+    pass: string;
+    bidAria: (label: string, sansAtout: boolean) => string;
+    playABet: string;
+    biddingOrder: string;
+    stillToBid: string;
+    betCards: string;
+    tapToBid: string;
+  }
+> = {
+  en: {
+    pass: 'Pass',
+    bidAria: (label, sa) => `Bid ${label}${sa ? ' sans atout' : ''}`,
+    playABet: 'Play a bet',
+    biddingOrder: 'Bidding order',
+    stillToBid: 'still to bid',
+    betCards: 'Bet cards',
+    tapToBid: 'Tap a card to bid',
+  },
+  fr: {
+    pass: 'Passe',
+    bidAria: (label, sa) => `Miser ${label}${sa ? ' sans atout' : ''}`,
+    playABet: 'Joue une mise',
+    biddingOrder: 'Ordre des mises',
+    stillToBid: 'à miser',
+    betCards: 'Cartes de mise',
+    tapToBid: 'Touche une carte pour miser',
+  },
+};
+
+/** The declaration strings the app sends for a pass, in either language. */
+const PASS_WORDS: readonly string[] = [T.en.pass, T.fr.pass];
 
 /** One player's slot in the auction, in bidding order. */
 export interface AuctionTurn {
@@ -46,11 +82,12 @@ function BetCard({
   recommended: boolean;
   onCommit: () => void;
 }) {
+  const t = T[useLang()];
   return (
     <button
       type="button"
       disabled={!enabled}
-      aria-label={pass ? 'Pass' : `Bid ${label}${sansAtout ? ' sans atout' : ''}`}
+      aria-label={pass ? t.pass : t.bidAria(label, sansAtout)}
       onClick={() => {
         if (enabled) onCommit();
       }}
@@ -92,6 +129,7 @@ export function BetCards({
   recommended = null,
   coaching = false,
 }: BetCardsProps) {
+  const tt = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
   const values = [7, 8, 9, 10, 11, 12] as const;
   const recommendPass = coaching && recommended === null;
@@ -100,7 +138,7 @@ export function BetCards({
     <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg)">
       <div className="flex w-full items-center justify-between gap-4">
         <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
-          Play a bet
+          {tt.playABet}
         </span>
         <button
           type="button"
@@ -121,7 +159,7 @@ export function BetCards({
         // The auction in turn order: who already declared what, whose turn it
         // is (lit), and who still waits — the round's progression at a glance.
         <ol
-          aria-label="Bidding order"
+          aria-label={tt.biddingOrder}
           className="flex w-full flex-wrap items-center justify-center gap-x-1 gap-y-1 text-(length:--text-fluid-xs)"
         >
           {order.map((t, i) => (
@@ -142,14 +180,14 @@ export function BetCards({
                 {t.bid !== null ? (
                   <span
                     className={`font-arcade-display ${
-                      t.bid === 'Pass' ? 'text-(--color-ap-muted)' : 'text-(--color-ap-gold)'
+                      PASS_WORDS.includes(t.bid) ? 'text-(--color-ap-muted)' : 'text-(--color-ap-gold)'
                     }`}
                   >
                     {t.bid}
                   </span>
                 ) : (
                   !t.current && (
-                    <span aria-label="still to bid" className="text-(--color-ap-muted)/60">
+                    <span aria-label={tt.stillToBid} className="text-(--color-ap-muted)/60">
                       …
                     </span>
                   )
@@ -160,7 +198,7 @@ export function BetCards({
         </ol>
       )}
 
-      <div role="group" aria-label="Bet cards" className="flex items-end gap-[0.9vmin]">
+      <div role="group" aria-label={tt.betCards} className="flex items-end gap-[0.9vmin]">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const isRecommended =
@@ -181,7 +219,7 @@ export function BetCards({
         })}
         <BetCard
           key="pass"
-          label="Pass"
+          label={tt.pass}
           pass
           enabled={!disabled}
           recommended={recommendPass}
@@ -190,7 +228,7 @@ export function BetCards({
       </div>
 
       <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-        Tap a card to bid
+        {tt.tapToBid}
       </span>
     </div>
   );

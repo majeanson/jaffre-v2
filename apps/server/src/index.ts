@@ -642,6 +642,14 @@ export default {
       return handleTelemetry(request);
     }
 
+    // GET /api/room/:code/status — a cheap, unauthenticated peek at a room's
+    // live phase/turn for the home "Your tables" row. Forwarded to the DO.
+    const statusMatch = /^\/api\/room\/([A-Za-z0-9-]{1,32})\/status$/.exec(url.pathname);
+    if (statusMatch && request.method === 'GET') {
+      const id = env.GAME_ROOM.idFromName(statusMatch[1] as string);
+      return env.GAME_ROOM.get(id).fetch(new Request('https://do/status'));
+    }
+
     // /ws/:roomCode — WebSocket upgrade routed to the room's Durable Object.
     const wsMatch = /^\/ws\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname);
     if (wsMatch) {

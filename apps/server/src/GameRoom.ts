@@ -126,6 +126,17 @@ export class GameRoom implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // Lightweight status peek (no socket) — powers the home "Your tables" row's
+    // live turn/waiting badge without opening a full connection to every room.
+    if (new URL(request.url).pathname === '/status') {
+      await this.load();
+      return Response.json({
+        started: this.meta.started,
+        phase: this.game?.phase ?? null,
+        turn: this.game?.turn ?? null,
+        seriesWins: this.meta.seriesWins,
+      });
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }

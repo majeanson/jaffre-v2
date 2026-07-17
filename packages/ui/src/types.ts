@@ -28,12 +28,21 @@ export function cardKey(card: CardData): string {
   return `${card.suit}-${card.value}`;
 }
 
-export function cardLabel(card: CardData): string {
+const CARD_LABEL_SUITS: Record<'en' | 'fr', Record<SuitId, string>> = {
+  en: { red: 'Red', brown: 'Brown', green: 'Green', blue: 'Blue' },
+  fr: { red: 'Rouge', brown: 'Brun', green: 'Vert', blue: 'Bleu' },
+};
+
+export function cardLabel(card: CardData, lang: 'en' | 'fr' = 'en'): string {
   const special =
     card.suit === 'red' && card.value === 0
-      ? ', bonus +5'
+      ? lang === 'fr'
+        ? ', boni +5'
+        : ', bonus +5'
       : card.suit === 'brown' && card.value === 0
-        ? ', penalty −2'
+        ? lang === 'fr'
+          ? ', pénalité −2'
+          : ', penalty −2'
         : '';
-  return `${SUIT_STYLES[card.suit].label} ${card.value}${special}`;
+  return `${CARD_LABEL_SUITS[lang][card.suit]} ${card.value}${special}`;
 }

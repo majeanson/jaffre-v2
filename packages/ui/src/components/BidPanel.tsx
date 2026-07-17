@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import { useLang, type Lang } from '../i18n.js';
+
+const T: Record<Lang, { title: string; bidValue: string; stake: string; pass: string }> = {
+  en: { title: 'Your bid', bidValue: 'Bid value', stake: '(stake ×2)', pass: 'Pass' },
+  fr: { title: 'Ta mise', bidValue: 'Valeur de la mise', stake: '(mise ×2)', pass: 'Passe' },
+};
 
 export interface BidOption {
   readonly value: 7 | 8 | 9 | 10 | 11 | 12;
@@ -26,14 +32,15 @@ export function BidPanel({
   recommended = null,
   coaching = false,
 }: BidPanelProps) {
+  const t = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
   const values = [7, 8, 9, 10, 11, 12] as const;
   const recommendPass = coaching && recommended === null;
 
   return (
     <div className="inline-flex max-w-full flex-col gap-3 rounded-(--radius-panel) bg-(--color-felt-800) shadow-(--shadow-panel) border border-white/10 p-4 font-ui max-sm:p-3">
-      <span className="font-display text-lg text-(--color-lamplight)">Your bid</span>
-      <div role="group" aria-label="Bid value" className="flex gap-2 max-sm:gap-1.5">
+      <span className="font-display text-lg text-(--color-lamplight)">{t.title}</span>
+      <div role="group" aria-label={t.bidValue} className="flex gap-2 max-sm:gap-1.5">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const enabled = legal && !disabled;
@@ -68,7 +75,7 @@ export function BidPanel({
             onChange={(e) => setSansAtout(e.target.checked)}
             className="h-5 w-5 accent-(--color-lamplight) cursor-pointer"
           />
-          Sans atout <span className="opacity-80">(stake ×2)</span>
+          Sans atout <span className="opacity-80">{t.stake}</span>
         </label>
         <button
           type="button"
@@ -80,7 +87,7 @@ export function BidPanel({
               : 'border-white/20'
           }`}
         >
-          Pass
+          {t.pass}
         </button>
       </div>
     </div>

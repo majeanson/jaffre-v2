@@ -2,11 +2,10 @@ import type { Roster } from '@jaffre/protocol';
 
 /**
  * A local record of the tables this browser has sat at — powers the home
- * "Your tables" row. Kept in localStorage (no server "list my rooms" endpoint
- * exists); each snapshot is the last roster we saw for that room, so the row
- * shows who was there and the standing-table tally without reconnecting.
- * Live turn status isn't known offline, so the row leads with recency, not a
- * fabricated "your turn".
+ * "Your tables" row. Kept in localStorage (there's no server "list my rooms"
+ * index); each snapshot is the last roster we saw for that room. The row's
+ * LIVE badge (your turn / waiting / finished) comes from a cheap per-room
+ * status peek — see fetchTableStatus.
  */
 export interface TableEntry {
   readonly code: string;
@@ -16,6 +15,16 @@ export interface TableEntry {
   readonly seriesWins?: readonly [number, number];
   /** Last-known seats (name + bot flag), for the avatar stack. */
   readonly seats: readonly { readonly name: string; readonly isBot: boolean }[];
+  /** Your absolute seat in this room, or null if you were spectating. */
+  readonly yourSeat?: number | null;
+}
+
+/** A room's current live state, from GET /api/room/:code/status. */
+export interface TableStatus {
+  readonly started: boolean;
+  readonly phase: string | null;
+  readonly turn: number | null;
+  readonly seriesWins?: readonly [number, number];
 }
 
 const KEY = 'jaffre-tables';
@@ -36,8 +45,12 @@ export function listTables(): TableEntry[] {
   }
 }
 
-/** Upsert a snapshot of `code` from the latest roster (called on every roster). */
-export function rememberTable(code: string, roster: Roster): void {
+/** Upsert a snapshot of `code` from the latest roster (called on every roster).
+ * `yourSeat` is known only from the welcome message; on plain roster updates it
+ * carries over from the prior snapshot. */
+export function rememberTable(code: string, roster: Roster, yourSeat?: number | null): void {
+  const prior = listTables().find((t) => t.code === code);
+  const seat = yourSeat !== undefined ? yourSeat : (prior?.yourSeat ?? null);
   const entry: TableEntry = {
     code,
     updatedAt: Date.now(),
@@ -46,12 +59,24 @@ export function rememberTable(code: string, roster: Roster): void {
     seats: roster.seats
       .filter((s): s is NonNullable<typeof s> => s !== null)
       .map((s) => ({ name: s.name, isBot: s.isBot })),
+    yourSeat: seat,
   };
   const next = [entry, ...listTables().filter((t) => t.code !== code)].slice(0, MAX);
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
     // Storage full / unavailable (private mode) — the row just won't persist.
+  }
+}
+
+/** Peek a room's current phase/turn (cheap, unauthenticated). Null on error. */
+export async function fetchTableStatus(code: string): Promise<TableStatus | null> {
+  try {
+    const res = await fetch(`/api/room/${encodeURIComponent(code)}/status`);
+    if (!res.ok) return null;
+    return (await res.json()) as TableStatus;
+  } catch {
+    return null;
   }
 }
 

@@ -1,29 +1,62 @@
 import type { GameEvent } from '@jaffre/engine';
+import type { Lang } from '@jaffre/ui';
 
-const SUIT_NAMES = { red: 'red', brown: 'brown', green: 'green', blue: 'blue' } as const;
+const SUIT_NAMES: Record<Lang, Record<'red' | 'brown' | 'green' | 'blue', string>> = {
+  en: { red: 'red', brown: 'brown', green: 'green', blue: 'blue' },
+  fr: { red: 'rouge', brown: 'brun', green: 'vert', blue: 'bleu' },
+};
 
 /**
  * Turn a game event into a spoken/logged sentence. Pure — unit-testable and
  * shared by the aria-live announcer and the visible game log.
  */
-export function announce(event: GameEvent, names: readonly string[]): string {
-  const name = (seat: number) => names[seat] ?? `Seat ${seat + 1}`;
+export function announce(event: GameEvent, names: readonly string[], lang: Lang = 'en'): string {
+  const name = (seat: number) =>
+    names[seat] ?? (lang === 'fr' ? `Siège ${seat + 1}` : `Seat ${seat + 1}`);
+  const suits = SUIT_NAMES[lang];
   switch (event.type) {
     case 'round_started':
-      return `Round ${event.roundIndex + 1}. ${name(event.dealer)} deals.`;
+      return lang === 'fr'
+        ? `Ronde ${event.roundIndex + 1}. ${name(event.dealer)} brasse.`
+        : `Round ${event.roundIndex + 1}. ${name(event.dealer)} deals.`;
     case 'bid_placed':
+      if (lang === 'fr') {
+        return event.choice.kind === 'pass'
+          ? `${name(event.seat)} passe.`
+          : `${name(event.seat)} mise ${event.choice.value}${event.choice.sansAtout ? ' sans atout' : ''}.`;
+      }
       return event.choice.kind === 'pass'
         ? `${name(event.seat)} passes.`
         : `${name(event.seat)} bids ${event.choice.value}${event.choice.sansAtout ? ' sans atout' : ''}.`;
     case 'bidding_won':
+      if (lang === 'fr') {
+        return `${name(event.contract.seat)} prend le contrat à ${event.contract.value}${
+          event.contract.sansAtout ? ' sans atout, mise doublée' : ''
+        }${event.contract.forced ? ' — forcé, tout le monde a passé' : ''}.`;
+      }
       return `${name(event.contract.seat)} takes the contract at ${event.contract.value}${
         event.contract.sansAtout ? ' sans atout, stake doubled' : ''
       }${event.contract.forced ? ' — forced, everyone passed' : ''}.`;
     case 'trump_set':
-      return event.trump === null ? 'No trump this round.' : `Trump is ${SUIT_NAMES[event.trump]}.`;
+      if (lang === 'fr') {
+        return event.trump === null
+          ? "Pas d'atout cette ronde."
+          : `L'atout est ${suits[event.trump]}.`;
+      }
+      return event.trump === null ? 'No trump this round.' : `Trump is ${suits[event.trump]}.`;
     case 'card_played':
-      return `${name(event.seat)} plays ${SUIT_NAMES[event.card.suit]} ${event.card.value}.`;
+      return lang === 'fr'
+        ? `${name(event.seat)} joue ${suits[event.card.suit]} ${event.card.value}.`
+        : `${name(event.seat)} plays ${suits[event.card.suit]} ${event.card.value}.`;
     case 'trick_won': {
+      if (lang === 'fr') {
+        const extras = event.specials
+          .map((s) => (s === 'red_zero' ? 'le zéro rouge, plus cinq' : 'le zéro brun, moins deux'))
+          .join(' et ');
+        return `${name(event.winner)} prend la levée pour ${event.points} point${
+          Math.abs(event.points) === 1 ? '' : 's'
+        }${extras ? `, avec ${extras}` : ''}.`;
+      }
       const extras = event.specials
         .map((s) => (s === 'red_zero' ? 'the red zero, plus five' : 'the brown zero, minus two'))
         .join(' and ');
@@ -33,12 +66,20 @@ export function announce(event: GameEvent, names: readonly string[]): string {
     }
     case 'round_scored': {
       const s = event.summary;
+      if (lang === 'fr') {
+        const team = s.contract.seat % 2 === 0 ? "L'Équipe Soleil" : "L'Équipe Lune";
+        return `${team} ${s.contractMade ? 'réussit' : 'rate'} ${s.contract.value}${
+          s.contract.sansAtout ? ' sans atout' : ''
+        }. Pointage : Équipe Soleil ${s.scores[0]}, Équipe Lune ${s.scores[1]}.`;
+      }
       const team = s.contract.seat % 2 === 0 ? 'Team Sun' : 'Team Moon';
       return `${team} ${s.contractMade ? 'makes' : 'fails'} ${s.contract.value}${
         s.contract.sansAtout ? ' sans atout' : ''
       }. Score: Team Sun ${s.scores[0]}, Team Moon ${s.scores[1]}.`;
     }
     case 'game_over':
-      return `Game over — ${event.winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`;
+      return lang === 'fr'
+        ? `Partie terminée — ${event.winner === 0 ? "l'Équipe Soleil" : "l'Équipe Lune"} gagne!`
+        : `Game over — ${event.winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`;
   }
 }

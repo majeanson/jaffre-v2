@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { LangProvider } from '@jaffre/ui';
+import { useCurrentLang } from './lang.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
@@ -40,6 +42,15 @@ function parseHash(): Route {
 }
 
 export function App() {
+  const lang = useCurrentLang();
+  return (
+    <LangProvider lang={lang}>
+      <AppRoutes />
+    </LangProvider>
+  );
+}
+
+function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
   const viewer = useGameStore((s) => s.viewer);

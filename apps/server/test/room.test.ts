@@ -551,6 +551,31 @@ describe('GameRoom', () => {
     },
   );
 
+  it('exposes a room status peek for the home Your-tables row', async () => {
+    const room = 'room-status';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    await setupStartedGame(client);
+
+    const res = await SELF.fetch(`https://example.com/api/room/${room}/status`);
+    expect(res.status).toBe(200);
+    const status = (await res.json()) as {
+      started: boolean;
+      phase: string | null;
+      turn: number | null;
+      seriesWins: [number, number];
+    };
+    expect(status.started).toBe(true);
+    expect(typeof status.phase).toBe('string'); // a started game has a phase
+    expect(status.seriesWins).toEqual([0, 0]);
+
+    // An unknown room reads as not-started (a fresh, empty DO).
+    const fresh = await SELF.fetch('https://example.com/api/room/never-seen/status');
+    expect(fresh.status).toBe(200);
+    expect(((await fresh.json()) as { started: boolean }).started).toBe(false);
+
+    await endQuiet(room, client);
+  });
+
   it(
     'swaps seats 1 and 2 between games, and rejects the swap mid-game',
     { timeout: 120_000 },

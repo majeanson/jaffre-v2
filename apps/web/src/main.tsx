@@ -13,8 +13,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { installTelemetry } from './net/telemetry.js';
 import { initTheme } from './theme.js';
+import { initLang } from './lang.js';
 
 initTheme();
+initLang();
 installTelemetry();
 
 createRoot(document.getElementById('root') as HTMLElement).render(

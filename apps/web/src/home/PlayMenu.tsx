@@ -1,7 +1,7 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
 import { AvatarChip, Cta, Panel } from '@jaffre/ui';
-import type { TableEntry } from '../net/rooms.js';
+import { fetchTableStatus, type TableEntry, type TableStatus } from '../net/rooms.js';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -44,16 +44,41 @@ function ago(ts: number): string {
   return `${String(Math.floor(hours / 24))}d ago`;
 }
 
+/** The live badge for a table from its status peek + your seat: your turn /
+ * in play / finished. Null when there's nothing live to show yet. */
+function liveBadge(
+  status: TableStatus | null | undefined,
+  yourSeat: number | null | undefined,
+): { readonly label: string; readonly dot: string } | null {
+  if (status == null || !status.started) return null;
+  if (status.phase === 'game_over')
+    return { label: 'Finished · rematch?', dot: 'bg-(--color-ap-gold)' };
+  const live = status.phase === 'playing' || status.phase === 'bidding';
+  if (live && typeof yourSeat === 'number' && status.turn === yourSeat) {
+    return { label: 'Your turn', dot: 'bg-(--color-ap-ok)' };
+  }
+  return { label: 'In play', dot: 'bg-(--color-ap-muted)' };
+}
+
 /** One standing-table card: who's there, tonight's tally, and Resume. */
 function TableCard({
   table,
+  status,
   onResume,
 }: {
   readonly table: TableEntry;
+  readonly status?: TableStatus | null;
   readonly onResume: () => void;
 }) {
+  const badge = liveBadge(status, table.yourSeat);
   return (
     <div className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)">
+      {badge !== null && (
+        <span className="flex items-center gap-1.5 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-[0.1em] text-(--color-ap-text)">
+          <span className={`size-2 rounded-full ${badge.dot}`} aria-hidden />
+          {badge.label}
+        </span>
+      )}
       <div className="flex items-baseline justify-between gap-2">
         <span className="min-w-0 truncate font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
           {table.code}
@@ -94,9 +119,29 @@ function TableCard({
  * friends (create-a-room + join-by-code), and the "Your tables" row of standing
  * tables you've sat at.
  */
+/** Peek each table's live phase/turn once on mount (+ when the set changes). */
+function useTableStatuses(tables: readonly TableEntry[]): Record<string, TableStatus | null> {
+  const codes = tables.map((t) => t.code).join(',');
+  const [map, setMap] = useState<Record<string, TableStatus | null>>({});
+  useEffect(() => {
+    const list = codes === '' ? [] : codes.split(',');
+    let live = true;
+    void Promise.all(list.map(async (c) => [c, await fetchTableStatus(c)] as const)).then(
+      (pairs) => {
+        if (live) setMap(Object.fromEntries(pairs));
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [codes]);
+  return map;
+}
+
 export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
+  const statuses = useTableStatuses(tables);
 
   const cycleBot = (seat: 0 | 1 | 2) => {
     const next = bots.map((d, i) =>
@@ -157,7 +202,10 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           className="mt-1 inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
           Play now
-          <span aria-hidden className="transition-transform duration-(--duration-flick) group-hover:translate-x-1">
+          <span
+            aria-hidden
+            className="transition-transform duration-(--duration-flick) group-hover:translate-x-1"
+          >
             →
           </span>
         </button>
@@ -222,7 +270,12 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {tables.slice(0, 4).map((t) => (
-              <TableCard key={t.code} table={t} onResume={() => onJoinRoom(t.code)} />
+              <TableCard
+                key={t.code}
+                table={t}
+                status={statuses[t.code] ?? null}
+                onResume={() => onJoinRoom(t.code)}
+              />
             ))}
           </div>
         </Panel>

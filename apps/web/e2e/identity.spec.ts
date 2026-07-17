@@ -27,6 +27,9 @@ test('first visit mints an identity and shows a 3-word recovery code that persis
   const page = await context.newPage();
   await page.goto('/');
 
+  // The recovery code + name live inside the "Customize" disclosure — open it.
+  await page.getByRole('button', { name: /Customize/ }).click();
+
   // The card appears once the guest identity is minted.
   const code = page.getByTestId('recovery-code');
   await expect(code).toBeVisible();
@@ -36,6 +39,7 @@ test('first visit mints an identity and shows a 3-word recovery code that persis
   // Same words after a reload — the code is issued exactly once per browser.
   const words = (await code.innerText()).trim();
   await page.reload();
+  await page.getByRole('button', { name: /Customize/ }).click();
   await expect(code).toHaveText(words);
 
   await context.close();
@@ -49,6 +53,7 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   const a = await contextA.newPage();
   await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Marc-e2e'));
   await a.goto('/');
+  await a.getByRole('button', { name: /Customize/ }).click();
   const codeEl = a.getByTestId('recovery-code');
   await expect(codeEl).toBeVisible();
   const words = (await codeEl.innerText()).trim();
@@ -61,6 +66,7 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   const contextB = await browser.newContext();
   const b = await contextB.newPage();
   await b.goto('/');
+  await b.getByRole('button', { name: /Customize/ }).click();
   await expect(b.getByTestId('recovery-code')).toBeVisible(); // B's own mint done
   const uidB = await uidOf(b);
   expect(uidB).not.toBe(uidA);
@@ -120,14 +126,14 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   const a = await contextA.newPage();
   await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Colour-e2e'));
   await a.goto('/');
+  // The recovery code, name, and palette all live in the "Customize" disclosure.
+  await a.getByRole('button', { name: /Customize/ }).click();
   const codeEl = a.getByTestId('recovery-code');
   await expect(codeEl).toBeVisible(); // mint done → a token exists to auth the save
   const wordsA = (await codeEl.innerText()).trim();
   expect(wordsA).toMatch(CODE_RE);
 
   const CHOSEN = '#f2b712';
-  // The palette lives inside the "Customize" disclosure — open it first.
-  await a.getByRole('button', { name: /Customize/ }).click();
   await a.getByRole('button', { name: `Colour ${CHOSEN}` }).click();
 
   const tokenA = await tokenOf(a);
@@ -148,6 +154,7 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   const contextB = await browser.newContext();
   const b = await contextB.newPage();
   await b.goto('/');
+  await b.getByRole('button', { name: /Customize/ }).click();
   await expect(b.getByTestId('recovery-code')).toBeVisible();
   await b.getByRole('button', { name: 'I have a code' }).click();
   await b.getByPlaceholder('lampe-tricot-hibou').fill(wordsA);
@@ -172,6 +179,7 @@ test('a wrong code shows the error and keeps the current identity', async ({ bro
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto('/');
+  await page.getByRole('button', { name: /Customize/ }).click();
   await expect(page.getByTestId('recovery-code')).toBeVisible();
   const uidBefore = await uidOf(page);
 

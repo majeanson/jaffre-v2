@@ -112,7 +112,8 @@ function handle(msg: ServerMessage): void {
   switch (msg.t) {
     case 'welcome':
       store.welcome(msg.viewer, msg.view, msg.seq, msg.roster, msg.chatTail);
-      if (room !== null) rememberTable(room, msg.roster);
+      if (room !== null)
+        rememberTable(room, msg.roster, typeof msg.viewer === 'number' ? msg.viewer : null);
       break;
     case 'events':
       store.applyEvents(msg.events, msg.seq);

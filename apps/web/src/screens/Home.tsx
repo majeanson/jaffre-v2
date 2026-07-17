@@ -1,12 +1,11 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { HeroBanner } from '../home/HeroBanner.js';
-import { NameField } from '../home/NameField.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
-import { getProfile, saveProfile, type Profile } from '../net/auth.js';
+import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { listTables, type TableEntry } from '../net/rooms.js';
 
@@ -45,6 +44,14 @@ export function Home({
   const [profile, setProfile] = useState<Profile>(getProfile());
   const tables = demoTables ?? listTables();
 
+  // Establish identity as soon as the home screen shows (not only once the
+  // recovery card mounts — it now lives inside the Customize disclosure) so a
+  // brand-new browser has a token ready for profile saves and room joins.
+  useEffect(() => {
+    if (staged) return;
+    void getGuestToken(playerName());
+  }, [staged]);
+
   const saveName = () => setPlayerName(name.trim() === '' ? 'Player' : name.trim());
 
   const chooseColor = (hex: string) => {
@@ -56,31 +63,26 @@ export function Home({
     void saveProfile({ paint: dataUrl });
   };
 
-  const shownName = staged ? identityStage.name : name.trim() === '' ? 'Player' : name;
   const shownColor = staged ? identityStage.color : profile.color;
   const shownPaint = staged ? identityStage.paint : profile.paint;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) max-sm:p-4">
+    <main className="flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
       <HeroBanner />
 
       <ProfileCard
-        name={shownName}
+        name={staged ? identityStage.name : name}
         color={shownColor}
         paint={shownPaint}
         editable={!staged}
         onColor={chooseColor}
         onPaint={savePaint}
-      />
-
-      <NameField
-        value={staged ? identityStage.name : name}
-        onChange={staged ? () => undefined : setName}
-        onCommit={staged ? () => undefined : saveName}
-        error={staged ? (identityStage.nameError ?? null) : null}
-      />
-
-      <RecoveryCard {...(staged ? { stage: identityStage.recovery } : {})} />
+        nameError={staged ? (identityStage.nameError ?? null) : null}
+        defaultOpen={staged}
+        {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
+      >
+        {staged ? <RecoveryCard stage={identityStage.recovery} /> : <RecoveryCard />}
+      </ProfileCard>
 
       <div className="w-full max-w-[min(92vw,44rem)]">
         <PlayMenu
