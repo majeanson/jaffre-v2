@@ -1,6 +1,58 @@
 import type { ReactNode } from 'react';
-import { Cta, WordPlate } from '@jaffre/ui';
+import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { QrCode } from './QrCode.js';
+
+const T: Record<
+  Lang,
+  {
+    invite: string;
+    pullUp: string;
+    sendThis: string;
+    scanToJoin: (code: string) => string;
+    tableCode: string;
+    scanOrRead: string;
+    roomLink: string;
+    copy: string;
+    message: (url: string) => string;
+    text: string;
+    email: string;
+    more: string;
+    done: string;
+  }
+> = {
+  en: {
+    invite: 'Invite to your table',
+    pullUp: 'Pull up a chair',
+    sendThis:
+      'Send this to whoever you want at the table. They drop straight in with one tap — no account, nothing to install.',
+    scanToJoin: (code) => `Scan to join room ${code}`,
+    tableCode: 'Table code',
+    scanOrRead: 'Scan the code, or read the words out loud.',
+    roomLink: 'Room link',
+    copy: 'Copy',
+    message: (url) => `Come play Jaffré with me — ${url}`,
+    text: 'Text',
+    email: 'Email',
+    more: 'More',
+    done: 'Done',
+  },
+  fr: {
+    invite: 'Inviter à ta table',
+    pullUp: 'Tire-toi une bûche',
+    sendThis:
+      'Envoie ça à qui tu veux à la table. Un tap et la personne arrive direct — pas de compte, rien à installer.',
+    scanToJoin: (code) => `Scanne pour joindre le salon ${code}`,
+    tableCode: 'Code de la table',
+    scanOrRead: 'Scanne le code, ou lis les mots à voix haute.',
+    roomLink: 'Lien du salon',
+    copy: 'Copier',
+    message: (url) => `Viens jouer au Jaffré avec moi — ${url}`,
+    text: 'Texto',
+    email: 'Courriel',
+    more: 'Plus',
+    done: 'Terminé',
+  },
+};
 
 export interface ShareSheetProps {
   /** Room code — the invite link is `${origin}/#room/<code>`. */
@@ -65,8 +117,9 @@ const ICON = {
  * bundled (no CDN / network), so it works offline and under a strict CSP.
  */
 export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
+  const t = T[useLang()];
   const url = `${location.origin}/#room/${code}`;
-  const message = `Come play Jaffré with me — ${url}`;
+  const message = t.message(url);
   const words = code.split('-');
 
   const shareMore = () => {
@@ -87,7 +140,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Invite to your table"
+        aria-label={t.invite}
         onClick={(e) => e.stopPropagation()}
         className="flex w-full max-w-sm flex-col gap-4 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
       >
@@ -95,22 +148,19 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
 
         <div className="text-center">
           <h2 className="font-arcade-display text-[1.7em] leading-none text-(--color-ap-gold)">
-            Pull up a chair
+            {t.pullUp}
           </h2>
-          <p className="mt-2 text-[0.9em] text-(--color-ap-muted)">
-            Send this to whoever you want at the table. They drop straight in with one tap — no
-            account, nothing to install.
-          </p>
+          <p className="mt-2 text-[0.9em] text-(--color-ap-muted)">{t.sendThis}</p>
         </div>
 
         {/* QR + the room code as ivory word-plates. */}
         <div className="flex items-stretch gap-3">
           <div className="grid size-[7.5em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-card-face) p-2 shadow-(--shadow-ap-sm)">
-            <QrCode value={url} label={`Scan to join room ${code}`} className="size-full" />
+            <QrCode value={url} label={t.scanToJoin(code)} className="size-full" />
           </div>
           <div className="flex min-w-0 flex-col justify-center gap-2">
             <span className="font-arcade-ui text-[0.68em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-              Table code
+              {t.tableCode}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {words.map((w, i) => (
@@ -118,7 +168,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
               ))}
             </div>
             <span className="text-[0.78em] leading-snug text-(--color-ap-muted)">
-              Scan the code, or read the words out loud.
+              {t.scanOrRead}
             </span>
           </div>
         </div>
@@ -127,13 +177,13 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
         <div className="flex gap-2">
           <input
             readOnly
-            aria-label="Room link"
+            aria-label={t.roomLink}
             value={url}
             onFocus={(e) => e.currentTarget.select()}
             className="min-w-0 flex-1 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 font-arcade-ui text-[0.9em] text-(--color-ap-text) shadow-(--shadow-ap-sm)"
           />
           <Cta type="button" onClick={onCopy}>
-            Copy
+            {t.copy}
           </Cta>
         </div>
 
@@ -141,7 +191,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
         <div className="flex gap-2">
           <ShareTarget
             href={`sms:?body=${encodeURIComponent(message)}`}
-            label="Text"
+            label={t.text}
             icon={
               <svg {...ICON}>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -150,7 +200,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
           />
           <ShareTarget
             href={`mailto:?subject=${encodeURIComponent('Jaffré')}&body=${encodeURIComponent(message)}`}
-            label="Email"
+            label={t.email}
             icon={
               <svg {...ICON}>
                 <path d="M4 4h16v16H4z" />
@@ -159,7 +209,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
             }
           />
           <ShareTarget
-            label="More"
+            label={t.more}
             onClick={shareMore}
             icon={
               <svg {...ICON}>
@@ -173,7 +223,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
         </div>
 
         <Cta type="button" variant="secondary" onClick={onClose} className="w-full">
-          Done
+          {t.done}
         </Cta>
       </div>
     </div>

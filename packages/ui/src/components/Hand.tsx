@@ -1,9 +1,15 @@
 import { motion, type PanInfo } from 'motion/react';
 import { useRef } from 'react';
 import { ListBox, ListBoxItem } from 'react-aria-components';
+import { useLang, type Lang } from '../i18n.js';
 import type { CardData } from '../types.js';
 import { cardKey, cardLabel } from '../types.js';
 import { PlayingCard } from './PlayingCard';
+
+const T: Record<Lang, { yourHand: string }> = {
+  en: { yourHand: 'Your hand' },
+  fr: { yourHand: 'Ta main' },
+};
 
 export interface HandCard {
   readonly card: CardData;
@@ -45,7 +51,9 @@ const PLAY_DY = -60;
  * high enough) or computes the target slot from pointer-x vs the other
  * cards' centres and rewrites the order.
  */
-export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReorder }: HandProps) {
+export function Hand({ cards, onPlay, active = true, label, onReorder }: HandProps) {
+  const lang = useLang();
+  const ariaLabel = label ?? T[lang].yourHand;
   const reorderable = onReorder !== undefined && cards.length > 1;
   // Slot elements by key — their boxes stay put during a drag (only the inner
   // card translates), so their centres are the fixed drop targets.
@@ -71,7 +79,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReor
 
   return (
     <ListBox
-      aria-label={label}
+      aria-label={ariaLabel}
       orientation="horizontal"
       selectionMode="none"
       // On narrow screens the fan overlaps harder so 8 lg cards (72px each)
@@ -100,7 +108,7 @@ export function Hand({ cards, onPlay, active = true, label = 'Your hand', onReor
               if (el === null) slots.current.delete(key);
               else slots.current.set(key, el);
             }}
-            textValue={cardLabel(entry.card)}
+            textValue={cardLabel(entry.card, lang)}
             aria-disabled={!playable}
             // react-aria drops the aria-disabled prop above, but forwards
             // data-* — tests and tooling read playability from this.

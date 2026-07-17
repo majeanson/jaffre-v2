@@ -1,4 +1,4 @@
-import { AvatarChip, Cta } from '@jaffre/ui';
+import { AvatarChip, Cta, useLang, type Lang } from '@jaffre/ui';
 import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getProfile } from '../net/auth.js';
@@ -14,11 +14,78 @@ export interface VisitorProps {
 
 const SEATS = [0, 1, 2, 3] as const;
 
+const T: Record<
+  Lang,
+  {
+    wantsYou: (host: string) => string;
+    oneSeatOpen: string;
+    room: (code: string) => string;
+    openSeat: string;
+    open: string;
+    youSitHere: string;
+    bot: string;
+    away: string;
+    teamSun: string;
+    teamMoon: string;
+    score: string;
+    inPlay: string;
+    vs: string;
+    sitDown: string;
+    takeOver: (name: string) => string;
+    justWatch: string;
+    leave: string;
+    whoAtTable: string;
+  }
+> = {
+  en: {
+    wantsYou: (host) => `${host} wants you`,
+    oneSeatOpen: 'at the table — one seat open.',
+    room: (code) => `Room ${code}`,
+    openSeat: 'Open seat',
+    open: 'Open',
+    youSitHere: 'You · sit here',
+    bot: 'Bot',
+    away: 'Away',
+    teamSun: 'Team Sun',
+    teamMoon: 'Team Moon',
+    score: 'Score',
+    inPlay: 'In play',
+    vs: 'vs',
+    sitDown: 'Sit down',
+    takeOver: (name) => `Take over ${name}’s seat`,
+    justWatch: 'Just watch',
+    leave: 'Leave',
+    whoAtTable: "Who's at the table",
+  },
+  fr: {
+    wantsYou: (host) => `${host} t'attend`,
+    oneSeatOpen: 'à la table — un siège libre.',
+    room: (code) => `Salon ${code}`,
+    openSeat: 'Siège libre',
+    open: 'Libre',
+    youSitHere: 'Toi · assis-toi ici',
+    bot: 'Bot',
+    away: 'Absent',
+    teamSun: 'Équipe Soleil',
+    teamMoon: 'Équipe Lune',
+    score: 'Pointage',
+    inPlay: 'En jeu',
+    vs: 'c.',
+    sitDown: "S'asseoir",
+    takeOver: (name) => `Prendre le siège de ${name}`,
+    justWatch: 'Juste regarder',
+    leave: 'Quitter',
+    whoAtTable: 'Qui est à la table',
+  },
+};
+
+type Strings = (typeof T)[Lang];
+
 /** Seats 0 & 2 are Team Sun, 1 & 3 Team Moon — the felt-table pairing. */
-function teamOf(seat: number): { name: string; color: string } {
+function teamOf(seat: number, t: Strings): { name: string; color: string } {
   return seat % 2 === 0
-    ? { name: 'Team Sun', color: 'var(--color-team-a)' }
-    : { name: 'Team Moon', color: 'var(--color-team-b)' };
+    ? { name: t.teamSun, color: 'var(--color-team-a)' }
+    : { name: t.teamMoon, color: 'var(--color-team-b)' };
 }
 
 /**
@@ -28,6 +95,7 @@ function teamOf(seat: number): { name: string; color: string } {
  * actions to take over a bot's seat, keep watching, or leave.
  */
 export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
+  const t = T[useLang()];
   const { roster, view } = useGameStore();
   const scores = view?.scores;
   // Whoever is first seated and human "owns" this table — the landing greets a
@@ -46,14 +114,14 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   // and shows you.
   const seatCell = (seat: number) => {
     const info = roster?.seats[seat] ?? null;
-    const team = teamOf(seat);
+    const team = teamOf(seat, t);
     const takeable = seat === yourSeat;
-    const displayName = takeable ? me : (info?.name ?? 'Open seat');
+    const displayName = takeable ? me : (info?.name ?? t.openSeat);
     const tags = takeable
-      ? 'You · sit here'
+      ? t.youSitHere
       : info === null
-        ? 'Open'
-        : [info.isBot ? 'Bot' : null, team.name, info.connected ? null : 'Away']
+        ? t.open
+        : [info.isBot ? t.bot : null, team.name, info.connected ? null : t.away]
             .filter((t): t is string => t !== null)
             .join(' · ');
     return (
@@ -95,16 +163,16 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
               <AvatarChip name={host.name} size="lg" />
               <div className="text-left">
                 <h1 className="font-arcade-display text-[1.2em] uppercase leading-tight text-(--color-ap-text)">
-                  {host.name} wants you
+                  {t.wantsYou(host.name)}
                 </h1>
                 <div className="font-arcade-ui text-[0.9em] text-(--color-ap-muted)">
-                  at the table — one seat open.
+                  {t.oneSeatOpen}
                 </div>
               </div>
             </div>
           ) : (
             <h1 className="font-arcade-display text-[1.4em] uppercase text-(--color-ap-text)">
-              Room {code}
+              {t.room(code)}
             </h1>
           )}
         </header>
@@ -112,7 +180,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
         {/* Mini four-seat table: partners sit across, the way the felt does. */}
         <div
           role="group"
-          aria-label="Who's at the table"
+          aria-label={t.whoAtTable}
           className="mx-auto grid aspect-square w-full max-w-[19rem] grid-cols-3 grid-rows-3 items-center gap-2"
         >
           <div className="col-start-2 row-start-1">{seatCell(2)}</div>
@@ -122,7 +190,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
               {scores !== undefined ? (
                 <div className="font-arcade-display leading-tight tabular-nums">
                   <div className="text-[0.6em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-                    Score
+                    {t.score}
                   </div>
                   <div className="mt-0.5 text-[1.3em]">
                     <span style={{ color: 'var(--color-team-a)' }}>{scores[0]}</span>
@@ -132,7 +200,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
                 </div>
               ) : (
                 <span className="font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-muted)">
-                  In play
+                  {t.inPlay}
                 </span>
               )}
             </div>
@@ -143,9 +211,13 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
 
         {scores !== undefined && (
           <p className="text-center font-arcade-ui text-[0.85em] text-(--color-ap-muted)">
-            <span style={{ color: 'var(--color-team-a)' }}>Team Sun {scores[0]}</span>
-            <span className="mx-2 text-(--color-ap-muted)">vs</span>
-            <span style={{ color: 'var(--color-team-b)' }}>Team Moon {scores[1]}</span>
+            <span style={{ color: 'var(--color-team-a)' }}>
+              {t.teamSun} {scores[0]}
+            </span>
+            <span className="mx-2 text-(--color-ap-muted)">{t.vs}</span>
+            <span style={{ color: 'var(--color-team-b)' }}>
+              {t.teamMoon} {scores[1]}
+            </span>
           </p>
         )}
 
@@ -165,15 +237,15 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
                 onClick={() => onSit(seat)}
                 className={primary ? 'w-full py-[0.9em] text-[1.3em]' : 'w-full'}
               >
-                {primary ? 'Sit down' : `Take over ${info.name}’s seat`}
+                {primary ? t.sitDown : t.takeOver(info.name)}
               </Cta>
             );
           })}
           <Cta type="button" variant="secondary" onClick={onWatch} className="w-full">
-            Just watch
+            {t.justWatch}
           </Cta>
           <Cta type="button" variant="secondary" onClick={onLeave} className="w-full">
-            Leave
+            {t.leave}
           </Cta>
         </div>
       </div>

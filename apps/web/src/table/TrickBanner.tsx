@@ -1,5 +1,32 @@
+import { useLang, type Lang } from '@jaffre/ui';
 import { TEAMS } from '../teams.js';
 import type { HeldBanner } from './useTableDerived.js';
+
+const T: Record<
+  Lang,
+  {
+    youTake: string;
+    takes: (name: string) => string;
+    forTeam: string;
+    redBadge: string;
+    brownBadge: string;
+  }
+> = {
+  en: {
+    youTake: 'You take the trick!',
+    takes: (name) => `${name} takes the trick`,
+    forTeam: 'for',
+    redBadge: 'RED 0 +5',
+    brownBadge: 'BROWN 0 −2',
+  },
+  fr: {
+    youTake: 'Tu prends la levée!',
+    takes: (name) => `${name} prend la levée`,
+    forTeam: 'pour',
+    redBadge: 'ROUGE 0 +5',
+    brownBadge: 'BRUN 0 −2',
+  },
+};
 
 export interface TrickBannerProps {
   readonly banner: HeldBanner;
@@ -10,6 +37,7 @@ export interface TrickBannerProps {
  * points, for which team — shown while the finished trick is held.
  */
 export function TrickBanner({ banner }: TrickBannerProps) {
+  const t = T[useLang()];
   const team = TEAMS[banner.team];
   const special = banner.specials.length > 0;
   return (
@@ -30,10 +58,10 @@ export function TrickBanner({ banner }: TrickBannerProps) {
         </span>
         <span className="flex flex-col gap-[0.15em] leading-tight">
           <span className="font-arcade-display text-[1.1em] uppercase text-white">
-            {banner.isYou ? 'You take the trick!' : `${banner.winnerName} takes the trick`}
+            {banner.isYou ? t.youTake : t.takes(banner.winnerName)}
           </span>
           <span className="font-arcade-ui text-[0.85em] font-semibold text-white/75">
-            for {team.label}
+            {t.forTeam} {team.label}
             {/* Dark badge + suit border: a suit-color FILL can't carry
                 AA-readable small text (brown especially). */}
             {banner.specials.map((s) => (
@@ -43,7 +71,7 @@ export function TrickBanner({ banner }: TrickBannerProps) {
                   s === 'red_zero' ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
                 }`}
               >
-                {s === 'red_zero' ? 'RED 0 +5' : 'BROWN 0 −2'}
+                {s === 'red_zero' ? t.redBadge : t.brownBadge}
               </span>
             ))}
           </span>

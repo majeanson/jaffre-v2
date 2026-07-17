@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Cta, WordPlate } from '@jaffre/ui';
+import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { getGuestToken, getRecoveryCode, recoverIdentity } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 
@@ -17,7 +17,46 @@ function words(code: string): readonly string[] {
   return code.split('-').filter((w) => w !== '');
 }
 
-const RECOVER_ERROR = "That code didn't match — check the words and try again.";
+const T: Record<
+  Lang,
+  {
+    recoverError: string;
+    minting: string;
+    wordsGetBack: string;
+    copied: string;
+    copy: string;
+    haveCode: string;
+    neverMind: string;
+    namePlaceholder: string;
+    restoring: string;
+    restore: string;
+  }
+> = {
+  en: {
+    recoverError: "That code didn't match — check the words and try again.",
+    minting: 'Minting your words…',
+    wordsGetBack: 'These words get your name and games back on a new phone.',
+    copied: 'Copied',
+    copy: 'Copy',
+    haveCode: 'I have a code',
+    neverMind: 'Never mind',
+    namePlaceholder: 'Name (optional)',
+    restoring: 'Restoring…',
+    restore: 'Restore',
+  },
+  fr: {
+    recoverError: 'Ce code ne correspond pas — vérifie les mots et réessaie.',
+    minting: 'Création de tes mots…',
+    wordsGetBack: 'Ces mots ramènent ton nom et tes parties sur un nouveau téléphone.',
+    copied: 'Copié',
+    copy: 'Copier',
+    haveCode: "J'ai un code",
+    neverMind: 'Laisse faire',
+    namePlaceholder: 'Nom (facultatif)',
+    restoring: 'Restauration…',
+    restore: 'Restaurer',
+  },
+};
 
 export interface RecoveryCardProps {
   /** Scene-only: force a state instead of minting against the server. */
@@ -31,6 +70,7 @@ export interface RecoveryCardProps {
  * account vocabulary anywhere — these words just get your games back.
  */
 export function RecoveryCard({ stage }: RecoveryCardProps) {
+  const t = T[useLang()];
   const staged = stage !== undefined;
   const [code, setCode] = useState<string | null>(
     stage?.kind === 'code' ? stage.code : getRecoveryCode(),
@@ -42,7 +82,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
   );
   const [enteredName, setEnteredName] = useState('');
   const [error, setError] = useState<string | null>(
-    stage?.kind === 'recover-error' ? RECOVER_ERROR : null,
+    stage?.kind === 'recover-error' ? t.recoverError : null,
   );
   const [busy, setBusy] = useState(false);
 
@@ -78,7 +118,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
       (result) => {
         setBusy(false);
         if (result === null) {
-          setError(RECOVER_ERROR);
+          setError(t.recoverError);
           return;
         }
         setPlayerName(result.name);
@@ -98,7 +138,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
         onClick={() => setShowForm(true)}
         className="rise-in font-arcade-ui text-[0.8em] text-(--color-ap-muted) hover:text-(--color-ap-text) hover:underline"
       >
-        I have a code
+        {t.haveCode}
       </button>
     );
   }
@@ -107,7 +147,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
     <div className="rise-in flex w-full max-w-xs flex-col items-center gap-[0.7em] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.1em] text-center shadow-(--shadow-ap)">
       {stage?.kind === 'loading' && (
         <>
-          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">Minting your words…</p>
+          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">{t.minting}</p>
           <div data-testid="recovery-loading" aria-hidden className="flex items-center gap-[0.5em]">
             {[0, 1, 2].map((i) => (
               <span
@@ -121,9 +161,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
 
       {code !== null && !showForm && stage?.kind !== 'loading' && (
         <>
-          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
-            These words get your name and games back on a new phone.
-          </p>
+          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">{t.wordsGetBack}</p>
           <div className="flex flex-wrap items-center justify-center gap-[0.5em]">
             {words(code).map((w, i) => (
               <WordPlate key={i}>{w}</WordPlate>
@@ -136,7 +174,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
             </span>
           </div>
           <Cta type="button" variant="secondary" onClick={copy}>
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? t.copied : t.copy}
           </Cta>
         </>
       )}
@@ -146,7 +184,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
         onClick={() => setShowForm((s) => !s)}
         className="font-arcade-ui text-[0.8em] text-(--color-ap-muted) hover:text-(--color-ap-text) hover:underline"
       >
-        {showForm ? 'Never mind' : 'I have a code'}
+        {showForm ? t.neverMind : t.haveCode}
       </button>
 
       {showForm && (
@@ -163,7 +201,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
           <input
             value={enteredName}
             onChange={(e) => setEnteredName(e.target.value)}
-            placeholder="Name (optional)"
+            placeholder={t.namePlaceholder}
             maxLength={20}
             className="min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2 text-center font-arcade-ui text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
           />
@@ -173,7 +211,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
             </p>
           )}
           <Cta type="submit" disabled={busy}>
-            {busy ? 'Restoring…' : 'Restore'}
+            {busy ? t.restoring : t.restore}
           </Cta>
         </form>
       )}

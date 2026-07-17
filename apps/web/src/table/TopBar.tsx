@@ -1,5 +1,11 @@
 import type { SeatView } from '@jaffre/engine';
-import { ScoreStrip, type ScoreboardRound, type TeamSpecials } from '@jaffre/ui';
+import {
+  ScoreStrip,
+  useLang,
+  type Lang,
+  type ScoreboardRound,
+  type TeamSpecials,
+} from '@jaffre/ui';
 import { useState, type ReactNode } from 'react';
 import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
@@ -7,7 +13,28 @@ import { TEAMS } from '../teams.js';
 import { IconButton, ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconGear, IconList, IconQuestion, IconSignOut, IconSparkle } from '../components/icons.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
+import { LangSwitcher } from '../components/LangSwitcher.js';
 import type { ContractDisplay } from './useTableDerived.js';
+
+const T: Record<
+  Lang,
+  { leave: string; options: string; howToPlay: string; coach: string; gameLog: string }
+> = {
+  en: {
+    leave: 'Leave table',
+    options: 'Options',
+    howToPlay: 'How to play',
+    coach: 'Coach — suggest a move on your turn',
+    gameLog: 'Game log',
+  },
+  fr: {
+    leave: 'Quitter la table',
+    options: 'Options',
+    howToPlay: 'Comment jouer',
+    coach: 'Coach — suggère un coup à ton tour',
+    gameLog: 'Journal de partie',
+  },
+};
 
 export interface TopBarProps {
   readonly view: SeatView;
@@ -51,6 +78,7 @@ export function TopBar({
   share,
   defaultDetailsOpen = false,
 }: TopBarProps) {
+  const t = T[useLang()];
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
@@ -70,11 +98,11 @@ export function TopBar({
         action={action}
         actions={
           <>
-            <IconButton danger label="Leave table" onClick={onLeave}>
+            <IconButton danger label={t.leave} onClick={onLeave}>
               <IconSignOut />
             </IconButton>
             <IconButton
-              label="Options"
+              label={t.options}
               active={optionsOpen}
               aria-expanded={optionsOpen}
               onClick={() => setOptionsOpen((o) => !o)}
@@ -87,12 +115,13 @@ export function TopBar({
                 className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
               >
                 <ThemeSwitcher />
+                <LangSwitcher />
                 <SoundToggle />
-                <HelpButton label="How to play" className={ICON_BTN_NEUTRAL}>
+                <HelpButton label={t.howToPlay} className={ICON_BTN_NEUTRAL}>
                   <IconQuestion />
                 </HelpButton>
                 <IconButton
-                  label="Coach — suggest a move on your turn"
+                  label={t.coach}
                   aria-pressed={coachOn}
                   active={coachOn}
                   onClick={onToggleCoach}
@@ -100,7 +129,7 @@ export function TopBar({
                   <IconSparkle />
                 </IconButton>
                 <IconButton
-                  label="Game log"
+                  label={t.gameLog}
                   aria-expanded={logOpen}
                   active={logOpen}
                   onClick={onToggleLog}

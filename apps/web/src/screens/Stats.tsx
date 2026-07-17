@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, PixelWave, StatPanel } from '@jaffre/ui';
+import { AvatarChip, Cta, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import {
   fetchHistory,
   fetchStats,
@@ -18,6 +18,112 @@ export interface StatsProps {
   /** Scene viewer: hold the screen in its loading (pixel-wave) state. */
   readonly demoLoading?: boolean;
 }
+
+const T: Record<
+  Lang,
+  {
+    title: string;
+    home: string;
+    dealing: string;
+    error: string;
+    noGames: string;
+    noGamesBody: string;
+    winRate: string;
+    wonCount: (n: number) => string;
+    lastGames: (n: number, wins: number) => string;
+    games: string;
+    netPoints: string;
+    bestStreak: string;
+    bidAccuracy: string;
+    noContracts: string;
+    contract: (made: number, attempted: number, sa: number | null) => string;
+    bestPartner: string;
+    nemesis: string;
+    partnerRelation: (wins: number, games: number) => string;
+    nemesisRelation: (losses: number, games: number) => string;
+    partnerEmpty: string;
+    nemesisEmpty: string;
+    recentGames: string;
+    recentCaption: string;
+    thRoom: string;
+    thResult: string;
+    thScore: string;
+    won: string;
+    lost: string;
+  }
+> = {
+  en: {
+    title: 'Your record',
+    home: 'Home',
+    dealing: 'Dealing…',
+    error: 'Your record needs the online server. Play a room game and it will show up here.',
+    noGames: 'No games yet',
+    noGamesBody:
+      'Play your first hand and the book starts filling in — win rate, streak, and the people you sit with.',
+    winRate: 'Win rate · all time',
+    wonCount: (n) => `${String(n)} won`,
+    lastGames: (n, wins) => `Last ${String(n)} games — ${String(wins)} won.`,
+    games: 'games',
+    netPoints: 'net points',
+    bestStreak: 'best streak',
+    bidAccuracy: 'Bid accuracy',
+    noContracts: 'Contracts: no contracts yet — name one and see how you do.',
+    contract: (made, attempted, sa) =>
+      `You make the contract ${String(made)} of ${String(attempted)} times you name it${
+        sa === null ? '' : ` · ${String(sa)}% at sans atout`
+      }.`,
+    bestPartner: 'Best partner',
+    nemesis: 'Nemesis',
+    partnerRelation: (wins, games) => `${String(wins)} wins in ${String(games)} games`,
+    nemesisRelation: (losses, games) => `beats you ${String(losses)} of ${String(games)}`,
+    partnerEmpty: 'Play a few games with the same teammate to find out.',
+    nemesisEmpty: 'No one has your number yet — keep it that way.',
+    recentGames: 'Recent games',
+    recentCaption: 'Your recent games, newest last',
+    thRoom: 'Room',
+    thResult: 'Result',
+    thScore: 'Score',
+    won: 'Won',
+    lost: 'Lost',
+  },
+  fr: {
+    title: 'Ton record',
+    home: 'Accueil',
+    dealing: 'On brasse…',
+    error:
+      'Ton record a besoin du serveur en ligne. Joue une partie en salon et il apparaîtra ici.',
+    noGames: 'Pas encore de parties',
+    noGamesBody:
+      'Joue ta première main et le carnet commence à se remplir — taux de victoires, séquence, et le monde avec qui tu joues.',
+    winRate: 'Taux de victoires · à vie',
+    wonCount: (n) => `${String(n)} gagnée${n === 1 ? '' : 's'}`,
+    lastGames: (n, wins) =>
+      `${String(n)} dernières parties — ${String(wins)} gagnée${wins === 1 ? '' : 's'}.`,
+    games: 'parties',
+    netPoints: 'points nets',
+    bestStreak: 'meilleure séquence',
+    bidAccuracy: 'Précision des mises',
+    noContracts: 'Contrats : pas encore de contrat — nommes-en un et vois ce que ça donne.',
+    contract: (made, attempted, sa) =>
+      `Tu fais le contrat ${String(made)} fois sur ${String(attempted)}${
+        sa === null ? '' : ` · ${String(sa)} % à sans atout`
+      }.`,
+    bestPartner: 'Meilleur partenaire',
+    nemesis: 'Némésis',
+    partnerRelation: (wins, games) =>
+      `${String(wins)} victoire${wins === 1 ? '' : 's'} en ${String(games)} partie${games === 1 ? '' : 's'}`,
+    nemesisRelation: (losses, games) => `te bat ${String(losses)} fois sur ${String(games)}`,
+    partnerEmpty: 'Joue quelques parties avec le même partenaire pour le découvrir.',
+    nemesisEmpty: "Personne n'a encore le dessus sur toi — garde ça de même.",
+    recentGames: 'Parties récentes',
+    recentCaption: 'Tes parties récentes, les plus récentes en dernier',
+    thRoom: 'Salon',
+    thResult: 'Résultat',
+    thScore: 'Pointage',
+    won: 'Gagnée',
+    lost: 'Perdue',
+  },
+};
 
 /** made/attempted as a whole-percent, or null when nothing's been attempted. */
 function accuracyPct(made: number, attempted: number): number | null {
@@ -96,6 +202,7 @@ function Sparkline({ results }: { readonly results: readonly boolean[] }) {
 
 /** One ruled row of the scorepad game list. */
 function ScorepadRow({ game }: { readonly game: HistoryGame }) {
+  const t = T[useLang()];
   const won = youWon(game);
   const [mine, theirs] = yourScore(game);
   return (
@@ -109,7 +216,7 @@ function ScorepadRow({ game }: { readonly game: HistoryGame }) {
             won ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'
           }`}
         >
-          {won ? 'Won' : 'Lost'}
+          {won ? t.won : t.lost}
         </span>
       </td>
       <td className="py-[0.55em] pl-[0.5em] pr-[0.9em] text-right font-arcade-display text-[1em] tabular-nums text-(--color-ap-text)">
@@ -177,6 +284,7 @@ function SocialPanel({
  * form sparkline), the headline numbers, bid accuracy, the people you sit
  * with, and a ruled scorepad of recent games. */
 export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: StatsProps) {
+  const t = T[useLang()];
   const [stats, setStats] = useState<StatsData | null>(demoStats ?? null);
   const [games, setGames] = useState<readonly HistoryGame[] | null>(demoGames ?? null);
   const [error, setError] = useState(false);
@@ -218,31 +326,26 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
           <div className="flex items-center gap-[0.5em]">
             <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
             <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-              Your record
+              {t.title}
             </h1>
           </div>
           <Cta variant="secondary" onClick={onLeave}>
-            Home
+            {t.home}
           </Cta>
         </header>
 
         {error ? (
-          <p className={SHELL_NOTE}>
-            Your record needs the online server. Play a room game and it will show up here.
-          </p>
+          <p className={SHELL_NOTE}>{t.error}</p>
         ) : stats === null ? (
           <div className={SHELL_NOTE}>
-            <PixelWave label="Dealing…" />
+            <PixelWave label={t.dealing} />
           </div>
         ) : stats.games === 0 ? (
           <div className={SHELL_NOTE}>
             <div className="font-arcade-display text-[1.3em] uppercase text-(--color-ap-ok)">
-              No games yet
+              {t.noGames}
             </div>
-            <p className="mt-[0.5em]">
-              Play your first hand and the book starts filling in — win rate, streak, and the people
-              you sit with.
-            </p>
+            <p className="mt-[0.5em]">{t.noGamesBody}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -259,21 +362,21 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <div className="font-arcade-ui text-[0.7em] font-bold uppercase tracking-[0.16em] text-(--color-ap-ink)/55">
-                    Win rate · all time
+                    {t.winRate}
                   </div>
                   <div className="mt-[0.15em] font-arcade-display text-[3.6em] leading-[0.9] tabular-nums text-(--color-ap-gold-deep)">
                     {Math.round(stats.winRate * 100)}%
                   </div>
                 </div>
                 <div className="flex items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ok) px-[0.6em] py-[0.35em] font-arcade-display text-[1em] tabular-nums text-(--color-ap-ink) shadow-(--shadow-ap-sm)">
-                  {stats.wins} won
+                  {t.wonCount(stats.wins)}
                 </div>
               </div>
               {recent.length > 0 && (
                 <figure className="mt-[0.5em]">
                   <Sparkline results={recent.map(youWon)} />
                   <figcaption className="mt-[0.2em] font-arcade-ui text-[0.72em] text-(--color-ap-ink)/55">
-                    Last {recent.length} games — {recentWins} won.
+                    {t.lastGames(recent.length, recentWins)}
                   </figcaption>
                 </figure>
               )}
@@ -281,26 +384,26 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
 
             {/* Headline numbers: games, net points, best streak. */}
             <section className="grid grid-cols-3 gap-3 max-sm:gap-2">
-              <StatPanel value={stats.games} label="games" />
+              <StatPanel value={stats.games} label={t.games} />
               <StatPanel
                 value={`${stats.netPoints >= 0 ? '+' : ''}${String(stats.netPoints)}`}
-                label="net points"
+                label={t.netPoints}
                 tone="violet"
               />
-              <StatPanel value={stats.streak.best} label="best streak" tone="ok" />
+              <StatPanel value={stats.streak.best} label={t.bestStreak} tone="ok" />
             </section>
 
             {/* Bid accuracy — one headline % over a striped fill bar. */}
             <section className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
               <div className="mb-[0.6em] flex items-baseline justify-between gap-3">
-                <span className={MICRO_LABEL}>Bid accuracy</span>
+                <span className={MICRO_LABEL}>{t.bidAccuracy}</span>
                 <span className="font-arcade-display text-[1.3em] tabular-nums text-(--color-ap-gold)">
                   {bidPct === null ? '—' : `${String(bidPct)}%`}
                 </span>
               </div>
               {bidPct === null ? (
                 <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">
-                  Contracts: no contracts yet — name one and see how you do.
+                  {t.noContracts}
                 </p>
               ) : (
                 <>
@@ -315,8 +418,7 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
                     />
                   </div>
                   <div className="mt-[0.6em] font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
-                    You make the contract {stats.bids.made} of {stats.bids.attempted} times you name
-                    it{saPct === null ? '' : ` · ${String(saPct)}% at sans atout`}.
+                    {t.contract(stats.bids.made, stats.bids.attempted, saPct)}
                   </div>
                 </>
               )}
@@ -325,30 +427,30 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
             {/* Social facts: best partner + nemesis, side by side. */}
             <section className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
               <SocialPanel
-                heading="Best partner"
+                heading={t.bestPartner}
                 headingClass="text-(--color-ap-ok)"
                 chipColor="var(--color-suit-green)"
                 name={stats.bestPartner?.name}
                 relation={
                   stats.bestPartner === null
                     ? ''
-                    : `${stats.bestPartner.wins} wins in ${stats.bestPartner.games} games`
+                    : t.partnerRelation(stats.bestPartner.wins, stats.bestPartner.games)
                 }
                 testId="best-partner-name"
-                empty="Play a few games with the same teammate to find out."
+                empty={t.partnerEmpty}
               />
               <SocialPanel
-                heading="Nemesis"
+                heading={t.nemesis}
                 headingClass="text-(--color-ap-danger-text)"
                 chipColor="var(--color-suit-blue)"
                 name={stats.nemesis?.name}
                 relation={
                   stats.nemesis === null
                     ? ''
-                    : `beats you ${stats.nemesis.losses} of ${stats.nemesis.games}`
+                    : t.nemesisRelation(stats.nemesis.losses, stats.nemesis.games)
                 }
                 testId="nemesis-name"
-                empty="No one has your number yet — keep it that way."
+                empty={t.nemesisEmpty}
               />
             </section>
 
@@ -358,15 +460,15 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
                 <div
                   className={`border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] ${MICRO_LABEL}`}
                 >
-                  Recent games
+                  {t.recentGames}
                 </div>
                 <table className="w-full border-collapse">
-                  <caption className="sr-only">Your recent games, newest last</caption>
+                  <caption className="sr-only">{t.recentCaption}</caption>
                   <thead className="sr-only">
                     <tr>
-                      <th scope="col">Room</th>
-                      <th scope="col">Result</th>
-                      <th scope="col">Score</th>
+                      <th scope="col">{t.thRoom}</th>
+                      <th scope="col">{t.thResult}</th>
+                      <th scope="col">{t.thScore}</th>
                     </tr>
                   </thead>
                   <tbody>

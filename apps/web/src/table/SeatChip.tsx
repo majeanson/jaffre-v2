@@ -1,6 +1,22 @@
-import { Seat } from '@jaffre/ui';
+import { Seat, useLang, type Lang } from '@jaffre/ui';
 import { formatCountdown, useCountdown } from './useCountdown.js';
 import type { SeatChipInfo } from './useTableDerived.js';
+
+const T: Record<
+  Lang,
+  { empty: string; away: (countdown: string) => string; botTakingOver: string }
+> = {
+  en: {
+    empty: 'empty',
+    away: (countdown) => `Away — bot in ${countdown}`,
+    botTakingOver: 'Bot taking over…',
+  },
+  fr: {
+    empty: 'libre',
+    away: (countdown) => `Absent — bot dans ${countdown}`,
+    botTakingOver: 'Le bot prend la relève…',
+  },
+};
 
 export interface SeatChipProps {
   /** Resolved seat display data, or null for a vacant seat. */
@@ -11,8 +27,9 @@ export interface SeatChipProps {
 
 /** Owns one player's nameplate + floating bid bubble around the table. */
 export function SeatChip({ info, compact = false }: SeatChipProps) {
+  const t = T[useLang()];
   const secondsLeft = useCountdown(info?.botSwapAt ?? null);
-  if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">empty</span>;
+  if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">{t.empty}</span>;
   return (
     <span className="relative inline-block max-w-full min-w-0">
       <Seat
@@ -30,7 +47,7 @@ export function SeatChip({ info, compact = false }: SeatChipProps) {
           role="status"
           className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-(length:--text-fluid-xs) font-arcade-ui font-semibold whitespace-nowrap text-(--color-ap-text) shadow-(--shadow-ap-sm)"
         >
-          {secondsLeft > 0 ? `Away — bot in ${formatCountdown(secondsLeft)}` : 'Bot taking over…'}
+          {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
         </span>
       )}
       {info.bidText !== null && (

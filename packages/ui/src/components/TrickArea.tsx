@@ -1,5 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { useLang, type Lang } from '../i18n.js';
 import type { CardData } from '../types.js';
+
+const T: Record<Lang, { currentTrick: string }> = {
+  en: { currentTrick: 'Current trick' },
+  fr: { currentTrick: 'Levée en cours' },
+};
 import { cardKey } from '../types.js';
 import { PlayingCard } from './PlayingCard';
 
@@ -46,8 +52,9 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
  * tokens; with reduced motion everything is instant (MotionConfig).
  */
 export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickAreaProps) {
+  const t = T[useLang()];
   return (
-    <div role="group" className="relative h-full w-full" aria-label="Current trick">
+    <div role="group" className="relative h-full w-full" aria-label={t.currentTrick}>
       <AnimatePresence>
         {sweepTo === null &&
           plays.map((play) => (

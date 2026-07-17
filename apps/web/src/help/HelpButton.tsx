@@ -1,6 +1,12 @@
 import { useRef, useState, type ReactNode } from 'react';
+import { useLang, type Lang } from '@jaffre/ui';
 import { GHOST_BTN } from '../components/buttonStyles.js';
 import { HelpSheet } from './HelpSheet.js';
+
+const T: Record<Lang, { howToPlay: string }> = {
+  en: { howToPlay: 'How to play' },
+  fr: { howToPlay: 'Comment jouer' },
+};
 
 export interface HelpButtonProps {
   /** Accessible label; 'How to play' on menus, 'Help' on the table. */
@@ -18,11 +24,13 @@ export interface HelpButtonProps {
  * open state and returns focus to the trigger on close.
  */
 export function HelpButton({
-  label = 'How to play',
+  label,
   className = `px-3 py-1.5 text-sm text-(--color-ap-text) ${GHOST_BTN}`,
   defaultOpen = false,
   children,
 }: HelpButtonProps) {
+  const t = T[useLang()];
+  const shownLabel = label ?? t.howToPlay;
   const [open, setOpen] = useState(defaultOpen);
   const triggerRef = useRef<HTMLButtonElement>(null);
   return (
@@ -30,12 +38,12 @@ export function HelpButton({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={label}
-        title={label}
+        aria-label={shownLabel}
+        title={shownLabel}
         onClick={() => setOpen(true)}
         className={className}
       >
-        {children ?? label}
+        {children ?? shownLabel}
       </button>
       {open && (
         <HelpSheet

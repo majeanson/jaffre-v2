@@ -1,3 +1,4 @@
+import { useLang } from '../i18n.js';
 import type { CardData } from '../types.js';
 import { cardLabel, SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
@@ -38,6 +39,7 @@ export function PlayingCard({
   recommended = false,
   tilt = 0,
 }: PlayingCardProps) {
+  const lang = useLang();
   if (faceDown) {
     return (
       <div
@@ -56,7 +58,7 @@ export function PlayingCard({
   return (
     <div
       role="img"
-      aria-label={cardLabel(card)}
+      aria-label={cardLabel(card, lang)}
       style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
       className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'

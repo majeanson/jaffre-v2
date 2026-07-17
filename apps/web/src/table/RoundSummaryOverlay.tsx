@@ -1,6 +1,44 @@
 import type { SeatView } from '@jaffre/engine';
-import { Cta, SpecialChip, type TeamSpecials } from '@jaffre/ui';
+import { Cta, SpecialChip, useLang, type Lang, type TeamSpecials } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
+
+const T: Record<
+  Lang,
+  {
+    teams: readonly [string, string];
+    summary: string;
+    round: (n: number) => string;
+    made: string;
+    missed: string;
+    trickPts: (n: number) => string;
+    total: string;
+    waiting: string;
+    ready: string;
+  }
+> = {
+  en: {
+    teams: ['Team Sun', 'Team Moon'],
+    summary: 'Round summary',
+    round: (n) => `Round ${n}`,
+    made: 'made',
+    missed: 'missed',
+    trickPts: (n) => `${n} trick pts`,
+    total: 'total',
+    waiting: 'Waiting for the others…',
+    ready: 'Ready for the next round',
+  },
+  fr: {
+    teams: ['Équipe Soleil', 'Équipe Lune'],
+    summary: 'Résumé de la ronde',
+    round: (n) => `Ronde ${n}`,
+    made: 'réussit',
+    missed: 'rate',
+    trickPts: (n) => `${n} pts de levées`,
+    total: 'total',
+    waiting: 'On attend les autres…',
+    ready: 'Prêt pour la prochaine ronde',
+  },
+};
 
 export interface RoundSummaryOverlayProps {
   readonly summary: NonNullable<SeatView['lastRoundSummary']>;
@@ -16,7 +54,6 @@ export interface RoundSummaryOverlayProps {
   readonly onReady: () => void;
 }
 
-const TEAM_NAME = ['Team Sun', 'Team Moon'] as const;
 const teamColor = (t: 0 | 1): string => `var(--color-team-${t === 0 ? 'a' : 'b'})`;
 
 /**
@@ -34,6 +71,7 @@ export function RoundSummaryOverlay({
   youReady,
   onReady,
 }: RoundSummaryOverlayProps) {
+  const tr = T[useLang()];
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -53,11 +91,11 @@ export function RoundSummaryOverlay({
       className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4 outline-none"
       role="dialog"
       aria-modal="true"
-      aria-label="Round summary"
+      aria-label={tr.summary}
     >
       <div className="w-[23rem] max-w-[92vw] rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <p className="text-center font-arcade-display text-[11px] tracking-[0.2em] text-(--color-ap-muted) uppercase">
-          Round {summary.roundIndex + 1}
+          {tr.round(summary.roundIndex + 1)}
         </p>
 
         {/* Contract result headline: ✓/✗, who, made/missed, for which team. */}
@@ -71,7 +109,7 @@ export function RoundSummaryOverlay({
           </span>
           <span className="text-left leading-tight">
             <span className="block font-arcade-display text-lg uppercase text-(--color-ap-text)">
-              {contractName} {made ? 'made' : 'missed'} {summary.contract.value}
+              {contractName} {made ? tr.made : tr.missed} {summary.contract.value}
               {summary.contract.sansAtout ? ' SA' : ''}
             </span>
             {/* Team colour flips WITH the skin, staying legible on the ground. */}
@@ -79,7 +117,7 @@ export function RoundSummaryOverlay({
               className="block text-(length:--text-fluid-xs) font-semibold"
               style={{ color: teamColor(contractTeam) }}
             >
-              {TEAM_NAME[contractTeam]}
+              {tr.teams[contractTeam]}
             </span>
           </span>
         </div>
@@ -104,13 +142,13 @@ export function RoundSummaryOverlay({
                     className="size-2 rounded-full"
                     style={{ background: teamColor(t) }}
                   />
-                  {TEAM_NAME[t]}
+                  {tr.teams[t]}
                 </p>
                 <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
                   {names[t]} & {names[t + 2]}
                 </p>
                 <p className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-(--color-ap-text)/85">
-                  {summary.trickPoints[t]} trick pts
+                  {tr.trickPts(summary.trickPoints[t])}
                   {sp.red && <SpecialChip kind="red" />}
                   {sp.brown && <SpecialChip kind="brown" />}
                 </p>
@@ -121,7 +159,7 @@ export function RoundSummaryOverlay({
                   {delta}
                 </p>
                 <p className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                  total{' '}
+                  {tr.total}{' '}
                   <span className="font-arcade-display text-base text-(--color-ap-text)">
                     {summary.scores[t]}
                   </span>
@@ -133,7 +171,7 @@ export function RoundSummaryOverlay({
 
         <div className="mt-5 flex flex-col items-center gap-2">
           <Cta type="button" onClick={onReady} disabled={youReady} className="w-full">
-            {youReady ? 'Waiting for the others…' : 'Ready for the next round'}
+            {youReady ? tr.waiting : tr.ready}
           </Cta>
           <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
             {names.map((n, seat) => (

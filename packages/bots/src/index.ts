@@ -63,4 +63,4 @@ export {
   trumpsOutstanding,
 } from './analysis.js';
 export { heuristicCard } from './heuristics.js';
-export { suggest, type Advice } from './coach.js';
+export { suggest, type Advice, type CoachLang } from './coach.js';

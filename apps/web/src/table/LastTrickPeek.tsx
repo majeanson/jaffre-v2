@@ -1,7 +1,12 @@
-import { PlayingCard } from '@jaffre/ui';
+import { PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
 import type { LastTrickInfo } from './useTableDerived.js';
+
+const T: Record<Lang, { lastTrick: string }> = {
+  en: { lastTrick: 'Last trick' },
+  fr: { lastTrick: 'Dernière levée' },
+};
 
 export interface LastTrickPeekProps {
   readonly trick: LastTrickInfo;
@@ -23,6 +28,7 @@ const MINI_SLOT: Record<0 | 1 | 2 | 3, string> = {
  * Closes on Escape or an outside click.
  */
 export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps) {
+  const t = T[useLang()];
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -55,7 +61,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
         aria-expanded={open}
         className={GHOST_BTN_SM}
       >
-        Last trick
+        {t.lastTrick}
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 shadow-(--shadow-ap-lg)">

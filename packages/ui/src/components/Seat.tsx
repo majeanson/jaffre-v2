@@ -1,3 +1,40 @@
+import { useLang, type Lang } from '../i18n.js';
+
+const T: Record<
+  Lang,
+  {
+    connected: string;
+    disconnected: string;
+    playing: string;
+    bot: string;
+    dealer: string;
+    dealerInitial: string;
+    dealerRest: string;
+    turnSr: string;
+  }
+> = {
+  en: {
+    connected: 'Connected',
+    disconnected: 'Disconnected',
+    playing: 'Playing',
+    bot: 'bot',
+    dealer: 'Dealer',
+    dealerInitial: 'D',
+    dealerRest: 'ealer',
+    turnSr: '— their turn to play',
+  },
+  fr: {
+    connected: 'Connecté',
+    disconnected: 'Déconnecté',
+    playing: 'Joue',
+    bot: 'bot',
+    dealer: 'Brasseur',
+    dealerInitial: 'B',
+    dealerRest: 'rasseur',
+    turnSr: '— à son tour de jouer',
+  },
+};
+
 export interface SeatProps {
   readonly name: string;
   readonly team: 0 | 1;
@@ -29,6 +66,7 @@ export function Seat({
   connected = true,
   compact = false,
 }: SeatProps) {
+  const t = T[useLang()];
   const initial = (name[0] ?? '?').toUpperCase();
   return (
     <div
@@ -45,7 +83,7 @@ export function Seat({
       >
         {initial}
         <span
-          title={connected ? 'Connected' : 'Disconnected'}
+          title={connected ? t.connected : t.disconnected}
           className={`absolute -bottom-[0.12em] -right-[0.12em] size-[0.6em] rounded-full border-2 border-(--color-ap-ink) ${
             connected ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'
           }`}
@@ -56,24 +94,25 @@ export function Seat({
         <span className="truncate font-arcade-ui font-semibold text-(--color-ap-text)">{name}</span>
         {isTurn ? (
           <span className="font-arcade-display text-[0.6em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
-            Playing
+            {t.playing}
           </span>
         ) : (
           isBot && (
             <span className="font-arcade-display text-[0.58em] uppercase tracking-[0.1em] text-(--color-ap-muted)">
-              bot
+              {t.bot}
             </span>
           )
         )}
         {isDealer && (
           <span
-            title="Dealer"
+            title={t.dealer}
             className="grid size-[1.25em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) font-arcade-display text-[0.6em] text-(--color-ap-ink)"
           >
-            D<span className="sr-only">ealer</span>
+            {t.dealerInitial}
+            <span className="sr-only">{t.dealerRest}</span>
           </span>
         )}
-        {isTurn && <span className="sr-only">— their turn to play</span>}
+        {isTurn && <span className="sr-only">{t.turnSr}</span>}
       </span>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { LangSwitcher } from '../components/LangSwitcher.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { HeroBanner } from '../home/HeroBanner.js';
@@ -105,6 +106,7 @@ export function Home({
       >
         <HelpButton defaultOpen={helpOpen} />
         <ThemeSwitcher />
+        <LangSwitcher />
       </div>
     </main>
   );

@@ -1,9 +1,34 @@
 import type { Card, Suit } from '@jaffre/engine';
-import { cardKey, Hand, sortByColour, sortByValue } from '@jaffre/ui';
+import { cardKey, Hand, sortByColour, sortByValue, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { feedback, playClick } from '../audio/clicks.js';
 import { IconButton } from '../components/IconButton.js';
 import { IconSort } from '../components/icons.js';
+
+const FR_SUIT: Record<Suit, string> = { red: 'rouge', brown: 'brun', green: 'vert', blue: 'bleu' };
+
+const T: Record<
+  Lang,
+  {
+    sortColour: string;
+    sortValue: string;
+    follow: (suit: Suit) => string;
+    notYourTurn: string;
+  }
+> = {
+  en: {
+    sortColour: 'Sort your hand by colour',
+    sortValue: 'Sort your hand by value, 0 to 7',
+    follow: (suit) => `You must follow ${suit}`,
+    notYourTurn: 'Not your turn',
+  },
+  fr: {
+    sortColour: 'Trier ta main par couleur',
+    sortValue: 'Trier ta main par valeur, 0 à 7',
+    follow: (suit) => `Tu dois fournir du ${FR_SUIT[suit]}`,
+    notYourTurn: 'Pas ton tour',
+  },
+};
 
 const DEAL_STAGGER_MS = 90; // matches the deal-in keyframe stagger in tokens.css
 const SORT_STAGGER_MS = 45; // the satisfying cascade when tidying the hand
@@ -29,6 +54,7 @@ export function PlayerHand({
   onPlay,
   recommended = null,
 }: PlayerHandProps) {
+  const t = T[useLang()];
   // A client-only display order (card keys). New rounds bring new keys, so the
   // stale order naturally falls back to the dealt order; the sort button and
   // (future) drag rearrange it. Never touches game state.
@@ -85,9 +111,7 @@ export function PlayerHand({
       {cards.length > 1 && (
         <div className="flex justify-end px-2">
           <IconButton
-            label={
-              sortMode === 'colour' ? 'Sort your hand by colour' : 'Sort your hand by value, 0 to 7'
-            }
+            label={sortMode === 'colour' ? t.sortColour : t.sortValue}
             onClick={sortHand}
             className="mb-0.5"
           >
@@ -105,9 +129,7 @@ export function PlayerHand({
           card,
           disabled: !active || !legal.some((c) => c.suit === card.suit && c.value === card.value),
           disabledReason:
-            ledSuit !== null && card.suit !== ledSuit
-              ? `You must follow ${ledSuit}`
-              : 'Not your turn',
+            ledSuit !== null && card.suit !== ledSuit ? t.follow(ledSuit) : t.notYourTurn,
           recommended:
             recommended !== null &&
             recommended.suit === card.suit &&

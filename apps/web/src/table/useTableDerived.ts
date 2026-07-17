@@ -8,9 +8,51 @@ import type {
   TeamSpecials,
   TrickPlayView,
 } from '@jaffre/ui';
+import { useLang, type Lang } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 import { teamSpecialsFrom } from './specials.js';
+
+const T: Record<
+  Lang,
+  {
+    you: string;
+    player: string;
+    pass: string;
+    sa: string;
+    yourBid: string;
+    bidding: (name: string) => string;
+    yourTurn: string;
+    toPlay: (name: string) => string;
+    roundOver: string;
+    gameOver: string;
+  }
+> = {
+  en: {
+    you: 'You',
+    player: 'Player',
+    pass: 'Pass',
+    sa: 'SA',
+    yourBid: 'Your bid',
+    bidding: (name) => `${name} bidding`,
+    yourTurn: 'Your turn',
+    toPlay: (name) => `${name} to play`,
+    roundOver: 'Round over',
+    gameOver: 'Game over',
+  },
+  fr: {
+    you: 'Toi',
+    player: 'Joueur',
+    pass: 'Passe',
+    sa: 'SA',
+    yourBid: 'Ta mise',
+    bidding: (name) => `${name} mise`,
+    yourTurn: 'À ton tour',
+    toPlay: (name) => `À ${name} de jouer`,
+    roundOver: 'Fin de la ronde',
+    gameOver: 'Partie terminée',
+  },
+};
 
 /** Everything a seat chip needs to render, already resolved from game state. */
 export interface SeatChipInfo {
@@ -96,13 +138,15 @@ export interface TableDerived {
  * compute game logic themselves. Returns null until the first view arrives.
  */
 export function useTableDerived(coachOn = false): TableDerived | null {
+  const lang = useLang();
+  const t = T[lang];
   const { view, viewer, roster, sweepTo, heldTrick } = useGameStore();
   if (view === null || roster === null) return null;
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
   const myTurn = me !== null && view.turn === me && view.phase !== 'game_over';
   // The Coach reads only the redacted view — exactly what the human can see.
-  const coach = coachOn && myTurn ? suggest(view) : null;
+  const coach = coachOn && myTurn ? suggest(view, lang) : null;
   const ledSuit = view.currentTrick[0]?.card.suit ?? null;
   const legal =
     me !== null && view.phase === 'playing' && myTurn ? legalCards(view.hand, ledSuit) : [];
@@ -118,7 +162,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   const heldBanner: HeldBanner | null =
     heldTrick !== null
       ? {
-          winnerName: roster.seats[heldTrick.winner]?.name ?? 'Player',
+          winnerName: roster.seats[heldTrick.winner]?.name ?? t.player,
           isYou: heldTrick.winner === (me ?? -1),
           points: heldTrick.points,
           team: (heldTrick.winner % 2) as 0 | 1,
@@ -132,11 +176,11 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     if (view.phase === 'bidding') {
       const entry = view.bids.find((b) => b.seat === seat);
       if (entry === undefined) return null;
-      if (entry.choice.kind === 'pass') return 'Pass';
-      return `${entry.choice.value}${entry.choice.sansAtout ? ' SA' : ''}`;
+      if (entry.choice.kind === 'pass') return t.pass;
+      return `${entry.choice.value}${entry.choice.sansAtout ? ` ${t.sa}` : ''}`;
     }
     if (view.contract !== null && view.contract.seat === seat) {
-      return `${view.contract.value}${view.contract.sansAtout ? ' SA' : ''}`;
+      return `${view.contract.value}${view.contract.sansAtout ? ` ${t.sa}` : ''}`;
     }
     return null;
   };
@@ -155,14 +199,14 @@ export function useTableDerived(coachOn = false): TableDerived | null {
           const seat = (view.dealer + 1 + i) % 4;
           const entry = view.bids.find((b) => b.seat === seat);
           return {
-            name: seat === me ? 'You' : (roster.seats[seat]?.name ?? 'Player'),
+            name: seat === me ? t.you : (roster.seats[seat]?.name ?? t.player),
             you: seat === me,
             bid:
               entry === undefined
                 ? null
                 : entry.choice.kind === 'pass'
-                  ? 'Pass'
-                  : `${String(entry.choice.value)}${entry.choice.sansAtout ? ' SA' : ''}`,
+                  ? t.pass
+                  : `${String(entry.choice.value)}${entry.choice.sansAtout ? ` ${t.sa}` : ''}`,
             current: view.turn === seat,
           };
         })
@@ -171,7 +215,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   const contractDisplay: ContractDisplay | null =
     view.contract !== null
       ? {
-          playerName: roster.seats[view.contract.seat]?.name ?? 'Player',
+          playerName: roster.seats[view.contract.seat]?.name ?? t.player,
           value: view.contract.value,
           sansAtout: view.contract.sansAtout,
           progress: view.roundPoints[view.contract.seat % 2] ?? 0,
@@ -181,7 +225,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
 
   const scoreboardRounds: ScoreboardRound[] = view.roundSummaries.map((r) => ({
     round: r.roundIndex + 1,
-    bidderName: roster.seats[r.contract.seat]?.name ?? 'Player',
+    bidderName: roster.seats[r.contract.seat]?.name ?? t.player,
     bidderTeam: (r.contract.seat % 2) as 0 | 1,
     bid: r.contract.value,
     sansAtout: r.contract.sansAtout,
@@ -198,20 +242,20 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   const specialFlags = teamSpecialsFrom(view.capturedTricks);
 
   // A one-line "what's happening now" for the score-strip center.
-  const turnName = view.turn === me ? 'You' : (roster.seats[view.turn]?.name ?? 'Player');
+  const turnName = view.turn === me ? t.you : (roster.seats[view.turn]?.name ?? t.player);
   const youTurn = view.turn === me;
   const headerAction =
     view.phase === 'bidding'
       ? youTurn
-        ? 'Your bid'
-        : `${turnName} bidding`
+        ? t.yourBid
+        : t.bidding(turnName)
       : view.phase === 'playing'
         ? youTurn
-          ? 'Your turn'
-          : `${turnName} to play`
+          ? t.yourTurn
+          : t.toPlay(turnName)
         : view.phase === 'round_over'
-          ? 'Round over'
-          : 'Game over';
+          ? t.roundOver
+          : t.gameOver;
 
   const last = view.capturedTricks[view.capturedTricks.length - 1];
   const lastTrick: LastTrickInfo | null =
@@ -219,7 +263,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       ? {
           plays: last.plays.map((p) => ({ position: toPosition(p.seat, viewer), card: p.card })),
           winnerPosition: toPosition(last.winner, viewer),
-          winnerName: roster.seats[last.winner]?.name ?? 'Player',
+          winnerName: roster.seats[last.winner]?.name ?? t.player,
           points: last.points,
         }
       : null;
@@ -229,7 +273,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     const info = roster.seats[seat];
     if (info == null) return null;
     return {
-      name: seat === me ? 'You' : info.name,
+      name: seat === me ? t.you : info.name,
       team: (seat % 2) as 0 | 1,
       isTurn: view.turn === seat && view.phase !== 'game_over',
       isDealer: view.dealer === seat,

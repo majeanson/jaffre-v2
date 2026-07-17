@@ -1,3 +1,46 @@
+import { useLang, type Lang } from '../i18n.js';
+
+const T: Record<
+  Lang,
+  {
+    noVoice: string;
+    mutedChip: string;
+    joining: string;
+    join: string;
+    unavailable: string;
+    live: string;
+    you: string;
+    unmute: string;
+    mute: string;
+    leave: string;
+  }
+> = {
+  en: {
+    noVoice: 'no voice',
+    mutedChip: 'muted',
+    joining: 'Joining…',
+    join: 'Join voice',
+    unavailable: 'Voice unavailable — the game continues without it.',
+    live: 'Live',
+    you: 'You',
+    unmute: 'Unmute',
+    mute: 'Mute',
+    leave: 'Leave',
+  },
+  fr: {
+    noVoice: 'pas de vocal',
+    mutedChip: 'micro coupé',
+    joining: 'Connexion…',
+    join: 'Joindre le vocal',
+    unavailable: 'Vocal indisponible — la partie continue quand même.',
+    live: 'En direct',
+    you: 'Toi',
+    unmute: 'Réactiver le micro',
+    mute: 'Couper le micro',
+    leave: 'Quitter',
+  },
+};
+
 export type VoiceStatus = 'idle' | 'joining' | 'live' | 'error';
 
 export interface VoicePeerChip {
@@ -21,6 +64,7 @@ export interface VoiceBarProps {
 }
 
 function Chip({ name, connected, muted, speaking }: VoicePeerChip) {
+  const t = T[useLang()];
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-[11px] transition-shadow duration-(--duration-flick) ${
@@ -34,8 +78,8 @@ function Chip({ name, connected, muted, speaking }: VoicePeerChip) {
         className={`size-1.5 rounded-full ${connected ? 'bg-(--color-ap-ok)' : 'bg-(--color-ap-danger)'}`}
       />
       {name}
-      {!connected && <span className="text-(--color-ap-muted)">no voice</span>}
-      {connected && muted && <span className="text-(--color-ap-muted)">muted</span>}
+      {!connected && <span className="text-(--color-ap-muted)">{t.noVoice}</span>}
+      {connected && muted && <span className="text-(--color-ap-muted)">{t.mutedChip}</span>}
     </span>
   );
 }
@@ -51,6 +95,7 @@ export function VoiceBar({
   onLeave,
   onToggleMute,
 }: VoiceBarProps) {
+  const t = T[useLang()];
   if (status === 'idle' || status === 'joining') {
     return (
       <button
@@ -64,7 +109,7 @@ export function VoiceBar({
             : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer'
         }`}
       >
-        {status === 'joining' ? 'Joining…' : 'Join voice'}
+        {status === 'joining' ? t.joining : t.join}
       </button>
     );
   }
@@ -72,7 +117,7 @@ export function VoiceBar({
   if (status === 'error') {
     return (
       <p data-testid="voice-error" className="max-w-52 text-[11px] text-(--color-ap-danger-text)">
-        {errorMessage ?? 'Voice unavailable — the game continues without it.'}
+        {errorMessage ?? t.unavailable}
       </p>
     );
   }
@@ -86,9 +131,9 @@ export function VoiceBar({
         data-testid="voice-live"
         className="text-[10px] font-semibold uppercase tracking-widest text-(--color-ap-ok)"
       >
-        Live
+        {t.live}
       </span>
-      <Chip name="You" connected muted={muted} speaking={speaking && !muted} />
+      <Chip name={t.you} connected muted={muted} speaking={speaking && !muted} />
       {peers.map((p, i) => (
         <Chip key={i} {...p} />
       ))}
@@ -102,7 +147,7 @@ export function VoiceBar({
             : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
         }`}
       >
-        {muted ? 'Unmute' : 'Mute'}
+        {muted ? t.unmute : t.mute}
       </button>
       <button
         type="button"
@@ -110,7 +155,7 @@ export function VoiceBar({
         data-testid="voice-leave"
         className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2 py-1 text-[11px] text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer"
       >
-        Leave
+        {t.leave}
       </button>
     </div>
   );

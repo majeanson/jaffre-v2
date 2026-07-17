@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLang, type Lang } from '@jaffre/ui';
 import { IconButton } from './IconButton.js';
 import { IconShare } from './icons.js';
 import { ShareSheet } from './ShareSheet.js';
@@ -14,7 +15,13 @@ export interface ShareButtonProps {
  * sheet — the room link front-and-centre — while the link also lands on the
  * clipboard with a transient "Link copied" toast.
  */
+const T: Record<Lang, { share: string; copied: string }> = {
+  en: { share: 'Share this table', copied: 'Link copied' },
+  fr: { share: 'Partager cette table', copied: 'Lien copié' },
+};
+
 export function ShareButton({ code }: ShareButtonProps) {
+  const t = T[useLang()];
   const [copied, setCopied] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -44,13 +51,13 @@ export function ShareButton({ code }: ShareButtonProps) {
 
   return (
     <>
-      <IconButton label="Share this table" onClick={onShare}>
+      <IconButton label={t.share} onClick={onShare}>
         <IconShare />
       </IconButton>
       {sheetOpen && (
         <ShareSheet code={code} onCopy={copyLink} onClose={() => setSheetOpen(false)} />
       )}
-      {copied && <Toast message="Link copied" onDone={() => setCopied(false)} />}
+      {copied && <Toast message={t.copied} onDone={() => setCopied(false)} />}
     </>
   );
 }

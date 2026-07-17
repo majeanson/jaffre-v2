@@ -1,10 +1,93 @@
 import type { SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
-import { AvatarChip, Cta, StatPanel } from '@jaffre/ui';
+import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import { Confetti } from './Confetti.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
 const TEAM_COLOR = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
+
+const T: Record<
+  Lang,
+  {
+    gameOver: string;
+    wins: (winner: 0 | 1) => string;
+    tonight: string;
+    sun: string;
+    moon: string;
+    gamesSun: string;
+    gamesMoon: string;
+    stillAtTable: string;
+    ready: string;
+    away: string;
+    left: string;
+    empty: string;
+    scoresCaption: string;
+    game: string;
+    gamesWon: string;
+    roundByRound: string;
+    rd: string;
+    contract: string;
+    deltaSun: string;
+    deltaMoon: string;
+    score: string;
+    rematch: string;
+    swapSeats: string;
+    leave: string;
+  }
+> = {
+  en: {
+    gameOver: 'Game over',
+    wins: (winner) => `${winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`,
+    tonight: 'Tonight:',
+    sun: 'Sun',
+    moon: 'Moon',
+    gamesSun: 'Games — Sun',
+    gamesMoon: 'Games — Moon',
+    stillAtTable: 'Still at the table',
+    ready: 'Ready',
+    away: 'Away',
+    left: 'Left',
+    empty: 'Empty',
+    scoresCaption: 'Scores by game, one column per player',
+    game: 'Game',
+    gamesWon: 'Games won',
+    roundByRound: 'Round-by-round scores',
+    rd: 'Rd',
+    contract: 'Contract',
+    deltaSun: 'Δ Sun',
+    deltaMoon: 'Δ Moon',
+    score: 'Score',
+    rematch: 'Rematch',
+    swapSeats: 'Swap seats',
+    leave: 'Leave',
+  },
+  fr: {
+    gameOver: 'Partie terminée',
+    wins: (winner) => `L'Équipe ${winner === 0 ? 'Soleil' : 'Lune'} gagne!`,
+    tonight: 'Ce soir :',
+    sun: 'Soleil',
+    moon: 'Lune',
+    gamesSun: 'Parties — Soleil',
+    gamesMoon: 'Parties — Lune',
+    stillAtTable: 'Encore à la table',
+    ready: 'Prêt',
+    away: 'Absent',
+    left: 'Parti',
+    empty: 'Vide',
+    scoresCaption: 'Pointage par partie, une colonne par joueur',
+    game: 'Partie',
+    gamesWon: 'Parties gagnées',
+    roundByRound: 'Pointage ronde par ronde',
+    rd: 'R',
+    contract: 'Contrat',
+    deltaSun: 'Δ Soleil',
+    deltaMoon: 'Δ Lune',
+    score: 'Pointage',
+    rematch: 'Revanche',
+    swapSeats: 'Échanger les sièges',
+    leave: 'Quitter',
+  },
+};
 
 export interface GameRecapProps {
   readonly winner: 0 | 1;
@@ -47,6 +130,7 @@ function Scorepad({
   readonly names: readonly string[];
   readonly seriesWins: readonly [number, number] | undefined;
 }) {
+  const t = T[useLang()];
   const initial = (n: string) => (n.trim()[0] ?? '—').toUpperCase();
   const cell = 'px-[0.3em] py-[0.45em] text-center font-arcade-display tabular-nums';
   // Seats 0&2 are Sun (score index 0), 1&3 Moon (index 1). Literal-index the
@@ -64,11 +148,11 @@ function Scorepad({
   return (
     <div className="overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap-lg)">
       <table className="w-full border-collapse tabular-nums">
-        <caption className="sr-only">Scores by game, one column per player</caption>
+        <caption className="sr-only">{t.scoresCaption}</caption>
         <thead>
           <tr className="border-b-2 border-(--color-ap-ink)">
             <th scope="col" className={hdr}>
-              Game
+              {t.game}
             </th>
             {[0, 1, 2, 3].map((seat) => (
               <th
@@ -103,7 +187,7 @@ function Scorepad({
         <tfoot>
           <tr className="border-t-2 border-(--color-ap-ink)">
             <th scope="row" className={hdr}>
-              Games won
+              {t.gamesWon}
             </th>
             {[0, 1, 2, 3].map((seat) => {
               const w = teamOf(seat) === 0 ? sunWins : moonWins;
@@ -147,13 +231,14 @@ export function GameRecap({
   onSwapSeats,
   onLeave,
 }: GameRecapProps) {
+  const t = T[useLang()];
   const label = (uc: string) =>
     `font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) ${uc}`;
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Game over"
+      aria-label={t.gameOver}
       className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4"
     >
       <div className="pop-in relative w-full max-w-md rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
@@ -162,7 +247,7 @@ export function GameRecap({
           className="font-arcade-display text-[1.9em] uppercase leading-none"
           style={{ color: TEAM_COLOR[winner] }}
         >
-          {winner === 0 ? 'Team Sun' : 'Team Moon'} wins!
+          {t.wins(winner)}
         </p>
         <div className="mt-[0.7em] flex items-center justify-center gap-[0.5em]">
           <AvatarChip name={names[winner] ?? '—'} color={TEAM_COLOR[winner]} />
@@ -180,9 +265,14 @@ export function GameRecap({
             {/* Kept as a single <p> carrying "Tonight:" + both counts — the recap
                 e2e reads this line for the standing-table tally. */}
             <p className={`${label('')} tabular-nums`}>
-              Tonight: <span style={{ color: TEAM_COLOR[0] }}>Sun {seriesWins[0]}</span>
+              {t.tonight}{' '}
+              <span style={{ color: TEAM_COLOR[0] }}>
+                {t.sun} {seriesWins[0]}
+              </span>
               {' — '}
-              <span style={{ color: TEAM_COLOR[1] }}>Moon {seriesWins[1]}</span>
+              <span style={{ color: TEAM_COLOR[1] }}>
+                {t.moon} {seriesWins[1]}
+              </span>
             </p>
             {seriesGames !== undefined && seriesGames.length > 0 ? (
               // Per-game scorepad — the richer standing-table view once games
@@ -195,13 +285,13 @@ export function GameRecap({
               <div className="mt-[0.6em] grid grid-cols-2 gap-3">
                 <StatPanel
                   value={seriesWins[0]}
-                  label="Games — Sun"
+                  label={t.gamesSun}
                   tone={seriesWins[0] >= seriesWins[1] ? 'gold' : 'default'}
                   sub={<PairChips names={names} a={0} b={2} />}
                 />
                 <StatPanel
                   value={seriesWins[1]}
-                  label="Games — Moon"
+                  label={t.gamesMoon}
                   tone={seriesWins[1] > seriesWins[0] ? 'gold' : 'default'}
                   sub={<PairChips names={names} a={1} b={3} />}
                 />
@@ -212,7 +302,7 @@ export function GameRecap({
 
         {seats !== undefined && (
           <div className="mt-5 text-left">
-            <p className={label('')}>Still at the table</p>
+            <p className={label('')}>{t.stillAtTable}</p>
             {/* One status chip per seat — Ready (here) / Away / Left (empty), so
                 the rematch reads who's coming back at a glance. */}
             <ul className="mt-[0.6em] flex justify-between gap-2">
@@ -220,10 +310,10 @@ export function GameRecap({
                 const s = seats[i] ?? null;
                 const status =
                   s === null
-                    ? { word: 'Left', tone: 'text-(--color-ap-muted)' }
+                    ? { word: t.left, tone: 'text-(--color-ap-muted)' }
                     : s.connected
-                      ? { word: 'Ready', tone: 'text-(--color-ap-ok)' }
-                      : { word: 'Away', tone: 'text-(--color-ap-muted)' };
+                      ? { word: t.ready, tone: 'text-(--color-ap-ok)' }
+                      : { word: t.away, tone: 'text-(--color-ap-muted)' };
                 return (
                   <li key={i} className="flex flex-col items-center gap-1.5">
                     {s === null ? (
@@ -237,7 +327,7 @@ export function GameRecap({
                       <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} />
                     )}
                     <span className="max-w-[5rem] truncate font-arcade-ui text-[0.78em] font-semibold text-(--color-ap-text)">
-                      {s?.name ?? 'Empty'}
+                      {s?.name ?? t.empty}
                     </span>
                     <span
                       className={`font-arcade-display text-[0.7em] uppercase tracking-wide ${status.tone}`}
@@ -256,17 +346,17 @@ export function GameRecap({
           <div
             tabIndex={0}
             role="region"
-            aria-label="Round-by-round scores"
+            aria-label={t.roundByRound}
             className="mt-5 max-h-56 overflow-y-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
           >
             <table className="w-full tabular-nums">
               <thead className="text-(--color-ap-muted)">
                 <tr>
-                  <th className="px-1.5 py-1 text-left font-normal">Rd</th>
-                  <th className="px-1.5 py-1 text-left font-normal">Contract</th>
-                  <th className="px-1.5 py-1 text-right font-normal">Δ Sun</th>
-                  <th className="px-1.5 py-1 text-right font-normal">Δ Moon</th>
-                  <th className="px-1.5 py-1 text-right font-normal">Score</th>
+                  <th className="px-1.5 py-1 text-left font-normal">{t.rd}</th>
+                  <th className="px-1.5 py-1 text-left font-normal">{t.contract}</th>
+                  <th className="px-1.5 py-1 text-right font-normal">{t.deltaSun}</th>
+                  <th className="px-1.5 py-1 text-right font-normal">{t.deltaMoon}</th>
+                  <th className="px-1.5 py-1 text-right font-normal">{t.score}</th>
                 </tr>
               </thead>
               <tbody className="text-(--color-ap-text)">
@@ -308,17 +398,17 @@ export function GameRecap({
               onClick={onRematch}
               className="w-full text-[1.2em] px-[1.5em] py-[0.85em]"
             >
-              Rematch
+              {t.rematch}
             </Cta>
           )}
           <div className="flex w-full items-center justify-center gap-2">
             {onSwapSeats !== undefined && (
               <Cta type="button" variant="secondary" onClick={onSwapSeats} className="flex-1">
-                Swap seats
+                {t.swapSeats}
               </Cta>
             )}
             <Cta type="button" variant="secondary" onClick={onLeave} className="flex-1">
-              Leave
+              {t.leave}
             </Cta>
           </div>
         </div>

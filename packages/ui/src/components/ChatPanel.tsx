@@ -1,4 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLang, type Lang } from '../i18n.js';
+
+const T: Record<
+  Lang,
+  {
+    chat: string;
+    collapse: string;
+    messages: string;
+    empty: string;
+    placeholder: string;
+    inputLabel: string;
+    send: string;
+    slowDown: string;
+  }
+> = {
+  en: {
+    chat: 'Chat',
+    collapse: 'Collapse chat',
+    messages: 'Chat messages',
+    empty: 'No messages yet.',
+    placeholder: 'Message…',
+    inputLabel: 'Chat message',
+    send: 'Send',
+    slowDown: 'Slow down…',
+  },
+  fr: {
+    chat: 'Clavardage',
+    collapse: 'Replier le clavardage',
+    messages: 'Messages du clavardage',
+    empty: 'Pas encore de messages.',
+    placeholder: 'Message…',
+    inputLabel: 'Message de clavardage',
+    send: 'Envoyer',
+    slowDown: 'Doucement…',
+  },
+};
 
 export interface ChatMessage {
   readonly from: string;
@@ -33,6 +69,7 @@ export function ChatPanel({
   collapsible = false,
   defaultOpen = false,
 }: ChatPanelProps) {
+  const t = T[useLang()];
   const [open, setOpen] = useState(!collapsible || defaultOpen);
   const [text, setText] = useState('');
   const [hint, setHint] = useState(false);
@@ -90,13 +127,13 @@ export function ChatPanel({
     >
       <div className="flex items-center justify-between px-1">
         <span className="text-[11px] font-semibold uppercase tracking-widest text-(--color-ap-muted)">
-          Chat
+          {t.chat}
         </span>
         {collapsible && (
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Collapse chat"
+            aria-label={t.collapse}
             className="rounded px-1.5 text-xs text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
           >
             ✕
@@ -107,11 +144,11 @@ export function ChatPanel({
         ref={listRef}
         data-testid="chat-messages"
         role="region"
-        aria-label="Chat messages"
+        aria-label={t.messages}
         tabIndex={0}
         className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ap-text)"
       >
-        {entries.length === 0 && <p className="text-(--color-ap-muted)">No messages yet.</p>}
+        {entries.length === 0 && <p className="text-(--color-ap-muted)">{t.empty}</p>}
         {entries.map((e, i) => (
           <p key={i} className="break-words">
             <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at)}</span>{' '}
@@ -132,8 +169,8 @@ export function ChatPanel({
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={MAX_CHARS}
-          placeholder="Message…"
-          aria-label="Chat message"
+          placeholder={t.placeholder}
+          aria-label={t.inputLabel}
           data-testid="chat-input"
           className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-2.5 py-1.5 text-xs text-(--color-ap-text) placeholder:text-(--color-ap-muted)"
         />
@@ -141,10 +178,10 @@ export function ChatPanel({
           type="submit"
           className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1.5 text-xs text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer"
         >
-          Send
+          {t.send}
         </button>
       </form>
-      {hint && <p className="px-1 text-[11px] text-(--color-ap-gold)">Slow down…</p>}
+      {hint && <p className="px-1 text-[11px] text-(--color-ap-gold)">{t.slowDown}</p>}
     </div>
   );
 
@@ -157,8 +194,8 @@ export function ChatPanel({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label="Chat"
-        title="Chat"
+        aria-label={t.chat}
+        title={t.chat}
         data-testid="chat-toggle"
         className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-base) shadow-(--shadow-ap-sm) transition-colors ${
           open

@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
-import { AvatarChip, Cta, Panel } from '@jaffre/ui';
+import { AvatarChip, Cta, Panel, useLang, type Lang } from '@jaffre/ui';
 import { fetchTableStatus, type TableEntry, type TableStatus } from '../net/rooms.js';
 import { generateRoomCode } from './roomCode.js';
 import {
@@ -11,11 +11,98 @@ import {
 } from './practiceBots.js';
 
 const DIFFICULTY_ORDER: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
-const DIFFICULTY_LABEL: Record<BotDifficulty, string> = {
-  easy: 'Easy',
-  normal: 'Normal',
-  hard: 'Hard',
+const DIFFICULTY_LABEL: Record<Lang, Record<BotDifficulty, string>> = {
+  en: { easy: 'Easy', normal: 'Normal', hard: 'Hard' },
+  fr: { easy: 'Facile', normal: 'Normal', hard: 'Difficile' },
 };
+
+const T: Record<
+  Lang,
+  {
+    play: string;
+    practice: string;
+    opponents: string;
+    botDifficulty: string;
+    playNow: string;
+    playFriends: string;
+    createRoom: string;
+    withCode: string;
+    roomCode: string;
+    joinRoom: string;
+    yourTables: string;
+    going: (n: number) => string;
+    resume: string;
+    tonight: string;
+    sun: (n: number) => string;
+    moon: (n: number) => string;
+    yourGames: string;
+    yourRecord: string;
+    finished: string;
+    yourTurn: string;
+    inPlay: string;
+    agoNow: string;
+    agoMin: (n: number) => string;
+    agoH: (n: number) => string;
+    agoD: (n: number) => string;
+  }
+> = {
+  en: {
+    play: 'Play',
+    practice: 'Practice vs bots',
+    opponents: 'Opponents',
+    botDifficulty: 'Bot difficulty',
+    playNow: 'Play now',
+    playFriends: 'Play with friends',
+    createRoom: 'Create a room',
+    withCode: 'With code',
+    roomCode: 'Room code',
+    joinRoom: 'Join room',
+    yourTables: 'Your tables',
+    going: (n) => `${String(n)} going`,
+    resume: 'Resume',
+    tonight: 'Tonight:',
+    sun: (n) => `Sun ${String(n)}`,
+    moon: (n) => `Moon ${String(n)}`,
+    yourGames: 'Your games',
+    yourRecord: 'Your record',
+    finished: 'Finished · rematch?',
+    yourTurn: 'Your turn',
+    inPlay: 'In play',
+    agoNow: 'just now',
+    agoMin: (n) => `${String(n)} min ago`,
+    agoH: (n) => `${String(n)}h ago`,
+    agoD: (n) => `${String(n)}d ago`,
+  },
+  fr: {
+    play: 'Jouer',
+    practice: 'Pratique contre les bots',
+    opponents: 'Adversaires',
+    botDifficulty: 'Difficulté des bots',
+    playNow: 'Jouer maintenant',
+    playFriends: 'Jouer entre amis',
+    createRoom: 'Créer un salon',
+    withCode: 'ou joins avec un code',
+    roomCode: 'Code du salon',
+    joinRoom: 'Joindre le salon',
+    yourTables: 'Tes tables',
+    going: (n) => `${String(n)} en route`,
+    resume: 'Reprendre',
+    tonight: 'Ce soir :',
+    sun: (n) => `Soleil ${String(n)}`,
+    moon: (n) => `Lune ${String(n)}`,
+    yourGames: 'Tes parties',
+    yourRecord: 'Ton record',
+    finished: 'Terminée · revanche?',
+    yourTurn: 'À ton tour',
+    inPlay: 'En jeu',
+    agoNow: "à l'instant",
+    agoMin: (n) => `il y a ${String(n)} min`,
+    agoH: (n) => `il y a ${String(n)} h`,
+    agoD: (n) => `il y a ${String(n)} j`,
+  },
+};
+
+type Strings = (typeof T)[Lang];
 
 function nextDifficulty(current: BotDifficulty): BotDifficulty {
   const i = DIFFICULTY_ORDER.indexOf(current);
@@ -34,14 +121,14 @@ export interface PlayMenuProps {
 }
 
 /** "4 min ago" / "just now" — a coarse relative time for the last snapshot. */
-function ago(ts: number): string {
+function ago(ts: number, t: Strings): string {
   const secs = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (secs < 60) return 'just now';
+  if (secs < 60) return t.agoNow;
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${String(mins)} min ago`;
+  if (mins < 60) return t.agoMin(mins);
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${String(hours)}h ago`;
-  return `${String(Math.floor(hours / 24))}d ago`;
+  if (hours < 24) return t.agoH(hours);
+  return t.agoD(Math.floor(hours / 24));
 }
 
 /** The live badge for a table from its status peek + your seat: your turn /
@@ -49,15 +136,15 @@ function ago(ts: number): string {
 function liveBadge(
   status: TableStatus | null | undefined,
   yourSeat: number | null | undefined,
+  t: Strings,
 ): { readonly label: string; readonly dot: string } | null {
   if (status == null || !status.started) return null;
-  if (status.phase === 'game_over')
-    return { label: 'Finished · rematch?', dot: 'bg-(--color-ap-gold)' };
+  if (status.phase === 'game_over') return { label: t.finished, dot: 'bg-(--color-ap-gold)' };
   const live = status.phase === 'playing' || status.phase === 'bidding';
   if (live && typeof yourSeat === 'number' && status.turn === yourSeat) {
-    return { label: 'Your turn', dot: 'bg-(--color-ap-ok)' };
+    return { label: t.yourTurn, dot: 'bg-(--color-ap-ok)' };
   }
-  return { label: 'In play', dot: 'bg-(--color-ap-muted)' };
+  return { label: t.inPlay, dot: 'bg-(--color-ap-muted)' };
 }
 
 /** One standing-table card: who's there, tonight's tally, and Resume. */
@@ -70,7 +157,8 @@ function TableCard({
   readonly status?: TableStatus | null;
   readonly onResume: () => void;
 }) {
-  const badge = liveBadge(status, table.yourSeat);
+  const t = T[useLang()];
+  const badge = liveBadge(status, table.yourSeat, t);
   return (
     <div className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)">
       {badge !== null && (
@@ -84,7 +172,7 @@ function TableCard({
           {table.code}
         </span>
         <span className="shrink-0 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-          {ago(table.updatedAt)}
+          {ago(table.updatedAt, t)}
         </span>
       </div>
       {table.seats.length > 0 && (
@@ -102,13 +190,14 @@ function TableCard({
       )}
       {table.seriesWins !== undefined && (
         <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.12em] text-(--color-ap-muted) tabular-nums">
-          Tonight: <span style={{ color: 'var(--color-team-a)' }}>Sun {table.seriesWins[0]}</span>
+          {t.tonight}{' '}
+          <span style={{ color: 'var(--color-team-a)' }}>{t.sun(table.seriesWins[0])}</span>
           {' — '}
-          <span style={{ color: 'var(--color-team-b)' }}>Moon {table.seriesWins[1]}</span>
+          <span style={{ color: 'var(--color-team-b)' }}>{t.moon(table.seriesWins[1])}</span>
         </span>
       )}
       <Cta type="button" onClick={onResume} className="w-full">
-        Resume
+        {t.resume}
       </Cta>
     </div>
   );
@@ -139,6 +228,8 @@ function useTableStatuses(tables: readonly TableEntry[]): Record<string, TableSt
 }
 
 export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
+  const t = T[useLang()];
+  const difficultyLabel = DIFFICULTY_LABEL[useLang()];
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
   const statuses = useTableStatuses(tables);
@@ -161,7 +252,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
 
   return (
     <section
-      aria-label="Play"
+      aria-label={t.play}
       className="grid w-full grid-cols-1 gap-3 font-arcade-ui sm:grid-cols-2"
     >
       <div
@@ -175,16 +266,18 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           ♠
         </span>
         <span className="block font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase">
-          Practice vs bots
+          {t.practice}
         </span>
         {/* The three bots live right inside the pill — tap one to cycle its
             difficulty. (Nested here as real buttons, so the pill itself can't
             be one big button; "Play now" is the action.) */}
         <div
           className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
-          aria-label="Bot difficulty"
+          aria-label={t.botDifficulty}
         >
-          <span className="font-arcade-display uppercase tracking-wide opacity-70">Opponents</span>
+          <span className="font-arcade-display uppercase tracking-wide opacity-70">
+            {t.opponents}
+          </span>
           {([0, 1, 2] as const).map((seat) => (
             <button
               key={seat}
@@ -192,7 +285,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
               onClick={() => cycleBot(seat)}
               className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
             >
-              {PRACTICE_BOT_NAMES[seat]} · {DIFFICULTY_LABEL[bots[seat]]}
+              {PRACTICE_BOT_NAMES[seat]} · {difficultyLabel[bots[seat]]}
             </button>
           ))}
         </div>
@@ -201,7 +294,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           onClick={onPractice}
           className="mt-1 inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
-          Play now
+          {t.playNow}
           <span
             aria-hidden
             className="transition-transform duration-(--duration-flick) group-hover:translate-x-1"
@@ -216,17 +309,17 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         style={{ '--rise-delay': '140ms' } as CSSProperties}
       >
         <span className="font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase text-(--color-ap-text)">
-          Play with friends
+          {t.playFriends}
         </span>
         <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
-          Create a room
+          {t.createRoom}
         </Cta>
         <div
           aria-hidden
           className="flex items-center gap-3 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-muted)"
         >
           <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-          With code
+          {t.withCode}
           <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
         </div>
         <form
@@ -240,7 +333,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="early-newt-os"
-            aria-label="Room code"
+            aria-label={t.roomCode}
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
@@ -250,7 +343,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             type="submit"
             className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
           >
-            Join room
+            {t.joinRoom}
           </button>
         </form>
       </Panel>
@@ -262,19 +355,19 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         >
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase text-(--color-ap-text)">
-              Your tables
+              {t.yourTables}
             </span>
             <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              {tables.length} going
+              {t.going(tables.length)}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tables.slice(0, 4).map((t) => (
+            {tables.slice(0, 4).map((tbl) => (
               <TableCard
-                key={t.code}
-                table={t}
-                status={statuses[t.code] ?? null}
-                onResume={() => onJoinRoom(t.code)}
+                key={tbl.code}
+                table={tbl}
+                status={statuses[tbl.code] ?? null}
+                onResume={() => onJoinRoom(tbl.code)}
               />
             ))}
           </div>
@@ -292,7 +385,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           <span aria-hidden className="text-(--color-ap-gold)">
             ♠
           </span>
-          Your games
+          {t.yourGames}
         </a>
         <a
           href="#stats"
@@ -301,7 +394,7 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           <span aria-hidden className="text-(--color-ap-gold)">
             ★
           </span>
-          Your record
+          {t.yourRecord}
         </a>
       </div>
     </section>

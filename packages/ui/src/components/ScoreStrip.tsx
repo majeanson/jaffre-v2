@@ -1,7 +1,84 @@
 import { useState, type ReactNode } from 'react';
+import { suitName, useLang, type Lang } from '../i18n.js';
 import type { SuitId } from '../types.js';
-import { SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
+
+const T: Record<
+  Lang,
+  {
+    redChip: string;
+    brownChip: string;
+    pile: (label: string, count: number, points: number, red: boolean, brown: boolean) => string;
+    betMade: string;
+    betMissed: string;
+    scoreboard: string;
+    round: string;
+    bet: string;
+    bidding: string;
+    noRounds: string;
+    total: string;
+    firstTo: (target: number) => string;
+    noTrump: string;
+    trumpTitle: (suit: string) => string;
+    trumpSr: (suit: string) => string;
+    scoreDetails: string;
+    noBetYet: string;
+    mustTake: string;
+    trickPoints: string;
+    noTrumpStake: string;
+  }
+> = {
+  en: {
+    redChip: 'Red 0 captured · +5',
+    brownChip: 'Brown 0 captured · −2',
+    pile: (label, count, points, red, brown) =>
+      `${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
+        red ? ', captured the red 0 for +5' : ''
+      }${brown ? ', captured the brown 0 for −2' : ''}`,
+    betMade: 'Bet made',
+    betMissed: 'Bet missed',
+    scoreboard: 'Round-by-round scoreboard',
+    round: 'Round',
+    bet: 'Bet',
+    bidding: 'bidding…',
+    noRounds: 'no rounds played yet',
+    total: 'Total',
+    firstTo: (target) => `first to ${target}`,
+    noTrump: 'No\u00A0trump',
+    trumpTitle: (suit) => `Trump: ${suit}`,
+    trumpSr: (suit) => `Trump ${suit}`,
+    scoreDetails: 'Score details',
+    noBetYet: 'no bet yet',
+    mustTake: 'must take',
+    trickPoints: 'trick points',
+    noTrumpStake: ' with no trump (stake ×2)',
+  },
+  fr: {
+    redChip: 'Zéro rouge capturé · +5',
+    brownChip: 'Zéro brun capturé · −2',
+    pile: (label, count, points, red, brown) =>
+      `${label} : ${count} levée${count === 1 ? '' : 's'}, ${points} points cette ronde${
+        red ? ', a capturé le zéro rouge pour +5' : ''
+      }${brown ? ', a capturé le zéro brun pour −2' : ''}`,
+    betMade: 'Mise réussie',
+    betMissed: 'Mise ratée',
+    scoreboard: 'Pointage ronde par ronde',
+    round: 'Ronde',
+    bet: 'Mise',
+    bidding: 'mises en cours…',
+    noRounds: 'aucune ronde jouée',
+    total: 'Total',
+    firstTo: (target) => `premier à ${target}`,
+    noTrump: 'Sans\u00A0atout',
+    trumpTitle: (suit) => `Atout : ${suit}`,
+    trumpSr: (suit) => `Atout ${suit}`,
+    scoreDetails: 'Détails du pointage',
+    noBetYet: 'pas encore de mise',
+    mustTake: 'doit prendre',
+    trickPoints: 'points de levées',
+    noTrumpStake: ' sans atout (mise ×2)',
+  },
+};
 
 /** Which scoring specials a team has captured this round. */
 export interface TeamSpecials {
@@ -55,8 +132,9 @@ export interface ScoreStripProps {
   readonly defaultDetailsOpen?: boolean;
 }
 
-/** "Team Sun" → "Sun": the dot already carries the team identity. */
-const shortName = (name: string): string => name.replace(/^team\s+/i, '');
+/** "Team Sun" / « Équipe Soleil » → "Sun" / « Soleil »: the dot already
+ * carries the team identity. */
+const shortName = (name: string): string => name.replace(/^(team|équipe)\s+/i, '');
 
 const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
 /** Deep team colours that meet AA on the ivory scorepad's cream header in BOTH
@@ -65,10 +143,11 @@ const TEAM_INK = ['#8a5c00', '#1c5f78'] as const;
 
 /** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
 export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
+  const t = T[useLang()];
   const isRed = kind === 'red';
   return (
     <span
-      title={isRed ? 'Red 0 captured · +5' : 'Brown 0 captured · −2'}
+      title={isRed ? t.redChip : t.brownChip}
       className={`rounded-(--radius-ap-inner) border-2 bg-(--color-ap-ink) px-1 font-arcade-display text-[9px] leading-tight text-white ${
         isRed ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
       }`}
@@ -97,13 +176,12 @@ function TrickPile({
   label: string;
   mirrored?: boolean;
 }) {
+  const t = T[useLang()];
   const shown = Math.min(count, 8);
   return (
     <span
       className={`flex items-center gap-1.5 rounded-(--radius-ap-inner) bg-(--color-ap-ink)/15 px-1.5 py-1 ${mirrored ? 'flex-row-reverse' : ''}`}
-      aria-label={`${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
-        special?.red ? ', captured the red 0 for +5' : ''
-      }${special?.brown ? ', captured the brown 0 for −2' : ''}`}
+      aria-label={t.pile(label, count, points, special?.red === true, special?.brown === true)}
     >
       {/* The mini-card stack needs width a phone doesn't have — there the
           points + special chips alone tell the story. */}
@@ -228,6 +306,7 @@ function BetCell({
   sansAtout: boolean;
   made?: boolean | undefined;
 }) {
+  const t = T[useLang()];
   return (
     <span className="flex items-center justify-end gap-1 whitespace-nowrap">
       <span
@@ -242,7 +321,7 @@ function BetCell({
       {made !== undefined && (
         <span
           className={made ? 'text-(--color-suit-green)' : 'text-(--color-suit-red)'}
-          title={made ? 'Bet made' : 'Bet missed'}
+          title={made ? t.betMade : t.betMissed}
         >
           {made ? '✓' : '✗'}
         </span>
@@ -273,6 +352,7 @@ function ScorePad({
   roundPoints?: readonly [number, number] | undefined;
   contract?: ScoreStripProps['contract'] | undefined;
 }) {
+  const t = T[useLang()];
   const liveRound =
     currentRound !== undefined && !rounds.some((r) => r.round === currentRound)
       ? currentRound
@@ -303,7 +383,7 @@ function ScorePad({
       <div
         tabIndex={0}
         role="region"
-        aria-label="Round-by-round scoreboard"
+        aria-label={t.scoreboard}
         className="max-h-52 overflow-y-auto"
         style={{
           backgroundImage:
@@ -311,12 +391,12 @@ function ScorePad({
         }}
       >
         <table className="w-full table-fixed tabular-nums" data-testid="scorepad">
-          <caption className="sr-only">Round-by-round scoreboard</caption>
+          <caption className="sr-only">{t.scoreboard}</caption>
           {cols}
           <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-[#efe6cf]">
             <tr>
               <th scope="col" className={`${headCell} pl-3 text-left`}>
-                Round
+                {t.round}
               </th>
               {([0, 1] as const).map((team) => (
                 <th
@@ -334,7 +414,7 @@ function ScorePad({
                 </th>
               ))}
               <th scope="col" className={`${headCell} pr-3 text-right`}>
-                Bet
+                {t.bet}
               </th>
             </tr>
           </thead>
@@ -375,7 +455,7 @@ function ScorePad({
                       sansAtout={contract.sansAtout}
                     />
                   ) : (
-                    <span className="italic">bidding…</span>
+                    <span className="italic">{t.bidding}</span>
                   )}
                 </td>
               </tr>
@@ -383,7 +463,7 @@ function ScorePad({
             {rounds.length === 0 && liveRound === null && (
               <tr className="text-(--color-ap-ink)/50">
                 <td colSpan={4} className="py-2 text-center italic">
-                  no rounds played yet
+                  {t.noRounds}
                 </td>
               </tr>
             )}
@@ -395,7 +475,7 @@ function ScorePad({
           {cols}
           <tbody>
             <tr>
-              <td className={`${headCell} pl-3 text-left`}>Total</td>
+              <td className={`${headCell} pl-3 text-left`}>{t.total}</td>
               {([0, 1] as const).map((team) => (
                 <td
                   key={team}
@@ -406,7 +486,7 @@ function ScorePad({
                 </td>
               ))}
               <td className="py-1.5 pr-3 text-right font-arcade-ui text-[0.85em] text-(--color-ap-ink)/70">
-                first to {target}
+                {t.firstTo(target)}
               </td>
             </tr>
           </tbody>
@@ -418,22 +498,23 @@ function ScorePad({
 
 /** The trump suit, called out with its mark + color — the key fact of the round. */
 function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecided: boolean }) {
+  const lang = useLang();
+  const t = T[lang];
   if (!trumpDecided) return null;
   if (trump === null) {
     return (
       <span className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase">
-        No&nbsp;trump
+        {t.noTrump}
       </span>
     );
   }
-  const style = SUIT_STYLES[trump];
   return (
     <span
-      title={`Trump: ${style.label}`}
+      title={t.trumpTitle(suitName(trump, lang))}
       className="grid size-[1.7em] place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel)"
     >
       <SuitShape suit={trump} size="0.9em" />
-      <span className="sr-only">Trump {style.label}</span>
+      <span className="sr-only">{t.trumpSr(suitName(trump, lang))}</span>
     </span>
   );
 }
@@ -460,6 +541,7 @@ export function ScoreStrip({
   actions,
   defaultDetailsOpen = false,
 }: ScoreStripProps) {
+  const t = T[useLang()];
   const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
@@ -467,7 +549,7 @@ export function ScoreStrip({
       <button
         type="button"
         aria-expanded={open}
-        aria-label="Score details"
+        aria-label={t.scoreDetails}
         onClick={() => setOpen((o) => !o)}
         className="grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-3.5 py-1.5 max-sm:gap-x-2 max-sm:px-2 max-sm:py-1"
       >
@@ -506,7 +588,7 @@ export function ScoreStrip({
               </span>
             ) : (
               <span className="text-[0.85em] whitespace-nowrap text-(--color-ap-muted)">
-                no bet yet
+                {t.noBetYet}
               </span>
             )}
             <TrumpBadge trump={trump} trumpDecided={trumpDecided} />
@@ -548,9 +630,10 @@ export function ScoreStrip({
           {contract !== null && (
             <p className="text-(--color-ap-muted)">
               <span className="font-semibold text-(--color-ap-text)">{contract.playerName}</span>{' '}
-              must take{' '}
-              <span className="font-semibold text-(--color-ap-text)">{contract.value}</span> trick
-              points{contract.sansAtout ? ' with no trump (stake ×2)' : ''}
+              {t.mustTake}{' '}
+              <span className="font-semibold text-(--color-ap-text)">{contract.value}</span>{' '}
+              {t.trickPoints}
+              {contract.sansAtout ? t.noTrumpStake : ''}
             </p>
           )}
           {actions !== undefined && (

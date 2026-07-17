@@ -1,6 +1,32 @@
 import { useState, type ReactNode } from 'react';
-import { AvatarChip, Collapsible, Cta, PlayerCard } from '@jaffre/ui';
+import { AvatarChip, Collapsible, Cta, PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { NameField } from './NameField.js';
+
+const T: Record<
+  Lang,
+  {
+    customize: string;
+    yourColour: string;
+    colour: (hex: string) => string;
+    paint: string;
+    donePainting: string;
+  }
+> = {
+  en: {
+    customize: 'Customize',
+    yourColour: 'Your colour',
+    colour: (hex) => `Colour ${hex}`,
+    paint: 'Paint your card',
+    donePainting: 'Done painting',
+  },
+  fr: {
+    customize: 'Personnaliser',
+    yourColour: 'Ta couleur',
+    colour: (hex) => `Couleur ${hex}`,
+    paint: 'Peins ta carte',
+    donePainting: 'Fini de peindre',
+  },
+};
 
 /** The identity palette — same hexes the PlayerCard brush offers, so a chosen
  * colour and a painted stroke read as one set. Suit/accent colours from the
@@ -60,6 +86,7 @@ export function ProfileCard({
   children,
   defaultOpen = false,
 }: ProfileCardProps) {
+  const t = T[useLang()];
   const [painting, setPainting] = useState(false);
   const fill = color ?? undefined;
 
@@ -83,7 +110,7 @@ export function ProfileCard({
         summary={
           <>
             <AvatarChip name={name} color={fill} size="sm" />
-            Customize
+            {t.customize}
           </>
         }
       >
@@ -98,7 +125,7 @@ export function ProfileCard({
           <>
             <div
               role="group"
-              aria-label="Your colour"
+              aria-label={t.yourColour}
               className="flex flex-wrap justify-center gap-[0.5em]"
             >
               {PALETTE.map((c) => {
@@ -107,7 +134,7 @@ export function ProfileCard({
                   <button
                     key={c}
                     type="button"
-                    aria-label={`Colour ${c}`}
+                    aria-label={t.colour(c)}
                     aria-pressed={selected}
                     onClick={() => onColor?.(c)}
                     style={{ background: c }}
@@ -121,13 +148,13 @@ export function ProfileCard({
               })}
             </div>
             <Cta type="button" variant="secondary" onClick={() => setPainting(true)}>
-              Paint your card
+              {t.paint}
             </Cta>
           </>
         )}
         {editable && painting && (
           <Cta type="button" variant="secondary" onClick={() => setPainting(false)}>
-            Done painting
+            {t.donePainting}
           </Cta>
         )}
 

@@ -1,3 +1,10 @@
+import { useLang, type Lang } from '@jaffre/ui';
+
+const T: Record<Lang, { yourName: string; placeholder: string }> = {
+  en: { yourName: 'Your name', placeholder: 'Player' },
+  fr: { yourName: 'Ton nom', placeholder: 'Joueur' },
+};
+
 export interface NameFieldProps {
   readonly value: string;
   readonly onChange: (value: string) => void;
@@ -10,6 +17,7 @@ export interface NameFieldProps {
 /** Compact identity pill in the arcade shell: who you are at every table you
  * join. Ink border + hard shadow, uppercase display label, Rubik input. */
 export function NameField({ value, onChange, onCommit, error = null }: NameFieldProps) {
+  const t = T[useLang()];
   const invalid = error !== null;
   return (
     <div className="flex w-full max-w-xs flex-col items-center gap-[0.4em]">
@@ -19,14 +27,14 @@ export function NameField({ value, onChange, onCommit, error = null }: NameField
         }`}
       >
         <span className="shrink-0 font-arcade-display text-[0.85em] uppercase tracking-[0.12em] text-(--color-ap-muted)">
-          Your name
+          {t.yourName}
         </span>
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onCommit}
           maxLength={20}
-          placeholder="Player"
+          placeholder={t.placeholder}
           aria-invalid={invalid}
           className="min-w-0 flex-1 bg-transparent tabular-nums text-(--color-ap-text) outline-none placeholder:text-(--color-ap-muted)"
         />

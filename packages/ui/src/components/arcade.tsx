@@ -7,6 +7,36 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useLang, type Lang } from '../i18n.js';
+
+const T: Record<
+  Lang,
+  {
+    yourName: string;
+    player: string;
+    paintCard: (name: string) => string;
+    brushColour: (c: string) => string;
+    erase: string;
+    clear: string;
+  }
+> = {
+  en: {
+    yourName: 'Your name',
+    player: 'Player',
+    paintCard: (name) => `Paint ${name}'s card`,
+    brushColour: (c) => `Brush colour ${c}`,
+    erase: 'Erase',
+    clear: 'Clear',
+  },
+  fr: {
+    yourName: 'Ton nom',
+    player: 'Joueur',
+    paintCard: (name) => `Colorier la carte de ${name}`,
+    brushColour: (c) => `Pinceau ${c}`,
+    erase: 'Gomme',
+    clear: 'Tout effacer',
+  },
+};
 
 /**
  * The "Refined Arcade Violet" product-shell kit — the reusable primitives the
@@ -344,6 +374,7 @@ export function PlayerCard({
   onName,
   onNameCommit,
 }: PlayerCardProps) {
+  const t = T[useLang()];
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -435,8 +466,8 @@ export function PlayerCard({
               onChange={(e) => onName(e.target.value)}
               onBlur={onNameCommit}
               maxLength={20}
-              aria-label="Your name"
-              placeholder="Player"
+              aria-label={t.yourName}
+              placeholder={t.player}
               // Sit above the paint canvas so the field stays clickable; the
               // canvas only captures pointers in paint mode anyway.
               className="relative z-10 w-full min-w-0 bg-transparent text-center font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink) outline-none placeholder:text-(--color-ap-ink)/40 focus:underline"
@@ -452,7 +483,7 @@ export function PlayerCard({
           ref={canvasRef}
           width={260}
           height={347}
-          aria-label={editable ? `Paint ${name}'s card` : undefined}
+          aria-label={editable ? t.paintCard(name) : undefined}
           className={`absolute inset-0 size-full rounded-[inherit] ${editable ? 'cursor-crosshair touch-none' : 'pointer-events-none'}`}
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -467,7 +498,7 @@ export function PlayerCard({
             <button
               key={c}
               type="button"
-              aria-label={`Brush colour ${c}`}
+              aria-label={t.brushColour(c)}
               aria-pressed={!erasing && brush === c}
               onClick={() => {
                 setBrush(c);
@@ -486,10 +517,10 @@ export function PlayerCard({
             onClick={() => setErasing((v) => !v)}
             className={erasing ? 'ring-2 ring-(--color-ap-text)' : ''}
           >
-            Erase
+            {t.erase}
           </Cta>
           <Cta type="button" variant="secondary" onClick={clear}>
-            Clear
+            {t.clear}
           </Cta>
         </div>
       )}

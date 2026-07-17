@@ -180,7 +180,9 @@ export function BetCards({
                 {t.bid !== null ? (
                   <span
                     className={`font-arcade-display ${
-                      PASS_WORDS.includes(t.bid) ? 'text-(--color-ap-muted)' : 'text-(--color-ap-gold)'
+                      PASS_WORDS.includes(t.bid)
+                        ? 'text-(--color-ap-muted)'
+                        : 'text-(--color-ap-gold)'
                     }`}
                   >
                     {t.bid}
@@ -227,9 +229,7 @@ export function BetCards({
         />
       </div>
 
-      <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-        {tt.tapToBid}
-      </span>
+      <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">{tt.tapToBid}</span>
     </div>
   );
 }
