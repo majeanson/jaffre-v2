@@ -119,11 +119,22 @@
   --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #241b3d, var(--color-ap-ground) 72%);
 }
 
-/* ── Skins — override the raw custom properties; utilities follow. ─────── */
+/* ── Skins — override the raw custom properties; utilities follow. ───────
+ *
+ * SELECTOR SHAPE: every theme + card-skin block uses `[data-attr='id']:is(:root,
+ * :root *)` rather than a bare `:root[...]`. Two reasons, both load-bearing:
+ *   1. Specificity is a constant (0,2,0) for ALL theme AND card-skin blocks, so
+ *      the ordering contract holds by SOURCE ORDER alone: card skins sit below
+ *      the themes and thus win the shared card-token subset.
+ *   2. `:is(:root, :root *)` matches the <html> root (the live app) AND any
+ *      descendant carrying the attribute — so the Collection gallery can scope a
+ *      skin/theme to a single preview tile with `<div data-theme=…>` and see the
+ *      real tokens, without a duplicated JS colour map.
+ */
 
 /* Classic light: daytime kitchen table. Pale linen surfaces, dark text,
  * cards stay pale with stronger borders. */
-:root[data-theme='light'] {
+[data-theme='light']:is(:root, :root *) {
   --color-felt-950: #d9d2bd;
   --color-felt-900: #e9e2cf;
   --color-felt-800: #f4efe1;
@@ -159,7 +170,7 @@
 
 /* Juicy: saturated arcade night — electric violet table, candy suits,
  * chunkier cards, snappier motion. */
-:root[data-theme='juicy'] {
+[data-theme='juicy']:is(:root, :root *) {
   --color-felt-950: #14082e;
   --color-felt-900: #1e0f42;
   --color-felt-800: #2c1a5e;
@@ -194,7 +205,7 @@
 
 /* Sepia: a warm parchment reading-room — amber felt, aged-paper cards, sepia
  * inks. Free. */
-:root[data-theme='sepia'] {
+[data-theme='sepia']:is(:root, :root *) {
   --color-felt-950: #2a1e10;
   --color-felt-900: #3a2a16;
   --color-felt-800: #4c381e;
@@ -224,7 +235,7 @@
 }
 
 /* Midnight: an inky blue-black parlor, cooler than classic dark. Unlockable. */
-:root[data-theme='midnight'] {
+[data-theme='midnight']:is(:root, :root *) {
   --color-felt-950: #05070f;
   --color-felt-900: #0a0e1c;
   --color-felt-800: #111a30;
@@ -264,7 +275,7 @@
 /* Classic OG: warm parchment face, bottle-green back, muted traditional inks —
  * the printed look of the original deck. Paired with the `classic-og` renderer
  * (framed pips). */
-:root[data-card-skin='classic-og'] {
+[data-card-skin='classic-og']:is(:root, :root *) {
   --color-card-face: #f0e4c4;
   --color-card-face-shade: #e1d0a4;
   --color-card-back: #14512f;
@@ -278,7 +289,7 @@
 /* Noir: a monochrome deck — pale slate face, charcoal back, four distinct greys
  * for the suits (the SHAPE carries the suit, never the colour). Pure token skin,
  * no renderer — proves the recolour-only path. */
-:root[data-card-skin='noir'] {
+[data-card-skin='noir']:is(:root, :root *) {
   --color-card-face: #e8e8ec;
   --color-card-face-shade: #d0d0d6;
   --color-card-back: #17171c;
@@ -291,7 +302,7 @@
 
 /* Lamplight foil: warm gilded face + gold back; the `lamplight-foil` renderer
  * adds the moving sheen. Unlockable. */
-:root[data-card-skin='lamplight-foil'] {
+[data-card-skin='lamplight-foil']:is(:root, :root *) {
   --color-card-face: #fbf1d6;
   --color-card-face-shade: #eddcac;
   --color-card-back: #6a4a12;
@@ -304,7 +315,7 @@
 
 /* Neon: a dark card face with candy-bright suits + a hot-pink back; the `neon`
  * renderer makes each mark glow. Unlockable. */
-:root[data-card-skin='neon'] {
+[data-card-skin='neon']:is(:root, :root *) {
   --color-card-face: #131024;
   --color-card-face-shade: #1d1836;
   --color-card-back: #ff2d8e;

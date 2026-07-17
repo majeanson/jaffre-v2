@@ -14,5 +14,6 @@ export * from './components/ScoreStrip';
 export * from './components/ChatPanel';
 export * from './components/VoiceBar';
 export * from './components/arcade';
+export * from './components/CosmeticPicker';
 export * from './motion/config';
 export * from './motion/DealGroup';

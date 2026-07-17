@@ -5,6 +5,7 @@ import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
+import { Collection } from './screens/Collection.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
@@ -22,6 +23,7 @@ type Route =
   | { kind: 'scenes'; id: string | null }
   | { kind: 'history' }
   | { kind: 'stats' }
+  | { kind: 'collection' }
   | { kind: 'replay'; gameId: string };
 
 function parseHash(): Route {
@@ -37,6 +39,7 @@ function parseHash(): Route {
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#history') return { kind: 'history' };
   if (h === '#stats') return { kind: 'stats' };
+  if (h === '#collection') return { kind: 'collection' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
   return { kind: 'home' };
@@ -114,6 +117,9 @@ function AppRoutes() {
   }
   if (route.kind === 'stats') {
     return <Stats onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'collection') {
+    return <Collection onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'replay') {
     return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;

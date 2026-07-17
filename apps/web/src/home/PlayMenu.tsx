@@ -37,6 +37,7 @@ const T: Record<
     moon: (n: number) => string;
     yourGames: string;
     yourRecord: string;
+    collection: string;
     finished: string;
     yourTurn: string;
     inPlay: string;
@@ -65,6 +66,7 @@ const T: Record<
     moon: (n) => `Moon ${String(n)}`,
     yourGames: 'Your games',
     yourRecord: 'Your record',
+    collection: 'Collection',
     finished: 'Finished · rematch?',
     yourTurn: 'Your turn',
     inPlay: 'In play',
@@ -92,6 +94,7 @@ const T: Record<
     moon: (n) => `Lune ${String(n)}`,
     yourGames: 'Tes parties',
     yourRecord: 'Ton record',
+    collection: 'Collection',
     finished: 'Terminée · revanche?',
     yourTurn: 'À ton tour',
     inPlay: 'En jeu',
@@ -395,6 +398,15 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             ★
           </span>
           {t.yourRecord}
+        </a>
+        <a
+          href="#collection"
+          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+        >
+          <span aria-hidden className="text-(--color-ap-gold)">
+            ◆
+          </span>
+          {t.collection}
         </a>
       </div>
     </section>

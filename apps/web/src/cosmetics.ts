@@ -27,11 +27,17 @@ export interface Cosmetic {
   readonly requirement?: (s: Stats, lang: Lang) => { text: string; have: number; need: number };
 }
 
-/** The set of owned cosmetic ids for these stats (the dev flag forces all). */
-export function owned(catalog: readonly Cosmetic[], stats: Stats | null): Set<string> {
+/** The set of owned cosmetic ids for these stats. `devAll` forces everything
+ * owned (defaults to the DEV_UNLOCK_ALL flag); the gallery passes `false` to
+ * preview the real locked state even while the flag is on. */
+export function owned(
+  catalog: readonly Cosmetic[],
+  stats: Stats | null,
+  devAll: boolean = DEV_UNLOCK_ALL,
+): Set<string> {
   return new Set(
     catalog
-      .filter((c) => DEV_UNLOCK_ALL || c.free || (stats !== null && (c.unlock?.(stats) ?? false)))
+      .filter((c) => devAll || c.free || (stats !== null && (c.unlock?.(stats) ?? false)))
       .map((c) => c.id),
   );
 }
