@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
 import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
+import { reconcileCosmetics } from './cosmeticsBoot.js';
+import { Toast } from './components/Toast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
@@ -64,10 +66,37 @@ export function App() {
     () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }),
     [cardSkin],
   );
+
+  // Once per load: reconcile cosmetics with real stats — degrade a now-locked
+  // choice and surface freshly play-unlocked skins/themes as a toast. Skipped in
+  // the scene viewer (a dev tool that shouldn't hit the network or pop toasts).
+  const [unlocked, setUnlocked] = useState<string | null>(null);
+  useEffect(() => {
+    // Only on menu screens: reconciling mid-game is pointless, and its stats
+    // fetch has no business competing with a live room's socket. (`#scenes` is a
+    // dev tool that shouldn't hit the network or pop toasts either.)
+    const h = location.hash;
+    if (h.startsWith('#room') || h.startsWith('#practice') || h.startsWith('#scenes')) return;
+    let live = true;
+    void reconcileCosmetics().then((fresh) => {
+      if (live && fresh.length > 0) setUnlocked(fresh.join(', '));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   return (
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
         <AppRoutes />
+        {unlocked !== null && (
+          <Toast
+            message={`${lang === 'fr' ? 'Débloqué : ' : 'Unlocked: '}${unlocked}`}
+            durationMs={3500}
+            onDone={() => setUnlocked(null)}
+          />
+        )}
       </CardSkinProvider>
     </LangProvider>
   );

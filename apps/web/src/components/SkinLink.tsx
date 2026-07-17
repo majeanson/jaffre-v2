@@ -1,4 +1,5 @@
 import { useLang, type Lang } from '@jaffre/ui';
+import { CARD_SKINS, DEFAULT_CARD_SKIN, currentCardSkin } from '../cosmetics.js';
 import { COLLECTION_RETURN_KEY } from '../screens/Collection.js';
 
 const T: Record<Lang, { skins: string }> = {
@@ -7,16 +8,20 @@ const T: Record<Lang, { skins: string }> = {
 };
 
 /**
- * Skin/theme entry point. All cosmetic choices now live in the Collection
- * gallery (live previews, locked state, unlock progress), so this — formerly an
- * inline dropdown — just routes to `#collection`. Used in the Home chrome and
- * the in-game options drawer; a plain hash link so the router handles it and
- * it's keyboard-accessible. Stashes the current route first so the gallery's
- * back button returns you here (e.g. straight back into a game in progress),
- * not to Home.
+ * Skin/theme entry point + equipped indicator. All cosmetic choices now live in
+ * the Collection gallery (live previews, locked state, unlock progress), so this
+ * — formerly an inline dropdown — just routes to `#collection`. When a non-default
+ * card skin is equipped it names it (e.g. "OG Deck") so Home shows your current
+ * look at a glance; otherwise it reads "Skins". Used in the Home chrome and the
+ * in-game options drawer; a plain hash link so the router handles it and it's
+ * keyboard-accessible. Stashes the current route first so the gallery's back
+ * button returns you here (e.g. straight back into a game in progress), not Home.
  */
 export function SkinLink() {
   const t = T[useLang()];
+  const skinId = currentCardSkin();
+  const equipped =
+    skinId === DEFAULT_CARD_SKIN ? null : (CARD_SKINS.find((c) => c.id === skinId)?.label ?? null);
   return (
     <a
       href="#collection"
@@ -29,7 +34,7 @@ export function SkinLink() {
       <span aria-hidden className="text-(--color-ap-gold)">
         ◆
       </span>
-      {t.skins}
+      {equipped ?? t.skins}
     </a>
   );
 }

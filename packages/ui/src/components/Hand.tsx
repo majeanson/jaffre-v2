@@ -6,9 +6,9 @@ import type { CardData } from '../types.js';
 import { cardKey, cardLabel } from '../types.js';
 import { PlayingCard } from './PlayingCard';
 
-const T: Record<Lang, { yourHand: string }> = {
-  en: { yourHand: 'Your hand' },
-  fr: { yourHand: 'Ta main' },
+const T: Record<Lang, { yourHand: string; queued: string }> = {
+  en: { yourHand: 'Your hand', queued: 'Queued for your next turn' },
+  fr: { yourHand: 'Ta main', queued: 'En attente pour ton prochain tour' },
 };
 
 export interface HandCard {
@@ -18,11 +18,17 @@ export interface HandCard {
   readonly disabledReason?: string;
   /** The Coach's suggested card — highlighted and lifted. */
   readonly recommended?: boolean;
+  /** Queued to auto-play on your next turn — highlighted and lifted. */
+  readonly queued?: boolean;
+  /** May be tapped to queue while the hand isn't `active`. */
+  readonly queueable?: boolean;
 }
 
 export interface HandProps {
   readonly cards: readonly HandCard[];
   readonly onPlay?: (card: CardData) => void;
+  /** Tap on a queueable card while the hand isn't `active` (queue/unqueue). */
+  readonly onQueueToggle?: (card: CardData) => void;
   /** When false the hand renders but nothing is playable (not your turn). */
   readonly active?: boolean;
   readonly label?: string;
@@ -51,9 +57,10 @@ const PLAY_DY = -60;
  * high enough) or computes the target slot from pointer-x vs the other
  * cards' centres and rewrites the order.
  */
-export function Hand({ cards, onPlay, active = true, label, onReorder }: HandProps) {
+export function Hand({ cards, onPlay, onQueueToggle, active = true, label, onReorder }: HandProps) {
   const lang = useLang();
-  const ariaLabel = label ?? T[lang].yourHand;
+  const t = T[lang];
+  const ariaLabel = label ?? t.yourHand;
   const reorderable = onReorder !== undefined && cards.length > 1;
   // Slot elements by key — their boxes stay put during a drag (only the inner
   // card translates), so their centres are the fixed drop targets.
@@ -92,11 +99,15 @@ export function Hand({ cards, onPlay, active = true, label, onReorder }: HandPro
           return;
         }
         const entry = cards.find((c) => cardKey(c.card) === key);
-        if (entry !== undefined && entry.disabled !== true && active) onPlay?.(entry.card);
+        if (entry === undefined) return;
+        if (entry.disabled !== true && active) onPlay?.(entry.card);
+        else if (!active && entry.queueable === true) onQueueToggle?.(entry.card);
       }}
     >
       {cards.map((entry, i) => {
         const playable = active && entry.disabled !== true;
+        const queueable = !active && entry.queueable === true;
+        const lifted = entry.recommended === true || entry.queued === true;
         const key = cardKey(entry.card);
         // Gentle physical fan: outer cards tilt away from the center.
         const tilt = (i - (cards.length - 1) / 2) * 1.6;
@@ -109,20 +120,22 @@ export function Hand({ cards, onPlay, active = true, label, onReorder }: HandPro
               else slots.current.set(key, el);
             }}
             textValue={cardLabel(entry.card, lang)}
-            aria-disabled={!playable}
+            aria-disabled={!playable && !queueable}
             // react-aria drops the aria-disabled prop above, but forwards
             // data-* — tests and tooling read playability from this.
             data-playable={playable || undefined}
+            data-queueable={queueable || undefined}
+            data-queued={entry.queued === true || undefined}
             className={`group rounded-(--radius-ap-inner) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
-              entry.recommended === true ? '-translate-y-3' : ''
+              lifted ? '-translate-y-3' : ''
             } ${
               reorderable
                 ? 'cursor-grab active:cursor-grabbing'
-                : playable
+                : playable || queueable
                   ? 'cursor-pointer hover:-translate-y-3 focus-visible:-translate-y-3'
                   : 'cursor-not-allowed'
             }`}
-            style={{ zIndex: entry.recommended === true ? cards.length + i : i }}
+            style={{ zIndex: lifted ? cards.length + i : i }}
           >
             {/* layout animates the card sliding to its new spot when the hand
                 is re-sorted; the inner deal-in span staggers the entrance (new
@@ -165,7 +178,9 @@ export function Hand({ cards, onPlay, active = true, label, onReorder }: HandPro
                   tilt={tilt}
                   dimmed={active && entry.disabled === true}
                   recommended={entry.recommended === true}
+                  queued={entry.queued === true}
                 />
+                {entry.queued === true && <span className="sr-only">{t.queued}</span>}
                 {!playable && entry.disabledReason !== undefined && (
                   <span className="sr-only">{entry.disabledReason}</span>
                 )}

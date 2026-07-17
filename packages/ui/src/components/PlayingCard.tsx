@@ -27,6 +27,8 @@ export interface PlayingCardProps {
   readonly dimmed?: boolean;
   /** The Coach's suggested card — draws a violet ring around it. */
   readonly recommended?: boolean;
+  /** Queued to auto-play next turn — draws a gold ring around it. */
+  readonly queued?: boolean;
   /** Small deterministic tilt (degrees) for a hand-held look. */
   readonly tilt?: number;
 }
@@ -38,11 +40,25 @@ export function PlayingCard({
   raised = false,
   dimmed = false,
   recommended = false,
+  queued = false,
   tilt = 0,
 }: PlayingCardProps) {
   const lang = useLang();
   const { renderers } = useCardSkin();
   if (faceDown) {
+    // A skin may print its own back art (e.g. the OG emblem) over the card-face
+    // colour; otherwise the default is the striped card-back.
+    if (renderers.back !== undefined) {
+      return (
+        <div
+          aria-hidden
+          style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
+          className={`${SIZE_CLASSES[size]} grid aspect-5/7 place-items-center overflow-hidden rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) shadow-(--shadow-ap)`}
+        >
+          {renderers.back()}
+        </div>
+      );
+    }
     return (
       <div
         aria-hidden
@@ -65,9 +81,11 @@ export function PlayingCard({
       className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'
       } ${
-        recommended
-          ? 'outline outline-[0.16em] outline-(--color-ap-violet) outline-offset-[0.12em]'
-          : ''
+        queued
+          ? 'outline outline-[0.16em] outline-(--color-ap-gold-deep) outline-offset-[0.12em]'
+          : recommended
+            ? 'outline outline-[0.16em] outline-(--color-ap-violet) outline-offset-[0.12em]'
+            : ''
       } ${dimmed ? 'scale-[0.94] saturate-[0.7]' : ''}`}
     >
       {/* Corner ranks — Silkscreen numerals in the suit colour. */}

@@ -33,8 +33,14 @@ interface GameStore {
    * cards and the points before it sweeps to the winner.
    */
   heldTrick: HeldTrick | null;
+  /**
+   * A card pre-selected while it isn't your turn, auto-played when it is.
+   * Client-only convenience — validated again at fire time (useQueuedPlay).
+   */
+  queued: Card | null;
   setSweep: (position: 0 | 1 | 2 | 3) => void;
   clearHeldTrick: () => void;
+  setQueued: (card: Card | null) => void;
 
   setConnection: (connection: Connection) => void;
   welcome: (
@@ -66,6 +72,7 @@ export const useGameStore = create<GameStore>((set) => ({
   log: [],
   sweepTo: null,
   heldTrick: null,
+  queued: null,
 
   setConnection: (connection) => set({ connection }),
   welcome: (viewer, view, seq, roster, chat) =>
@@ -98,6 +105,7 @@ export const useGameStore = create<GameStore>((set) => ({
     }),
   setSweep: (position) => set({ sweepTo: position }),
   clearHeldTrick: () => set({ heldTrick: null, sweepTo: null }),
+  setQueued: (card) => set({ queued: card }),
   setRoster: (roster) => set({ roster }),
   addChat: (entry) =>
     set((s) => {
@@ -122,6 +130,7 @@ export const useGameStore = create<GameStore>((set) => ({
       log: [],
       sweepTo: null,
       heldTrick: null,
+      queued: null,
     }),
 }));
 

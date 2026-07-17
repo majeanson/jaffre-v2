@@ -67,37 +67,54 @@ function storeProfile(p: Profile): Profile {
   return p;
 }
 
-export async function getGuestToken(name: string): Promise<StoredToken | null> {
+// Concurrent callers that both need a mint (fresh identity or a rename) must
+// share ONE request — two parallel POSTs to /api/auth/guest create two separate
+// identities and the second clobbers the first's cached token, breaking identity
+// continuity (e.g. a room socket connect racing a background stats fetch would
+// then reconnect as a different uid and lose the seat). Keyed by name so a
+// concurrent rename still gets its own mint.
+const mintInFlight = new Map<string, Promise<StoredToken | null>>();
+
+export function getGuestToken(name: string): Promise<StoredToken | null> {
   const cached = read();
   // Reuse while valid for 7+ days and the name still matches.
   if (cached !== null && cached.exp - Date.now() / 1000 > 7 * 86400 && cached.name === name) {
-    return cached;
+    return Promise.resolve(cached);
   }
-  try {
-    const res = await fetch('/api/auth/guest', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Send the existing token, if any, so a rename mints a NEW token for
-        // the SAME uid instead of a brand-new identity.
-        ...(cached !== null ? { Authorization: `Bearer ${cached.token}` } : {}),
-      },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) return null; // 503 = no-secret dev mode
-    const data = (await res.json()) as {
-      userId: string;
-      name: string;
-      token: string;
-      recoveryCode?: string;
-    } & ProfileFields;
-    const stored = storeToken(data);
-    if (data.recoveryCode !== undefined) localStorage.setItem(RECOVERY_KEY, data.recoveryCode);
-    storeProfile(profileFrom(data));
-    return stored;
-  } catch {
-    return null;
-  }
+  const pending = mintInFlight.get(name);
+  if (pending !== undefined) return pending;
+
+  const mint = (async (): Promise<StoredToken | null> => {
+    try {
+      const res = await fetch('/api/auth/guest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Send the existing token, if any, so a rename mints a NEW token for
+          // the SAME uid instead of a brand-new identity.
+          ...(cached !== null ? { Authorization: `Bearer ${cached.token}` } : {}),
+        },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return null; // 503 = no-secret dev mode
+      const data = (await res.json()) as {
+        userId: string;
+        name: string;
+        token: string;
+        recoveryCode?: string;
+      } & ProfileFields;
+      const stored = storeToken(data);
+      if (data.recoveryCode !== undefined) localStorage.setItem(RECOVERY_KEY, data.recoveryCode);
+      storeProfile(profileFrom(data));
+      return stored;
+    } catch {
+      return null;
+    } finally {
+      mintInFlight.delete(name);
+    }
+  })();
+  mintInFlight.set(name, mint);
+  return mint;
 }
 
 /** The 3-word recovery code from this browser's first mint, if any — shown

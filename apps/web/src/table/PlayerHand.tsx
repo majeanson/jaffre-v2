@@ -1,4 +1,4 @@
-import type { Card, Suit } from '@jaffre/engine';
+import { sameCard, type Card, type Suit } from '@jaffre/engine';
 import { cardKey, Hand, sortByColour, sortByValue, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { feedback, playClick } from '../audio/clicks.js';
@@ -14,6 +14,7 @@ const T: Record<
     sortValue: string;
     follow: (suit: Suit) => string;
     notYourTurn: string;
+    tapToQueue: string;
   }
 > = {
   en: {
@@ -21,12 +22,14 @@ const T: Record<
     sortValue: 'Sort your hand by value, 0 to 7',
     follow: (suit) => `You must follow ${suit}`,
     notYourTurn: 'Not your turn',
+    tapToQueue: 'Tap to queue for your next turn',
   },
   fr: {
     sortColour: 'Trier ta main par couleur',
     sortValue: 'Trier ta main par valeur, 0 à 7',
     follow: (suit) => `Tu dois fournir du ${FR_SUIT[suit]}`,
     notYourTurn: 'Pas ton tour',
+    tapToQueue: 'Touche pour préparer ta prochaine carte',
   },
 };
 
@@ -43,6 +46,12 @@ export interface PlayerHandProps {
   readonly onPlay: (card: Card) => void;
   /** The Coach's suggested card, highlighted in the fan (null when off). */
   readonly recommended?: Card | null;
+  /** The card queued to auto-play on your next turn (null when none). */
+  readonly queued?: Card | null;
+  /** Cards that may be queued right now (empty when it's your turn). */
+  readonly queueable?: readonly Card[];
+  /** Tap on a queueable card while waiting — queues or unqueues it. */
+  readonly onQueueToggle?: (card: Card) => void;
 }
 
 /** Owns your hand along the bottom edge, with legality + disabled-reason hints. */
@@ -53,6 +62,9 @@ export function PlayerHand({
   active,
   onPlay,
   recommended = null,
+  queued = null,
+  queueable = [],
+  onQueueToggle,
 }: PlayerHandProps) {
   const t = T[useLang()];
   // A client-only display order (card keys). New rounds bring new keys, so the
@@ -125,19 +137,29 @@ export function PlayerHand({
           setOrder(keys);
           feedback('select', 4);
         }}
-        cards={displayCards.map((card) => ({
-          card,
-          disabled: !active || !legal.some((c) => c.suit === card.suit && c.value === card.value),
-          disabledReason:
-            ledSuit !== null && card.suit !== ledSuit ? t.follow(ledSuit) : t.notYourTurn,
-          recommended:
-            recommended !== null &&
-            recommended.suit === card.suit &&
-            recommended.value === card.value,
-        }))}
+        cards={displayCards.map((card) => {
+          const isQueueable = queueable.some((c) => sameCard(c, card));
+          return {
+            card,
+            disabled: !active || !legal.some((c) => sameCard(c, card)),
+            disabledReason:
+              !active && isQueueable
+                ? t.tapToQueue
+                : ledSuit !== null && card.suit !== ledSuit
+                  ? t.follow(ledSuit)
+                  : t.notYourTurn,
+            recommended: recommended !== null && sameCard(recommended, card),
+            queued: queued !== null && sameCard(queued, card),
+            queueable: isQueueable,
+          };
+        })}
         onPlay={(card) => {
           feedback('play');
           onPlay(card as Card);
+        }}
+        onQueueToggle={(card) => {
+          feedback('select', 4);
+          onQueueToggle?.(card as Card);
         }}
       />
     </div>

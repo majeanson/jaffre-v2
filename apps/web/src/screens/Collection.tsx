@@ -23,6 +23,8 @@ import {
 import { DEFAULT_THEME, THEMES, applyTheme, currentTheme } from '../theme.js';
 import { saveProfile } from '../net/auth.js';
 import { fetchStats, type Stats } from '../net/history.js';
+import { feedback } from '../audio/clicks.js';
+import { Toast } from '../components/Toast.js';
 
 export interface CollectionProps {
   readonly onLeave: () => void;
@@ -54,6 +56,7 @@ const T: Record<
     themes: string;
     showAll: string;
     blurb: string;
+    equipped: (name: string) => string;
   }
 > = {
   en: {
@@ -65,6 +68,7 @@ const T: Record<
     themes: 'Themes',
     showAll: 'Show all (dev)',
     blurb: 'Unlock skins and themes as you play. Equip any you own — it follows your account.',
+    equipped: (name) => `Equipped ${name}`,
   },
   fr: {
     title: 'Collection',
@@ -76,6 +80,7 @@ const T: Record<
     showAll: 'Tout afficher (dev)',
     blurb:
       'Débloque des habillages et des thèmes en jouant. Équipe ceux que tu possèdes — ils suivent ton compte.',
+    equipped: (name) => `Équipé : ${name}`,
   },
 };
 
@@ -218,6 +223,7 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
   const [showAll, setShowAll] = useState(DEV_UNLOCK_ALL);
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
   const [theme, setTheme] = useState(currentTheme());
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (demoStats !== undefined) return;
@@ -239,11 +245,15 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
     applyCardSkin(id);
     setCardSkin(id);
     void saveProfile({ cardSkin: id });
+    feedback('select');
+    setToast(t.equipped(labelOf(CARD_SKINS, id)));
   };
   const chooseTheme = (id: string) => {
     applyTheme(id);
     setTheme(id);
     void saveProfile({ theme: id });
+    feedback('select');
+    setToast(t.equipped(labelOf(THEMES, id)));
   };
 
   const cardTiles = buildTiles(CARD_SKINS, ownedCards, cardSkin, stats, lang, (id) => (
@@ -307,6 +317,7 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
           <CosmeticPicker tiles={themeTiles} onSelect={chooseTheme} label={t.themes} />
         </Panel>
       </div>
+      {toast !== null && <Toast message={toast} onDone={() => setToast(null)} />}
     </main>
   );
 }

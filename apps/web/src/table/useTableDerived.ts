@@ -11,6 +11,7 @@ import type {
 import { useLang, type Lang } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
+import { queueableCards } from './queue.js';
 import { teamSpecialsFrom } from './specials.js';
 
 const T: Record<
@@ -107,6 +108,10 @@ export interface TableDerived {
   readonly ledSuit: Suit | null;
   /** Cards you may legally play right now (empty unless it's your play turn). */
   readonly legal: readonly Card[];
+  /** The card queued to auto-play on your next turn, if any. */
+  readonly queued: Card | null;
+  /** Cards you may queue right now (empty unless waiting during play). */
+  readonly queueable: readonly Card[];
   /** The trick to show (a held finished trick wins over the live one). */
   readonly trickPlays: readonly TrickPlayView[];
   /** Table-relative position the trick is sweeping toward, if any. */
@@ -140,7 +145,7 @@ export interface TableDerived {
 export function useTableDerived(coachOn = false): TableDerived | null {
   const lang = useLang();
   const t = T[lang];
-  const { view, viewer, roster, sweepTo, heldTrick } = useGameStore();
+  const { view, viewer, roster, sweepTo, heldTrick, queued } = useGameStore();
   if (view === null || roster === null) return null;
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
@@ -150,6 +155,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   const ledSuit = view.currentTrick[0]?.card.suit ?? null;
   const legal =
     me !== null && view.phase === 'playing' && myTurn ? legalCards(view.hand, ledSuit) : [];
+  const queueable = queueableCards(view, me, myTurn);
 
   // While a finished trick is held, show it instead of the (already empty)
   // live trick so players see all four cards and the points.
@@ -292,6 +298,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     myTurn,
     ledSuit,
     legal,
+    queued,
+    queueable,
     trickPlays,
     sweepTo,
     heldBanner,

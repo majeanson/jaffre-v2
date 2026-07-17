@@ -1,3 +1,4 @@
+import { sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
@@ -14,6 +15,7 @@ import {
   TopBar,
   UtilityRow,
   WaitingScreen,
+  useQueuedPlay,
   useTableDerived,
   useTrickHold,
 } from '../table/index.js';
@@ -58,10 +60,12 @@ export function Table({
   initialUi,
 }: TableProps) {
   const log = useGameStore((s) => s.log);
+  const setQueued = useGameStore((s) => s.setQueued);
   const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
   const [coachOn, setCoachOn] = useState(loadCoachPref);
   const derived = useTableDerived(coachOn);
   useTrickHold(frozenHold);
+  useQueuedPlay(onAction);
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 
@@ -143,6 +147,11 @@ export function Table({
           active={myTurn && view.phase === 'playing'}
           onPlay={(card) => onAction({ type: 'play_card', card })}
           recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}
+          queued={derived.queued}
+          queueable={derived.queueable}
+          onQueueToggle={(card) =>
+            setQueued(derived.queued !== null && sameCard(card, derived.queued) ? null : card)
+          }
         />
       )}
       {dev && DEV_CONSOLE_ENABLED && <DevConsole />}

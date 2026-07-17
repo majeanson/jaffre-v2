@@ -22,6 +22,7 @@ const T: Record<
     trumpTitle: (suit: string) => string;
     trumpSr: (suit: string) => string;
     scoreDetails: string;
+    dismissScore: string;
     noBetYet: string;
     mustTake: string;
     trickPoints: string;
@@ -48,6 +49,7 @@ const T: Record<
     trumpTitle: (suit) => `Trump: ${suit}`,
     trumpSr: (suit) => `Trump ${suit}`,
     scoreDetails: 'Score details',
+    dismissScore: 'Dismiss',
     noBetYet: 'no bet yet',
     mustTake: 'must take',
     trickPoints: 'trick points',
@@ -73,6 +75,7 @@ const T: Record<
     trumpTitle: (suit) => `Atout : ${suit}`,
     trumpSr: (suit) => `Atout ${suit}`,
     scoreDetails: 'Détails du pointage',
+    dismissScore: 'Fermer',
     noBetYet: 'pas encore de mise',
     mustTake: 'doit prendre',
     trickPoints: 'points de levées',
@@ -622,7 +625,7 @@ export function ScoreStrip({
               below the panel + header (z-40) so both stay interactive. */}
           <button
             type="button"
-            aria-label={t.scoreDetails}
+            aria-label={t.dismissScore}
             tabIndex={-1}
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-30 cursor-default"

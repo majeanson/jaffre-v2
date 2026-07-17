@@ -17,6 +17,12 @@ export interface CardSkinRenderers {
   readonly centerMark?: (card: CardData, size: string) => ReactNode;
   /** Replaces a standalone suit mark (legend / trump indicator). */
   readonly suitMark?: (suit: SuitId, size: string) => ReactNode;
+  /**
+   * Replaces the face-DOWN card art. When present, PlayingCard drops the default
+   * striped card-back and renders this over the card-face colour instead (e.g.
+   * the OG emblem printed on paper). Takes no card — every back is identical.
+   */
+  readonly back?: () => ReactNode;
 }
 
 export interface CardSkinValue {
@@ -96,8 +102,19 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
   },
   // OG Deck: the complete original deck — 0 = the bonhomme portrait, 1–7 = the
   // ornate emblem tile, with our own corner numerals. Cream card, printed ink.
+  // The face-down back prints the red emblem on the same cream paper.
   'og-deck': {
     centerMark: (card) => ogArt(card),
+    back: () => (
+      <img
+        src="/og-cards/red_emblem.jpg"
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="pointer-events-none select-none object-contain"
+        style={{ width: '80%', mixBlendMode: 'darken' }}
+      />
+    ),
   },
   // Lamplight foil: a slow diagonal sheen sweeps across the mark (decorative,
   // auto-disabled under reduced motion by the .ap-foil rule).
