@@ -78,8 +78,7 @@ land.
 
 ## Phase E — Menus / lobby / share ⬜
 
-- [x] **E1. Slim share sheet.** Dropped Texto/Courriel/Plus. Keeps QR + code words
-      + link + Copy; auto-copies on open with a "Link copied — just paste it" note.
+- [x] **E1. Slim share sheet.** Dropped Texto/Courriel/Plus. Keeps QR + code words + link + Copy; auto-copies on open with a "Link copied — just paste it" note.
       `ShareSheet.tsx`.
 - [ ] **E2. Arcade buttons for text links.** Replace bare text links/buttons with
       the arcade kit everywhere: "Retour à l'accueil", "Comment jouer", "Joindre le
