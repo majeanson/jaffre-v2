@@ -293,18 +293,18 @@
   --color-suit-blue: #274b9c;
 }
 
-/* Noir: a monochrome deck — pale slate face, charcoal back, four distinct greys
- * for the suits (the SHAPE carries the suit, never the colour). Pure token skin,
- * no renderer — proves the recolour-only path. */
+/* Noir: a muted, low-saturation deck — pale slate face, charcoal back, and the
+ * four suits kept as DESATURATED versions of their hues (not flat greys) so you
+ * can still tell them apart by colour, not shape alone. Pure token skin. */
 [data-card-skin='noir']:is(:root, :root *) {
   --color-card-face: #e8e8ec;
   --color-card-face-shade: #d0d0d6;
   --color-card-back: #17171c;
   --color-card-back-line: #38383f;
-  --color-suit-red: #26262c;
-  --color-suit-brown: #5c5c66;
-  --color-suit-green: #414149;
-  --color-suit-blue: #787882;
+  --color-suit-red: #9c5a5a;
+  --color-suit-brown: #8a7452;
+  --color-suit-green: #5a8472;
+  --color-suit-blue: #5f6f96;
 }
 
 /* Lamplight foil: warm gilded face + gold back; the `lamplight-foil` renderer

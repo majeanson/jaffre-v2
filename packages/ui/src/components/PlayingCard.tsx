@@ -103,14 +103,17 @@ export function PlayingCard({
       </span>
 
       {/* Centre mark: a card skin may override it; the default gives the two
-          specials their OG bonhomme and everyone else the geometric suit shape. */}
+          specials their OG bonhomme and everyone else the geometric suit shape.
+          The bonhomme cards also carry a small suit shape beneath the figure so
+          the suit stays identifiable even in a low-colour skin (e.g. noir). */}
       <span className="absolute inset-0 grid place-items-center">
         {renderers.centerMark ? (
           renderers.centerMark(card, '2em')
-        ) : isRedZero ? (
-          <Bonhomme kind="joffre" size="2.9em" />
-        ) : isBrownZero ? (
-          <Bonhomme kind="allemagne" size="2.9em" />
+        ) : isRedZero || isBrownZero ? (
+          <span className="flex flex-col items-center gap-[0.12em]">
+            <Bonhomme kind={isRedZero ? 'joffre' : 'allemagne'} size="2.6em" />
+            <SuitShape suit={card.suit} size="0.62em" />
+          </span>
         ) : (
           <SuitShape suit={card.suit} size="2em" />
         )}
