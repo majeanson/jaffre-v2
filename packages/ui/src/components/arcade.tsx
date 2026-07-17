@@ -1,5 +1,6 @@
 import {
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useEffect,
@@ -14,6 +15,68 @@ import {
  * Pixelify display + Rubik UI type, colors from the --color-ap-* namespace
  * (which flips light<->dark on the theme). Nothing here touches the felt table.
  */
+
+/** The base arcade surface — 2px ink border, panel fill, hard shadow. Every
+ * boxed section composes this instead of repeating the class soup. */
+export interface PanelProps {
+  readonly children: ReactNode;
+  readonly className?: string;
+  readonly as?: 'div' | 'section' | 'form';
+  readonly style?: CSSProperties;
+}
+
+export function Panel({ children, className = '', as: Tag = 'div', style }: PanelProps) {
+  return (
+    <Tag
+      style={style}
+      className={`rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) ${className}`}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+export interface CollapsibleProps {
+  /** The always-visible trigger label. */
+  readonly summary: ReactNode;
+  /** The detail revealed on expand. */
+  readonly children: ReactNode;
+  readonly defaultOpen?: boolean;
+  readonly className?: string;
+}
+
+/**
+ * A click-to-expand disclosure in the shell language — keeps secondary detail
+ * (profile paint, advanced options) out of the first screenful. The trigger is
+ * an arcade control; the chevron rotates open. Reduced-motion safe (no anim).
+ */
+export function Collapsible({
+  summary,
+  children,
+  defaultOpen = false,
+  className = '',
+}: CollapsibleProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`flex w-full flex-col gap-[0.6em] ${className}`}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex cursor-pointer items-center justify-center gap-[0.5em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[1em] py-[0.55em] font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+      >
+        {summary}
+        <span
+          aria-hidden
+          className={`text-(--color-ap-violet-soft) transition-transform duration-(--duration-flick) ${open ? 'rotate-90' : ''}`}
+        >
+          ▸
+        </span>
+      </button>
+      {open && <div className="flex flex-col items-center gap-[0.6em]">{children}</div>}
+    </div>
+  );
+}
 
 const AVATAR_SIZES = {
   sm: 'size-[2em] text-[1em]',

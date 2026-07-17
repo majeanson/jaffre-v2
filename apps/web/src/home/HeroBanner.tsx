@@ -18,16 +18,13 @@ const FAN: readonly { readonly card: CardData; readonly faceDown?: boolean }[] =
 export function HeroBanner() {
   return (
     <header className="relative flex w-full flex-col items-center">
-      {/* Lamplight pool behind the fan. */}
+      {/* Violet spotlight behind the fan. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-[6vmin] mx-auto h-[38vmin] max-h-72 w-[70vmin] max-w-xl rounded-full bg-[radial-gradient(closest-side,var(--color-lamplight),transparent_70%)] opacity-15"
+        className="pointer-events-none absolute inset-x-0 -top-[5vmin] mx-auto h-[32vmin] max-h-60 w-[64vmin] max-w-lg rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-20"
       />
 
-      <div
-        aria-hidden
-        className="pointer-events-none relative h-[clamp(6.5rem,17vmin,12.5rem)] w-full"
-      >
+      <div aria-hidden className="pointer-events-none relative h-[clamp(5rem,13vmin,9rem)] w-full">
         {FAN.map(({ card, faceDown }, i) => {
           const step = i - (FAN.length - 1) / 2;
           return (
@@ -48,10 +45,10 @@ export function HeroBanner() {
         })}
       </div>
 
-      <h1 className="relative z-10 -mt-[clamp(0.5rem,4.5vmin,3.2rem)] font-display text-[clamp(3.75rem,11vmin,7rem)] leading-none font-semibold tracking-tight text-(--color-lamplight) drop-shadow-[0_2px_0_rgb(0_0_0/0.35)] [text-shadow:0_0.03em_24px_rgb(0_0_0/0.45)]">
+      <h1 className="relative z-10 -mt-[clamp(0.15rem,1.4vmin,0.8rem)] font-arcade-display text-[clamp(2.4rem,7.5vmin,4.5rem)] leading-none tracking-tight text-(--color-ap-gold) drop-shadow-[3px_3px_0_var(--color-ap-ink)]">
         Jaffre
       </h1>
-      <p className="relative z-10 mt-2 max-w-md text-center text-[clamp(0.8rem,1.8vmin,1rem)] text-(--color-ivory)/75">
+      <p className="relative z-10 mt-2 max-w-md text-center font-arcade-ui text-[clamp(0.8rem,1.8vmin,1rem)] text-(--color-ap-muted)">
         Trick-taking for four. Bid, land the contract, first team to 41.
       </p>
     </header>
