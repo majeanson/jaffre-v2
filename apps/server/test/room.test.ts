@@ -787,6 +787,13 @@ describe('GameRoom', () => {
       await setupStartedGame(client);
       const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
 
+      // A spectator stays connected throughout: the bot-swap covers ONE absent
+      // human while the table is still live. With no human present at all the
+      // room pauses instead (covered by the next test).
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+
       // Reach the human's turn with NO pending alarm: from here, only the
       // test itself can make the room move.
       const before = await driveToQuiescentHumanTurn(stub, client);
@@ -847,7 +854,79 @@ describe('GameRoom', () => {
         return meta?.disconnectedSince?.['alice'];
       });
       expect(cleared).toBeUndefined();
-      await endQuiet(room, client, again);
+      await endQuiet(room, client, carol, again);
+    },
+  );
+
+  it(
+    'pauses the table when the last human leaves, and resumes when one returns',
+    { timeout: 20_000 },
+    async () => {
+      interface StoredMeta {
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-pause-empty';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(alice); // seat 0 human + 3 bots
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Reach alice's turn with no pending alarm, then drop her last socket:
+      // she is the only human, so the table must freeze rather than let bots
+      // play on to game_over in an empty room.
+      const before = await driveToQuiescentHumanTurn(stub, alice);
+      const seqBefore = before.seq;
+      alice.ws.close(1000, 'bye');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the disconnect clock',
+      );
+
+      // No human present → the close handler armed no alarm. The table is paused.
+      const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+      expect(armed).toBeNull();
+
+      // Even past the bot-swap deadline, and even if a stale alarm survives on
+      // the slot, firing it must NOT advance the game or re-arm — bots don't
+      // play into an empty room.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
+        await state.storage.put('meta', meta);
+        await state.storage.setAlarm(Date.now() - 1);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true); // the alarm fired…
+      const afterPause = await snapshot(stub);
+      expect(afterPause.seq).toBe(seqBefore); // …but advanced nothing
+      expect(afterPause.phase).toBe(before.phase);
+      expect(afterPause.alarm).toBeNull(); // …and did not re-arm — still paused
+
+      // Reset the disconnect clock to the present so the resume re-arm lands ~45s
+      // out (not immediately) and can't fire a self-perpetuating bot chain into
+      // teardown — the isolated-storage swap races a live alarm on Windows.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() };
+        await state.storage.put('meta', meta);
+      });
+
+      // A human returns — a spectator is enough. onJoin re-arms the wake so the
+      // table is live again (from here the deadline alarm would bot-swap the
+      // still-absent alice; we assert the re-arm rather than run the chain).
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+      const resumed = await runInDurableObject(stub, (_instance, state) =>
+        state.storage.getAlarm(),
+      );
+      expect(resumed).not.toBeNull();
+
+      await endQuiet(room, alice, carol);
     },
   );
 

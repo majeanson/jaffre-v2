@@ -1,4 +1,5 @@
 import { useLang } from '../i18n.js';
+import { useCardSkin } from '../cardSkin.js';
 import type { CardData } from '../types.js';
 import { cardLabel, SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
@@ -40,6 +41,7 @@ export function PlayingCard({
   tilt = 0,
 }: PlayingCardProps) {
   const lang = useLang();
+  const { renderers } = useCardSkin();
   if (faceDown) {
     return (
       <div
@@ -82,10 +84,12 @@ export function PlayingCard({
         {card.value}
       </span>
 
-      {/* Centre mark: the specials get their OG bonhomme, everyone else the
-          geometric suit shape. */}
+      {/* Centre mark: a card skin may override it; the default gives the two
+          specials their OG bonhomme and everyone else the geometric suit shape. */}
       <span className="absolute inset-0 grid place-items-center">
-        {isRedZero ? (
+        {renderers.centerMark ? (
+          renderers.centerMark(card, '2em')
+        ) : isRedZero ? (
           <Bonhomme kind="joffre" size="2.9em" />
         ) : isBrownZero ? (
           <Bonhomme kind="allemagne" size="2.9em" />

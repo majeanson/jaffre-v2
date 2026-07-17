@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { LangProvider } from '@jaffre/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
+import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
@@ -43,9 +44,23 @@ function parseHash(): Route {
 
 export function App() {
   const lang = useCurrentLang();
+  // The active card skin, kept in sync with applyCardSkin() so a swap re-renders
+  // the cards in place (the provider sits above every animated card).
+  const [cardSkin, setCardSkin] = useState(currentCardSkin());
+  useEffect(() => {
+    const onChange = () => setCardSkin(currentCardSkin());
+    window.addEventListener(CARD_SKIN_EVENT, onChange);
+    return () => window.removeEventListener(CARD_SKIN_EVENT, onChange);
+  }, []);
+  const skin = useMemo(
+    () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }),
+    [cardSkin],
+  );
   return (
     <LangProvider lang={lang}>
-      <AppRoutes />
+      <CardSkinProvider value={skin}>
+        <AppRoutes />
+      </CardSkinProvider>
     </LangProvider>
   );
 }

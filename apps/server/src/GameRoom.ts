@@ -235,7 +235,9 @@ export class GameRoom implements DurableObject {
           [att.userId]: Date.now(),
         };
         await this.ctx.storage.put('meta', this.meta);
-        await this.scheduleNextWake();
+        // Exclude the socket closing now: if it was the last human, this leaves
+        // the table paused instead of arming a doomed bot-swap alarm.
+        await this.scheduleNextWake(false, ws);
       }
     }
     // Recompute roster with this socket excluded so its seat shows
@@ -258,6 +260,10 @@ export class GameRoom implements DurableObject {
     await this.load();
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
+    // Freeze the table while no human is present: bots don't play into an empty
+    // room, no disconnected human is auto-swapped or auto-readied, and no alarm
+    // is re-armed. The game resumes when someone reconnects (onJoin re-wakes it).
+    if (!this.hasConnectedHuman()) return;
     if (game.phase === 'round_over') {
       // Rounds wait for readiness; the alarm only auto-readies humans whose
       // disconnect deadline has passed so an absent player can't stall the
@@ -324,6 +330,9 @@ export class GameRoom implements DurableObject {
     if (metaDirty) await this.ctx.storage.put('meta', this.meta);
     this.sendWelcome(ws, att);
     this.broadcastRoster({ skip: ws });
+    // A human is present again — resume a table that paused when the room
+    // emptied (bot turns, disconnect deadlines, round_over auto-continue).
+    await this.scheduleNextWake();
   }
 
   /** Snapshot of everything a client needs to (re)adopt its identity. */
@@ -713,9 +722,13 @@ export class GameRoom implements DurableObject {
    * and disconnected-human bot-swaps: compute the earliest wake we need and
    * set one alarm. Date.now() for scheduling only — the engine never sees time.
    */
-  private async scheduleNextWake(afterTrick = false): Promise<void> {
+  private async scheduleNextWake(afterTrick = false, exclude?: WebSocket): Promise<void> {
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
+    // No human present → don't arm an alarm; the table is paused until someone
+    // reconnects. (The alarm() guard is the real safety net; this just avoids a
+    // pointless wake. `exclude` is the socket closing right now, in webSocketClose.)
+    if (!this.hasConnectedHuman(exclude)) return;
     const now = Date.now();
     let wake: number | null = null;
     if (game.phase === 'round_over') {
@@ -747,6 +760,15 @@ export class GameRoom implements DurableObject {
 
   private attachment(ws: WebSocket): Attachment {
     return ws.deserializeAttachment() as Attachment;
+  }
+
+  /** Is any human currently connected (seated or spectating)? Bots hold no
+   * socket, so any joined socket is a human. `exclude` skips a socket that is
+   * closing right now (its close hasn't yet removed it from getWebSockets). */
+  private hasConnectedHuman(exclude?: WebSocket): boolean {
+    return this.ctx
+      .getWebSockets()
+      .some((s) => s !== exclude && this.attachment(s).joined);
   }
 
   private seatOf(userId: string): Seat | null {

@@ -192,6 +192,15 @@
   --table-backdrop: radial-gradient(1100px 720px at 50% 22%, #34215c, var(--color-ap-ground) 70%);
 }
 
+/* ── Card skins — a second cosmetic axis (`[data-card-skin]`), independent of
+ * the theme. These blocks MUST stay BELOW all [data-theme] blocks: same
+ * specificity, so source order wins — a chosen card skin overrides the theme's
+ * card-token subset (--color-card-face/-shade, --color-card-back/-line, suits).
+ * The default `arcade` skin declares NO block (no attribute), so the theme
+ * keeps full control of the card look until the player picks a skin. Shape/art
+ * changes beyond colour come from the CardSkinContext renderers, not here.
+ * (Phase 2 adds classic-og / noir / lamplight-foil / neon here.) */
+
 @layer base {
   /* Game-like page: no pinch/double-tap zoom, no text selection or long-press
    * callouts — the table is a board, not a document. Inputs stay selectable. */

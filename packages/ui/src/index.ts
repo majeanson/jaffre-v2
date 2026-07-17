@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './i18n.js';
+export * from './cardSkin.js';
 export * from './handSort.js';
 export * from './components/SuitShape';
 export * from './components/Bonhomme';

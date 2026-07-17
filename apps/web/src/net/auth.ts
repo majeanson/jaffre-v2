@@ -15,23 +15,48 @@ const KEY = 'jaffre-token';
 const RECOVERY_KEY = 'jaffre-recovery';
 const PROFILE_KEY = 'jaffre-profile';
 
-/** The look of your card: chosen palette colour + an optional painted canvas
- * (data URL). Cached locally so the identity screen paints instantly, and
- * kept in sync with the server on every mint / recover / save. */
+/** The player's cosmetics: chosen palette colour, an optional painted canvas
+ * (data URL), and the chosen card skin + theme. Cached locally so the identity
+ * screen paints instantly, and kept in sync with the server on every mint /
+ * recover / save so cosmetics follow the account across devices. */
 export interface Profile {
   readonly color: string | null;
   readonly paint: string | null;
+  readonly cardSkin: string | null;
+  readonly theme: string | null;
 }
 
-const EMPTY_PROFILE: Profile = { color: null, paint: null };
+const EMPTY_PROFILE: Profile = { color: null, paint: null, cardSkin: null, theme: null };
 
-/** The cached colour + painting for this browser's current identity. */
+/** The cosmetic fields as they arrive on auth/profile responses (all optional). */
+type ProfileFields = {
+  color?: string | null;
+  paint?: string | null;
+  cardSkin?: string | null;
+  theme?: string | null;
+};
+
+function profileFrom(d: ProfileFields): Profile {
+  return {
+    color: d.color ?? null,
+    paint: d.paint ?? null,
+    cardSkin: d.cardSkin ?? null,
+    theme: d.theme ?? null,
+  };
+}
+
+/** The cached cosmetics for this browser's current identity. */
 export function getProfile(): Profile {
   const raw = localStorage.getItem(PROFILE_KEY);
   if (raw === null) return EMPTY_PROFILE;
   try {
     const p = JSON.parse(raw) as Partial<Profile>;
-    return { color: p.color ?? null, paint: p.paint ?? null };
+    return {
+      color: p.color ?? null,
+      paint: p.paint ?? null,
+      cardSkin: p.cardSkin ?? null,
+      theme: p.theme ?? null,
+    };
   } catch {
     return EMPTY_PROFILE;
   }
@@ -65,12 +90,10 @@ export async function getGuestToken(name: string): Promise<StoredToken | null> {
       name: string;
       token: string;
       recoveryCode?: string;
-      color?: string | null;
-      paint?: string | null;
-    };
+    } & ProfileFields;
     const stored = storeToken(data);
     if (data.recoveryCode !== undefined) localStorage.setItem(RECOVERY_KEY, data.recoveryCode);
-    storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
+    storeProfile(profileFrom(data));
     return stored;
   } catch {
     return null;
@@ -97,12 +120,10 @@ export async function recoverIdentity(code: string, name?: string): Promise<Stor
       userId: string;
       name: string;
       token: string;
-      color?: string | null;
-      paint?: string | null;
-    };
+    } & ProfileFields;
     const stored = storeToken(data);
-    // A recovered identity carries its colour + painting to the new device.
-    storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
+    // A recovered identity carries its cosmetics to the new device.
+    storeProfile(profileFrom(data));
     return stored;
   } catch {
     return null;
@@ -115,14 +136,13 @@ export async function recoverIdentity(code: string, name?: string): Promise<Stor
  * then POSTs it under the Bearer token. Returns the saved profile, or the
  * local cache unchanged when there is no token / the request fails.
  */
-export async function saveProfile(patch: {
-  color?: string | null;
-  paint?: string | null;
-}): Promise<Profile> {
+export async function saveProfile(patch: ProfileFields): Promise<Profile> {
   const current = getProfile();
   const optimistic: Profile = {
     color: patch.color !== undefined ? patch.color : current.color,
     paint: patch.paint !== undefined ? patch.paint : current.paint,
+    cardSkin: patch.cardSkin !== undefined ? patch.cardSkin : current.cardSkin,
+    theme: patch.theme !== undefined ? patch.theme : current.theme,
   };
   storeProfile(optimistic);
   const token = read()?.token;
@@ -134,8 +154,8 @@ export async function saveProfile(patch: {
       body: JSON.stringify(patch),
     });
     if (!res.ok) return optimistic; // 503 no-secret / 401 — keep the local look
-    const data = (await res.json()) as { color?: string | null; paint?: string | null };
-    return storeProfile({ color: data.color ?? null, paint: data.paint ?? null });
+    const data = (await res.json()) as ProfileFields;
+    return storeProfile(profileFrom(data));
   } catch {
     return optimistic;
   }
