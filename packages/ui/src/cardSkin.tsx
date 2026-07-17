@@ -66,6 +66,10 @@ function defaultCenter(card: CardData, size: string): ReactNode {
  */
 function ogArt(card: CardData): ReactNode {
   const bon = card.value === 0;
+  // Emblems (1–7) and the blue/green bonhommes sit at the same footprint as any
+  // other card; only the two scoring specials (red = Joffre +5, brown = −2) get
+  // a slightly larger portrait to stand out.
+  const bigBon = bon && (card.suit === 'red' || card.suit === 'brown');
   return (
     <img
       src={`/og-cards/${card.suit}_${bon ? 'bon' : 'emblem'}.jpg`}
@@ -73,7 +77,7 @@ function ogArt(card: CardData): ReactNode {
       aria-hidden
       draggable={false}
       className="pointer-events-none select-none object-contain"
-      style={{ width: bon ? '84%' : '66%', mixBlendMode: 'darken' }}
+      style={{ width: bigBon ? '74%' : '66%', mixBlendMode: 'darken' }}
     />
   );
 }
