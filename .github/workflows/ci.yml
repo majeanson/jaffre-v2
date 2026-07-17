@@ -20,28 +20,11 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Browser e2e (Playwright) — a gate: the deploy waits on this, so a broken
-  # functional test blocks prod instead of only surfacing after the fact.
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-traces
-          path: apps/web/test-results/
-          retention-days: 7
-
+  # Deploy is gated on the FAST `ci` job only (lint/typecheck/unit/build) so a
+  # merge reaches prod in ~1 min. The browser e2e suite (~5 min) runs on its own
+  # cadence in e2e.yml (nightly + manual) instead of blocking every deploy.
   deploy:
-    needs: [ci, e2e]
+    needs: [ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:

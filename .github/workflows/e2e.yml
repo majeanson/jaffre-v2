@@ -1,0 +1,29 @@
+name: E2E (Playwright)
+
+# The browser e2e suite is decoupled from the deploy path (see ci.yml): it is
+# slow (~5 min) and mostly catches regressions the fast `ci` gate can't, so it
+# runs "from time to time" — nightly and on demand — instead of blocking prod.
+on:
+  schedule:
+    # 06:00 UTC daily (low-traffic). Cron uses UTC; adjust if the window shifts.
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7

@@ -19,7 +19,10 @@ export interface CosmeticTile {
   readonly requirement?: { readonly text: string; readonly have: number; readonly need: number };
 }
 
-const T: Record<Lang, { locked: string; selected: string; progress: (h: number, n: number) => string }> = {
+const T: Record<
+  Lang,
+  { locked: string; selected: string; progress: (h: number, n: number) => string }
+> = {
   en: {
     locked: 'Locked',
     selected: 'Equipped',

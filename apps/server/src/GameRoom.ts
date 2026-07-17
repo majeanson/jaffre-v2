@@ -766,9 +766,7 @@ export class GameRoom implements DurableObject {
    * socket, so any joined socket is a human. `exclude` skips a socket that is
    * closing right now (its close hasn't yet removed it from getWebSockets). */
   private hasConnectedHuman(exclude?: WebSocket): boolean {
-    return this.ctx
-      .getWebSockets()
-      .some((s) => s !== exclude && this.attachment(s).joined);
+    return this.ctx.getWebSockets().some((s) => s !== exclude && this.attachment(s).joined);
   }
 
   private seatOf(userId: string): Seat | null {

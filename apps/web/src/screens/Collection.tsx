@@ -48,7 +48,8 @@ const T: Record<
     cardSkins: 'Habillages de cartes',
     themes: 'Thèmes',
     showAll: 'Tout afficher (dev)',
-    blurb: 'Débloque des habillages et des thèmes en jouant. Équipe ceux que tu possèdes — ils suivent ton compte.',
+    blurb:
+      'Débloque des habillages et des thèmes en jouant. Équipe ceux que tu possèdes — ils suivent ton compte.',
   },
 };
 

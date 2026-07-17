@@ -5,15 +5,7 @@
  */
 
 export type SceneScreen =
-  | 'table'
-  | 'home'
-  | 'lobby'
-  | 'history'
-  | 'stats'
-  | 'replay'
-  | 'visitor'
-  | 'share'
-  | 'collection';
+  'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor' | 'share' | 'collection';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {

@@ -63,8 +63,16 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.games >= 25 || s.streak.best >= 5,
     requirement: (s, lang) => {
-      const byGames = { text: t(lang, 'Play 25 games', 'Jouez 25 parties'), have: s.games, need: 25 };
-      const byStreak = { text: t(lang, 'Win 5 in a row', 'Gagnez 5 fois de suite'), have: s.streak.best, need: 5 };
+      const byGames = {
+        text: t(lang, 'Play 25 games', 'Jouez 25 parties'),
+        have: s.games,
+        need: 25,
+      };
+      const byStreak = {
+        text: t(lang, 'Win 5 in a row', 'Gagnez 5 fois de suite'),
+        have: s.streak.best,
+        need: 5,
+      };
       // Show whichever path the player is closest to completing.
       return byGames.have / byGames.need >= byStreak.have / byStreak.need ? byGames : byStreak;
     },
