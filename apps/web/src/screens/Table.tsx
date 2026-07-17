@@ -36,6 +36,9 @@ export interface TableProps {
   readonly frozenHold?: boolean;
   /** Scene viewer: panels to open on mount (initial state only). */
   readonly initialUi?: SceneUi | undefined;
+  /** Reserve space at the bottom so a fixed overlay (e.g. the replay transport
+   * bar) sits clear of the hand instead of covering it. */
+  readonly bottomInset?: boolean;
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
@@ -45,6 +48,7 @@ export function Table({
   onRematch,
   onSwapSeats,
   online = false,
+  bottomInset = false,
   roomCode,
   frozenHold = false,
   initialUi,
@@ -61,7 +65,11 @@ export function Table({
   const { view, roster, me, myTurn, seatInfo } = derived;
 
   return (
-    <main className="table-felt flex h-dvh flex-col items-center overflow-hidden p-3 pb-0 max-sm:p-2 max-sm:pb-0">
+    <main
+      className={`table-felt flex h-dvh flex-col items-center overflow-hidden p-3 max-sm:p-2 ${
+        bottomInset ? 'pb-20 max-sm:pb-16' : 'pb-0 max-sm:pb-0'
+      }`}
+    >
       {online && <ConnectionBanner />}
       <TopBar
         view={view}
