@@ -23,6 +23,32 @@ interface GuestResponse {
   readonly token: string;
   readonly exp: number;
   readonly recoveryCode?: string;
+  readonly color: string | null;
+  readonly paint: string | null;
+}
+
+async function saveProfile(
+  bearer: string,
+  patch: { color?: string | null; paint?: string | null },
+): Promise<Response> {
+  return fetchAs(
+    new Request('https://example.com/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+      body: JSON.stringify(patch),
+    }),
+    authEnv(),
+  );
+}
+
+async function me(bearer: string): Promise<Response> {
+  return fetchAs(
+    new Request('https://example.com/api/auth/me', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${bearer}` },
+    }),
+    authEnv(),
+  );
 }
 
 async function guest(name: string, bearer?: string): Promise<Response> {
@@ -107,5 +133,78 @@ describe('POST /api/auth/recover', () => {
   it('404s on an unknown code', async () => {
     const res = await recover('nope-nope-nope');
     expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/profile — colour + paint persistence', () => {
+  it('a new mint has no colour or paint', async () => {
+    const data = (await (await guest('Nora')).json()) as GuestResponse;
+    expect(data.color).toBeNull();
+    expect(data.paint).toBeNull();
+  });
+
+  it('round-trips a chosen colour: save, then /me and recover both echo it', async () => {
+    const minted = (await (await guest('Otto')).json()) as GuestResponse;
+    const saved = await saveProfile(minted.token, { color: '#7A6FF0' });
+    expect(saved.status).toBe(200);
+    const savedBody = (await saved.json()) as { userId: string; color: string | null };
+    expect(savedBody.userId).toBe(minted.userId);
+    // Persisted lower-cased.
+    expect(savedBody.color).toBe('#7a6ff0');
+
+    const meBody = (await (await me(minted.token)).json()) as GuestResponse;
+    expect(meBody.color).toBe('#7a6ff0');
+
+    // The colour follows the identity across a recovery on a new device.
+    const recovered = (await (
+      await recover(minted.recoveryCode as string)
+    ).json()) as GuestResponse;
+    expect(recovered.userId).toBe(minted.userId);
+    expect(recovered.color).toBe('#7a6ff0');
+  });
+
+  it('persists a painted-card data URL and clears it with null', async () => {
+    const minted = (await (await guest('Pia')).json()) as GuestResponse;
+    const paint = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+    const saved = (await (await saveProfile(minted.token, { paint })).json()) as {
+      paint: string | null;
+    };
+    expect(saved.paint).toBe(paint);
+
+    const meBody = (await (await me(minted.token)).json()) as GuestResponse;
+    expect(meBody.paint).toBe(paint);
+
+    const cleared = (await (await saveProfile(minted.token, { paint: null })).json()) as {
+      paint: string | null;
+    };
+    expect(cleared.paint).toBeNull();
+  });
+
+  it('saving a colour leaves an existing paint untouched (partial update)', async () => {
+    const minted = (await (await guest('Quinn')).json()) as GuestResponse;
+    const paint = 'data:image/png;base64,AAAA';
+    await saveProfile(minted.token, { paint });
+    await saveProfile(minted.token, { color: '#58b884' });
+    const meBody = (await (await me(minted.token)).json()) as GuestResponse;
+    expect(meBody.color).toBe('#58b884');
+    expect(meBody.paint).toBe(paint);
+  });
+
+  it('rejects a non-hex colour and a bare empty body', async () => {
+    const minted = (await (await guest('Rae')).json()) as GuestResponse;
+    expect((await saveProfile(minted.token, { color: 'blue' })).status).toBe(400);
+    expect((await saveProfile(minted.token, {})).status).toBe(400);
+  });
+
+  it('401s without a valid bearer token', async () => {
+    const res = await fetchAs(
+      new Request('https://example.com/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color: '#7a6ff0' }),
+      }),
+      authEnv(),
+    );
+    expect(res.status).toBe(401);
   });
 });

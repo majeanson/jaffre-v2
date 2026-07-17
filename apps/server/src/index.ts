@@ -25,6 +25,28 @@ function noDb(): Response {
   return Response.json({ error: 'History is not configured (no D1 binding)' }, { status: 503 });
 }
 
+interface Profile {
+  readonly color: string | null;
+  readonly paint: string | null;
+}
+
+const NO_PROFILE: Profile = { color: null, paint: null };
+
+/** The player's chosen colour + painted card, or nulls when unset / no DB.
+ * Best-effort: a read failure degrades to "no profile", never throws. */
+async function readProfile(env: Env, uid: string): Promise<Profile> {
+  if (env.DB === undefined) return NO_PROFILE;
+  try {
+    const row = await env.DB.prepare('SELECT color, paint FROM users WHERE id = ?1')
+      .bind(uid)
+      .first<{ color: string | null; paint: string | null }>();
+    return { color: row?.color ?? null, paint: row?.paint ?? null };
+  } catch (err) {
+    console.error('[users] profile read failed', err);
+    return NO_PROFILE;
+  }
+}
+
 /**
  * POST /api/auth/guest {name} → {userId, name, token, exp, recoveryCode?}.
  * Anonymous-first: no password, just a minted identity the client stores
@@ -68,7 +90,8 @@ async function handleGuestAuth(request: Request, env: Env): Promise<Response> {
     }
     const exp = Date.now() + SESSION_TTL_MS;
     const token = await mintToken({ uid: identity.uid, name: trimmed, exp }, env.SESSION_SECRET);
-    return Response.json({ userId: identity.uid, name: trimmed, token, exp });
+    const profile = await readProfile(env, identity.uid);
+    return Response.json({ userId: identity.uid, name: trimmed, token, exp, ...profile });
   }
 
   const userId = crypto.randomUUID();
@@ -98,6 +121,9 @@ async function handleGuestAuth(request: Request, env: Env): Promise<Response> {
     name: trimmed,
     token,
     exp,
+    // A brand-new user has no colour/paint yet — echo the nulls so the client
+    // response shape is identical across mint / re-mint / recover / me.
+    ...NO_PROFILE,
     ...(dbOk ? { recoveryCode } : {}),
   });
 }
@@ -149,10 +175,12 @@ async function handleRecover(request: Request, env: Env): Promise<Response> {
   }
   const exp = Date.now() + SESSION_TTL_MS;
   const token = await mintToken({ uid: row.id, name: finalName, exp }, env.SESSION_SECRET);
-  return Response.json({ userId: row.id, name: finalName, token, exp });
+  const profile = await readProfile(env, row.id);
+  return Response.json({ userId: row.id, name: finalName, token, exp, ...profile });
 }
 
-/** GET /api/auth/me — validates the Bearer token, echoes the identity. */
+/** GET /api/auth/me — validates the Bearer token, echoes the identity (with
+ * the player's colour + painted card when a DB is bound). */
 async function handleAuthMe(request: Request, env: Env): Promise<Response> {
   if (!isUsableSecret(env.SESSION_SECRET)) return noSecret();
   const token = bearerToken(request);
@@ -161,7 +189,89 @@ async function handleAuthMe(request: Request, env: Env): Promise<Response> {
   if (identity === null) {
     return Response.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
-  return Response.json({ userId: identity.uid, name: identity.name });
+  const profile = await readProfile(env, identity.uid);
+  return Response.json({ userId: identity.uid, name: identity.name, ...profile });
+}
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+/** Cap on the whole POST body — the painted-canvas data URL is the big field.
+ * A 260×347 PNG of brush strokes compresses well under this. */
+const PROFILE_MAX_BYTES = 512 * 1024;
+
+/**
+ * POST /api/profile {color?, paint?} → {userId, color, paint}. Authenticated
+ * by Bearer token; persists the player's chosen palette colour and/or their
+ * painted card to `users`. Each field is optional: absent leaves the column
+ * untouched, explicit `null` clears it. No account vocabulary — this is just
+ * the look of your card.
+ */
+async function handleProfile(request: Request, env: Env): Promise<Response> {
+  if (!isUsableSecret(env.SESSION_SECRET)) return noSecret();
+  if (env.DB === undefined) return noDb();
+  const token = bearerToken(request);
+  if (token === null) return Response.json({ error: 'Missing bearer token' }, { status: 401 });
+  const identity = await verifyToken(token, env.SESSION_SECRET);
+  if (identity === null) {
+    return Response.json({ error: 'Invalid or expired token' }, { status: 401 });
+  }
+
+  const lengthHeader = request.headers.get('Content-Length');
+  if (lengthHeader !== null && Number(lengthHeader) > PROFILE_MAX_BYTES) {
+    return new Response('Payload too large', { status: 413 });
+  }
+  const raw = await request.text();
+  if (raw.length > PROFILE_MAX_BYTES) return new Response('Payload too large', { status: 413 });
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return Response.json({ error: 'Expected a JSON body' }, { status: 400 });
+  }
+  if (typeof body !== 'object' || body === null) {
+    return Response.json({ error: 'Expected a JSON object' }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+
+  let color: string | null | undefined;
+  if ('color' in b) {
+    if (b.color === null) color = null;
+    else if (typeof b.color === 'string' && HEX_RE.test(b.color)) color = b.color.toLowerCase();
+    else return Response.json({ error: 'color must be a #rrggbb hex or null' }, { status: 400 });
+  }
+  let paint: string | null | undefined;
+  if ('paint' in b) {
+    if (b.paint === null) paint = null;
+    else if (typeof b.paint === 'string' && b.paint.startsWith('data:image/')) paint = b.paint;
+    else
+      return Response.json({ error: 'paint must be a data:image/ URL or null' }, { status: 400 });
+  }
+  if (color === undefined && paint === undefined) {
+    return Response.json({ error: 'Provide color and/or paint' }, { status: 400 });
+  }
+
+  // Partial UPDATE touching only the provided columns; bind indices track the
+  // running length so color/paint/uid line up regardless of which are present.
+  const sets: string[] = [];
+  const binds: (string | null)[] = [];
+  if (color !== undefined) {
+    binds.push(color);
+    sets.push(`color = ?${String(binds.length)}`);
+  }
+  if (paint !== undefined) {
+    binds.push(paint);
+    sets.push(`paint = ?${String(binds.length)}`);
+  }
+  binds.push(identity.uid);
+  try {
+    await env.DB.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?${String(binds.length)}`)
+      .bind(...binds)
+      .run();
+  } catch (err) {
+    console.error('[users] profile update failed', err);
+    return Response.json({ error: 'Could not save profile' }, { status: 500 });
+  }
+  const profile = await readProfile(env, identity.uid);
+  return Response.json({ userId: identity.uid, ...profile });
 }
 
 /**
@@ -485,6 +595,9 @@ export default {
     }
     if (url.pathname === '/api/auth/me' && request.method === 'GET') {
       return handleAuthMe(request, env);
+    }
+    if (url.pathname === '/api/profile' && request.method === 'POST') {
+      return handleProfile(request, env);
     }
     if (url.pathname === '/api/history' && request.method === 'GET') {
       return handleHistory(request, env, url);

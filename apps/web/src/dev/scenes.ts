@@ -305,6 +305,12 @@ const LOADERS: Record<SceneId, () => void> = {
   home: () => useGameStore.getState().reset(),
   'home-help': () => useGameStore.getState().reset(),
   'your-tables': () => useGameStore.getState().reset(),
+  // Identity scenes render Home with a staged identity (props, not the store).
+  identity: () => useGameStore.getState().reset(),
+  'identity-light': () => useGameStore.getState().reset(),
+  'identity-loading': () => useGameStore.getState().reset(),
+  'identity-recover-error': () => useGameStore.getState().reset(),
+  'identity-name-taken': () => useGameStore.getState().reset(),
   'lobby-open': () => injectLobby(LOBBY_OPEN, 'open'),
   'lobby-full': () => injectLobby(LOBBY_FULL, 'open'),
   'lobby-reconnecting': () => injectLobby(LOBBY_FULL, 'reconnecting'),

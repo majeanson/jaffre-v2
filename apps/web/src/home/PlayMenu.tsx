@@ -31,11 +31,11 @@ export interface PlayMenuProps {
 }
 
 const PANEL =
-  'rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800)/85 shadow-(--shadow-panel)';
+  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)';
 
 /**
- * The title-screen actions: practice (primary), play with friends
- * (create-a-room + join-by-code), and a resume strip when applicable.
+ * The title-screen actions in the arcade shell: practice (primary), play with
+ * friends (create-a-room + join-by-code), and a resume strip when applicable.
  */
 export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: PlayMenuProps) {
   const [code, setCode] = useState('');
@@ -58,7 +58,10 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
   };
 
   return (
-    <section aria-label="Play" className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+    <section
+      aria-label="Play"
+      className="grid w-full grid-cols-1 gap-3 font-arcade-ui sm:grid-cols-2"
+    >
       <div
         className="rise-in flex flex-col gap-2"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
@@ -66,15 +69,15 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
         <button
           type="button"
           onClick={onPractice}
-          className="group relative cursor-pointer overflow-hidden rounded-(--radius-panel) bg-(--color-lamplight) p-5 text-left text-(--color-felt-950) shadow-(--shadow-panel) transition-[filter] duration-(--duration-flick) hover:brightness-110 active:translate-y-px max-sm:p-4"
+          className="group relative cursor-pointer overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-left text-(--color-ap-ink) shadow-(--shadow-ap-lg) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-105 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none max-sm:p-4"
         >
           <span
             aria-hidden
-            className="pointer-events-none absolute -top-8 -right-6 font-display text-[7rem] leading-none opacity-10 transition-transform duration-(--duration-play) group-hover:-rotate-12"
+            className="pointer-events-none absolute -top-8 -right-6 font-arcade-display text-[7rem] leading-none opacity-15 transition-transform duration-(--duration-play) group-hover:-rotate-12"
           >
             ♠
           </span>
-          <span className="block font-display text-[clamp(1.35rem,2.6vmin,1.7rem)] font-semibold">
+          <span className="block font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase">
             Practice vs bots
           </span>
           <span className="mt-1 block text-(length:--text-fluid-sm) font-medium opacity-80">
@@ -82,13 +85,13 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
           </span>
           <span
             aria-hidden
-            className="mt-4 inline-block text-(length:--text-fluid-sm) font-bold tracking-wide transition-transform duration-(--duration-flick) group-hover:translate-x-1"
+            className="mt-4 inline-block font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide transition-transform duration-(--duration-flick) group-hover:translate-x-1"
           >
             Play now →
           </span>
         </button>
         <div
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ivory)/70"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)"
           aria-label="Bot difficulty"
         >
           <span>Opponents:</span>
@@ -97,7 +100,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
               key={seat}
               type="button"
               onClick={() => cycleBot(seat)}
-              className="cursor-pointer rounded-full border border-white/12 px-2 py-0.5 text-(--color-ivory)/70 hover:border-white/25 hover:text-(--color-ivory)"
+              className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
             >
               {PRACTICE_BOT_NAMES[seat]} · {DIFFICULTY_LABEL[bots[seat]]}
             </button>
@@ -109,23 +112,19 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
         className={`rise-in flex flex-col gap-3 p-5 max-sm:p-4 ${PANEL}`}
         style={{ '--rise-delay': '140ms' } as CSSProperties}
       >
-        <span className="font-display text-[clamp(1.35rem,2.6vmin,1.7rem)] font-semibold text-(--color-ivory)">
+        <span className="font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase text-(--color-ap-text)">
           Play with friends
         </span>
-        <button
-          type="button"
-          onClick={() => onJoinRoom(generateRoomCode())}
-          className="cursor-pointer rounded-lg border border-(--color-accent)/60 px-4 py-2.5 font-semibold text-(--color-accent) hover:bg-(--color-accent)/10 active:translate-y-px"
-        >
+        <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
           Create a room
-        </button>
+        </Cta>
         <div
           aria-hidden
-          className="flex items-center gap-3 text-(length:--text-fluid-xs) text-(--color-ivory)/40"
+          className="flex items-center gap-3 text-(length:--text-fluid-xs) text-(--color-ap-muted)"
         >
-          <span className="h-px flex-1 bg-white/10" />
+          <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
           or join with a code
-          <span className="h-px flex-1 bg-white/10" />
+          <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
         </div>
         <form
           className="flex gap-2"
@@ -142,11 +141,11 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/25 px-3 py-2.5 text-(--color-ivory) placeholder:text-(--color-ivory)/50 focus:border-(--color-accent)"
+            className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
           />
           <button
             type="submit"
-            className="cursor-pointer whitespace-nowrap rounded-lg border border-white/20 px-4 py-2.5 text-(--color-ivory)/90 hover:bg-white/8"
+            className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
           >
             Join room
           </button>
@@ -187,18 +186,18 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
       >
         <a
           href="#history"
-          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ivory)/70 hover:text-(--color-ivory)"
+          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ap-muted) hover:text-(--color-ap-text)"
         >
-          <span aria-hidden className="text-(--color-lamplight)">
+          <span aria-hidden className="text-(--color-ap-gold)">
             ♠
           </span>
           Your games
         </a>
         <a
           href="#stats"
-          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ivory)/70 hover:text-(--color-ivory)"
+          className="flex items-center gap-2 px-4 py-3 text-(length:--text-fluid-sm) text-(--color-ap-muted) hover:text-(--color-ap-text)"
         >
-          <span aria-hidden className="text-(--color-lamplight)">
+          <span aria-hidden className="text-(--color-ap-gold)">
             ★
           </span>
           Your record

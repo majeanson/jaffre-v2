@@ -1,33 +1,60 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
-import { GHOST_BTN } from '../components/buttonStyles.js';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Cta, WordPlate } from '@jaffre/ui';
 import { getGuestToken, getRecoveryCode, recoverIdentity } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 
-const PANEL =
-  'rounded-(--radius-panel) border border-white/10 bg-(--color-felt-800)/85 shadow-(--shadow-panel)';
+/**
+ * A forced state for the scene viewer — lets the design surface stage the
+ * empty / loading / code / error variants without a live server round-trip.
+ */
+export type RecoveryStage =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'code'; readonly code: string }
+  | { readonly kind: 'recover-error' };
+
+/** Split 'lampe-tricot-hibou' into its three words for the plate trio. */
+function words(code: string): readonly string[] {
+  return code.split('-').filter((w) => w !== '');
+}
+
+const RECOVER_ERROR = "That code didn't match — check the words and try again.";
+
+export interface RecoveryCardProps {
+  /** Scene-only: force a state instead of minting against the server. */
+  readonly stage?: RecoveryStage;
+}
 
 /**
- * Warm, zero-friction identity card: shows the 3-word recovery code once a
- * guest identity is minted, and a quiet "I have a code" affordance to
- * restore one on a new device. No accounts vocabulary anywhere.
+ * Warm, zero-friction identity card in the arcade shell: shows the 3-word
+ * recovery code as an ivory WordPlate trio once a guest identity is minted,
+ * plus a quiet "I have a code" affordance to restore one on a new device. No
+ * account vocabulary anywhere — these words just get your games back.
  */
-export function RecoveryCard() {
-  const [code, setCode] = useState<string | null>(getRecoveryCode());
+export function RecoveryCard({ stage }: RecoveryCardProps) {
+  const staged = stage !== undefined;
+  const [code, setCode] = useState<string | null>(
+    stage?.kind === 'code' ? stage.code : getRecoveryCode(),
+  );
   const [copied, setCopied] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [enteredCode, setEnteredCode] = useState('');
+  const [showForm, setShowForm] = useState(stage?.kind === 'recover-error');
+  const [enteredCode, setEnteredCode] = useState(
+    stage?.kind === 'recover-error' ? 'aaaa-bbbb-cccc' : '',
+  );
   const [enteredName, setEnteredName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    stage?.kind === 'recover-error' ? RECOVER_ERROR : null,
+  );
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (staged) return; // scene mode: never touch the network
     // Establish identity as soon as the home screen shows (not only once a
     // room connects) so a brand-new browser sees its words right away.
     void getGuestToken(playerName()).then(() => setCode(getRecoveryCode()));
-  }, []);
+  }, [staged]);
 
   const copy = () => {
-    if (code === null) return;
+    if (code === null || staged) return;
     void navigator.clipboard
       .writeText(code)
       .then(() => {
@@ -41,6 +68,7 @@ export function RecoveryCard() {
 
   const submitRecover = (e: FormEvent) => {
     e.preventDefault();
+    if (staged) return;
     const trimmedCode = enteredCode.trim().toLowerCase();
     if (trimmedCode === '' || busy) return;
     setBusy(true);
@@ -50,7 +78,7 @@ export function RecoveryCard() {
       (result) => {
         setBusy(false);
         if (result === null) {
-          setError("That code didn't match — check the words and try again.");
+          setError(RECOVER_ERROR);
           return;
         }
         setPlayerName(result.name);
@@ -59,14 +87,16 @@ export function RecoveryCard() {
     );
   };
 
-  if (code === null && !showForm) {
-    // Nothing to show yet (identity still minting) and the recovery form is
-    // closed — render just the quiet affordance so Home doesn't jump around.
+  const loading = stage?.kind === 'loading' || (!staged && code === null);
+
+  // Loading + form-closed: on the live screen show only the quiet affordance so
+  // Home doesn't jump around. In the loading scene, show the shimmer.
+  if (loading && !showForm && stage?.kind !== 'loading') {
     return (
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        className="rise-in text-(length:--text-fluid-xs) text-(--color-ivory)/50 hover:text-(--color-ivory)/80 hover:underline"
+        className="rise-in font-arcade-ui text-[0.8em] text-(--color-ap-muted) hover:text-(--color-ap-text) hover:underline"
       >
         I have a code
       </button>
@@ -74,41 +104,53 @@ export function RecoveryCard() {
   }
 
   return (
-    <div
-      className={`rise-in flex w-full max-w-xs flex-col items-center gap-2 p-4 text-center ${PANEL}`}
-      style={{ '--rise-delay': '200ms' } as CSSProperties}
-    >
-      {code !== null && !showForm && (
+    <div className="rise-in flex w-full max-w-xs flex-col items-center gap-[0.7em] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.1em] text-center shadow-(--shadow-ap)">
+      {stage?.kind === 'loading' && (
         <>
-          <p className="text-(length:--text-fluid-xs) text-(--color-ivory)/70">
+          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">Minting your words…</p>
+          <div data-testid="recovery-loading" aria-hidden className="flex items-center gap-[0.5em]">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-[2em] w-[4.5em] animate-pulse rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel-hover)"
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {code !== null && !showForm && stage?.kind !== 'loading' && (
+        <>
+          <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
             These words get your name and games back on a new phone.
           </p>
-          <p
-            data-testid="recovery-code"
-            className="font-display text-(length:--text-fluid-sm) font-semibold tracking-wide text-(--color-lamplight)"
-          >
-            {code}
-          </p>
-          <button
-            type="button"
-            onClick={copy}
-            className={`${GHOST_BTN} px-3 py-1.5 text-(length:--text-fluid-xs) text-(--color-ivory)/80`}
-          >
+          <div className="flex flex-wrap items-center justify-center gap-[0.5em]">
+            {words(code).map((w, i) => (
+              <WordPlate key={i}>{w}</WordPlate>
+            ))}
+            {/* The e2e + screen readers read the raw code from here; the plates
+                above are decorative (uppercased via CSS, which would corrupt an
+                innerText read). */}
+            <span data-testid="recovery-code" className="sr-only">
+              {code}
+            </span>
+          </div>
+          <Cta type="button" variant="secondary" onClick={copy}>
             {copied ? 'Copied' : 'Copy'}
-          </button>
+          </Cta>
         </>
       )}
 
       <button
         type="button"
         onClick={() => setShowForm((s) => !s)}
-        className="text-(length:--text-fluid-xs) text-(--color-ivory)/50 hover:text-(--color-ivory)/80 hover:underline"
+        className="font-arcade-ui text-[0.8em] text-(--color-ap-muted) hover:text-(--color-ap-text) hover:underline"
       >
         {showForm ? 'Never mind' : 'I have a code'}
       </button>
 
       {showForm && (
-        <form onSubmit={submitRecover} className="flex w-full flex-col gap-2">
+        <form onSubmit={submitRecover} className="flex w-full flex-col gap-[0.6em]">
           <input
             value={enteredCode}
             onChange={(e) => setEnteredCode(e.target.value)}
@@ -116,25 +158,23 @@ export function RecoveryCard() {
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="min-w-0 rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-center text-(--color-ivory) placeholder:text-(--color-ivory)/40 focus:border-(--color-accent)"
+            className="min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2 text-center font-arcade-ui text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
           />
           <input
             value={enteredName}
             onChange={(e) => setEnteredName(e.target.value)}
             placeholder="Name (optional)"
             maxLength={20}
-            className="min-w-0 rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-center text-(--color-ivory) placeholder:text-(--color-ivory)/40 focus:border-(--color-accent)"
+            className="min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2 text-center font-arcade-ui text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
           />
           {error !== null && (
-            <p className="text-(length:--text-fluid-xs) text-(--color-danger-text)">{error}</p>
+            <p role="alert" className="font-arcade-ui text-[0.8em] text-(--color-ap-danger-text)">
+              {error}
+            </p>
           )}
-          <button
-            type="submit"
-            disabled={busy}
-            className="cursor-pointer rounded-lg border border-(--color-accent)/60 px-4 py-2 font-semibold text-(--color-accent) hover:bg-(--color-accent)/10 disabled:cursor-default disabled:opacity-50"
-          >
+          <Cta type="submit" disabled={busy}>
             {busy ? 'Restoring…' : 'Restore'}
-          </button>
+          </Cta>
         </form>
       )}
     </div>

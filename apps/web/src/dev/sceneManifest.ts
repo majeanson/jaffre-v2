@@ -27,6 +27,8 @@ export interface SceneMeta {
   /** Keep a held trick on screen indefinitely. */
   readonly frozenHold?: boolean;
   readonly ui?: SceneUi;
+  /** Force a skin for this scene (default: the stored theme, i.e. dark). */
+  readonly theme?: 'light';
   /** Playwright locator that must be visible once the scene renders. */
   readonly probe: string;
   /** Playwright locator that must NOT be visible in this scene. */
@@ -52,6 +54,37 @@ export const SCENE_METAS = [
     label: 'Home — your tables (resume)',
     screen: 'home',
     probe: 'role=button[name="Resume"]',
+  },
+  {
+    id: 'identity',
+    label: 'Identity — new player (recovery words)',
+    screen: 'home',
+    probe: 'text=get your name and games back',
+  },
+  {
+    id: 'identity-light',
+    label: 'Identity — light skin',
+    screen: 'home',
+    theme: 'light',
+    probe: 'text=get your name and games back',
+  },
+  {
+    id: 'identity-loading',
+    label: 'Identity — minting (shimmer)',
+    screen: 'home',
+    probe: 'text=Minting your words',
+  },
+  {
+    id: 'identity-recover-error',
+    label: 'Identity — code not found',
+    screen: 'home',
+    probe: "text=That code didn't match",
+  },
+  {
+    id: 'identity-name-taken',
+    label: 'Identity — name taken',
+    screen: 'home',
+    probe: "text=That name's taken",
   },
   {
     id: 'lobby-open',
