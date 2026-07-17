@@ -10,8 +10,10 @@ import {
   DEMO_TABLES,
   SCENES,
 } from '../dev/scenes.js';
+import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
+import { Collection } from './Collection.js';
 import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
@@ -83,15 +85,20 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     current?.load();
   }, [current]);
 
-  // Some scenes force a skin (e.g. the light-skin identity variant). Apply it
-  // on mount and restore the prior theme when leaving the scene.
+  // Some scenes force a theme and/or a card skin (e.g. the light-skin identity
+  // variant, the Classic-OG deck scene). Apply on mount and restore on leave.
+  // The card skin goes through applyCardSkin so its renderers (framed pips, foil,
+  // glow) update too, not just the tokens — restored to the player's own on exit.
   useEffect(() => {
     const root = document.documentElement;
-    const prev = root.dataset['theme'];
+    const prevTheme = root.dataset['theme'];
+    const prevSkin = currentCardSkin();
     if (current?.theme === 'light') root.dataset['theme'] = 'light';
+    if (current?.cardSkin !== undefined) applyCardSkin(current.cardSkin);
     return () => {
-      if (prev === undefined) delete root.dataset['theme'];
-      else root.dataset['theme'] = prev;
+      if (prevTheme === undefined) delete root.dataset['theme'];
+      else root.dataset['theme'] = prevTheme;
+      if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
     };
   }, [current]);
 
@@ -165,6 +172,9 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'visitor' && (
         <Visitor key={current.id} code="scene" onSit={noop} onWatch={noop} onLeave={onLeave} />
+      )}
+      {current.screen === 'collection' && (
+        <Collection key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
       )}
       {current.screen === 'share' && (
         <>

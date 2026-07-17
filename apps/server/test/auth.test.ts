@@ -25,11 +25,18 @@ interface GuestResponse {
   readonly recoveryCode?: string;
   readonly color: string | null;
   readonly paint: string | null;
+  readonly cardSkin: string | null;
+  readonly theme: string | null;
 }
 
 async function saveProfile(
   bearer: string,
-  patch: { color?: string | null; paint?: string | null },
+  patch: {
+    color?: string | null;
+    paint?: string | null;
+    cardSkin?: string | null;
+    theme?: string | null;
+  },
 ): Promise<Response> {
   return fetchAs(
     new Request('https://example.com/api/profile', {
@@ -206,5 +213,49 @@ describe('POST /api/profile — colour + paint persistence', () => {
       authEnv(),
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /api/profile — cosmetics (card skin + theme) persistence', () => {
+  it('a new mint has no card skin or theme', async () => {
+    const data = (await (await guest('Cosmo')).json()) as GuestResponse;
+    expect(data.cardSkin).toBeNull();
+    expect(data.theme).toBeNull();
+  });
+
+  it('round-trips card skin + theme: save, then /me and recover both echo them', async () => {
+    const minted = (await (await guest('Skye')).json()) as GuestResponse;
+    const saved = (await (
+      await saveProfile(minted.token, { cardSkin: 'neon', theme: 'midnight' })
+    ).json()) as GuestResponse;
+    expect(saved.cardSkin).toBe('neon');
+    expect(saved.theme).toBe('midnight');
+
+    const meBody = (await (await me(minted.token)).json()) as GuestResponse;
+    expect(meBody.cardSkin).toBe('neon');
+    expect(meBody.theme).toBe('midnight');
+
+    // Cosmetics follow the identity across a recovery on a new device.
+    const recovered = (await (
+      await recover(minted.recoveryCode as string)
+    ).json()) as GuestResponse;
+    expect(recovered.cardSkin).toBe('neon');
+    expect(recovered.theme).toBe('midnight');
+  });
+
+  it('clears a card skin with null and leaves colour untouched (partial update)', async () => {
+    const minted = (await (await guest('Vale')).json()) as GuestResponse;
+    await saveProfile(minted.token, { color: '#7a6ff0', cardSkin: 'noir' });
+    const cleared = (await (
+      await saveProfile(minted.token, { cardSkin: null })
+    ).json()) as GuestResponse;
+    expect(cleared.cardSkin).toBeNull();
+    expect(cleared.color).toBe('#7a6ff0');
+  });
+
+  it('rejects a malformed skin id (not a lowercase slug)', async () => {
+    const minted = (await (await guest('Wren')).json()) as GuestResponse;
+    expect((await saveProfile(minted.token, { cardSkin: 'Neon!' })).status).toBe(400);
+    expect((await saveProfile(minted.token, { theme: 'A B' })).status).toBe(400);
   });
 });

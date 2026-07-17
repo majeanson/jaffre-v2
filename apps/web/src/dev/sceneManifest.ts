@@ -5,7 +5,15 @@
  */
 
 export type SceneScreen =
-  'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor' | 'share';
+  | 'table'
+  | 'home'
+  | 'lobby'
+  | 'history'
+  | 'stats'
+  | 'replay'
+  | 'visitor'
+  | 'share'
+  | 'collection';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -29,6 +37,8 @@ export interface SceneMeta {
   readonly ui?: SceneUi;
   /** Force a skin for this scene (default: the stored theme, i.e. dark). */
   readonly theme?: 'light';
+  /** Force a card skin for this scene (default: the stored one, i.e. arcade). */
+  readonly cardSkin?: string;
   /** Playwright locator that must be visible once the scene renders. */
   readonly probe: string;
   /** Playwright locator that must NOT be visible in this scene. */
@@ -281,6 +291,19 @@ export const SCENE_METAS = [
     label: 'Invite — share sheet',
     screen: 'share',
     probe: 'role=dialog[name="Invite to your table"]',
+  },
+  {
+    id: 'collection',
+    label: 'Collection — cosmetics gallery',
+    screen: 'collection',
+    probe: 'role=heading[name="Collection"]',
+  },
+  {
+    id: 'classic-og-deck',
+    label: 'Play — Classic OG card skin',
+    screen: 'table',
+    cardSkin: 'classic-og',
+    probe: '[role="option"][data-playable="true"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

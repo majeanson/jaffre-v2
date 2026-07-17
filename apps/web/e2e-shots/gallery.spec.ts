@@ -25,7 +25,7 @@ const VIEWPORTS = [
   { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
 ] as const;
 
-const SKINS = ['dark', 'light', 'juicy'] as const;
+const SKINS = ['dark', 'light', 'juicy', 'sepia', 'midnight'] as const;
 
 /** The one combo that also boots a real practice game. */
 const LIVE_COMBO = 'desktop-dark';
