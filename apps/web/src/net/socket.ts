@@ -1,6 +1,7 @@
 import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getGuestToken } from './auth.js';
+import { rememberTable } from './rooms.js';
 
 /**
  * Online transport: one WebSocket to the room's Durable Object. Feeds the
@@ -111,6 +112,7 @@ function handle(msg: ServerMessage): void {
   switch (msg.t) {
     case 'welcome':
       store.welcome(msg.viewer, msg.view, msg.seq, msg.roster, msg.chatTail);
+      if (room !== null) rememberTable(room, msg.roster);
       break;
     case 'events':
       store.applyEvents(msg.events, msg.seq);
@@ -120,6 +122,7 @@ function handle(msg: ServerMessage): void {
       break;
     case 'roster':
       store.setRoster(msg.roster);
+      if (room !== null) rememberTable(room, msg.roster);
       break;
     case 'chat':
       store.addChat(msg.entry);

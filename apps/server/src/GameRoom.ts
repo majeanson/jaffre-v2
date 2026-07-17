@@ -56,6 +56,10 @@ interface Meta {
    * incremented at each game_over. Reset only when the room empties for
    * good (a fresh DO, never in place). */
   seriesWins: [number, number];
+  /** Final [Sun, Moon] scores of each finished game this sitting, oldest
+   * first — the between-games scorepad. Appended at each game_over,
+   * alongside seriesWins; reset only with the DO. */
+  seriesGames: [number, number][];
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -73,7 +77,13 @@ interface LogEntry {
 }
 
 function emptyMeta(): Meta {
-  return { seats: [null, null, null, null], names: {}, started: false, seriesWins: [0, 0] };
+  return {
+    seats: [null, null, null, null],
+    names: {},
+    started: false,
+    seriesWins: [0, 0],
+    seriesGames: [],
+  };
 }
 
 function isBotOwner(owner: SeatOwner): owner is BotOwner {
@@ -169,6 +179,9 @@ export class GameRoom implements DurableObject {
         return;
       case 'start':
         await this.onStart(ws, att);
+        return;
+      case 'swap_seats':
+        await this.onSwapSeats(ws, att);
         return;
       case 'ready':
         await this.onReady(ws, att);
@@ -368,6 +381,48 @@ export class GameRoom implements DurableObject {
     // Fresh welcome so the sitter's client adopts its new viewer identity —
     // the store only learns `viewer` from welcome snapshots.
     this.sendWelcome(ws, att);
+    this.broadcastRoster({});
+  }
+
+  /**
+   * Between games (game_over only): re-pair the table by swapping seats 1 and
+   * 2, so both teams get new partners before the rematch. Seat ownership moves,
+   * so every affected client gets a fresh welcome to adopt its new viewer seat;
+   * the next `start` deals with the new seating.
+   */
+  private async onSwapSeats(ws: WebSocket, att: Attachment): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    if (typeof att.viewer !== 'number') {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Only a seated player can swap' });
+      return;
+    }
+    if (this.game === null || this.game.phase !== 'game_over') {
+      this.send(ws, {
+        t: 'error',
+        code: 'BAD_MESSAGE',
+        message: 'Seats can only be swapped between games',
+      });
+      return;
+    }
+    // Swap seats 1 ↔ 2 — re-pairs both teams (0&2 vs 1&3 → everyone new partner).
+    const tmp = this.meta.seats[1];
+    this.meta.seats[1] = this.meta.seats[2];
+    this.meta.seats[2] = tmp;
+    await this.ctx.storage.put('meta', this.meta);
+    // Seat ownership moved — refresh each connected client's viewer identity.
+    for (const socket of this.ctx.getWebSockets()) {
+      const a = this.attachment(socket);
+      if (!a.joined) continue;
+      const viewer: Viewer = this.seatOf(a.userId) ?? 'spectator';
+      if (viewer !== a.viewer) {
+        a.viewer = viewer;
+        socket.serializeAttachment(a);
+        this.sendWelcome(socket, a);
+      }
+    }
     this.broadcastRoster({});
   }
 
@@ -573,6 +628,8 @@ export class GameRoom implements DurableObject {
         const wins: [number, number] = [...this.meta.seriesWins] as [number, number];
         wins[game.winner] += 1;
         this.meta.seriesWins = wins;
+        // Record this game's final scores for the between-games scorepad.
+        this.meta.seriesGames = [...this.meta.seriesGames, [game.scores[0], game.scores[1]]];
         await this.ctx.storage.put('meta', this.meta);
       }
       // History write is strictly best-effort: awaited (so tests observe it)
@@ -725,6 +782,7 @@ export class GameRoom implements DurableObject {
       spectators,
       started: this.meta.started,
       seriesWins: this.meta.seriesWins,
+      seriesGames: this.meta.seriesGames,
     };
   }
 

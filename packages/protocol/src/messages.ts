@@ -56,6 +56,8 @@ export const clientMessageSchema = z.union([
     difficulty: botDifficultySchema.optional(),
   }),
   z.object({ t: z.literal('start') }),
+  // Between games only: re-pair the table (swap seats 1 & 2) before a rematch.
+  z.object({ t: z.literal('swap_seats') }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
@@ -91,6 +93,9 @@ export interface Roster {
   /** Standing-table tally across games at this room: [Sun wins, Moon wins],
    * reset only when the room empties for good. */
   readonly seriesWins?: readonly [number, number];
+  /** Final [Sun, Moon] scores of each finished game this sitting, oldest
+   * first — powers the between-games scorepad. Reset with the room. */
+  readonly seriesGames?: readonly (readonly [number, number])[];
 }
 
 export interface ChatEntry {

@@ -112,6 +112,7 @@ export function App() {
         onAction={(action) => send({ t: 'action', action })}
         onLeave={() => (location.hash = '')}
         onRematch={() => send({ t: 'start' })}
+        onSwapSeats={() => send({ t: 'swap_seats' })}
       />
     ) : (
       <Lobby code={route.code} onLeave={() => (location.hash = '')} />

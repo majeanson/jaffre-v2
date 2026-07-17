@@ -3,6 +3,7 @@ import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
 import type { HistoryGame, ReplayData, Stats } from '../net/history.js';
+import type { TableEntry } from '../net/rooms.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
 import type { SceneId, SceneMeta } from './sceneManifest.js';
@@ -26,8 +27,14 @@ const ROSTER: Roster = {
   spectators: 1,
   started: true,
   // A standing table mid-series — the game-over scene shows this tally under
-  // the final score.
+  // the final score, and the per-game scorepad grid below it. Three finished
+  // games: Sun (idx 0) took games 1 & 3, Moon (idx 1) game 2 → [2, 1].
   seriesWins: [2, 1],
+  seriesGames: [
+    [90, 40],
+    [30, 90],
+    [70, 55],
+  ],
 };
 
 /** You are ready, one human is not — the summary shows the waiting state. */
@@ -186,6 +193,33 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
 ];
 
 export const DEMO_REPLAY: ReplayData = { ...buildDemoReplay(), players: DEMO_PLAYERS_SEAT0 };
+
+/** Staged "Your tables" row for the home scene — two standing tables. */
+export const DEMO_TABLES: readonly TableEntry[] = [
+  {
+    code: 'salon',
+    updatedAt: Date.now() - 4 * 60_000,
+    started: true,
+    seriesWins: [3, 2],
+    seats: [
+      { name: 'You', isBot: false },
+      { name: 'Réal', isBot: false },
+      { name: 'Marcel', isBot: false },
+      { name: 'Lise', isBot: false },
+    ],
+  },
+  {
+    code: 'amber-fox-3k',
+    updatedAt: Date.now() - 22 * 60_000,
+    started: true,
+    seriesWins: [1, 1],
+    seats: [
+      { name: 'Ginette', isBot: false },
+      { name: 'Alix', isBot: false },
+      { name: 'Bot 3', isBot: true },
+    ],
+  },
+];
 
 /** Staged "Your record" data for the stats scene. */
 export const DEMO_STATS: Stats = {

@@ -12,11 +12,20 @@ export interface OverlaysProps {
   /** Declare readiness for the next round. */
   readonly onReady: () => void;
   readonly onRematch?: (() => void) | undefined;
+  readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
 }
 
 /** Owns the modal layer: round summary between rounds, game recap at the end. */
-export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: OverlaysProps) {
+export function Overlays({
+  view,
+  roster,
+  me,
+  onReady,
+  onRematch,
+  onSwapSeats,
+  onLeave,
+}: OverlaysProps) {
   const readySeats = roster.seats.map((s) => s?.ready ?? s?.isBot ?? false);
   return (
     <>
@@ -39,7 +48,9 @@ export function Overlays({ view, roster, me, onReady, onRematch, onLeave }: Over
           names={roster.seats.map((s) => s?.name ?? '—')}
           seats={roster.seats}
           seriesWins={roster.seriesWins}
+          seriesGames={roster.seriesGames}
           onRematch={onRematch}
+          onSwapSeats={onSwapSeats}
           onLeave={onLeave}
         />
       )}

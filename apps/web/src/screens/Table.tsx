@@ -26,6 +26,8 @@ export interface TableProps {
   readonly onLeave: () => void;
   /** Start a fresh game with the same table. */
   readonly onRematch?: () => void;
+  /** Re-pair the table between games (online rooms only). */
+  readonly onSwapSeats?: () => void;
   /** True in a room (chat + voice); false in practice mode (bots don't chat). */
   readonly online?: boolean;
   /** The room code (online rooms only) — feeds the Share button's invite link. */
@@ -41,6 +43,7 @@ export function Table({
   onAction,
   onLeave,
   onRematch,
+  onSwapSeats,
   online = false,
   roomCode,
   frozenHold = false,
@@ -106,6 +109,7 @@ export function Table({
         me={me}
         onReady={() => onAction({ type: 'continue' })}
         onRematch={onRematch}
+        onSwapSeats={onSwapSeats}
         onLeave={onLeave}
       />
       <UtilityRow

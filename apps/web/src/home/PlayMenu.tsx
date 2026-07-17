@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
-import { Cta, Panel } from '@jaffre/ui';
+import { AvatarChip, Cta, Panel } from '@jaffre/ui';
+import type { TableEntry } from '../net/rooms.js';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -24,17 +25,72 @@ function nextDifficulty(current: BotDifficulty): BotDifficulty {
 export interface PlayMenuProps {
   readonly onPractice: () => void;
   readonly onJoinRoom: (code: string) => void;
-  /** The last room this browser sat at, if any. */
-  readonly resumeCode: string | null;
-  /** Series tally for the resume room when known: [Sun wins, Moon wins]. */
-  readonly resumeSeries?: readonly [number, number] | undefined;
+  /** Tables this browser has sat at, newest first — the "Your tables" row. */
+  readonly tables: readonly TableEntry[];
+}
+
+/** "4 min ago" / "just now" — a coarse relative time for the last snapshot. */
+function ago(ts: number): string {
+  const secs = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${String(mins)} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${String(hours)}h ago`;
+  return `${String(Math.floor(hours / 24))}d ago`;
+}
+
+/** One standing-table card: who's there, tonight's tally, and Resume. */
+function TableCard({
+  table,
+  onResume,
+}: {
+  readonly table: TableEntry;
+  readonly onResume: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
+          {table.code}
+        </span>
+        <span className="shrink-0 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+          {ago(table.updatedAt)}
+        </span>
+      </div>
+      {table.seats.length > 0 && (
+        <div className="flex items-center">
+          {table.seats.slice(0, 4).map((s, i) => (
+            <span key={i} className={i === 0 ? '' : '-ml-2'}>
+              <AvatarChip
+                name={s.name}
+                color={s.isBot ? 'var(--color-ap-muted)' : undefined}
+                size="sm"
+              />
+            </span>
+          ))}
+        </div>
+      )}
+      {table.seriesWins !== undefined && (
+        <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.12em] text-(--color-ap-muted) tabular-nums">
+          Tonight: <span style={{ color: 'var(--color-team-a)' }}>Sun {table.seriesWins[0]}</span>
+          {' — '}
+          <span style={{ color: 'var(--color-team-b)' }}>Moon {table.seriesWins[1]}</span>
+        </span>
+      )}
+      <Cta type="button" onClick={onResume} className="w-full">
+        Resume
+      </Cta>
+    </div>
+  );
 }
 
 /**
  * The title-screen actions in the arcade shell: practice (primary), play with
- * friends (create-a-room + join-by-code), and a resume strip when applicable.
+ * friends (create-a-room + join-by-code), and the "Your tables" row of standing
+ * tables you've sat at.
  */
-export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: PlayMenuProps) {
+export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
 
@@ -149,7 +205,7 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
         </form>
       </Panel>
 
-      {resumeCode !== null && (
+      {tables.length > 0 && (
         <Panel
           className="rise-in flex flex-col gap-3 p-5 font-arcade-ui max-sm:p-4 sm:col-span-2"
           style={{ '--rise-delay': '220ms' } as CSSProperties}
@@ -158,21 +214,14 @@ export function PlayMenu({ onPractice, onJoinRoom, resumeCode, resumeSeries }: P
             <span className="font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase text-(--color-ap-text)">
               Your tables
             </span>
-            {resumeSeries !== undefined && (
-              <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) tabular-nums">
-                Tonight: <span style={{ color: 'var(--color-team-a)' }}>Sun {resumeSeries[0]}</span>
-                {' — '}
-                <span style={{ color: 'var(--color-team-b)' }}>Moon {resumeSeries[1]}</span>
-              </span>
-            )}
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="min-w-0 truncate font-arcade-display text-[1.15em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
-              {resumeCode}
+            <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+              {tables.length} going
             </span>
-            <Cta type="button" onClick={() => onJoinRoom(resumeCode)}>
-              Resume
-            </Cta>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {tables.slice(0, 4).map((t) => (
+              <TableCard key={t.code} table={t} onResume={() => onJoinRoom(t.code)} />
+            ))}
           </div>
         </Panel>
       )}

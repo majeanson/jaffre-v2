@@ -7,6 +7,7 @@ import {
   DEMO_STATS,
   DEMO_STATS_NEW,
   DEMO_STATS_VETERAN,
+  DEMO_TABLES,
   SCENES,
 } from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
@@ -110,7 +111,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
-          demoResume={current.id === 'your-tables' ? { code: 'salon', series: [3, 2] } : undefined}
+          demoTables={current.id === 'your-tables' ? DEMO_TABLES : undefined}
           {...(IDENTITY_STAGES[current.id] !== undefined
             ? { identityStage: IDENTITY_STAGES[current.id] }
             : {})}
@@ -177,6 +178,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onAction={noop}
           onLeave={onLeave}
           onRematch={noop}
+          onSwapSeats={noop}
           online={current.online ?? false}
           frozenHold={current.frozenHold ?? false}
           initialUi={current.ui}

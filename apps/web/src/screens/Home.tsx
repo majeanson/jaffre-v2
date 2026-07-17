@@ -7,7 +7,8 @@ import { PlayMenu } from '../home/PlayMenu.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getProfile, saveProfile, type Profile } from '../net/auth.js';
-import { lastRoom, playerName, setPlayerName } from '../net/socket.js';
+import { playerName, setPlayerName } from '../net/socket.js';
+import { listTables, type TableEntry } from '../net/rooms.js';
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -24,9 +25,8 @@ export interface HomeProps {
   readonly onJoinRoom: (code: string) => void;
   /** Mount with the help sheet already open (scene viewer). */
   readonly helpOpen?: boolean;
-  /** Scene viewer only: stage a "Your tables" resume row with a series tally. */
-  readonly demoResume?:
-    { readonly code: string; readonly series?: readonly [number, number] } | undefined;
+  /** Scene viewer only: stage the "Your tables" row (else it reads localStorage). */
+  readonly demoTables?: readonly TableEntry[] | undefined;
   /** Scene viewer: force the identity into a staged state. */
   readonly identityStage?: IdentityStage;
 }
@@ -37,13 +37,13 @@ export function Home({
   onPractice,
   onJoinRoom,
   helpOpen = false,
-  demoResume,
+  demoTables,
   identityStage,
 }: HomeProps) {
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
-  const resumeCode = demoResume?.code ?? lastRoom();
+  const tables = demoTables ?? listTables();
 
   const saveName = () => setPlayerName(name.trim() === '' ? 'Player' : name.trim());
 
@@ -92,8 +92,7 @@ export function Home({
             saveName();
             onJoinRoom(code);
           }}
-          resumeCode={resumeCode}
-          resumeSeries={demoResume?.series}
+          tables={tables}
         />
       </div>
 

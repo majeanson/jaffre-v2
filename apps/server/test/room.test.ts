@@ -263,13 +263,15 @@ async function playToGameOver(
 }
 
 /** Poll buffered roster messages until `seriesWins` reflects `totalGames`
- * finished games (i.e. the post-game_over broadcast has landed). */
-async function waitForSeriesWins(client: Client, totalGames: number): Promise<[number, number]> {
+ * finished games (i.e. the post-game_over broadcast has landed). Returns the
+ * whole matching roster — `latestRoster()` drains the buffer, so the caller
+ * must read seriesWins/seriesGames off this rather than polling again. */
+async function waitForSeriesWins(client: Client, totalGames: number): Promise<Roster> {
   const deadline = Date.now() + 10_000;
   for (;;) {
     const roster = client.latestRoster();
     const sw = roster?.seriesWins;
-    if (sw !== undefined && sw[0] + sw[1] === totalGames) return [sw[0], sw[1]];
+    if (roster !== null && sw !== undefined && sw[0] + sw[1] === totalGames) return roster;
     if (Date.now() > deadline) throw new Error('timed out waiting for seriesWins');
     await sleep(20);
   }
@@ -521,9 +523,13 @@ describe('GameRoom', () => {
       expect(view.phase).toBe('game_over');
       const firstWinner = view.winner;
       expect(firstWinner === 0 || firstWinner === 1).toBe(true);
+      const firstScores = view.scores;
 
       const afterFirst = await waitForSeriesWins(client, 1);
-      expect(afterFirst).toEqual(firstWinner === 0 ? [1, 0] : [0, 1]);
+      const firstWins = afterFirst.seriesWins ?? [0, 0];
+      expect(firstWins).toEqual(firstWinner === 0 ? [1, 0] : [0, 1]);
+      // The scorepad records this game's final scores, oldest first.
+      expect(afterFirst.seriesGames).toEqual([firstScores]);
 
       // Rematch, same table (isRematch — meta.started stays true, the DO's
       // action log resets) — the next game_over must increment the same tally.
@@ -535,9 +541,66 @@ describe('GameRoom', () => {
       expect(secondWinner === 0 || secondWinner === 1).toBe(true);
 
       const afterSecond = await waitForSeriesWins(client, 2);
-      const expected: [number, number] = [...afterFirst] as [number, number];
+      const expected: [number, number] = [firstWins[0], firstWins[1]];
       if (secondWinner === 0 || secondWinner === 1) expected[secondWinner] += 1;
-      expect(afterSecond).toEqual(expected);
+      expect(afterSecond.seriesWins).toEqual(expected);
+      // Both games are now on the scorepad, in play order.
+      expect(afterSecond.seriesGames).toEqual([firstScores, view.scores]);
+
+      await endQuiet(room, client);
+    },
+  );
+
+  it(
+    'swaps seats 1 and 2 between games, and rejects the swap mid-game',
+    { timeout: 120_000 },
+    async () => {
+      const room = 'room-swap';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // alice at seat 0; bots 1/2/3 get distinct difficulties so a swap shows.
+      client.send({ t: 'join' });
+      await client.next('welcome');
+      client.send({ t: 'sit', seat: 0 });
+      await client.next('roster');
+      client.send({ t: 'add_bot', seat: 1, difficulty: 'easy' });
+      await client.next('roster');
+      client.send({ t: 'add_bot', seat: 2, difficulty: 'hard' });
+      await client.next('roster');
+      client.send({ t: 'add_bot', seat: 3, difficulty: 'normal' });
+      await client.next('roster');
+      client.send({ t: 'start' });
+      let view = (await client.next('view')).view;
+
+      // Mid-game the swap is refused — seats are locked until game_over.
+      client.send({ t: 'swap_seats' });
+      const err = await client.next('error');
+      expect(err.code).toBe('BAD_MESSAGE');
+
+      view = await playToGameOver(client, stub, 1234, view);
+      expect(view.phase).toBe('game_over');
+
+      // Between games the swap exchanges seats 1 and 2 (difficulty proves it).
+      client.latestRoster(); // drop any stale rosters buffered during play
+      client.send({ t: 'swap_seats' });
+      // Poll for the post-swap roster (a late game_over broadcast may still be
+      // in flight; the swap moves the 'hard' bot from seat 2 to seat 1).
+      let roster: Roster | null = null;
+      const deadline = Date.now() + 5000;
+      for (;;) {
+        const r = client.latestRoster();
+        if (r !== null && r.seats[1]?.difficulty === 'hard') {
+          roster = r;
+          break;
+        }
+        if (Date.now() > deadline) throw new Error('timed out waiting for the swapped roster');
+        await sleep(20);
+      }
+      expect(roster.seats[0]).toMatchObject({ isBot: false, name: 'Alice' });
+      expect(roster.seats[1]).toMatchObject({ isBot: true, difficulty: 'hard' });
+      expect(roster.seats[2]).toMatchObject({ isBot: true, difficulty: 'easy' });
+      expect(roster.seats[3]).toMatchObject({ isBot: true, difficulty: 'normal' });
 
       await endQuiet(room, client);
     },

@@ -9,10 +9,14 @@
 > `Customize` disclosure, and reusable `Panel`/`Collapsible` kit primitives.
 > **Turn 6 shipped (W5–W7, this pass):** the design tool's 6a–6k mockups landed
 > and Stats / Invite+Share / Standing-table are now built to them — including the
-> share-sheet **QR** (bundled `qrcode-generator`) and the **nemesis** + net-points
-> `/api/stats` fields. See W5–W7 below for what's done and what's deferred
-> (per-game scorepad grid, SWAP SEATS, the multi-table "Your tables" row — each
-> needs a deeper data model).
+> share-sheet **QR** (bundled `qrcode-generator`), the **nemesis** + net-points
+> `/api/stats` fields, the between-games **per-game scorepad** + **Swap seats**
+> action, and the multi-table home **"Your tables"** row. See W5–W7 below.
+>
+> **Next up (not started):** bring the arcade shell into the **in-game playing
+> table** (the felt surface — its own felt/suit/team token system, deliberately
+> untouched so far) and give **"how to play"** (the help sheet) the arcade
+> treatment.
 >
 > Remaining follow-ups: swap the licensed **Visitor** TTF in for the
 > **Silkscreen** stand-in (`--font-arcade-display`); "name taken" is a
@@ -158,15 +162,26 @@ Join landing (`Visitor.tsx`): "{host} wants you" header, the takeable seat
 `WordPlate`s, the link with one-tap copy, and Text / Email / More hand-off
 targets (`sms:` / `mailto:` / Web Share).
 
-### W7 — Standing table / rematch restyle — SHIPPED (Turn 6 · 6e, partial)
+### W7 — Standing table / rematch restyle — SHIPPED (Turn 6 · 6e/6f)
 
-`GameRecap.tsx` now shows the "Still at the table" roster as per-seat status
-chips (Ready / Away / Left) ahead of the hero Rematch. **Deferred (need a deeper
-data model, per the fidelity-scope decision):** the per-game scorepad grid
-(6e/6i — only the aggregate `seriesWins` tally is tracked, not per-game series
-scores), the **SWAP SEATS** action (no seat-swap protocol / handler exists), and
-the multi-table home **"Your tables"** row (6f — the app tracks a single
-`lastRoom`, not multiple live tables).
+`GameRecap.tsx` shows the "Still at the table" roster as per-seat status chips
+(Ready / Away / Left), the **per-game scorepad grid** (ivory ruled table, team
+score under each partner, Games-won footer), the hero Rematch, and **Swap seats**
+to re-pair the table between games. The follow-up data-model work is now done:
+
+- **Per-game scorepad** — the DO `Meta` accumulates `seriesGames: [Sun,Moon][]`
+  (appended at each game_over, alongside `seriesWins`); threaded through the
+  `Roster` protocol → gameStore → recap. Reset with the room. Server test added.
+- **Swap seats** — a `swap_seats` client message (protocol union), handled in
+  `GameRoom.onSwapSeats`: allowed only at `game_over`, swaps seats 1↔2 (re-pairs
+  both teams), re-welcomes moved players, broadcasts the roster; the next
+  `start` deals with the new seating. Wired App→Table→Overlays→GameRecap
+  (online only). Server test added (accept + mid-game reject).
+- **Multi-table "Your tables"** (6f) — `net/rooms.ts` keeps a localStorage list
+  of tables you've sat at (last roster snapshot: seats + `seriesWins`), updated
+  on every roster in `socket.ts`. `PlayMenu` renders the row of table cards
+  (avatar stack, tonight's tally, Resume). Live turn-status is **not** shown (no
+  offline source); the row leads with recency instead.
 
 ## Cross-cutting rules (unchanged)
 

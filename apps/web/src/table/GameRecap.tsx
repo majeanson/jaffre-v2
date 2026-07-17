@@ -15,7 +15,12 @@ export interface GameRecapProps {
   readonly seats?: readonly (RosterSeat | null)[] | undefined;
   /** Standing-table tally across games at this room: [Sun wins, Moon wins]. */
   readonly seriesWins?: readonly [number, number] | undefined;
+  /** Final [Sun, Moon] scores of each finished game this sitting (oldest
+   * first) — renders the per-game scorepad grid. */
+  readonly seriesGames?: readonly (readonly [number, number])[] | undefined;
   readonly onRematch?: (() => void) | undefined;
+  /** Re-pair the table before the rematch (online rooms only). */
+  readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
 }
 
@@ -30,10 +35,105 @@ function PairChips({ names, a, b }: { names: readonly string[]; a: number; b: nu
   );
 }
 
+/** The ruled between-games scorepad: one row per game, a column per seat (team
+ * scores land under both partners), and a "Games won" footer. Ivory card face,
+ * so its text is ink (not the flipping --color-ap-text). */
+function Scorepad({
+  games,
+  names,
+  seriesWins,
+}: {
+  readonly games: readonly (readonly [number, number])[];
+  readonly names: readonly string[];
+  readonly seriesWins: readonly [number, number] | undefined;
+}) {
+  const initial = (n: string) => (n.trim()[0] ?? '—').toUpperCase();
+  const cell = 'px-[0.3em] py-[0.45em] text-center font-arcade-display tabular-nums';
+  // Seats 0&2 are Sun (score index 0), 1&3 Moon (index 1). Literal-index the
+  // tuple so it stays a definite number under noUncheckedIndexedAccess.
+  const teamOf = (seat: number) => seat % 2;
+  const scoreFor = (pair: readonly [number, number], seat: number) =>
+    seat % 2 === 0 ? pair[0] : pair[1];
+  // On the ivory card face all text must be ink for AA; team identity rides on
+  // a faint per-column background tint instead (Sun warm, Moon cool).
+  const tint = (seat: number) =>
+    teamOf(seat) === 0 ? 'rgb(242 198 109 / 0.20)' : 'rgb(130 199 220 / 0.24)';
+  const [sunWins, moonWins] = seriesWins ?? [0, 0];
+  const hdr =
+    'px-[0.7em] py-[0.5em] text-left font-arcade-ui text-[0.62em] font-bold uppercase tracking-[0.12em] text-(--color-ap-ink)/60';
+  return (
+    <div className="overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap-lg)">
+      <table className="w-full border-collapse tabular-nums">
+        <caption className="sr-only">Scores by game, one column per player</caption>
+        <thead>
+          <tr className="border-b-2 border-(--color-ap-ink)">
+            <th scope="col" className={hdr}>
+              Game
+            </th>
+            {[0, 1, 2, 3].map((seat) => (
+              <th
+                key={seat}
+                scope="col"
+                className={`${cell} text-[0.95em]`}
+                style={{ background: tint(seat) }}
+              >
+                {initial(names[seat] ?? '—')}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {games.map((g, i) => (
+            <tr key={i} className="border-b border-(--color-ap-ink)/12 last:border-b-0">
+              <td className="px-[0.7em] py-[0.45em] text-left font-arcade-ui text-[0.8em] text-(--color-ap-ink)/65">
+                {i + 1}
+              </td>
+              {[0, 1, 2, 3].map((seat) => (
+                <td
+                  key={seat}
+                  className={`${cell} text-[0.95em]`}
+                  style={{ background: tint(seat) }}
+                >
+                  {scoreFor(g, seat)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-(--color-ap-ink)">
+            <th scope="row" className={hdr}>
+              Games won
+            </th>
+            {[0, 1, 2, 3].map((seat) => {
+              const w = teamOf(seat) === 0 ? sunWins : moonWins;
+              const lead = w >= (teamOf(seat) === 0 ? moonWins : sunWins) && w > 0;
+              return (
+                <td key={seat} className={`${cell} text-[1em]`} style={{ background: tint(seat) }}>
+                  <span
+                    className={
+                      lead
+                        ? 'inline-block rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ok) px-[0.4em] text-(--color-ap-ink)'
+                        : ''
+                    }
+                  >
+                    {w}
+                  </span>
+                </td>
+              );
+            })}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 /**
  * Owns the end-of-game recap in the arcade product shell: the winning pair, the
- * standing-table series as a scorepad of games (StatPanel per team), who's still
- * at the table, the round-by-round breakdown, and Rematch as the hero action.
+ * standing-table series (per-game scorepad grid once games accumulate), who's
+ * still at the table, the round-by-round breakdown, and Rematch as the hero
+ * action — with Swap seats to re-pair the table between games.
  */
 export function GameRecap({
   winner,
@@ -42,7 +142,9 @@ export function GameRecap({
   names,
   seats,
   seriesWins,
+  seriesGames,
   onRematch,
+  onSwapSeats,
   onLeave,
 }: GameRecapProps) {
   const label = (uc: string) =>
@@ -82,20 +184,29 @@ export function GameRecap({
               {' — '}
               <span style={{ color: TEAM_COLOR[1] }}>Moon {seriesWins[1]}</span>
             </p>
-            <div className="mt-[0.6em] grid grid-cols-2 gap-3">
-              <StatPanel
-                value={seriesWins[0]}
-                label="Games — Sun"
-                tone={seriesWins[0] >= seriesWins[1] ? 'gold' : 'default'}
-                sub={<PairChips names={names} a={0} b={2} />}
-              />
-              <StatPanel
-                value={seriesWins[1]}
-                label="Games — Moon"
-                tone={seriesWins[1] > seriesWins[0] ? 'gold' : 'default'}
-                sub={<PairChips names={names} a={1} b={3} />}
-              />
-            </div>
+            {seriesGames !== undefined && seriesGames.length > 0 ? (
+              // Per-game scorepad — the richer standing-table view once games
+              // have accumulated this sitting.
+              <div className="mt-[0.6em]">
+                <Scorepad games={seriesGames} names={names} seriesWins={seriesWins} />
+              </div>
+            ) : (
+              // Fallback (first game, or a pre-scorepad room): the aggregate tally.
+              <div className="mt-[0.6em] grid grid-cols-2 gap-3">
+                <StatPanel
+                  value={seriesWins[0]}
+                  label="Games — Sun"
+                  tone={seriesWins[0] >= seriesWins[1] ? 'gold' : 'default'}
+                  sub={<PairChips names={names} a={0} b={2} />}
+                />
+                <StatPanel
+                  value={seriesWins[1]}
+                  label="Games — Moon"
+                  tone={seriesWins[1] > seriesWins[0] ? 'gold' : 'default'}
+                  sub={<PairChips names={names} a={1} b={3} />}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -190,15 +301,26 @@ export function GameRecap({
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-center gap-3">
+        <div className="mt-6 flex flex-col items-center gap-2">
           {onRematch !== undefined && (
-            <Cta type="button" onClick={onRematch} className="text-[1.2em] px-[1.5em] py-[0.85em]">
+            <Cta
+              type="button"
+              onClick={onRematch}
+              className="w-full text-[1.2em] px-[1.5em] py-[0.85em]"
+            >
               Rematch
             </Cta>
           )}
-          <Cta type="button" variant="secondary" onClick={onLeave}>
-            Leave
-          </Cta>
+          <div className="flex w-full items-center justify-center gap-2">
+            {onSwapSeats !== undefined && (
+              <Cta type="button" variant="secondary" onClick={onSwapSeats} className="flex-1">
+                Swap seats
+              </Cta>
+            )}
+            <Cta type="button" variant="secondary" onClick={onLeave} className="flex-1">
+              Leave
+            </Cta>
+          </div>
         </div>
       </div>
     </div>
