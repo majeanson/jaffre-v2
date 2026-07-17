@@ -160,10 +160,10 @@ export function ChatPanel({
         aria-label="Chat"
         title="Chat"
         data-testid="chat-toggle"
-        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-base) transition-colors ${
+        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-base) shadow-(--shadow-ap-sm) transition-colors ${
           open
-            ? 'border-(--color-ap-violet) bg-(--color-ap-violet)/12 text-(--color-ap-violet)'
-            : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
+            ? 'border-(--color-ap-ink) bg-(--color-ap-violet) text-(--color-ap-ink)'
+            : 'border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
         }`}
       >
         <svg

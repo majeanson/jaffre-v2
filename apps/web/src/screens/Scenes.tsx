@@ -186,7 +186,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       <div
         data-testid="scene-picker"
-        className="fixed bottom-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-full border border-(--color-accent)/40 bg-black/80 px-3 py-2 shadow-(--shadow-panel)"
+        className="fixed bottom-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-violet)/50 bg-(--color-ap-ink) px-3 py-2 font-arcade-ui shadow-(--shadow-ap)"
       >
         <button
           type="button"
@@ -200,7 +200,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           aria-label="Scene"
           value={current.id}
           onChange={(e) => goTo(e.target.value)}
-          className="cursor-pointer rounded-lg border border-white/15 bg-(--color-felt-800) px-2 py-1.5 text-(length:--text-fluid-xs) text-(--color-ivory)"
+          className="cursor-pointer rounded-(--radius-ap-control) border-2 border-white/20 bg-black/40 px-2 py-1.5 text-(length:--text-fluid-xs) text-white"
         >
           {SCENES.map((s) => (
             <option key={s.id} value={s.id}>
