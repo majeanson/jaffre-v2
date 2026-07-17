@@ -15,6 +15,8 @@ export interface IdentityStage {
   readonly color: string | null;
   readonly paint: string | null;
   readonly recovery: RecoveryStage;
+  /** Scene-only: surface a name-field error (e.g. a taken name). */
+  readonly nameError?: string;
 }
 
 export interface HomeProps {
@@ -66,6 +68,7 @@ export function Home({ onPractice, onJoinRoom, helpOpen = false, identityStage }
         value={staged ? identityStage.name : name}
         onChange={staged ? () => undefined : setName}
         onCommit={staged ? () => undefined : saveName}
+        error={staged ? (identityStage.nameError ?? null) : null}
       />
 
       <RecoveryCard {...(staged ? { stage: identityStage.recovery } : {})} />

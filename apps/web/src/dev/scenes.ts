@@ -254,6 +254,7 @@ const LOADERS: Record<SceneId, () => void> = {
   'identity-light': () => useGameStore.getState().reset(),
   'identity-loading': () => useGameStore.getState().reset(),
   'identity-recover-error': () => useGameStore.getState().reset(),
+  'identity-name-taken': () => useGameStore.getState().reset(),
   'lobby-open': () => injectLobby(LOBBY_OPEN, 'open'),
   'lobby-full': () => injectLobby(LOBBY_FULL, 'open'),
   'lobby-reconnecting': () => injectLobby(LOBBY_FULL, 'reconnecting'),

@@ -47,6 +47,13 @@ const IDENTITY_STAGES: Record<string, IdentityStage> = {
     paint: null,
     recovery: { kind: 'recover-error' },
   },
+  'identity-name-taken': {
+    name: 'Marc',
+    color: '#e05252',
+    paint: null,
+    recovery: { kind: 'code', code: 'lampe-tricot-hibou' },
+    nameError: "That name's taken here — try another.",
+  },
 };
 
 /**

@@ -74,6 +74,12 @@ export const SCENE_METAS = [
     probe: "text=That code didn't match",
   },
   {
+    id: 'identity-name-taken',
+    label: 'Identity — name taken',
+    screen: 'home',
+    probe: "text=That name's taken",
+  },
+  {
     id: 'lobby-open',
     label: 'Lobby — seats open',
     screen: 'lobby',
