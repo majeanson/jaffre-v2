@@ -1,5 +1,14 @@
 import { useEffect } from 'react';
-import { DEMO_HISTORY, DEMO_REPLAY, DEMO_STATS, SCENES } from '../dev/scenes.js';
+import {
+  DEMO_HISTORY,
+  DEMO_HISTORY_NEW,
+  DEMO_HISTORY_VETERAN,
+  DEMO_REPLAY,
+  DEMO_STATS,
+  DEMO_STATS_NEW,
+  DEMO_STATS_VETERAN,
+  SCENES,
+} from '../dev/scenes.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
 import { History } from './History.js';
@@ -71,7 +80,20 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           demoStats={
             current.id === 'stats-empty'
               ? { ...DEMO_STATS, games: 0, wins: 0, winRate: 0, bestPartner: null }
-              : DEMO_STATS
+              : current.id === 'stats-new'
+                ? DEMO_STATS_NEW
+                : current.id === 'stats-veteran'
+                  ? DEMO_STATS_VETERAN
+                  : DEMO_STATS
+          }
+          demoGames={
+            current.id === 'stats-empty'
+              ? []
+              : current.id === 'stats-new'
+                ? DEMO_HISTORY_NEW
+                : current.id === 'stats-veteran'
+                  ? DEMO_HISTORY_VETERAN
+                  : DEMO_HISTORY
           }
           onLeave={onLeave}
         />
