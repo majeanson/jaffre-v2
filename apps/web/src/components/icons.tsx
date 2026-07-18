@@ -118,3 +118,33 @@ export function IconSpeaker({ muted = false }: { muted?: boolean }) {
     </Svg>
   );
 }
+
+/** Card skins / cosmetics: two overlapping cards. */
+export function IconCards() {
+  return (
+    <Svg>
+      <rect x="8" y="6" width="11" height="14" rx="2" />
+      <path d="M15 6V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1" />
+    </Svg>
+  );
+}
+
+/** Language: a globe with meridians. */
+export function IconGlobe() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+    </Svg>
+  );
+}
+
+/** Voice / microphone: a capsule on a stand. */
+export function IconMic() {
+  return (
+    <Svg>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
+    </Svg>
+  );
+}

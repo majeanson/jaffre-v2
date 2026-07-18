@@ -10,19 +10,37 @@ import { useState, type ReactNode } from 'react';
 import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
+import { applyLang, LANGS } from '../lang.js';
 import { IconButton, ICON_BTN_NEUTRAL } from '../components/IconButton.js';
-import { IconGear, IconList, IconQuestion, IconSignOut, IconSparkle } from '../components/icons.js';
-import { SkinLink } from '../components/SkinLink.js';
-import { LangSwitcher } from '../components/LangSwitcher.js';
+import {
+  IconCards,
+  IconGear,
+  IconGlobe,
+  IconList,
+  IconQuestion,
+  IconSignOut,
+  IconSparkle,
+} from '../components/icons.js';
+import { CollectionSheet } from '../components/CollectionSheet.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
 const T: Record<
   Lang,
-  { leave: string; options: string; howToPlay: string; coach: string; gameLog: string }
+  {
+    leave: string;
+    options: string;
+    skins: string;
+    language: string;
+    howToPlay: string;
+    coach: string;
+    gameLog: string;
+  }
 > = {
   en: {
     leave: 'Leave table',
     options: 'Options',
+    skins: 'Skins',
+    language: 'Language',
     howToPlay: 'How to play',
     coach: 'Coach — suggest a move on your turn',
     gameLog: 'Game log',
@@ -30,6 +48,8 @@ const T: Record<
   fr: {
     leave: 'Quitter la table',
     options: 'Options',
+    skins: 'Habillages',
+    language: 'Langue',
     howToPlay: 'Comment jouer',
     coach: 'Coach — suggère un coup à ton tour',
     gameLog: 'Journal de partie',
@@ -81,10 +101,14 @@ export function TopBar({
   share,
   defaultDetailsOpen = false,
 }: TopBarProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
+  const [skinsOpen, setSkinsOpen] = useState(false);
+  const otherLang = LANGS.find((l) => l.id !== lang) ?? LANGS[0];
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
+      {skinsOpen && <CollectionSheet onClose={() => setSkinsOpen(false)} />}
       <ScoreStrip
         defaultDetailsOpen={defaultDetailsOpen}
         teamNames={[TEAMS[0].label, TEAMS[1].label]}
@@ -118,8 +142,15 @@ export function TopBar({
                 data-testid="options-drawer"
                 className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
               >
-                <SkinLink />
-                <LangSwitcher />
+                <IconButton label={t.skins} onClick={() => setSkinsOpen(true)}>
+                  <IconCards />
+                </IconButton>
+                <IconButton
+                  label={`${t.language} · ${otherLang?.label ?? ''}`}
+                  onClick={() => otherLang && applyLang(otherLang.id)}
+                >
+                  <IconGlobe />
+                </IconButton>
                 <SoundToggle />
                 <HelpButton label={t.howToPlay} className={ICON_BTN_NEUTRAL}>
                   <IconQuestion />

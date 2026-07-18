@@ -28,6 +28,9 @@ import { Toast } from '../components/Toast.js';
 
 export interface CollectionProps {
   readonly onLeave: () => void;
+  /** Label for the leave button — "Home" by default, "Close" when the gallery is
+   * shown as an in-game modal (so it doesn't imply leaving the table). */
+  readonly leaveLabel?: string;
   /** Scene viewer: a staged record so the gallery renders without the network. */
   readonly demoStats?: Stats;
 }
@@ -216,7 +219,7 @@ function buildTiles(
  * persisted to the profile); locked tiles are dimmed with their unlock
  * requirement + a progress bar. A dev "Show all" toggle reveals every skin.
  */
-export function Collection({ onLeave, demoStats }: CollectionProps) {
+export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) {
   const lang = useLang();
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
@@ -273,7 +276,7 @@ export function Collection({ onLeave, demoStats }: CollectionProps) {
             {t.title}
           </h1>
           <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
+            {leaveLabel ?? t.home}
           </Cta>
         </header>
 

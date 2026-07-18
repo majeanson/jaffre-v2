@@ -55,16 +55,18 @@ land.
       small `SuitShape` beneath the figure (covers noir + all token skins). OG
       skins keep their coloured emblems/portraits. `PlayingCard.tsx`.
 
-## Phase C — In-game chrome ⬜
+## Phase C — In-game chrome ✅ (voice icon TODO)
 
-- [ ] **C1. Skins as a modal in-game.** In a room/practice, the "Skins" control
-      opens the Collection in a modal overlay (like the How-to-play sheet) instead of
-      routing to `#collection` and leaving the game. Home keeps the route link. Files:
-      `SkinLink.tsx`, a `CollectionSheet` modal wrapper, `TopBar.tsx`.
-- [ ] **C2. Icon-only top bar options.** The expanded options drawer: every
-      control an icon in a uniform square, one line (Skins ◆, Lang, Sound, Help,
-      Coach, Log, Voice, Share). No text buttons ("Noir", "Joindre le vocal"). Files:
-      `TopBar.tsx`, `IconButton`.
+- [x] **C1. Skins as a modal in-game.** New `CollectionSheet` renders the exact
+      `Collection` view as a full-screen modal over the table (Escape / "Close"
+      to dismiss); the in-game Skins control opens it instead of routing to
+      `#collection`. Home keeps the route link. Files: `CollectionSheet.tsx`,
+      `TopBar.tsx`, `Collection.tsx` (leaveLabel prop).
+- [x] **C2. Icon-only top bar options.** The drawer is now uniform icon squares
+      in one row: Skins (IconCards → modal), Language (IconGlobe → toggles), plus
+      the existing Sound/Help/Coach/Log. New IconCards/IconGlobe/IconMic. Files:
+      `TopBar.tsx`, `icons.tsx`. TODO: the online Voice control still shows
+      "Joindre le vocal" text — convert `VoiceBar` join to IconMic (also lobby).
 
 ## Phase D — Round summary / scoreboard ⬜
 
