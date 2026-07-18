@@ -38,9 +38,9 @@ test('first visit mints an identity with a recovery code that persists (hidden)'
   await expect.poll(() => codeOf(page)).toMatch(CODE_RE);
   const words = await codeOf(page);
 
-  // The restore affordance is still there, quietly, under Customize.
-  await page.getByRole('button', { name: /Customize/ }).click();
-  await expect(page.getByRole('button', { name: 'I have a code' })).toBeVisible();
+  // The restore affordance is still there, quietly, inside the login sheet.
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('button', { name: 'I have a 3-word code' })).toBeVisible();
 
   // Same words after a reload — the code is issued exactly once per browser.
   await page.reload();
@@ -71,8 +71,8 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   const uidB = await uidOf(b);
   expect(uidB).not.toBe(uidA);
 
-  await b.getByRole('button', { name: /Customize/ }).click();
-  await b.getByRole('button', { name: 'I have a code' }).click();
+  await b.getByRole('button', { name: 'Log in' }).click();
+  await b.getByRole('button', { name: 'I have a 3-word code' }).click();
   await b.getByPlaceholder('lampe-tricot-hibou').fill(words);
   await b.getByRole('button', { name: 'Restore' }).click();
 
@@ -155,8 +155,8 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   const b = await contextB.newPage();
   await b.goto('/');
   await expect.poll(() => codeOf(b)).toMatch(CODE_RE);
-  await b.getByRole('button', { name: /Customize/ }).click();
-  await b.getByRole('button', { name: 'I have a code' }).click();
+  await b.getByRole('button', { name: 'Log in' }).click();
+  await b.getByRole('button', { name: 'I have a 3-word code' }).click();
   await b.getByPlaceholder('lampe-tricot-hibou').fill(wordsA);
   await b.getByRole('button', { name: 'Restore' }).click();
 
@@ -180,10 +180,10 @@ test('a wrong code shows the error and keeps the current identity', async ({ bro
   const page = await context.newPage();
   await page.goto('/');
   await expect.poll(() => codeOf(page)).toMatch(CODE_RE);
-  await page.getByRole('button', { name: /Customize/ }).click();
   const uidBefore = await uidOf(page);
 
-  await page.getByRole('button', { name: 'I have a code' }).click();
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'I have a 3-word code' }).click();
   await page.getByPlaceholder('lampe-tricot-hibou').fill('aaaa-bbbb-cccc');
   await page.getByRole('button', { name: 'Restore' }).click();
 

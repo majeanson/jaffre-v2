@@ -127,9 +127,8 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
     );
   };
 
-  // Live screen: the words stay HIDDEN — real login (LinkAccount, above) is
-  // the durable path now, and the 3-word restore is a quiet fallback behind
-  // "I have a code". Only the scene viewer still stages the plates.
+  // Live screens no longer mount this card — the 3-word restore moved into
+  // the LoginSheet — but the scene viewer still stages the plates here.
   if (!staged && !showForm) {
     return (
       <button

@@ -1,9 +1,8 @@
-import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
-import { LinkAccount } from '../components/LinkAccount.js';
+import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
@@ -11,54 +10,9 @@ import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
-import { getGuestToken, getProfile, isLinked, saveProfile, type Profile } from '../net/auth.js';
+import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { listTables, type TableEntry } from '../net/rooms.js';
-
-const HINT_T: Record<Lang, { hint: string; gotIt: string }> = {
-  en: {
-    hint: 'Link an account (under Customize) to keep your name & games on any device.',
-    gotIt: 'Got it',
-  },
-  fr: {
-    hint: 'Lie un compte (sous Personnaliser) pour garder ton nom et tes parties sur tous tes appareils.',
-    gotIt: 'Compris',
-  },
-};
-
-const HINT_KEY = 'jaffre-link-hint';
-
-/**
- * A one-line, dismissible pointer at account linking — the mechanism lives
- * inside the Customize disclosure where new players never look. Muted text,
- * no panel: it informs without disturbing the title screen; dismissing it
- * (or linking anything) hides it forever.
- */
-function RecoveryHint() {
-  const t = HINT_T[useLang()];
-  const [seen, setSeen] = useState(() => localStorage.getItem(HINT_KEY) === '1' || isLinked());
-  if (seen) return null;
-  return (
-    <p className="rise-in flex w-full max-w-xs items-start justify-center gap-2 text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-      <span aria-hidden className="text-(--color-ap-gold)">
-        ✦
-      </span>
-      <span>{t.hint}</span>
-      <button
-        type="button"
-        aria-label={t.gotIt}
-        title={t.gotIt}
-        onClick={() => {
-          localStorage.setItem(HINT_KEY, '1');
-          setSeen(true);
-        }}
-        className="shrink-0 cursor-pointer px-1 text-(--color-ap-muted) hover:text-(--color-ap-text)"
-      >
-        ✕
-      </button>
-    </p>
-  );
-}
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -146,13 +100,11 @@ export function Home({
         paintSignal={paintSignal}
         {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
       >
-        {/* Keep-your-progress: real login first; the 3-word restore stays as a
-            quiet fallback underneath ("I have a code"). */}
-        {!staged && <LinkAccount />}
-        {staged ? <RecoveryCard stage={identityStage.recovery} /> : <RecoveryCard />}
+        {/* Scene viewer still stages the recovery plates; live players reach
+            every login path (Google / email code / 3-word restore) through the
+            one "Log in" button in the chrome bar below. */}
+        {staged && <RecoveryCard stage={identityStage.recovery} />}
       </ProfileCard>
-
-      {!staged && <RecoveryHint />}
 
       <div className="w-full max-w-[min(92vw,44rem)]">
         <PlayMenu
@@ -182,6 +134,7 @@ export function Home({
         </HelpButton>
         <SkinLink />
         <LangSwitcher />
+        {!staged && <LoginButton />}
       </div>
     </main>
   );
