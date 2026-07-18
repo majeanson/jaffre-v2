@@ -272,8 +272,12 @@ export function GameRecap({
       aria-label={t.gameOver}
       className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4"
     >
-      <div className="pop-in relative w-full max-w-md rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
+      <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <Confetti />
+        {/* Scrollable body: on a short viewport (≈900px desktop) the recap is
+            taller than the screen, so the middle scrolls while the action footer
+            below stays pinned — the hero Rematch is never pushed off-screen. */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
         {hailMary !== null && (
           <div className="mb-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2.5">
             <p className="font-arcade-display text-[1.15em] uppercase leading-tight text-(--color-ap-gold)">
@@ -434,7 +438,9 @@ export function GameRecap({
           </div>
         )}
 
-        <div className="mt-6 flex flex-col items-center gap-2">
+        </div>
+        {/* Pinned action footer — stays visible when the body scrolls. */}
+        <div className="flex flex-col items-center gap-2 border-t-2 border-(--color-ap-ink)/35 p-4">
           {onRematch !== undefined && (
             <Cta
               type="button"

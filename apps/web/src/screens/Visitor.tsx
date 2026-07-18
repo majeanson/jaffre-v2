@@ -147,13 +147,16 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text)">
+    <main className="flex min-h-screen flex-col overflow-y-auto bg-(--color-ap-ground) p-6 pb-24 font-arcade-ui text-(--color-ap-text)">
       {/* Visitors can chat with the table before they sit — the popover opens
-          upward from the bottom-right toggle. */}
+          upward from the bottom-right toggle. Extra bottom padding on main
+          reserves the corner so the fixed toggle never sits on the Leave button. */}
       <div className="fixed right-4 bottom-4 z-40">
         <Comms />
       </div>
-      <div className="flex w-full max-w-md flex-col gap-6">
+      {/* my-auto centres the card when it fits and lets it scroll (instead of
+          clipping) once the roster + actions grow taller than the viewport. */}
+      <div className="mx-auto my-auto flex w-full max-w-md flex-col gap-5">
         <header className="flex flex-col items-center gap-3 text-center">
           <div className="font-arcade-display text-[2em] leading-none tracking-[0.06em] text-(--color-ap-gold)">
             Jaffré
@@ -241,12 +244,16 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
               </Cta>
             );
           })}
-          <Cta type="button" variant="secondary" onClick={onWatch} className="w-full">
-            {t.justWatch}
-          </Cta>
-          <Cta type="button" variant="secondary" onClick={onLeave} className="w-full">
-            {t.leave}
-          </Cta>
+          {/* Watch + Leave share a row: keeps the action stack short enough to
+              clear the fixed chat toggle in the bottom-right corner. */}
+          <div className="flex gap-3">
+            <Cta type="button" variant="secondary" onClick={onWatch} className="flex-1">
+              {t.justWatch}
+            </Cta>
+            <Cta type="button" variant="secondary" onClick={onLeave} className="flex-1">
+              {t.leave}
+            </Cta>
+          </div>
         </div>
       </div>
     </main>

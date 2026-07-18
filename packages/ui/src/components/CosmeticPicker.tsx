@@ -80,18 +80,22 @@ export function CosmeticPicker({ tiles, onSelect, label }: CosmeticPickerProps) 
                   🔒
                 </span>
               )}
-            </div>
-
-            {/* Label + status */}
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-text)">
-                {tile.label}
-              </span>
+              {/* Equipped ribbon lives on the preview corner (like the lock) so
+                  the label row below can give the full skin name room to breathe
+                  — on a narrow phone tile, name + inline badge used to collide
+                  and truncate ("ARCA…"). */}
               {tile.selected && (
-                <span className="shrink-0 font-arcade-ui text-[0.62em] font-bold uppercase tracking-[0.12em] text-(--color-ap-violet-soft)">
+                <span className="absolute right-[0.3em] top-[0.3em] rounded-full border-2 border-(--color-ap-violet) bg-(--color-ap-panel) px-[0.5em] py-[0.05em] font-arcade-ui text-[0.55em] font-bold uppercase tracking-[0.1em] text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)">
                   {t.selected}
                 </span>
               )}
+            </div>
+
+            {/* Label */}
+            <div className="flex items-center gap-2">
+              <span className="truncate font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-text)">
+                {tile.label}
+              </span>
             </div>
 
             {/* Locked: requirement + progress bar. */}
