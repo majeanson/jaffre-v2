@@ -109,10 +109,7 @@ export function HeroBanner({
         className="pointer-events-none absolute inset-x-0 -top-[5vmin] mx-auto h-[32vmin] max-h-60 w-[64vmin] max-w-lg rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-20"
       />
 
-      <div
-        key={deal}
-        className="pointer-events-none relative h-[clamp(5rem,13vmin,9rem)] w-full"
-      >
+      <div key={deal} className="pointer-events-none relative h-[clamp(5rem,13vmin,9rem)] w-full">
         {fan.map(({ card, you }, i) => {
           const step = i - (fan.length - 1) / 2;
           return (
