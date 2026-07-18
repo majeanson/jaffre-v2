@@ -37,14 +37,18 @@ test('two clients share a room, play starts, and a disconnect is shown', async (
   const a = await contextA.newPage();
   const b = await contextB.newPage();
 
-  // A sits seat 0 and fills seats 2 and 3 with bots.
+  // A sits seat 0 and fills seats 2 and 3 with bots. Wait for the socket to
+  // actually be open before sitting (this copy shows only once joined) — an
+  // immediate click can outrun the token-auth join and get dropped server-side.
   await a.goto(`/#room/${room}`);
+  await expect(a.getByText('Share this code with your table.')).toBeVisible();
   await a.getByTestId('seat-row-0').getByRole('button', { name: 'Sit here' }).click();
   await a.getByTestId('seat-row-2').getByRole('button', { name: 'Add bot' }).click();
   await a.getByTestId('seat-row-3').getByRole('button', { name: 'Add bot' }).click();
 
-  // B joins the same room and sits seat 1.
+  // B joins the same room and sits seat 1 (same socket-open guard).
   await b.goto(`/#room/${room}`);
+  await expect(b.getByText('Share this code with your table.')).toBeVisible();
   await b.getByTestId('seat-row-1').getByRole('button', { name: 'Sit here' }).click();
 
   // A starts; both clients land on the table.
