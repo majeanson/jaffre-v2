@@ -86,6 +86,7 @@ export function Table({
         trickCounts={derived.trickCounts}
         specials={derived.teamSpecials}
         action={derived.headerAction}
+        myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         onLeave={onLeave}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}

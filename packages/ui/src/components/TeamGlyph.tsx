@@ -4,6 +4,9 @@ export interface TeamGlyphProps {
   readonly label?: string;
   /** Glyph size as a CSS length (default 1em) — scales with the parent. */
   readonly size?: string;
+  /** Override the fill colour (default: the team token). E.g. the ivory scorepad
+   * needs a deep ink since the felt team vars vanish on cream. */
+  readonly color?: string;
   readonly className?: string;
 }
 
@@ -15,12 +18,12 @@ export interface TeamGlyphProps {
  * for a standalone indicator (adds an sr-only name); omit it when a visible team
  * name sits right next to it.
  */
-export function TeamGlyph({ team, label, size = '1em', className = '' }: TeamGlyphProps) {
-  const color = team === 0 ? 'var(--color-team-a)' : 'var(--color-team-b)';
+export function TeamGlyph({ team, label, size = '1em', color, className = '' }: TeamGlyphProps) {
+  const fill = color ?? (team === 0 ? 'var(--color-team-a)' : 'var(--color-team-b)');
   return (
     <span
       className={`inline-grid shrink-0 place-items-center ${className}`}
-      style={{ width: size, height: size, color }}
+      style={{ width: size, height: size, color: fill }}
       role={label !== undefined ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label === undefined ? true : undefined}

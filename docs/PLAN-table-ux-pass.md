@@ -26,15 +26,15 @@ land.
 
 ---
 
-## Phase A — Team & seat identity (readability) ✅/⬜
+## Phase A — Team & seat identity (readability) ✅
 
-- [ ] **A1. Sun/Moon icons.** Replace the "SUN"/"MOON" _words_ (top bar,
-      scoreboard, round summary, lobby team labels) with ☀/☾ pictograms in the team
-      colors. Keep an sr-only text label. Files: `ScoreStrip.tsx`, `ScorePad`,
-      `RoundSummaryOverlay.tsx`, `Lobby.tsx`, a shared `TeamBadge` in the kit.
-- [ ] **A2. Distinct team colors in every theme + highlight your team.** Audit
-      `--color-team-a/-b` per theme for contrast; add a "your team" emphasis (ring/
-      underline) on the top bar + scoreboard so you always know your side.
+- [x] **A1. Sun/Moon icons.** The top-bar team sides + the scorepad header now
+      use the ☀/☾ `TeamGlyph` (deep-ink variant on the cream pad) instead of a
+      dot+word. Files: `ScoreStrip.tsx`. TODO: round summary + lobby team labels
+      still say the words — fold into Phase D / lobby pass.
+- [x] **A2. Highlight your team.** The viewer's team gets a violet "YOU" chip in
+      the top bar + an underline in the scorepad header (`myTeam` threaded
+      Table→TopBar→ScoreStrip). Per-theme contrast audit still TODO.
 - [x] **A3. Distinct avatar per player.** Seat avatars now take a stable
       per-name pastel colour (hash → hue) + the initial, with a ☀/☾ team badge
       corner-overlaid. Identical initials (Marc/Marcel) now differ by colour +

@@ -44,6 +44,8 @@ export interface TopBarProps {
   readonly trickCounts: readonly [number, number];
   readonly specials: readonly [TeamSpecials, TeamSpecials];
   readonly action: string;
+  /** The viewer's own team (seat parity), highlighted in the scoreboard. */
+  readonly myTeam?: 0 | 1 | null;
   readonly onLeave: () => void;
   readonly logOpen: boolean;
   readonly onToggleLog: () => void;
@@ -69,6 +71,7 @@ export function TopBar({
   trickCounts,
   specials,
   action,
+  myTeam = null,
   onLeave,
   logOpen,
   onToggleLog,
@@ -96,6 +99,7 @@ export function TopBar({
         rounds={rounds}
         currentRound={view.phase === 'game_over' ? undefined : view.roundIndex + 1}
         action={action}
+        myTeam={myTeam}
         actions={
           <>
             <IconButton danger label={t.leave} onClick={onLeave}>

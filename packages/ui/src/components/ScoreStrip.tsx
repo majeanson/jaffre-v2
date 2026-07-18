@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { suitName, useLang, type Lang } from '../i18n.js';
 import type { SuitId } from '../types.js';
 import { SuitShape } from './SuitShape.js';
+import { TeamGlyph } from './TeamGlyph.js';
 
 const T: Record<
   Lang,
@@ -23,6 +24,7 @@ const T: Record<
     trumpSr: (suit: string) => string;
     scoreDetails: string;
     dismissScore: string;
+    you: string;
     noBetYet: string;
     mustTake: string;
     trickPoints: string;
@@ -50,6 +52,7 @@ const T: Record<
     trumpSr: (suit) => `Trump ${suit}`,
     scoreDetails: 'Score details',
     dismissScore: 'Dismiss',
+    you: 'you',
     noBetYet: 'no bet yet',
     mustTake: 'must take',
     trickPoints: 'trick points',
@@ -76,6 +79,7 @@ const T: Record<
     trumpSr: (suit) => `Atout ${suit}`,
     scoreDetails: 'Détails du pointage',
     dismissScore: 'Fermer',
+    you: 'toi',
     noBetYet: 'pas encore de mise',
     mustTake: 'doit prendre',
     trickPoints: 'points de levées',
@@ -131,6 +135,8 @@ export interface ScoreStripProps {
   readonly action?: string;
   /** App controls (leave, skin, log…) shown only while expanded. */
   readonly actions?: ReactNode;
+  /** The viewer's own team (seat parity), highlighted so you know your side. */
+  readonly myTeam?: 0 | 1 | null;
   /** Mount with the details panel already expanded (scene viewer). */
   readonly defaultDetailsOpen?: boolean;
 }
@@ -227,6 +233,7 @@ function TrickPile({
 /** One team's half of the scoreboard: sun/moon token + score + race bar. */
 function TeamSide({
   name,
+  team,
   score,
   target,
   count,
@@ -234,9 +241,12 @@ function TeamSide({
   special,
   colorVar,
   mirrored = false,
+  isMine = false,
+  youLabel,
   testId,
 }: {
   name: string;
+  team: 0 | 1;
   score: number;
   target: number;
   count: number;
@@ -244,6 +254,9 @@ function TeamSide({
   special?: TeamSpecials | undefined;
   colorVar: string;
   mirrored?: boolean;
+  /** This is the viewer's team — mark it so you always know your side. */
+  isMine?: boolean;
+  youLabel: string;
   testId: string;
 }) {
   const pct = Math.max(0, Math.min(100, (score / target) * 100));
@@ -253,14 +266,15 @@ function TeamSide({
     >
       <span className="flex flex-col items-center gap-0.5 leading-none">
         <span className="flex items-center gap-[0.4em]">
-          <span
-            className="size-[0.6em] rounded-full"
-            style={{ background: colorVar }}
-            aria-hidden
-          />
+          <TeamGlyph team={team} size="0.9em" />
           <span className="font-arcade-display text-[0.62em] tracking-[0.12em] whitespace-nowrap text-(--color-ap-muted) uppercase">
             {name}
           </span>
+          {isMine && (
+            <span className="rounded-[0.35em] border border-(--color-ap-violet) px-[0.3em] font-arcade-display text-[0.5em] tracking-[0.08em] text-(--color-ap-violet-soft) uppercase">
+              {youLabel}
+            </span>
+          )}
         </span>
         <span
           data-testid={testId}
@@ -346,6 +360,7 @@ function ScorePad({
   currentRound,
   roundPoints,
   contract,
+  myTeam = null,
 }: {
   teamNames: readonly [string, string];
   scores: readonly [number, number];
@@ -354,6 +369,7 @@ function ScorePad({
   currentRound?: number | undefined;
   roundPoints?: readonly [number, number] | undefined;
   contract?: ScoreStripProps['contract'] | undefined;
+  myTeam?: 0 | 1 | null;
 }) {
   const t = T[useLang()];
   const liveRound =
@@ -405,14 +421,14 @@ function ScorePad({
                 <th
                   key={team}
                   scope="col"
-                  className="py-1.5 text-center font-arcade-ui text-[0.85em] font-bold tracking-[0.1em] uppercase"
+                  className={`py-1.5 text-center font-arcade-ui text-[0.85em] font-bold tracking-[0.1em] uppercase ${
+                    team === myTeam ? 'underline decoration-2 underline-offset-2' : ''
+                  }`}
                   style={{ color: TEAM_INK[team] }}
                 >
-                  <span
-                    className="mr-1 inline-block size-1.5 rounded-full align-middle"
-                    style={{ background: TEAM_INK[team] }}
-                    aria-hidden
-                  />
+                  <span className="mr-1 inline-flex align-middle">
+                    <TeamGlyph team={team} size="0.9em" color={TEAM_INK[team]} />
+                  </span>
                   {shortName(teamNames[team])}
                 </th>
               ))}
@@ -542,6 +558,7 @@ export function ScoreStrip({
   currentRound,
   action,
   actions,
+  myTeam = null,
   defaultDetailsOpen = false,
 }: ScoreStripProps) {
   const t = T[useLang()];
@@ -559,12 +576,15 @@ export function ScoreStrip({
         <span className="flex justify-start">
           <TeamSide
             name={shortName(teamNames[0])}
+            team={0}
             score={scores[0]}
             target={target}
             count={trickCounts?.[0] ?? 0}
             points={roundPoints?.[0] ?? 0}
             special={specials?.[0]}
             colorVar={TEAM_VARS[0]}
+            isMine={myTeam === 0}
+            youLabel={t.you}
             testId="team-score-0"
           />
         </span>
@@ -601,6 +621,7 @@ export function ScoreStrip({
         <span className="flex items-center justify-end gap-2.5 max-sm:gap-1.5">
           <TeamSide
             name={shortName(teamNames[1])}
+            team={1}
             score={scores[1]}
             target={target}
             count={trickCounts?.[1] ?? 0}
@@ -608,6 +629,8 @@ export function ScoreStrip({
             special={specials?.[1]}
             colorVar={TEAM_VARS[1]}
             mirrored
+            isMine={myTeam === 1}
+            youLabel={t.you}
             testId="team-score-1"
           />
           <span
@@ -641,6 +664,7 @@ export function ScoreStrip({
               currentRound={currentRound}
               roundPoints={roundPoints}
               contract={contract}
+              myTeam={myTeam}
             />
             {contract !== null && (
               <p className="text-(--color-ap-muted)">
