@@ -17,11 +17,16 @@ import { installTelemetry } from './net/telemetry.js';
 import { initTheme } from './theme.js';
 import { initCardSkin } from './cosmetics.js';
 import { initLang } from './lang.js';
+import { initInstallCapture } from './pwa/install.js';
+import { initBadge } from './pwa/badge.js';
 
 initTheme();
 initCardSkin();
 initLang();
 installTelemetry();
+// beforeinstallprompt can fire before React mounts — capture it now.
+initInstallCapture();
+initBadge();
 // Google's OAuth callback bounces back with #login=<token> — adopt that
 // identity before anything renders, then reload cosmetics for it.
 void consumeLoginFragment().then((identity) => {

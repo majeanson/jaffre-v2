@@ -353,11 +353,20 @@
    * callouts — the table is a board, not a document. Inputs stay selectable. */
   html {
     touch-action: manipulation;
+    /* No pull-to-refresh or rubber-band scroll chaining — a swipe during play
+     * must never reload the page out from under a live hand. */
+    overscroll-behavior: none;
   }
   body {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    overscroll-behavior: none;
+    /* viewport-fit=cover lets us paint edge-to-edge when installed; keep the
+     * UI itself clear of the notch and home-bar (all four env()s are 0 in a
+     * plain browser tab). */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
   }
   input,
   textarea {

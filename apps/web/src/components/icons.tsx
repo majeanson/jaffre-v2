@@ -43,6 +43,28 @@ export function IconGear() {
   );
 }
 
+/** Install the app: arrow down into a tray. */
+export function IconDownload() {
+  return (
+    <Svg>
+      <path d="M12 4v10" />
+      <path d="M8 10l4 4 4-4" />
+      <path d="M4 17v3h16v-3" />
+    </Svg>
+  );
+}
+
+/** Notifications: bell (line through it when off). */
+export function IconBell({ off = false }: { off?: boolean }) {
+  return (
+    <Svg>
+      <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2.5h-15Z" />
+      <path d="M10 21h4" />
+      {off && <path d="M4 4l16 16" />}
+    </Svg>
+  );
+}
+
 /** Chat: speech bubble. */
 export function IconChat() {
   return (

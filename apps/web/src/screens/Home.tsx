@@ -4,6 +4,8 @@ import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
 import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
+import { InstallButton } from '../pwa/InstallButton.js';
+import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
 import { HeroBanner } from '../home/HeroBanner.js';
@@ -133,6 +135,8 @@ export function Home({
           <IconQuestion />
         </HelpButton>
         <SkinLink />
+        <InstallButton />
+        <NotificationsToggle />
         <LangSwitcher />
         {!staged && <LoginButton />}
       </div>

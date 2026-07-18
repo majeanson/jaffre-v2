@@ -19,6 +19,7 @@ import type { BotDifficulty } from '@jaffre/bots';
 import { parseClientMessage } from '@jaffre/protocol';
 import type { ChatEntry, ClientAction, Roster, RosterSeat, ServerMessage } from '@jaffre/protocol';
 import type { Env } from './env.js';
+import { notifyUser } from './push.js';
 import { gameRecordFrom } from './history.js';
 
 const BOT_DELAY_MS = 700;
@@ -243,6 +244,9 @@ export class GameRoom implements DurableObject {
         // Exclude the socket closing now: if it was the last human, this leaves
         // the table paused instead of arming a doomed bot-swap alarm.
         await this.scheduleNextWake(false, ws);
+        // If they left during their own turn, the table is now waiting on
+        // someone who can't see it — ping their installed app.
+        this.notifyTurnIfAbsent(ws);
       }
     }
     // Recompute roster with this socket excluded so its seat shows
@@ -690,6 +694,34 @@ export class GameRoom implements DurableObject {
       this.broadcastRoster({});
     }
     await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
+    this.notifyTurnIfAbsent();
+  }
+
+  /**
+   * Web Push "it's your turn" to the seat-holder when none of their sockets is
+   * connected — the installed-app path back to a table that's waiting on them.
+   * Connected players (even hidden tabs) are covered by the app badge instead.
+   */
+  private notifyTurnIfAbsent(exclude?: WebSocket): void {
+    const game = this.game;
+    if (game === null || (game.phase !== 'bidding' && game.phase !== 'playing')) return;
+    const owner = this.meta.seats[game.turn];
+    if (typeof owner !== 'string') return; // bot or empty seat
+    const connected = this.ctx.getWebSockets().some((s) => {
+      if (s === exclude) return false;
+      const a = this.attachment(s);
+      return a.joined && a.userId === owner;
+    });
+    if (connected) return;
+    const code = this.meta.roomCode;
+    this.ctx.waitUntil(
+      notifyUser(this.env, owner, {
+        title: 'Jaffre',
+        body: "À ton tour · It's your turn",
+        url: code === undefined ? '/' : `/#room/${code}`,
+        ...(code !== undefined ? { tag: `turn-${code}` } : {}),
+      }),
+    );
   }
 
   /** Write games + game_players rows to D1 once, at game_over. */

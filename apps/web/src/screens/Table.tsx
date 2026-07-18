@@ -22,6 +22,7 @@ import {
   useTrickHold,
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
@@ -69,6 +70,8 @@ export function Table({
   const handSort = useHandSort(derived?.view.hand ?? []);
   useTrickHold(frozenHold);
   useQueuedPlay(onAction);
+  // Screen stays awake at the table — thinking through a bid isn't idle time.
+  useWakeLock();
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 

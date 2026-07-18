@@ -15,9 +15,13 @@ export interface ShareButtonProps {
  * sheet — the room link front-and-centre — while the link also lands on the
  * clipboard with a transient "Link copied" toast.
  */
-const T: Record<Lang, { share: string; copied: string }> = {
-  en: { share: 'Share this table', copied: 'Link copied' },
-  fr: { share: 'Partager cette table', copied: 'Lien copié' },
+const T: Record<Lang, { share: string; copied: string; inviteText: string }> = {
+  en: { share: 'Share this table', copied: 'Link copied', inviteText: 'Join my Jaffre table!' },
+  fr: {
+    share: 'Partager cette table',
+    copied: 'Lien copié',
+    inviteText: 'Viens jouer au Jaffre à ma table!',
+  },
 };
 
 export function ShareButton({ code }: ShareButtonProps) {
@@ -38,7 +42,7 @@ export function ShareButton({ code }: ShareButtonProps) {
   const onShare = () => {
     const url = `${location.origin}/#room/${code}`;
     if (typeof navigator.share === 'function') {
-      navigator.share({ url }).catch(() => {
+      navigator.share({ title: 'Jaffre', text: t.inviteText, url }).catch(() => {
         // User cancelled, or the OS share sheet failed — nothing to recover.
       });
       return;

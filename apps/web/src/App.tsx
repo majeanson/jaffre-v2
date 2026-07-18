@@ -4,6 +4,7 @@ import { useCurrentLang } from './lang.js';
 import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { Toast } from './components/Toast.js';
+import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { leaveVoice } from './voice/rtc.js';
@@ -90,6 +91,8 @@ export function App() {
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
         <AppRoutes />
+        {/* Registers the SW; skipped under automation so e2e never caches. */}
+        {!navigator.webdriver && <UpdateToast />}
         {unlocked !== null && (
           <Toast
             message={`${lang === 'fr' ? 'Débloqué : ' : 'Unlocked: '}${unlocked}`}

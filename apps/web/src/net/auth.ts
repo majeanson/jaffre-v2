@@ -117,6 +117,12 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
   return mint;
 }
 
+/** The current session token, if this browser holds a valid one. */
+export function getSessionToken(): string | null {
+  const cached = read();
+  return cached !== null && cached.exp > Date.now() / 1000 ? cached.token : null;
+}
+
 /** The 3-word recovery code from this browser's first mint, if any — shown
  * once on the home screen, never re-issued after that. */
 export function getRecoveryCode(): string | null {

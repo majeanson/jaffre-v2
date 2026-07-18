@@ -45,4 +45,14 @@ export interface Env {
    */
   TURN_KEY_ID?: string;
   TURN_KEY_API_TOKEN?: string;
+  /**
+   * Web Push VAPID keypair (wrangler secrets). OPTIONAL: unset → /api/push/*
+   * return 503 and the client hides the notifications toggle. Public key is
+   * the base64url uncompressed P-256 point, private key the base64url 32-byte
+   * scalar — generate both with `node apps/server/scripts/gen-vapid.mjs`, then:
+   *   wrangler secret put VAPID_PUBLIC_KEY
+   *   wrangler secret put VAPID_PRIVATE_KEY
+   */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
 }
