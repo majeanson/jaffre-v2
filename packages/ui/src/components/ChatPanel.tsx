@@ -54,6 +54,9 @@ export interface ChatPanelProps {
   readonly collapsible?: boolean;
   /** Collapsible only: mount with the popover already open (scene viewer). */
   readonly defaultOpen?: boolean;
+  /** Collapsible only: render the toggle as a borderless cell of a shared
+   * button bar (the bar brings the border/shadow). */
+  readonly plainToggle?: boolean;
   /** Extra controls in the send row, after the Send button (e.g. voice). */
   readonly actions?: ReactNode;
 }
@@ -71,6 +74,7 @@ export function ChatPanel({
   onSend,
   collapsible = false,
   defaultOpen = false,
+  plainToggle = false,
   actions,
 }: ChatPanelProps) {
   const t = T[useLang()];
@@ -201,8 +205,12 @@ export function ChatPanel({
         aria-label={t.chat}
         title={t.chat}
         data-testid="chat-toggle"
-        className={`relative cursor-pointer ${ARCADE.iconBtnBase} ${
-          open ? 'bg-(--color-ap-violet) text-(--color-ap-ink)' : ARCADE.iconBtnNeutral
+        className={`relative cursor-pointer ${plainToggle ? ARCADE.iconBtnCell : ARCADE.iconBtnBase} ${
+          open
+            ? 'bg-(--color-ap-violet) text-(--color-ap-ink)'
+            : plainToggle
+              ? 'text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
+              : ARCADE.iconBtnNeutral
         }`}
       >
         <svg

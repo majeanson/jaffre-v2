@@ -67,6 +67,10 @@ export const ARCADE = {
     'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
   /** Neutral (idle) fill + hover for an icon button. */
   iconBtnNeutral: 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)',
+  /** Borderless icon-button cell for controls grouped inside ONE shared bar —
+   * same footprint as iconBtnBase, but the bar owns the border/shadow. */
+  iconBtnCell:
+    'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-inner) text-(length:--text-fluid-base) transition-colors',
   /** The black bar separating bunched controls (give it a height). */
   divider: 'w-[2px] shrink-0 rounded-full bg-(--color-ap-ink)',
   /** The tactile press: shadow collapses as the control shifts into it. */

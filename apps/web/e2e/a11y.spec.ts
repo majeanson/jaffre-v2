@@ -77,14 +77,17 @@ test('table overlays: last-trick popover closes on Escape/outside click, round s
   const hand = page.getByRole('listbox', { name: 'Your hand' });
   await expect(hand).toBeVisible();
 
-  // Play until at least one trick has been captured (Last trick appears).
+  // The button is always in the utility bar, but disabled until a trick has
+  // been captured. Play until it lights up.
   const lastTrick = page.getByRole('button', { name: 'Last trick' });
+  await expect(lastTrick).toBeVisible();
+  await expect(lastTrick).toBeDisabled();
   const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline && !(await lastTrick.isVisible())) {
+  while (Date.now() < deadline && !(await lastTrick.isEnabled())) {
     await actIfMyTurn(page);
     await page.waitForTimeout(250);
   }
-  await expect(lastTrick).toBeVisible();
+  await expect(lastTrick).toBeEnabled();
 
   // Open → Escape closes and returns focus to the trigger.
   await lastTrick.click();

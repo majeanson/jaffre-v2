@@ -17,6 +17,7 @@ export function Comms({ defaultChatOpen = false, voice }: CommsProps) {
   return (
     <ChatPanel
       collapsible
+      plainToggle
       defaultOpen={defaultChatOpen}
       entries={chat}
       onSend={sendChat}

@@ -17,14 +17,14 @@ export interface UtilityRowProps {
   readonly sort?: ReactNode;
 }
 
-/** The black bar separating the bunched utility buttons. */
+/** A full-height ink separator between the bar's cells. */
 function Divider() {
-  return <span aria-hidden className={`${ARCADE.divider} h-[1.6em]`} />;
+  return <span aria-hidden className={`${ARCADE.divider} self-stretch`} />;
 }
 
-/** Owns the slim row above the hand: your chip centered, and ONE bunched
- * cluster of utility buttons — last-trick, chat, sort — separated by black
- * bars, instead of controls scattered across the row. */
+/** Owns the slim row above the hand: your chip centered, and ONE bordered bar
+ * of utility buttons — last-trick, chat, sort — as borderless cells separated
+ * by ink lines (the bar owns the border/shadow, not each button). */
 export function UtilityRow({
   you,
   lastTrick,
@@ -32,7 +32,6 @@ export function UtilityRow({
   comms,
   sort,
 }: UtilityRowProps) {
-  const hasLast = lastTrick !== null;
   const hasComms = comms !== undefined && comms !== null && comms !== false;
   const hasSort = sort !== undefined && sort !== null && sort !== false;
   return (
@@ -43,11 +42,13 @@ export function UtilityRow({
       <span className="justify-self-center">
         <SeatChip info={you} peekPlacement="up" />
       </span>
-      <span className="flex items-center gap-1.5 justify-self-end">
-        {hasLast && <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />}
-        {hasLast && hasComms && <Divider />}
+      {/* No overflow-hidden here: the last-trick and chat popovers anchor to
+          their cells and must escape the bar's box. */}
+      <span className="flex items-stretch justify-self-end rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm)">
+        <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
+        {hasComms && <Divider />}
         {comms}
-        {(hasLast || hasComms) && hasSort && <Divider />}
+        {hasSort && <Divider />}
         {sort}
       </span>
     </div>

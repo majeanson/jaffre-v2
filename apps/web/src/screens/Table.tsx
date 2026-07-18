@@ -146,7 +146,7 @@ export function Table({
             />
           )
         }
-        sort={me !== null && view.hand.length > 1 && <HandSortButton sort={handSort} />}
+        sort={me !== null && <HandSortButton sort={handSort} disabled={view.hand.length < 2} />}
       />
       <GameLogPanel
         lines={log.map((l) => l.text)}

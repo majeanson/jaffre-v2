@@ -55,8 +55,11 @@ export function Stage({
       <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2 max-sm:top-[3%] max-sm:left-[30%]">
         <SeatChip info={seatInfo(2)} compact />
       </div>
-      <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2 max-sm:left-[3.5%] max-sm:top-[34%]">
-        <SeatChip info={seatInfo(1)} compact peekAlign="start" />
+      {/* Position 1 sits low on the left (not mid-rim) — the table reads as an
+          anti-clockwise turn of the classic N/S/E/W diamond. Its peek opens
+          upward so it can't spill past the stage's bottom edge. */}
+      <div className="absolute bottom-[4%] left-0 z-20 max-sm:bottom-[9%] max-sm:left-[3.5%]">
+        <SeatChip info={seatInfo(1)} compact peekAlign="start" peekPlacement="up" />
       </div>
       <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 max-sm:right-[3.5%] max-sm:top-[34%]">
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />

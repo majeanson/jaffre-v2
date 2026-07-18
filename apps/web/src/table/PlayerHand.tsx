@@ -81,11 +81,21 @@ export function useHandSort(cards: readonly Card[]): HandSort {
   return { displayCards, setOrder, sortHand, sortMode };
 }
 
-/** The sort-hand icon button, fed by useHandSort — sits in the utility row. */
-export function HandSortButton({ sort }: { readonly sort: HandSort }) {
+/** The sort-hand icon button, fed by useHandSort — a cell of the utility bar.
+ * Disabled (rather than removed) when the hand has nothing to sort, so the
+ * bar keeps the same shape all game. */
+export function HandSortButton({
+  sort,
+  disabled = false,
+}: {
+  readonly sort: HandSort;
+  readonly disabled?: boolean;
+}) {
   const t = T[useLang()];
   return (
     <IconButton
+      plain
+      disabled={disabled}
       label={sort.sortMode === 'colour' ? t.sortColour : t.sortValue}
       onClick={sort.sortHand}
     >
@@ -157,7 +167,10 @@ export function PlayerHand({
   }, [cards.length]);
 
   return (
-    <div className="shrink-0 pb-1">
+    // min-h reserves the fan's full footprint (lg card height 7/5 × its width
+    // clamp, + the ListBox pt-4 + our pb-1) even when the hand is empty, so
+    // the stage above keeps ONE size instead of growing as cards run out.
+    <div className="min-h-[calc(clamp(8.4rem,21vmin,16.8rem)+1.25rem)] shrink-0 pb-1">
       <Hand
         active={active}
         paint={paint}

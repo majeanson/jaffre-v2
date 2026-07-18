@@ -1,6 +1,6 @@
 import { ARCADE, PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
-import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
+import { ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconHistory } from '../components/icons.js';
 import type { LastTrickInfo } from './useTableDerived.js';
 
@@ -10,7 +10,9 @@ const T: Record<Lang, { lastTrick: string }> = {
 };
 
 export interface LastTrickPeekProps {
-  readonly trick: LastTrickInfo;
+  /** Null when no trick has been captured yet — the button shows but is
+   * disabled, so a fresh game can never surface a previous game's trick. */
+  readonly trick: LastTrickInfo | null;
   /** Mount with the popover already open (scene viewer). */
   readonly defaultOpen?: boolean;
 }
@@ -33,6 +35,12 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const empty = trick === null;
+
+  // The trick clearing (new round/game) closes any peek left open.
+  useEffect(() => {
+    if (empty) setOpen(false);
+  }, [empty]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -60,14 +68,15 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        disabled={empty}
         aria-expanded={open}
         aria-label={t.lastTrick}
         title={t.lastTrick}
-        className={ICON_BTN_NEUTRAL}
+        className={ICON_BTN_CELL_NEUTRAL}
       >
         <IconHistory />
       </button>
-      {open && (
+      {open && trick !== null && (
         <div
           className={`${ARCADE.popover} absolute right-0 bottom-full z-30 mb-2 flex flex-col gap-1.5 p-3`}
         >
