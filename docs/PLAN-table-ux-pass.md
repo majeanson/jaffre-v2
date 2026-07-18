@@ -55,7 +55,7 @@ land.
       small `SuitShape` beneath the figure (covers noir + all token skins). OG
       skins keep their coloured emblems/portraits. `PlayingCard.tsx`.
 
-## Phase C — In-game chrome ✅ (voice icon TODO)
+## Phase C — In-game chrome ✅ (voice icon done in E2)
 
 - [x] **C1. Skins as a modal in-game.** New `CollectionSheet` renders the exact
       `Collection` view as a full-screen modal over the table (Escape / "Close"
@@ -84,15 +84,18 @@ land.
 
 - [x] **E1. Slim share sheet.** Dropped Texto/Courriel/Plus. Keeps QR + code words + link + Copy; auto-copies on open with a "Link copied — just paste it" note.
       `ShareSheet.tsx`.
-- [ ] **E2. Arcade buttons for text links.** Replace bare text links/buttons with
-      the arcade kit everywhere: "Retour à l'accueil", "Comment jouer", "Joindre le
-      vocal", "Envoyer", lobby "Assis-toi ici" / "Ajouter un bot". Files: lobby, home
-      chrome, chat, voice bar.
-- [ ] **E3. Bot difficulty color-coding + per-bot in rooms.** Color-code
-      Facile/Normal/Difficile chips (practice + lobby). Room "Ajouter un bot" prompts
-      difficulty; the seat shows it. Needs `add_bot { difficulty }` in protocol +
-      `GameRoom` bot creation + distinct bot names. Files: `protocol`, `GameRoom.ts`,
-      `Lobby.tsx`, `PlayMenu.tsx`.
+- [x] **E2. Arcade buttons for text links.** Lobby seat actions (Sit/Move here,
+      Add bot) → `Cta`; lobby footer (Retour / Comment jouer) → arcade buttons;
+      chat "Envoyer" → arcade button; voice "Joindre le vocal" → **mic icon**
+      (finishes C2's voice bit). Files: `SeatPicker.tsx`, `Lobby.tsx`,
+      `ChatPanel.tsx`, `VoiceBar.tsx`. TODO: `PlayMenu` practice adversaires + the
+      home-nav text links are already arcade; nothing left there.
+- [x] **E3. Bot difficulty color-coding + per-bot in rooms.** The lobby already
+      had per-bot difficulty (`onAddBot(seat, difficulty)` → protocol/server); now
+      the chip is **colour-coded** (green Easy → gold Normal → red Hard) and
+      arcade-styled, and the seat labels carry ☀/☾ glyphs. Files: `SeatPicker.tsx`.
+      (Add-bot seeds Normal then tap-to-cycle; bots already get distinct
+      names/numbers — good enough; a pick-on-add popover can come later if wanted.)
 
 ## Phase F — Player info on click ⬜
 

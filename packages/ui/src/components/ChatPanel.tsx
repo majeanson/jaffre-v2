@@ -176,7 +176,7 @@ export function ChatPanel({
         />
         <button
           type="submit"
-          className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1.5 text-xs text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer"
+          className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-1.5 font-arcade-display text-[0.7em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
         >
           {t.send}
         </button>

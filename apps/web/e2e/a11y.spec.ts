@@ -52,7 +52,8 @@ test('lobby with a seated player has no serious axe violations, chat is keyboard
   // server-side as "join the room first". This copy shows only when open.
   await expect(page.getByText('Share this code with your table.')).toBeVisible();
   await page.getByTestId('seat-row-0').getByRole('button', { name: 'Sit here' }).click();
-  await expect(page.getByText('You', { exact: true })).toBeVisible();
+  // The seated player's nameplate keeps their real name + a "(you)" marker.
+  await expect(page.getByText('(you)')).toBeVisible();
   await expectNoSeriousViolations(page, 'lobby seated');
 
   // The chat panel is reachable and leavable with the keyboard alone.

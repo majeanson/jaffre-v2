@@ -70,14 +70,21 @@ test('two clients share a room, play starts, and a disconnect is shown', async (
   }
   expect(sawCardInTrick).toBe(true);
 
-  // Both clients converge on the same score strip.
+  // Both clients converge on the same score strip. The strip highlights the
+  // VIEWER's own team with a "YOU" chip, so strip that viewer-relative marker
+  // before comparing — the game state (scores, bet, tricks) must match.
   const stripA = a.getByTestId('score-strip');
   const stripB = b.getByTestId('score-strip');
+  const norm = (s: string) =>
+    s
+      .replace(/\bYOU\b/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   await expect
     .poll(
       async () => {
         const [textA, textB] = await Promise.all([stripA.innerText(), stripB.innerText()]);
-        return textA === textB ? 'in sync' : `A: ${textA} | B: ${textB}`;
+        return norm(textA) === norm(textB) ? 'in sync' : `A: ${norm(textA)} | B: ${norm(textB)}`;
       },
       { timeout: 20_000 },
     )

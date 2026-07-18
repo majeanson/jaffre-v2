@@ -7,6 +7,11 @@ import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
 
+/** A secondary arcade button as a class string — for HelpButton, which takes a
+ * className rather than a variant. Mirrors the Cta secondary look. */
+const ARCADE_SECONDARY =
+  'inline-flex cursor-pointer items-center justify-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[1.1em] py-[0.7em] font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-105 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none';
+
 export interface LobbyProps {
   readonly code: string;
   readonly onLeave: () => void;
@@ -98,17 +103,11 @@ export function Lobby({ code, onLeave }: LobbyProps) {
 
         <ChatPanel entries={chat} onSend={sendChat} />
 
-        <div className="flex items-center justify-center gap-5">
-          <button
-            onClick={onLeave}
-            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
-          >
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Cta variant="secondary" onClick={onLeave}>
             {t.back}
-          </button>
-          <HelpButton
-            label={t.howToPlay}
-            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text) cursor-pointer"
-          />
+          </Cta>
+          <HelpButton label={t.howToPlay} className={ARCADE_SECONDARY} />
         </div>
       </div>
     </main>

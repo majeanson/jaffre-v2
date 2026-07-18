@@ -97,19 +97,35 @@ export function VoiceBar({
 }: VoiceBarProps) {
   const t = T[useLang()];
   if (status === 'idle' || status === 'joining') {
+    const joining = status === 'joining';
     return (
       <button
         type="button"
         onClick={onJoin}
-        disabled={status === 'joining'}
+        disabled={joining}
         data-testid="voice-join"
-        className={`rounded-(--radius-ap-control) border-2 px-3 py-2 text-xs ${
-          status === 'joining'
-            ? 'border-(--color-ap-ink) text-(--color-ap-muted)'
-            : 'border-(--color-ap-ink) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) cursor-pointer'
+        aria-label={joining ? t.joining : t.join}
+        title={joining ? t.joining : t.join}
+        className={`grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm) transition-colors ${
+          joining
+            ? 'text-(--color-ap-muted)'
+            : 'cursor-pointer text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
         }`}
       >
-        {status === 'joining' ? t.joining : t.join}
+        {/* microphone */}
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="size-[1.2em]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
+        </svg>
       </button>
     );
   }
