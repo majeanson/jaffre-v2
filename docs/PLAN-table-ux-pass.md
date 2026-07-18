@@ -35,10 +35,12 @@ land.
 - [ ] **A2. Distinct team colors in every theme + highlight your team.** Audit
       `--color-team-a/-b` per theme for contrast; add a "your team" emphasis (ring/
       underline) on the top bar + scoreboard so you always know your side.
-- [ ] **A3. Distinct avatar per player.** `AvatarChip` currently shows the first
-      initial only → "Bot 1/2/3" all read "B". Derive a stable per-player color +
-      keep the initial (and disambiguate identical initials by a hash of the full
-      name → different hue/one-glyph). No four identical chips.
+- [x] **A3. Distinct avatar per player.** Seat avatars now take a stable
+      per-name pastel colour (hash → hue) + the initial, with a ☀/☾ team badge
+      corner-overlaid. Identical initials (Marc/Marcel) now differ by colour +
+      team badge. New shared `TeamGlyph` (SVG sun/moon in team colour). Files:
+      `Seat.tsx`, `TeamGlyph.tsx`. (Home `AvatarChip` still uses the chosen colour
+      — fine; Phase G swaps the viewer's own to their painted card.)
 - [x] **A4. Real name, not always "Toi".** Table seats now show the real name +
       a small "(toi)" marker on the viewer's seat (no more "You"/"Toi" replacing
       the name). Practice names the human seat with `playerName()`. Files:

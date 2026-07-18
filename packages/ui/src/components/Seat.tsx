@@ -1,4 +1,15 @@
 import { useLang, type Lang } from '../i18n.js';
+import { TeamGlyph } from './TeamGlyph.js';
+
+/** A stable per-player avatar colour derived from the name, so every seat's
+ * pictogram looks different (four "Bot N" no longer collapse to one gold "B").
+ * A mid-light pastel so the constant dark initial stays legible in every theme;
+ * the team is carried separately by the ☀/☾ glyph, not the avatar colour. */
+function seatColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return `hsl(${String(h % 360)} 55% 66%)`;
+}
 
 const T: Record<
   Lang,
@@ -83,11 +94,14 @@ export function Seat({
     >
       <span
         aria-hidden
-        className={`relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[1.05em] text-(--color-felt-950) shadow-(--shadow-ap-sm) ${
-          team === 0 ? 'bg-(--color-team-a)' : 'bg-(--color-team-b)'
-        }`}
+        style={{ background: seatColor(name) }}
+        className="relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[1.05em] text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
       >
         {initial}
+        {/* team pictogram, corner-badged on the avatar */}
+        <span className="absolute -top-[0.3em] -left-[0.3em] grid size-[1em] place-items-center rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
+          <TeamGlyph team={team} size="0.7em" />
+        </span>
         <span
           title={connected ? t.connected : t.disconnected}
           className={`absolute -bottom-[0.12em] -right-[0.12em] size-[0.6em] rounded-full border-2 border-(--color-ap-ink) ${

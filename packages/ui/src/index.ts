@@ -7,6 +7,7 @@ export * from './components/Bonhomme';
 export * from './components/PlayingCard';
 export * from './components/Hand';
 export * from './components/Seat';
+export * from './components/TeamGlyph';
 export * from './components/TrickArea';
 export * from './components/BidPanel';
 export * from './components/BetCards';
