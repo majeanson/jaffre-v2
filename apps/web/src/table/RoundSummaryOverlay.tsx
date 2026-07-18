@@ -1,5 +1,14 @@
-import type { SeatView } from '@jaffre/engine';
-import { Cta, SpecialChip, useLang, type Lang, type TeamSpecials } from '@jaffre/ui';
+import type { SeatView, Suit } from '@jaffre/engine';
+import {
+  Cta,
+  SpecialChip,
+  SuitShape,
+  suitName,
+  TeamGlyph,
+  useLang,
+  type Lang,
+  type TeamSpecials,
+} from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 
 const T: Record<
@@ -11,7 +20,10 @@ const T: Record<
     made: string;
     missed: string;
     trickPts: (n: number) => string;
-    total: string;
+    thisRound: string;
+    gameTotal: string;
+    noTrump: string;
+    trumpTitle: (suit: string) => string;
     waiting: string;
     ready: string;
   }
@@ -23,7 +35,10 @@ const T: Record<
     made: 'made',
     missed: 'missed',
     trickPts: (n) => `${n} trick pts`,
-    total: 'total',
+    thisRound: 'This round',
+    gameTotal: 'Game total',
+    noTrump: 'No trump',
+    trumpTitle: (suit) => `Trump: ${suit}`,
     waiting: 'Waiting for the others…',
     ready: 'Ready for the next round',
   },
@@ -34,7 +49,10 @@ const T: Record<
     made: 'réussit',
     missed: 'rate',
     trickPts: (n) => `${n} pts de levées`,
-    total: 'total',
+    thisRound: 'Cette ronde',
+    gameTotal: 'Total de la partie',
+    noTrump: 'Sans atout',
+    trumpTitle: (suit) => `Atout : ${suit}`,
     waiting: 'On attend les autres…',
     ready: 'Prêt pour la prochaine ronde',
   },
@@ -56,11 +74,37 @@ export interface RoundSummaryOverlayProps {
 
 const teamColor = (t: 0 | 1): string => `var(--color-team-${t === 0 ? 'a' : 'b'})`;
 
+/** The trump that drove the bet: the suit mark, or a gold "SA" for sans-atout. */
+function TrumpMark({ trump, sansAtout }: { trump: Suit | null; sansAtout: boolean }) {
+  const lang = useLang();
+  const tr = T[lang];
+  if (sansAtout || trump === null) {
+    return (
+      <span
+        title={tr.noTrump}
+        className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-1.5 font-arcade-display text-[0.8em] tracking-wide text-(--color-ap-gold-deep)"
+      >
+        SA<span className="sr-only"> — {tr.noTrump}</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      title={tr.trumpTitle(suitName(trump, lang))}
+      className="grid size-[1.7em] place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel)"
+    >
+      <SuitShape suit={trump} size="0.95em" />
+      <span className="sr-only">{tr.trumpTitle(suitName(trump, lang))}</span>
+    </span>
+  );
+}
+
 /**
  * Owns the round-end scoreboard shown while the table waits for the next deal.
  * A modal dialog: it takes focus on mount and hands it back on close. The
- * headline reads the contract result at a glance; each team card shows its
- * trick points (with any captured specials called out), delta, and new total.
+ * headline reads the contract result — with the trump that drove it — at a
+ * glance; each team card separates the points won THIS ROUND from the running
+ * GAME TOTAL as two ruled rows, so the round delta never reads as the total.
  */
 export function RoundSummaryOverlay({
   summary,
@@ -98,7 +142,8 @@ export function RoundSummaryOverlay({
           {tr.round(summary.roundIndex + 1)}
         </p>
 
-        {/* Contract result headline: ✓/✗, who, made/missed, for which team. */}
+        {/* Contract result headline: ✓/✗, who, made/missed, for which team, on
+            which trump. */}
         <div className="mt-2 flex items-center justify-center gap-3">
           <span
             className={`grid size-9 shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-xl text-(--color-ap-ink) ${
@@ -108,15 +153,18 @@ export function RoundSummaryOverlay({
             {made ? '✓' : '✗'}
           </span>
           <span className="text-left leading-tight">
-            <span className="block font-arcade-display text-lg uppercase text-(--color-ap-text)">
-              {contractName} {made ? tr.made : tr.missed} {summary.contract.value}
-              {summary.contract.sansAtout ? ' SA' : ''}
+            <span className="flex items-center gap-1.5 font-arcade-display text-lg uppercase text-(--color-ap-text)">
+              <span>
+                {contractName} {made ? tr.made : tr.missed} {summary.contract.value}
+              </span>
+              <TrumpMark trump={summary.trump} sansAtout={summary.contract.sansAtout} />
             </span>
             {/* Team colour flips WITH the skin, staying legible on the ground. */}
             <span
-              className="block text-(length:--text-fluid-xs) font-semibold"
+              className="mt-0.5 flex items-center gap-1.5 text-(length:--text-fluid-xs) font-semibold"
               style={{ color: teamColor(contractTeam) }}
             >
+              <TeamGlyph team={contractTeam} size="1em" label={tr.teams[contractTeam]} />
               {tr.teams[contractTeam]}
             </span>
           </span>
@@ -137,11 +185,7 @@ export function RoundSummaryOverlay({
                   className="flex items-center justify-center gap-1.5 font-semibold"
                   style={{ color: teamColor(t) }}
                 >
-                  <span
-                    aria-hidden
-                    className="size-2 rounded-full"
-                    style={{ background: teamColor(t) }}
-                  />
+                  <TeamGlyph team={t} size="1em" />
                   {tr.teams[t]}
                 </p>
                 <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
@@ -152,18 +196,29 @@ export function RoundSummaryOverlay({
                   {sp.red && <SpecialChip kind="red" />}
                   {sp.brown && <SpecialChip kind="brown" />}
                 </p>
-                {/* Neutral ink/text for AA on the flipping panel — made/missed
-                    is carried by the ✓/✗ headline, the won-ring, and the sign. */}
-                <p className="mt-1 font-arcade-display text-lg text-(--color-ap-text)">
-                  {delta >= 0 ? '+' : ''}
-                  {delta}
-                </p>
-                <p className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                  {tr.total}{' '}
-                  <span className="font-arcade-display text-base text-(--color-ap-text)">
-                    {summary.scores[t]}
-                  </span>
-                </p>
+
+                {/* Round delta vs game total, as two labelled ruled rows so the
+                    +delta never reads as the running score. Neutral ink for AA
+                    on the flipping panel; made/missed lives in the headline. */}
+                <dl className="mt-2 border-t-2 border-(--color-ap-ink)/25 pt-1.5 text-left">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <dt className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                      {tr.thisRound}
+                    </dt>
+                    <dd className="font-arcade-display text-lg text-(--color-ap-text)">
+                      {delta >= 0 ? '+' : ''}
+                      {delta}
+                    </dd>
+                  </div>
+                  <div className="mt-0.5 flex items-baseline justify-between gap-2 border-t border-(--color-ap-ink)/15 pt-0.5">
+                    <dt className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                      {tr.gameTotal}
+                    </dt>
+                    <dd className="font-arcade-display text-base text-(--color-ap-text)">
+                      {summary.scores[t]}
+                    </dd>
+                  </div>
+                </dl>
               </div>
             );
           })}

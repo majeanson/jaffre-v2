@@ -182,6 +182,7 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
     roundIndex: state.roundIndex,
     contract,
     contractMade,
+    trump: state.trump,
     trickPoints: state.roundPoints,
     deltas,
     scores,

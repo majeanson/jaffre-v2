@@ -68,17 +68,19 @@ land.
       `TopBar.tsx`, `icons.tsx`. TODO: the online Voice control still shows
       "Joindre le vocal" text — convert `VoiceBar` join to IconMic (also lobby).
 
-## Phase D — Round summary / scoreboard ⬜
+## Phase D — Round summary / scoreboard ✅
 
-- [ ] **D1. Separate this-round vs total.** The round-over overlay muddles the
-      round delta with the running total. Fold the per-round + total into the same
-      ruled round-table format (like the scoreboard) so "points this round" and
-      "game total" read as distinct rows. Files: `RoundSummaryOverlay.tsx`,
-      `ScorePad`/`ScoreStrip.tsx`.
-- [ ] **D2. Trump in bets.** Round summary + scoreboard bet column shows the trump
-      used; sans-atout marked with `*` (or a no-trump glyph). Needs the trump/
-      sans-atout on the round summary (check engine `RoundSummary`). Files: engine
-      `RoundSummary` (if missing), `ScorePad`, `RoundSummaryOverlay.tsx`.
+- [x] **D1. Separate this-round vs total.** The round-over overlay now splits each
+      team card into two labelled ruled rows — "This round" (the signed delta) over
+      "Game total" (the running score) — so the delta never reads as the total. The
+      contract sub-line + team cards swapped the dot+word for `TeamGlyph` (☀/☾).
+      Files: `RoundSummaryOverlay.tsx`.
+- [x] **D2. Trump in bets.** Added `trump: Suit | null` to engine `RoundSummary`
+      (set from `state.trump` where the round is scored; null == sans-atout), threaded
+      into `ScoreboardRound` + the overlay. The scorepad bet column and the overlay
+      headline now show the trump suit mark; sans-atout shows a gold `*` (pad) / `SA`
+      (overlay). Files: engine `types.ts`/`reducer.ts` (+scoring test), `ScoreStrip.tsx`,
+      `RoundSummaryOverlay.tsx`, `useTableDerived.ts`, server round-summary test fixtures.
 
 ## Phase E — Menus / lobby / share ⬜
 

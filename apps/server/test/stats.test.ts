@@ -14,6 +14,7 @@ function summary(
 ): RoundSummary {
   return {
     roundIndex: 0,
+    trump: null,
     trickPoints: [0, 0],
     deltas: [0, 0],
     scores: [0, 0],

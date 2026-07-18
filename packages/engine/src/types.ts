@@ -50,6 +50,8 @@ export interface RoundSummary {
   readonly roundIndex: number;
   readonly contract: Contract;
   readonly contractMade: boolean;
+  /** The trump suit chosen this round; null for a sans-atout contract. */
+  readonly trump: Suit | null;
   readonly trickPoints: readonly [number, number];
   readonly deltas: readonly [number, number];
   readonly scores: readonly [number, number];

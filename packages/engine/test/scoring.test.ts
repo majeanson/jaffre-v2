@@ -43,6 +43,18 @@ describe('round scoring', () => {
     }
   });
 
+  it('records the trump suit — null exactly for a sans-atout contract', () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const { summary } = firstRoundSummary(seed);
+      if (summary.contract.sansAtout) {
+        expect(summary.trump).toBeNull();
+      } else {
+        expect(summary.trump).not.toBeNull();
+        expect(['red', 'brown', 'green', 'blue']).toContain(summary.trump);
+      }
+    }
+  });
+
   it('scores accumulate the deltas', () => {
     const { summary } = firstRoundSummary(3);
     expect(summary.scores).toEqual([summary.deltas[0], summary.deltas[1]]);

@@ -101,6 +101,8 @@ export interface ScoreboardRound {
   readonly bidderTeam: 0 | 1;
   readonly bid: number;
   readonly sansAtout: boolean;
+  /** The trump suit that drove the round; null for a sans-atout bet. */
+  readonly trump: SuitId | null;
   readonly made: boolean;
   /** Points each team gained (or lost) this round. */
   readonly deltas: readonly [number, number];
@@ -309,18 +311,45 @@ function TeamSide({
 
 const signed = (n: number): string => (n > 0 ? `+${String(n)}` : String(n));
 
-/** "Marcel 8 SA" with a suit-dot team mark and a made/missed tick — on ivory. */
+/** The trump that drove the bet, on the ivory pad: the suit mark, or a gold
+ * `*` for a sans-atout contract (no trump — stake ×2). */
+function BetTrump({ trump, sansAtout }: { trump: SuitId | null; sansAtout: boolean }) {
+  const lang = useLang();
+  const t = T[lang];
+  if (sansAtout) {
+    return (
+      <span
+        title={t.noTrump}
+        className="font-arcade-display text-(--color-ap-gold-deep)"
+        aria-hidden
+      >
+        *<span className="sr-only">{t.noTrump}</span>
+      </span>
+    );
+  }
+  if (trump === null) return null;
+  return (
+    <span title={t.trumpTitle(suitName(trump, lang))} className="inline-flex shrink-0 align-middle">
+      <SuitShape suit={trump} size="0.85em" />
+      <span className="sr-only">{t.trumpSr(suitName(trump, lang))}</span>
+    </span>
+  );
+}
+
+/** "Marcel 8 ♦" with a suit-dot team mark and a made/missed tick — on ivory. */
 function BetCell({
   name,
   team,
   bid,
   sansAtout,
+  trump = null,
   made,
 }: {
   name: string;
   team: 0 | 1;
   bid: number;
   sansAtout: boolean;
+  trump?: SuitId | null;
   made?: boolean | undefined;
 }) {
   const t = T[useLang()];
@@ -333,8 +362,8 @@ function BetCell({
       />
       <span className="truncate text-(--color-ap-ink)/85">
         {name} <span className="font-arcade-display">{bid}</span>
-        {sansAtout ? <span className="text-(--color-ap-gold-deep)"> SA</span> : null}
       </span>
+      <BetTrump trump={trump} sansAtout={sansAtout} />
       {made !== undefined && (
         <span
           className={made ? 'text-(--color-suit-green)' : 'text-(--color-suit-red)'}
@@ -360,6 +389,7 @@ function ScorePad({
   currentRound,
   roundPoints,
   contract,
+  trump = null,
   myTeam = null,
 }: {
   teamNames: readonly [string, string];
@@ -369,6 +399,8 @@ function ScorePad({
   currentRound?: number | undefined;
   roundPoints?: readonly [number, number] | undefined;
   contract?: ScoreStripProps['contract'] | undefined;
+  /** The trump decided for the round in progress (live row); null if undecided. */
+  trump?: SuitId | null;
   myTeam?: 0 | 1 | null;
 }) {
   const t = T[useLang()];
@@ -451,6 +483,7 @@ function ScorePad({
                     team={r.bidderTeam}
                     bid={r.bid}
                     sansAtout={r.sansAtout}
+                    trump={r.trump}
                     made={r.made}
                   />
                 </td>
@@ -472,6 +505,7 @@ function ScorePad({
                       team={contract.team ?? 0}
                       bid={contract.value}
                       sansAtout={contract.sansAtout}
+                      trump={trump}
                     />
                   ) : (
                     <span className="italic">{t.bidding}</span>
@@ -664,6 +698,7 @@ export function ScoreStrip({
               currentRound={currentRound}
               roundPoints={roundPoints}
               contract={contract}
+              trump={trumpDecided ? trump : null}
               myTeam={myTeam}
             />
             {contract !== null && (

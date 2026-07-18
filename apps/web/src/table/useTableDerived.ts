@@ -238,6 +238,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     bidderTeam: (r.contract.seat % 2) as 0 | 1,
     bid: r.contract.value,
     sansAtout: r.contract.sansAtout,
+    trump: r.trump,
     made: r.contractMade,
     deltas: r.deltas,
   }));

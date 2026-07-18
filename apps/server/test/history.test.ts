@@ -53,6 +53,7 @@ describe('gameRecordFrom', () => {
       roundIndex: 0,
       contract: { seat: 0, value: 8, sansAtout: false, forced: false },
       contractMade: true,
+      trump: 'red',
       trickPoints: [50, 12],
       deltas: [8, -8],
       scores: [8, -8],
