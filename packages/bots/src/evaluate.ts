@@ -196,7 +196,9 @@ export function pickBid(view: SeatView, opts: BidOpts): BidChoice {
     const saShape = sa.unstopped === 0 && (sa.suitsWithBoss >= 3 || sa.runningSuits >= 2);
     if (saShape && saCeil >= 7) {
       const sans = legal
-        .filter((c) => c.sansAtout && c.value <= saCeil)
+        // Never a 12 sans atout: it's the human "hail-mary" gamble that wins or
+        // loses the whole game outright — a bot must not stumble into it.
+        .filter((c) => c.sansAtout && c.value <= saCeil && c.value < 12)
         .sort((a, b) => a.value - b.value)[0];
       // Equal value sans-atout still doubles the stake, so prefer it.
       if (sans !== undefined && (plain === undefined || sans.value >= plain.value)) return sans;

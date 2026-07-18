@@ -33,6 +33,18 @@ export interface Contract {
 
 export type Phase = 'bidding' | 'playing' | 'round_over' | 'game_over';
 
+/** Optional house rules chosen in the lobby, fixed for the game once it starts. */
+export interface GameRules {
+  /**
+   * "Hail-Mary 12 sans atout": a made 12-sans-atout contract wins the whole
+   * game outright; a missed one loses it outright — regardless of the score.
+   */
+  readonly hailMary12: boolean;
+}
+
+/** Why the game ended — 'score' (reached the target) or the hail-mary rule. */
+export type EndReason = 'score' | 'hailMary12';
+
 export interface TrickPlay {
   readonly seat: Seat;
   readonly card: Card;
@@ -79,6 +91,10 @@ export interface GameState {
   /** Every scored round this game, oldest first — the written scoreboard. */
   readonly roundSummaries: readonly RoundSummary[];
   readonly winner: Team | null;
+  /** House rules for this game. Backfilled to all-off on legacy states. */
+  readonly rules: GameRules;
+  /** Set only once the game is over — how it ended. */
+  readonly endReason?: EndReason;
 }
 
 export type Action =

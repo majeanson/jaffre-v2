@@ -7,6 +7,7 @@ import type {
   Card,
   EngineErrorCode,
   GameEvent,
+  GameRules,
   GameState,
   Result,
   RoundSummary,
@@ -15,8 +16,8 @@ import type {
 } from './types.js';
 import { nextSeat, sameCard, teamOf } from './types.js';
 
-export function createGame(seed: number): GameState {
-  return dealRound(seed, 0, 0, [0, 0]);
+export function createGame(seed: number, rules: GameRules = { hailMary12: false }): GameState {
+  return dealRound(seed, 0, 0, [0, 0], rules);
 }
 
 function dealRound(
@@ -24,6 +25,7 @@ function dealRound(
   roundIndex: number,
   dealer: Seat,
   scores: readonly [number, number],
+  rules: GameRules,
   lastRoundSummary: RoundSummary | null = null,
   roundSummaries: readonly RoundSummary[] = [],
 ): GameState {
@@ -47,6 +49,7 @@ function dealRound(
     lastRoundSummary,
     roundSummaries,
     winner: null,
+    rules,
   };
 }
 
@@ -190,7 +193,15 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
   events.push({ type: 'round_scored', summary });
 
   const roundSummaries = [...state.roundSummaries, summary];
-  const winner = decideWinner(scores, contractTeam);
+
+  // "Hail-Mary 12 sans atout" house rule: a 12-sans-atout contract decides the
+  // whole game — made wins it outright, missed loses it outright, score aside.
+  const isHailMary = state.rules.hailMary12 && contract.value === 12 && contract.sansAtout;
+  const winner = isHailMary
+    ? contractMade
+      ? contractTeam
+      : defenderTeam
+    : decideWinner(scores, contractTeam);
 
   if (winner !== null) {
     events.push({ type: 'game_over', winner });
@@ -203,6 +214,7 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
         lastRoundSummary: summary,
         roundSummaries,
         winner,
+        endReason: isHailMary ? 'hailMary12' : 'score',
       },
       events,
     };
@@ -223,6 +235,7 @@ function advanceRound(state: GameState): Result {
     state.roundIndex + 1,
     nextSeat(state.dealer),
     state.scores,
+    state.rules,
     state.lastRoundSummary,
     state.roundSummaries,
   );

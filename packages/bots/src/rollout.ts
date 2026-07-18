@@ -167,6 +167,7 @@ function reconstruct(view: SeatView, hands: Card[][]): GameState {
     lastRoundSummary: null,
     roundSummaries: [],
     winner: null,
+    rules: view.rules,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { SeatView } from '@jaffre/engine';
+import type { EndReason, SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
 import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import { Confetti } from './Confetti.js';
@@ -33,6 +33,11 @@ const T: Record<
     rematch: string;
     swapSeats: string;
     leave: string;
+    teamLabel: (t: 0 | 1) => string;
+    hailMaryWonTitle: string;
+    hailMaryLostTitle: string;
+    hailMaryWonMsg: (team: string) => string;
+    hailMaryLostMsg: (bidder: string, winner: string) => string;
   }
 > = {
   en: {
@@ -60,6 +65,12 @@ const T: Record<
     rematch: 'Rematch',
     swapSeats: 'Swap seats',
     leave: 'Leave',
+    teamLabel: (t) => (t === 0 ? 'Team Sun' : 'Team Moon'),
+    hailMaryWonTitle: 'Hail Mary!',
+    hailMaryLostTitle: '12 sans atout — missed',
+    hailMaryWonMsg: (team) => `${team} called 12 sans atout and swept it — instant win.`,
+    hailMaryLostMsg: (bidder, winner) =>
+      `${bidder} went for 12 sans atout and missed — ${winner} take the game.`,
   },
   fr: {
     gameOver: 'Partie terminée',
@@ -86,6 +97,13 @@ const T: Record<
     rematch: 'Revanche',
     swapSeats: 'Échanger les sièges',
     leave: 'Quitter',
+    teamLabel: (t) => (t === 0 ? "l'Équipe Soleil" : "l'Équipe Lune"),
+    hailMaryWonTitle: 'Coup de grâce!',
+    hailMaryLostTitle: '12 sans atout — raté',
+    hailMaryWonMsg: (team) =>
+      `${team} a demandé 12 sans atout et a tout ramassé — victoire immédiate.`,
+    hailMaryLostMsg: (bidder, winner) =>
+      `${bidder} a tenté le 12 sans atout et l'a raté — ${winner} remporte la partie.`,
   },
 };
 
@@ -105,6 +123,8 @@ export interface GameRecapProps {
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
+  /** How the game ended — drives the "Hail-Mary 12 sans atout" special banner. */
+  readonly endReason?: EndReason | undefined;
 }
 
 /** Two small chips for a team pair, shown under a scorepad tally. */
@@ -230,8 +250,19 @@ export function GameRecap({
   onRematch,
   onSwapSeats,
   onLeave,
+  endReason,
 }: GameRecapProps) {
   const t = T[useLang()];
+  // The hail-mary ending: the last round's 12-sans-atout contract decided the
+  // game. Swept → the bidding team wins; missed → the defenders take it.
+  const lastRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
+  const hailMary =
+    endReason === 'hailMary12' && lastRound != null
+      ? {
+          bidderTeam: (lastRound.contract.seat % 2) as 0 | 1,
+          swept: lastRound.contractMade,
+        }
+      : null;
   const label = (uc: string) =>
     `font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) ${uc}`;
   return (
@@ -243,6 +274,18 @@ export function GameRecap({
     >
       <div className="pop-in relative w-full max-w-md rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <Confetti />
+        {hailMary !== null && (
+          <div className="mb-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2.5">
+            <p className="font-arcade-display text-[1.15em] uppercase leading-tight text-(--color-ap-gold)">
+              {hailMary.swept ? t.hailMaryWonTitle : t.hailMaryLostTitle}
+            </p>
+            <p className="mt-[0.35em] text-[0.82em] leading-snug text-(--color-ap-text)">
+              {hailMary.swept
+                ? t.hailMaryWonMsg(t.teamLabel(hailMary.bidderTeam))
+                : t.hailMaryLostMsg(t.teamLabel(hailMary.bidderTeam), t.teamLabel(winner))}
+            </p>
+          </div>
+        )}
         <p
           className="font-arcade-display text-[1.9em] uppercase leading-none"
           style={{ color: TEAM_COLOR[winner] }}

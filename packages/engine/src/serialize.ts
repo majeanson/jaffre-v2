@@ -34,5 +34,9 @@ export function deserialize(json: string): GameState | null {
   if (!Array.isArray(s['roundSummaries'])) {
     s['roundSummaries'] = s['lastRoundSummary'] != null ? [s['lastRoundSummary']] : [];
   }
+  // States persisted before house rules existed default to all rules off.
+  if (typeof s['rules'] !== 'object' || s['rules'] === null) {
+    s['rules'] = { hailMary12: false };
+  }
   return parsed as GameState;
 }

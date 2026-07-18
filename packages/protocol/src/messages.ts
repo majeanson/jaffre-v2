@@ -56,6 +56,8 @@ export const clientMessageSchema = z.union([
     difficulty: botDifficultySchema.optional(),
   }),
   z.object({ t: z.literal('start') }),
+  // Pre-game only: toggle the "Hail-Mary 12 sans atout" house rule for the room.
+  z.object({ t: z.literal('set_rules'), hailMary12: z.boolean() }),
   // Between games only: re-pair the table (swap seats 1 & 2) before a rematch.
   z.object({ t: z.literal('swap_seats') }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
@@ -96,6 +98,8 @@ export interface Roster {
   /** Final [Sun, Moon] scores of each finished game this sitting, oldest
    * first — powers the between-games scorepad. Reset with the room. */
   readonly seriesGames?: readonly (readonly [number, number])[];
+  /** House rules chosen in the lobby, echoed so every seat sees the toggle. */
+  readonly rules?: { readonly hailMary12: boolean };
 }
 
 export interface ChatEntry {

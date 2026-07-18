@@ -12,6 +12,7 @@ const T: Record<
     stillToBid: string;
     betCards: string;
     tapToBid: string;
+    hailMaryWarn: string;
   }
 > = {
   en: {
@@ -22,6 +23,7 @@ const T: Record<
     stillToBid: 'still to bid',
     betCards: 'Bet cards',
     tapToBid: 'Tap a card to bid',
+    hailMaryWarn: 'All or nothing — make 12 sans atout to win the game, miss it and you lose.',
   },
   fr: {
     pass: 'Passe',
@@ -31,6 +33,7 @@ const T: Record<
     stillToBid: 'à miser',
     betCards: 'Cartes de mise',
     tapToBid: 'Touche une carte pour miser',
+    hailMaryWarn: 'Tout ou rien — réussis 12 sans atout pour gagner, rate-le et tu perds.',
   },
 };
 
@@ -59,6 +62,8 @@ export interface BetCardsProps {
   readonly recommended?: BidOption | null;
   /** True when the Coach is on (drives the recommend styling). */
   readonly coaching?: boolean;
+  /** True when the "Hail-Mary 12 sans atout" house rule is on for this game. */
+  readonly hailMary12?: boolean;
 }
 
 /**
@@ -73,6 +78,7 @@ function BetCard({
   sansAtout = false,
   enabled,
   recommended,
+  hot = false,
   onCommit,
 }: {
   label: string;
@@ -80,6 +86,8 @@ function BetCard({
   sansAtout?: boolean;
   enabled: boolean;
   recommended: boolean;
+  /** The all-or-nothing 12 sans atout — a gold danger ring under the hail-mary rule. */
+  hot?: boolean;
   onCommit: () => void;
 }) {
   const t = T[useLang()];
@@ -97,7 +105,11 @@ function BetCard({
         pass
           ? 'bg-(--color-ap-panel) text-(--color-ap-muted)'
           : 'bg-(--color-card-face) text-(--color-ap-ink)'
-      } ${recommended ? 'outline outline-[3px] outline-(--color-ap-violet) outline-offset-2 -translate-y-1' : ''}`}
+      } ${recommended ? 'outline outline-[3px] outline-(--color-ap-violet) outline-offset-2 -translate-y-1' : ''} ${
+        hot
+          ? 'outline outline-[3px] outline-(--color-ap-gold-deep) outline-offset-2 -translate-y-1'
+          : ''
+      }`}
     >
       <span className={pass ? 'text-[0.9em] tracking-wide uppercase' : 'text-[1.9em]'}>
         {label}
@@ -128,11 +140,14 @@ export function BetCards({
   disabled = false,
   recommended = null,
   coaching = false,
+  hailMary12 = false,
 }: BetCardsProps) {
   const tt = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
   const values = [7, 8, 9, 10, 11, 12] as const;
   const recommendPass = coaching && recommended === null;
+  // The hail-mary is armed when the rule is on and the sans-atout toggle is up.
+  const hailMaryArmed = hailMary12 && sansAtout;
 
   return (
     <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg)">
@@ -200,6 +215,15 @@ export function BetCards({
         </ol>
       )}
 
+      {hailMaryArmed && (
+        <p
+          role="alert"
+          className="w-full rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2 text-center text-(length:--text-fluid-xs) font-semibold text-(--color-ap-text)"
+        >
+          {tt.hailMaryWarn}
+        </p>
+      )}
+
       <div role="group" aria-label={tt.betCards} className="flex items-end gap-[0.9vmin]">
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
@@ -215,6 +239,7 @@ export function BetCards({
               sansAtout={sansAtout}
               enabled={legal && !disabled}
               recommended={isRecommended}
+              hot={hailMaryArmed && value === 12}
               onCommit={() => onBid({ value, sansAtout })}
             />
           );

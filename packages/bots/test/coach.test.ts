@@ -33,6 +33,7 @@ function view(partial: Partial<SeatView>): SeatView {
     lastRoundSummary: null,
     roundSummaries: [],
     winner: null,
+    rules: { hailMary12: false },
     ...partial,
   };
 }

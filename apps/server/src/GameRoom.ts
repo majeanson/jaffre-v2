@@ -60,6 +60,8 @@ interface Meta {
    * first — the between-games scorepad. Appended at each game_over,
    * alongside seriesWins; reset only with the DO. */
   seriesGames: [number, number][];
+  /** House rules chosen in the lobby before the game starts. */
+  rules?: { hailMary12: boolean };
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -190,6 +192,9 @@ export class GameRoom implements DurableObject {
         return;
       case 'start':
         await this.onStart(ws, att);
+        return;
+      case 'set_rules':
+        await this.onSetRules(ws, att, msg.hailMary12);
         return;
       case 'swap_seats':
         await this.onSwapSeats(ws, att);
@@ -476,6 +481,27 @@ export class GameRoom implements DurableObject {
     this.broadcastRoster({});
   }
 
+  private async onSetRules(ws: WebSocket, att: Attachment, hailMary12: boolean): Promise<void> {
+    // Only seated players may set house rules, and only before a live game —
+    // the rule is fixed for the game the moment it starts.
+    const gameInProgress = this.meta.started && this.game?.phase !== 'game_over';
+    if (gameInProgress) {
+      this.send(ws, { t: 'error', code: 'ALREADY_STARTED', message: 'Game already started' });
+      return;
+    }
+    if (!att.joined || typeof att.viewer !== 'number') {
+      this.send(ws, {
+        t: 'error',
+        code: 'NOT_SEATED',
+        message: 'Only seated players can set rules',
+      });
+      return;
+    }
+    this.meta.rules = { hailMary12 };
+    await this.ctx.storage.put('meta', this.meta);
+    this.broadcastRoster({});
+  }
+
   private async onStart(ws: WebSocket, att: Attachment): Promise<void> {
     // A finished game may be restarted in place (rematch, same table).
     const isRematch = this.meta.started && this.game?.phase === 'game_over';
@@ -504,7 +530,7 @@ export class GameRoom implements DurableObject {
     const buf = new Uint32Array(1);
     crypto.getRandomValues(buf);
     const seed = buf[0] ?? 0;
-    const game = createGame(seed);
+    const game = createGame(seed, this.meta.rules ?? { hailMary12: false });
     this.game = game;
     this.meta.started = true;
     this.meta.startedAt = Date.now();
@@ -814,6 +840,7 @@ export class GameRoom implements DurableObject {
       started: this.meta.started,
       seriesWins: this.meta.seriesWins,
       seriesGames: this.meta.seriesGames,
+      rules: this.meta.rules ?? { hailMary12: false },
     };
   }
 

@@ -3,7 +3,9 @@ import type {
   CapturedTrick,
   Card,
   Contract,
+  EndReason,
   GameEvent,
+  GameRules,
   GameState,
   Phase,
   RoundSummary,
@@ -40,6 +42,10 @@ export interface SeatView {
   /** Every scored round this game, oldest first — survives reconnects. */
   readonly roundSummaries: readonly RoundSummary[];
   readonly winner: Team | null;
+  /** House rules in effect this game (so the bidding UI can warn). */
+  readonly rules: GameRules;
+  /** Set only once the game is over — how it ended. */
+  readonly endReason?: EndReason;
 }
 
 export function viewFor(state: GameState, viewer: Viewer): SeatView {
@@ -63,6 +69,8 @@ export function viewFor(state: GameState, viewer: Viewer): SeatView {
     lastRoundSummary: state.lastRoundSummary,
     roundSummaries: state.roundSummaries,
     winner: state.winner,
+    rules: state.rules,
+    ...(state.endReason !== undefined ? { endReason: state.endReason } : {}),
   };
 }
 

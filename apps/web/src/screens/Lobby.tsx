@@ -29,6 +29,8 @@ const T: Record<
     voice: string;
     back: string;
     howToPlay: string;
+    hailMary: string;
+    hailMaryHint: string;
   }
 > = {
   en: {
@@ -41,6 +43,8 @@ const T: Record<
     voice: 'Table voice',
     back: '← Back home',
     howToPlay: 'How to play',
+    hailMary: 'Hail-Mary 12 sans atout',
+    hailMaryHint: 'Bid & make 12 sans atout to win the game outright — miss it and you lose.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -52,6 +56,9 @@ const T: Record<
     voice: 'Vocal de table',
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
+    hailMary: '12 sans atout — tout ou rien',
+    hailMaryHint:
+      "Demande et réussis un 12 sans atout pour gagner d'un coup — rate-le et tu perds.",
   },
 };
 
@@ -61,6 +68,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   const { roster, viewer, connection, chat } = useGameStore();
   const sendChat = useChatSend();
   const full = roster !== null && roster.seats.every((s) => s !== null);
+  const seated = typeof viewer === 'number';
+  const hailMary = roster?.rules?.hailMary12 ?? false;
 
   return (
     <main className="table-felt grid min-h-screen place-items-center p-6">
@@ -87,6 +96,27 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onSit={(seat) => send({ t: 'sit', seat })}
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
         />
+
+        <label
+          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            role="switch"
+            checked={hailMary}
+            disabled={!seated}
+            onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked })}
+            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+              {t.hailMary}
+            </span>
+            <span className="text-xs text-(--color-ap-muted)">{t.hailMaryHint}</span>
+          </span>
+        </label>
 
         <Cta onClick={() => send({ t: 'start' })} disabled={!full} className="w-full">
           {full ? t.start : t.waiting}

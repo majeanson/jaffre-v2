@@ -49,6 +49,7 @@ export function Overlays({
           seats={roster.seats}
           seriesWins={roster.seriesWins}
           seriesGames={roster.seriesGames}
+          endReason={view.endReason}
           onRematch={onRematch}
           onSwapSeats={onSwapSeats}
           onLeave={onLeave}

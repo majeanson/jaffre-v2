@@ -27,6 +27,7 @@ function makeView(overrides: Partial<SeatView> = {}): SeatView {
     lastRoundSummary: null,
     roundSummaries: [],
     winner: null,
+    rules: { hailMary12: false },
     ...overrides,
   };
 }

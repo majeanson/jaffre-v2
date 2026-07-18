@@ -30,6 +30,12 @@ describe('serialize / deserialize', () => {
     expect(deserialize(legacy(createGame(42)))?.roundSummaries).toEqual([]);
   });
 
+  it('migrates pre-house-rules states: rules default to all off', () => {
+    const clone = { ...createGame(42) } as Record<string, unknown>;
+    delete clone['rules'];
+    expect(deserialize(JSON.stringify(clone))?.rules).toEqual({ hailMary12: false });
+  });
+
   it('rejects malformed input without throwing', () => {
     expect(deserialize('not json')).toBeNull();
     expect(deserialize('null')).toBeNull();
