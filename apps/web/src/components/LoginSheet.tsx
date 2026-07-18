@@ -69,7 +69,8 @@ const T: Record<
     wrong: 'Wrong code — check the digits.',
     expired: 'Code expired — send a new one.',
     haveWords: 'I have a 3-word code',
-    wordsHint: 'Got words like lampe-tricot-hibou from another device? They bring those games back.',
+    wordsHint:
+      'Got words like lampe-tricot-hibou from another device? They bring those games back.',
     namePlaceholder: 'Name (optional)',
     restoring: 'Restoring…',
     restore: 'Restore',
@@ -251,7 +252,9 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
                   </form>
                 ) : (
                   <form onSubmit={confirmCode} className="flex w-full flex-col gap-[0.5em]">
-                    <p className="text-[0.75em] text-(--color-ap-muted)">{t.codeSent(email.trim())}</p>
+                    <p className="text-[0.75em] text-(--color-ap-muted)">
+                      {t.codeSent(email.trim())}
+                    </p>
                     <input
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

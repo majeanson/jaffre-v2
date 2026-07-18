@@ -950,10 +950,7 @@ async function handleIce(env: Env): Promise<Response> {
 /* ── Web Push subscriptions ─────────────────────────────────────────────── */
 
 /** Bearer-authed identity, or an error Response — shared by the push routes. */
-async function pushIdentity(
-  request: Request,
-  env: Env,
-): Promise<{ uid: string } | Response> {
+async function pushIdentity(request: Request, env: Env): Promise<{ uid: string } | Response> {
   if (!pushEnabled(env)) {
     return Response.json({ error: 'Push not configured' }, { status: 503 });
   }
