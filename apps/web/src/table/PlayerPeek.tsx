@@ -1,5 +1,5 @@
 import type { BotDifficulty } from '@jaffre/protocol';
-import { TeamGlyph, useLang, type Lang } from '@jaffre/ui';
+import { ARCADE, TeamGlyph, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useState } from 'react';
 import { fetchStats, type Stats } from '../net/history.js';
 import type { SeatChipInfo } from './useTableDerived.js';
@@ -133,7 +133,7 @@ export function PlayerPeek({ info }: PlayerPeekProps) {
     <div
       role="dialog"
       aria-label={info.name}
-      className="w-[13.5rem] max-w-[80vw] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-lg)"
+      className={`${ARCADE.popover} w-[13.5rem] max-w-[80vw] p-3 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text)`}
     >
       <div className="flex items-center gap-2">
         <TeamGlyph team={info.team} size="1.4em" label={t.teams[info.team]} />

@@ -1,4 +1,4 @@
-import { useLang, type Lang } from '@jaffre/ui';
+import { ARCADE, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 
 const T: Record<Lang, { gameLog: string; close: string; emptyLog: string }> = {
@@ -46,7 +46,9 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
         {latest}
       </div>
       {visible && (
-        <div className="fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui shadow-(--shadow-ap-lg)">
+        <div
+          className={`${ARCADE.popover} fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 overflow-hidden font-arcade-ui`}
+        >
           <div className="flex items-center justify-between border-b-2 border-(--color-ap-ink) px-4 py-1.5">
             <span className="font-arcade-display text-[0.72em] uppercase tracking-[0.14em] text-(--color-ap-muted)">
               {t.gameLog}

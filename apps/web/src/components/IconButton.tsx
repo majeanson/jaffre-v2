@@ -1,3 +1,4 @@
+import { ARCADE } from '@jaffre/ui';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,13 +11,12 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   readonly children: ReactNode;
 }
 
-/** Base chrome for a small square icon button — shared with icon-styled triggers.
- * Arcade shell: 2px ink border, hard shadow. */
-export const ICON_BTN_BASE =
-  'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors';
+/** Base chrome for a small square icon button — shared with icon-styled
+ * triggers. Composed from the ARCADE concept mapping (single source). */
+export const ICON_BTN_BASE = `${ARCADE.iconBtnBase} cursor-pointer`;
 
 /** The neutral (idle) icon-button look, as a plain class string. */
-export const ICON_BTN_NEUTRAL = `${ICON_BTN_BASE} bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)`;
+export const ICON_BTN_NEUTRAL = `${ICON_BTN_BASE} ${ARCADE.iconBtnNeutral}`;
 
 /**
  * The one small square icon button used across the table chrome — hover-bar

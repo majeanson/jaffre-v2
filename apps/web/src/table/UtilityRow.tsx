@@ -1,3 +1,4 @@
+import { ARCADE } from '@jaffre/ui';
 import type { ReactNode } from 'react';
 import { LastTrickPeek } from './LastTrickPeek.js';
 import { SeatChip } from './SeatChip.js';
@@ -18,9 +19,7 @@ export interface UtilityRowProps {
 
 /** The black bar separating the bunched utility buttons. */
 function Divider() {
-  return (
-    <span aria-hidden className="h-[1.6em] w-[2px] shrink-0 rounded-full bg-(--color-ap-ink)" />
-  );
+  return <span aria-hidden className={`${ARCADE.divider} h-[1.6em]`} />;
 }
 
 /** Owns the slim row above the hand: your chip centered, and ONE bunched

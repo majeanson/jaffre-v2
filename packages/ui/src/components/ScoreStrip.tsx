@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { suitName, useLang, type Lang } from '../i18n.js';
+import { ARCADE } from './arcade.js';
 import type { SuitId } from '../types.js';
 import { SuitShape } from './SuitShape.js';
 import { TeamGlyph } from './TeamGlyph.js';
@@ -576,7 +577,9 @@ function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecide
   if (!trumpDecided) return null;
   if (trump === null) {
     return (
-      <span className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase">
+      <span
+        className={`${ARCADE.inner} bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase`}
+      >
         {t.noTrump}
       </span>
     );
@@ -584,7 +587,7 @@ function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecide
   return (
     <span
       title={t.trumpTitle(suitName(trump, lang))}
-      className="grid size-[1.7em] place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel)"
+      className={`${ARCADE.inner} grid size-[1.7em] place-items-center bg-(--color-ap-panel)`}
     >
       <SuitShape suit={trump} size="0.9em" />
       <span className="sr-only">{t.trumpSr(suitName(trump, lang))}</span>
@@ -619,7 +622,9 @@ export function ScoreStrip({
   const [open, setOpen] = useState(defaultDetailsOpen);
 
   return (
-    <div className="relative w-fit max-w-full min-w-[min(22rem,94vw)] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) font-arcade-ui text-(length:--text-fluid-sm) shadow-(--shadow-ap)">
+    <div
+      className={`${ARCADE.panel} relative w-fit max-w-full min-w-[min(22rem,94vw)] font-arcade-ui text-(length:--text-fluid-sm)`}
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -711,7 +716,9 @@ export function ScoreStrip({
           />
           {/* The full details float as a dropdown over the table instead of
               displacing it — the collapsed strip keeps its place in flow. */}
-          <div className="absolute top-[calc(100%+0.5rem)] left-1/2 z-40 flex w-[min(28rem,94vw)] -translate-x-1/2 flex-col items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 pt-4 pb-4 text-(length:--text-fluid-xs) shadow-(--shadow-ap-lg)">
+          <div
+            className={`${ARCADE.popover} absolute top-[calc(100%+0.5rem)] left-1/2 z-40 flex w-[min(28rem,94vw)] -translate-x-1/2 flex-col items-center gap-3 px-4 pt-4 pb-4 text-(length:--text-fluid-xs)`}
+          >
             <ScorePad
               teamNames={teamNames}
               scores={scores}

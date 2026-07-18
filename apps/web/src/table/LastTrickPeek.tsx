@@ -1,4 +1,4 @@
-import { PlayingCard, useLang, type Lang } from '@jaffre/ui';
+import { ARCADE, PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconHistory } from '../components/icons.js';
@@ -68,7 +68,9 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
         <IconHistory />
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 shadow-(--shadow-ap-lg)">
+        <div
+          className={`${ARCADE.popover} absolute right-0 bottom-full z-30 mb-2 flex flex-col gap-1.5 p-3`}
+        >
           <div className="relative size-[clamp(9rem,22vmin,13rem)]">
             {trick.plays.map((play) => (
               <span

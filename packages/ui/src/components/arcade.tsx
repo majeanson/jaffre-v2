@@ -46,6 +46,34 @@ const T: Record<
  * (which flips light<->dark on the theme). Nothing here touches the felt table.
  */
 
+/**
+ * The shell's recurring visual concepts, agglomerated as a name → class
+ * mapping. Components compose `${ARCADE.x} …layout…` instead of re-typing the
+ * same border/shadow/radius run, so a chrome tweak lands everywhere at once.
+ * Every value is the exact class run components already used — adopting an
+ * entry is a pure refactor with zero visual change.
+ */
+export const ARCADE = {
+  /** A standing surface: panel radius, ink border, panel fill, hard shadow. */
+  panel:
+    'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)',
+  /** A floating surface (peeks, dropdowns): panel chrome, larger shadow. */
+  popover:
+    'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-lg)',
+  /** Small badge/token chrome: inner radius + ink border (bring your own fill). */
+  inner: 'rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink)',
+  /** Square icon-button box (no cursor/fill — compose those per state). */
+  iconBtnBase:
+    'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
+  /** Neutral (idle) fill + hover for an icon button. */
+  iconBtnNeutral: 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)',
+  /** The black bar separating bunched controls (give it a height). */
+  divider: 'w-[2px] shrink-0 rounded-full bg-(--color-ap-ink)',
+  /** The tactile press: shadow collapses as the control shifts into it. */
+  press:
+    'transition-[transform,box-shadow] duration-(--duration-flick) active:translate-x-[2px] active:translate-y-[2px] active:shadow-none',
+} as const;
+
 /** The base arcade surface — 2px ink border, panel fill, hard shadow. Every
  * boxed section composes this instead of repeating the class soup. */
 export interface PanelProps {
@@ -57,10 +85,7 @@ export interface PanelProps {
 
 export function Panel({ children, className = '', as: Tag = 'div', style }: PanelProps) {
   return (
-    <Tag
-      style={style}
-      className={`rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) ${className}`}
-    >
+    <Tag style={style} className={`${ARCADE.panel} ${className}`}>
       {children}
     </Tag>
   );

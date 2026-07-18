@@ -1,4 +1,5 @@
 import { useLang, type Lang } from '../i18n.js';
+import { ARCADE } from './arcade.js';
 
 const T: Record<
   Lang,
@@ -106,7 +107,7 @@ export function VoiceBar({
         data-testid="voice-join"
         aria-label={joining ? t.joining : t.join}
         title={joining ? t.joining : t.join}
-        className={`grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm) transition-colors ${
+        className={`${ARCADE.iconBtnBase} bg-(--color-ap-panel) ${
           joining
             ? 'text-(--color-ap-muted)'
             : 'cursor-pointer text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
@@ -141,7 +142,7 @@ export function VoiceBar({
   return (
     <div
       data-testid="voice-bar"
-      className="flex flex-wrap items-center gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) px-2 py-1.5"
+      className={`${ARCADE.panel} flex flex-wrap items-center gap-1.5 px-2 py-1.5`}
     >
       <span
         data-testid="voice-live"

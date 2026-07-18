@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLang, type Lang } from '../i18n.js';
+import { ARCADE } from './arcade.js';
 
 const T: Record<
   Lang,
@@ -124,10 +125,7 @@ export function ChatPanel({
   };
 
   const panel = (
-    <div
-      data-testid="chat-panel"
-      className="flex w-full flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) p-2"
-    >
+    <div data-testid="chat-panel" className={`${ARCADE.panel} flex w-full flex-col gap-1.5 p-2`}>
       <div className="flex items-center justify-between px-1">
         <span className="text-[11px] font-semibold uppercase tracking-widest text-(--color-ap-muted)">
           {t.chat}
@@ -203,10 +201,8 @@ export function ChatPanel({
         aria-label={t.chat}
         title={t.chat}
         data-testid="chat-toggle"
-        className={`relative grid size-[clamp(2rem,4.8vmin,2.6rem)] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-base) shadow-(--shadow-ap-sm) transition-colors ${
-          open
-            ? 'border-(--color-ap-ink) bg-(--color-ap-violet) text-(--color-ap-ink)'
-            : 'border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
+        className={`relative cursor-pointer ${ARCADE.iconBtnBase} ${
+          open ? 'bg-(--color-ap-violet) text-(--color-ap-ink)' : ARCADE.iconBtnNeutral
         }`}
       >
         <svg
