@@ -68,7 +68,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   const hailMary = roster?.rules?.hailMary12 ?? true;
 
   return (
-    <main className="table-felt grid min-h-screen place-items-center p-6">
+    <main className="table-felt grid min-h-full place-items-center p-6">
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">

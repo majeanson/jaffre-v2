@@ -272,7 +272,7 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   ));
 
   return (
-    <main className="min-h-dvh overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
+    <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
         <header className="flex items-center justify-between gap-4">
           <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">

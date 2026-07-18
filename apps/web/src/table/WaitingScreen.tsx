@@ -9,7 +9,7 @@ const T: Record<Lang, { waiting: string }> = {
 export function WaitingScreen() {
   const t = T[useLang()];
   return (
-    <main className="table-felt grid min-h-screen place-items-center">
+    <main className="table-felt grid min-h-full place-items-center">
       <p className="animate-pulse font-arcade-display uppercase tracking-wide text-(--color-ap-muted)">
         {t.waiting}
       </p>

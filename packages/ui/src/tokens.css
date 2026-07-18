@@ -352,19 +352,31 @@
   /* Game-like page: no pinch/double-tap zoom, no text selection or long-press
    * callouts — the table is a board, not a document. Inputs stay selectable. */
   html {
+    height: 100%;
     touch-action: manipulation;
     /* No pull-to-refresh or rubber-band scroll chaining — a swipe during play
      * must never reload the page out from under a live hand. */
     overscroll-behavior: none;
   }
+  /* The document never scrolls — #root is the app's one scroll container.
+   * This is what actually stops the installed app from bouncing up and down:
+   * iOS rubber-bands the document itself regardless of overscroll-behavior. */
   body {
+    height: 100%;
+    overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     overscroll-behavior: none;
+  }
+  #root {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: none;
     /* viewport-fit=cover lets us paint edge-to-edge when installed; keep the
      * UI itself clear of the notch and home-bar (all four env()s are 0 in a
-     * plain browser tab). */
+     * plain browser tab). Screens size with h-full/min-h-full against this
+     * box — never h-dvh, which ignores the insets and reintroduces scroll. */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
       env(safe-area-inset-left);
   }

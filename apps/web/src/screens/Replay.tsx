@@ -147,7 +147,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
 
   if (failed) {
     return (
-      <main className="table-felt grid min-h-dvh place-items-center p-6 text-center">
+      <main className="table-felt grid min-h-full place-items-center p-6 text-center">
         <div className="flex flex-col items-center gap-3">
           <p className="font-arcade-ui text-(--color-ap-muted)">{t.failed}</p>
           <button type="button" onClick={onLeave} className={GHOST_BTN_SM}>
@@ -160,7 +160,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
 
   if (frames.length === 0) {
     return (
-      <main className="table-felt grid min-h-dvh place-items-center">
+      <main className="table-felt grid min-h-full place-items-center">
         <p className="animate-pulse font-arcade-display uppercase tracking-wide text-(--color-ap-muted)">
           {t.loading}
         </p>

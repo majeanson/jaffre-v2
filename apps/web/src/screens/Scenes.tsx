@@ -199,7 +199,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'share' && (
         <>
-          <main className="min-h-screen bg-(--color-ap-ground)" />
+          <main className="min-h-full bg-(--color-ap-ground)" />
           <ShareSheet key={current.id} code="scene" onCopy={noop} onClose={onLeave} />
         </>
       )}

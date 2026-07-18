@@ -19,7 +19,9 @@ export default defineConfig({
         description:
           'A four-player trick-taking card game. Bid, take the tricks, first team to 41.',
         start_url: '/',
-        display: 'standalone',
+        // fullscreen hides Android's status bar for a true arcade cabinet;
+        // browsers without it fall down the spec chain to standalone.
+        display: 'fullscreen',
         orientation: 'portrait',
         background_color: '#0b1f18',
         theme_color: '#0b1f18',

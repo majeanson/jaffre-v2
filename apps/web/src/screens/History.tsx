@@ -134,7 +134,7 @@ export function History({ onLeave, demoGames }: HistoryProps) {
   }, [demoGames]);
 
   return (
-    <main className="table-felt min-h-dvh overflow-y-auto p-6 max-sm:p-4">
+    <main className="table-felt min-h-full overflow-y-auto p-6 max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <header className="flex items-center justify-between gap-4">
           <h1 className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)">

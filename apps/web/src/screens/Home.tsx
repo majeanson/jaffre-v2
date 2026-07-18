@@ -78,7 +78,7 @@ export function Home({
   return (
     // `isolate relative` scopes the attract layer's -z-10 so the ghost trick
     // paints above the ground colour but below every real control.
-    <main className="isolate relative flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
+    <main className="isolate relative flex min-h-full flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
       {/* Idle long enough and ghost players deal a faint trick behind the UI. */}
       {!staged && <AttractMode />}
 

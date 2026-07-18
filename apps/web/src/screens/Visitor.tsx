@@ -147,7 +147,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   };
 
   return (
-    <main className="flex min-h-screen flex-col overflow-y-auto bg-(--color-ap-ground) p-6 pb-24 font-arcade-ui text-(--color-ap-text)">
+    <main className="flex min-h-full flex-col overflow-y-auto bg-(--color-ap-ground) p-6 pb-24 font-arcade-ui text-(--color-ap-text)">
       {/* Visitors can chat with the table before they sit — the popover opens
           upward from the bottom-right toggle. Extra bottom padding on main
           reserves the corner so the fixed toggle never sits on the Leave button. */}

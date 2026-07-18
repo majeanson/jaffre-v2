@@ -80,7 +80,7 @@ export function Table({
 
   return (
     <main
-      className={`table-felt flex h-dvh flex-col items-center overflow-hidden p-3 max-sm:p-2 ${
+      className={`table-felt flex h-full flex-col items-center overflow-hidden p-3 max-sm:p-2 ${
         bottomInset ? 'pb-20 max-sm:pb-16' : 'pb-0 max-sm:pb-0'
       }`}
     >
