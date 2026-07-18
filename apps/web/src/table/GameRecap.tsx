@@ -278,166 +278,165 @@ export function GameRecap({
             taller than the screen, so the middle scrolls while the action footer
             below stays pinned — the hero Rematch is never pushed off-screen. */}
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {hailMary !== null && (
-          <div className="mb-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2.5">
-            <p className="font-arcade-display text-[1.15em] uppercase leading-tight text-(--color-ap-gold)">
-              {hailMary.swept ? t.hailMaryWonTitle : t.hailMaryLostTitle}
-            </p>
-            <p className="mt-[0.35em] text-[0.82em] leading-snug text-(--color-ap-text)">
-              {hailMary.swept
-                ? t.hailMaryWonMsg(t.teamLabel(hailMary.bidderTeam))
-                : t.hailMaryLostMsg(t.teamLabel(hailMary.bidderTeam), t.teamLabel(winner))}
-            </p>
-          </div>
-        )}
-        <p
-          className="font-arcade-display text-[1.9em] uppercase leading-none"
-          style={{ color: TEAM_COLOR[winner] }}
-        >
-          {t.wins(winner)}
-        </p>
-        <div className="mt-[0.7em] flex items-center justify-center gap-[0.5em]">
-          <AvatarChip name={names[winner] ?? '—'} color={TEAM_COLOR[winner]} />
-          <AvatarChip name={names[winner + 2] ?? '—'} color={TEAM_COLOR[winner]} />
-        </div>
-        <p className="mt-[0.5em] font-arcade-ui text-[0.95em] text-(--color-ap-text)">
-          {names[winner]} & {names[winner + 2]}
-        </p>
-        <p className="mt-[0.2em] font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-text)">
-          {scores[0]} — {scores[1]}
-        </p>
-
-        {seriesWins !== undefined && (
-          <div className="mt-5 text-left">
-            {/* Kept as a single <p> carrying "Tonight:" + both counts — the recap
-                e2e reads this line for the standing-table tally. */}
-            <p className={`${label('')} tabular-nums`}>
-              {t.tonight}{' '}
-              <span style={{ color: TEAM_COLOR[0] }}>
-                {t.sun} {seriesWins[0]}
-              </span>
-              {' — '}
-              <span style={{ color: TEAM_COLOR[1] }}>
-                {t.moon} {seriesWins[1]}
-              </span>
-            </p>
-            {seriesGames !== undefined && seriesGames.length > 0 ? (
-              // Per-game scorepad — the richer standing-table view once games
-              // have accumulated this sitting.
-              <div className="mt-[0.6em]">
-                <Scorepad games={seriesGames} names={names} seriesWins={seriesWins} />
-              </div>
-            ) : (
-              // Fallback (first game, or a pre-scorepad room): the aggregate tally.
-              <div className="mt-[0.6em] grid grid-cols-2 gap-3">
-                <StatPanel
-                  value={seriesWins[0]}
-                  label={t.gamesSun}
-                  tone={seriesWins[0] >= seriesWins[1] ? 'gold' : 'default'}
-                  sub={<PairChips names={names} a={0} b={2} />}
-                />
-                <StatPanel
-                  value={seriesWins[1]}
-                  label={t.gamesMoon}
-                  tone={seriesWins[1] > seriesWins[0] ? 'gold' : 'default'}
-                  sub={<PairChips names={names} a={1} b={3} />}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {seats !== undefined && (
-          <div className="mt-5 text-left">
-            <p className={label('')}>{t.stillAtTable}</p>
-            {/* One status chip per seat — Ready (here) / Away / Left (empty), so
-                the rematch reads who's coming back at a glance. */}
-            <ul className="mt-[0.6em] flex justify-between gap-2">
-              {[0, 1, 2, 3].map((i) => {
-                const s = seats[i] ?? null;
-                const status =
-                  s === null
-                    ? { word: t.left, tone: 'text-(--color-ap-muted)' }
-                    : s.connected
-                      ? { word: t.ready, tone: 'text-(--color-ap-ok)' }
-                      : { word: t.away, tone: 'text-(--color-ap-muted)' };
-                return (
-                  <li key={i} className="flex flex-col items-center gap-1.5">
-                    {s === null ? (
-                      <span
-                        aria-hidden
-                        className="grid size-[2.75em] place-items-center rounded-(--radius-ap-control) border-2 border-dashed border-(--color-ap-muted)/60 font-arcade-display text-[1.2em] text-(--color-ap-muted)"
-                      >
-                        —
-                      </span>
-                    ) : (
-                      <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} />
-                    )}
-                    <span className="max-w-[5rem] truncate font-arcade-ui text-[0.78em] font-semibold text-(--color-ap-text)">
-                      {s?.name ?? t.empty}
-                    </span>
-                    <span
-                      className={`font-arcade-display text-[0.7em] uppercase tracking-wide ${status.tone}`}
-                    >
-                      {status.word}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        {rounds.length > 0 && (
-          // Keyboard-focusable so the overflow can be scrolled without a mouse.
-          <div
-            tabIndex={0}
-            role="region"
-            aria-label={t.roundByRound}
-            className="mt-5 max-h-56 overflow-y-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
+          {hailMary !== null && (
+            <div className="mb-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2.5">
+              <p className="font-arcade-display text-[1.15em] uppercase leading-tight text-(--color-ap-gold)">
+                {hailMary.swept ? t.hailMaryWonTitle : t.hailMaryLostTitle}
+              </p>
+              <p className="mt-[0.35em] text-[0.82em] leading-snug text-(--color-ap-text)">
+                {hailMary.swept
+                  ? t.hailMaryWonMsg(t.teamLabel(hailMary.bidderTeam))
+                  : t.hailMaryLostMsg(t.teamLabel(hailMary.bidderTeam), t.teamLabel(winner))}
+              </p>
+            </div>
+          )}
+          <p
+            className="font-arcade-display text-[1.9em] uppercase leading-none"
+            style={{ color: TEAM_COLOR[winner] }}
           >
-            <table className="w-full tabular-nums">
-              <thead className="text-(--color-ap-muted)">
-                <tr>
-                  <th className="px-1.5 py-1 text-left font-normal">{t.rd}</th>
-                  <th className="px-1.5 py-1 text-left font-normal">{t.contract}</th>
-                  <th className="px-1.5 py-1 text-right font-normal">{t.deltaSun}</th>
-                  <th className="px-1.5 py-1 text-right font-normal">{t.deltaMoon}</th>
-                  <th className="px-1.5 py-1 text-right font-normal">{t.score}</th>
-                </tr>
-              </thead>
-              <tbody className="text-(--color-ap-text)">
-                {rounds.map(
-                  (r) =>
-                    r !== null && (
-                      <tr key={r.roundIndex} className="odd:bg-(--color-ap-ink)/15">
-                        <td className="px-1.5 py-1">{r.roundIndex + 1}</td>
-                        <td className="px-1.5 py-1">
-                          {names[r.contract.seat]} {r.contract.value}
-                          {r.contract.sansAtout ? ' SA' : ''}{' '}
-                          <span
-                            className={
-                              r.contractMade
-                                ? 'text-(--color-ap-ok)'
-                                : 'text-(--color-ap-danger-text)'
-                            }
-                          >
-                            {r.contractMade ? '✓' : '✗'}
-                          </span>
-                        </td>
-                        <td className="px-1.5 py-1 text-right">{r.deltas[0]}</td>
-                        <td className="px-1.5 py-1 text-right">{r.deltas[1]}</td>
-                        <td className="px-1.5 py-1 text-right">
-                          {r.scores[0]}–{r.scores[1]}
-                        </td>
-                      </tr>
-                    ),
-                )}
-              </tbody>
-            </table>
+            {t.wins(winner)}
+          </p>
+          <div className="mt-[0.7em] flex items-center justify-center gap-[0.5em]">
+            <AvatarChip name={names[winner] ?? '—'} color={TEAM_COLOR[winner]} />
+            <AvatarChip name={names[winner + 2] ?? '—'} color={TEAM_COLOR[winner]} />
           </div>
-        )}
+          <p className="mt-[0.5em] font-arcade-ui text-[0.95em] text-(--color-ap-text)">
+            {names[winner]} & {names[winner + 2]}
+          </p>
+          <p className="mt-[0.2em] font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-text)">
+            {scores[0]} — {scores[1]}
+          </p>
 
+          {seriesWins !== undefined && (
+            <div className="mt-5 text-left">
+              {/* Kept as a single <p> carrying "Tonight:" + both counts — the recap
+                e2e reads this line for the standing-table tally. */}
+              <p className={`${label('')} tabular-nums`}>
+                {t.tonight}{' '}
+                <span style={{ color: TEAM_COLOR[0] }}>
+                  {t.sun} {seriesWins[0]}
+                </span>
+                {' — '}
+                <span style={{ color: TEAM_COLOR[1] }}>
+                  {t.moon} {seriesWins[1]}
+                </span>
+              </p>
+              {seriesGames !== undefined && seriesGames.length > 0 ? (
+                // Per-game scorepad — the richer standing-table view once games
+                // have accumulated this sitting.
+                <div className="mt-[0.6em]">
+                  <Scorepad games={seriesGames} names={names} seriesWins={seriesWins} />
+                </div>
+              ) : (
+                // Fallback (first game, or a pre-scorepad room): the aggregate tally.
+                <div className="mt-[0.6em] grid grid-cols-2 gap-3">
+                  <StatPanel
+                    value={seriesWins[0]}
+                    label={t.gamesSun}
+                    tone={seriesWins[0] >= seriesWins[1] ? 'gold' : 'default'}
+                    sub={<PairChips names={names} a={0} b={2} />}
+                  />
+                  <StatPanel
+                    value={seriesWins[1]}
+                    label={t.gamesMoon}
+                    tone={seriesWins[1] > seriesWins[0] ? 'gold' : 'default'}
+                    sub={<PairChips names={names} a={1} b={3} />}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {seats !== undefined && (
+            <div className="mt-5 text-left">
+              <p className={label('')}>{t.stillAtTable}</p>
+              {/* One status chip per seat — Ready (here) / Away / Left (empty), so
+                the rematch reads who's coming back at a glance. */}
+              <ul className="mt-[0.6em] flex justify-between gap-2">
+                {[0, 1, 2, 3].map((i) => {
+                  const s = seats[i] ?? null;
+                  const status =
+                    s === null
+                      ? { word: t.left, tone: 'text-(--color-ap-muted)' }
+                      : s.connected
+                        ? { word: t.ready, tone: 'text-(--color-ap-ok)' }
+                        : { word: t.away, tone: 'text-(--color-ap-muted)' };
+                  return (
+                    <li key={i} className="flex flex-col items-center gap-1.5">
+                      {s === null ? (
+                        <span
+                          aria-hidden
+                          className="grid size-[2.75em] place-items-center rounded-(--radius-ap-control) border-2 border-dashed border-(--color-ap-muted)/60 font-arcade-display text-[1.2em] text-(--color-ap-muted)"
+                        >
+                          —
+                        </span>
+                      ) : (
+                        <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} />
+                      )}
+                      <span className="max-w-[5rem] truncate font-arcade-ui text-[0.78em] font-semibold text-(--color-ap-text)">
+                        {s?.name ?? t.empty}
+                      </span>
+                      <span
+                        className={`font-arcade-display text-[0.7em] uppercase tracking-wide ${status.tone}`}
+                      >
+                        {status.word}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {rounds.length > 0 && (
+            // Keyboard-focusable so the overflow can be scrolled without a mouse.
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label={t.roundByRound}
+              className="mt-5 max-h-56 overflow-y-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
+            >
+              <table className="w-full tabular-nums">
+                <thead className="text-(--color-ap-muted)">
+                  <tr>
+                    <th className="px-1.5 py-1 text-left font-normal">{t.rd}</th>
+                    <th className="px-1.5 py-1 text-left font-normal">{t.contract}</th>
+                    <th className="px-1.5 py-1 text-right font-normal">{t.deltaSun}</th>
+                    <th className="px-1.5 py-1 text-right font-normal">{t.deltaMoon}</th>
+                    <th className="px-1.5 py-1 text-right font-normal">{t.score}</th>
+                  </tr>
+                </thead>
+                <tbody className="text-(--color-ap-text)">
+                  {rounds.map(
+                    (r) =>
+                      r !== null && (
+                        <tr key={r.roundIndex} className="odd:bg-(--color-ap-ink)/15">
+                          <td className="px-1.5 py-1">{r.roundIndex + 1}</td>
+                          <td className="px-1.5 py-1">
+                            {names[r.contract.seat]} {r.contract.value}
+                            {r.contract.sansAtout ? ' SA' : ''}{' '}
+                            <span
+                              className={
+                                r.contractMade
+                                  ? 'text-(--color-ap-ok)'
+                                  : 'text-(--color-ap-danger-text)'
+                              }
+                            >
+                              {r.contractMade ? '✓' : '✗'}
+                            </span>
+                          </td>
+                          <td className="px-1.5 py-1 text-right">{r.deltas[0]}</td>
+                          <td className="px-1.5 py-1 text-right">{r.deltas[1]}</td>
+                          <td className="px-1.5 py-1 text-right">
+                            {r.scores[0]}–{r.scores[1]}
+                          </td>
+                        </tr>
+                      ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         {/* Pinned action footer — stays visible when the body scrolls. */}
         <div className="flex flex-col items-center gap-2 border-t-2 border-(--color-ap-ink)/35 p-4">

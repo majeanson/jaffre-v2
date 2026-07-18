@@ -21,7 +21,12 @@ export interface UtilityRowProps {
  * Your own seat is no longer here: it's the diamond's bottom vertex on the
  * stage (see Stage), sitting right above this row.
  */
-export function UtilityRow({ lastTrick, defaultLastTrickOpen = false, comms, sort }: UtilityRowProps) {
+export function UtilityRow({
+  lastTrick,
+  defaultLastTrickOpen = false,
+  comms,
+  sort,
+}: UtilityRowProps) {
   const hasComms = comms !== undefined && comms !== null && comms !== false;
   const hasSort = sort !== undefined && sort !== null && sort !== false;
   return (

@@ -53,7 +53,12 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
  * seat's direction and sweep toward the winner; timing comes from motion
  * tokens; with reduced motion everything is instant (MotionConfig).
  */
-export function TrickArea({ plays, sweepTo = null, highlight = null, size = 'md' }: TrickAreaProps) {
+export function TrickArea({
+  plays,
+  sweepTo = null,
+  highlight = null,
+  size = 'md',
+}: TrickAreaProps) {
   const t = T[useLang()];
   return (
     <div role="group" className="relative h-full w-full" aria-label={t.currentTrick}>
