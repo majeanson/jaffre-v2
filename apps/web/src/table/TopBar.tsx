@@ -75,6 +75,8 @@ export interface TopBarProps {
   readonly voice?: ReactNode;
   /** Share-this-table button (online rooms) — lives inside the Options drawer. */
   readonly share?: ReactNode;
+  /** Dev console trigger (practice + dev builds) — sits next to Options. */
+  readonly devConsole?: ReactNode;
   /** Scene viewer: mount with the details panel already expanded. */
   readonly defaultDetailsOpen?: boolean;
 }
@@ -99,6 +101,7 @@ export function TopBar({
   onToggleCoach,
   voice,
   share,
+  devConsole,
   defaultDetailsOpen = false,
 }: TopBarProps) {
   const lang = useLang();
@@ -137,6 +140,7 @@ export function TopBar({
             >
               <IconGear />
             </IconButton>
+            {devConsole}
             {optionsOpen && (
               <div
                 data-testid="options-drawer"

@@ -27,9 +27,18 @@ export function DevConsole() {
   const [sun, moon] = currentScores();
 
   return (
-    <div className="fixed bottom-2 left-2 z-[90] flex flex-col items-start gap-2 font-arcade-ui">
+    <div className="relative font-arcade-ui">
+      <button
+        type="button"
+        aria-label="Dev console"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-violet) bg-(--color-ap-ink) px-2.5 py-1.5 font-arcade-display text-[0.72em] uppercase tracking-wide text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)"
+      >
+        {open ? '▾' : '▸'} Console
+      </button>
       {open && (
-        <div className="flex w-52 flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-violet) bg-(--color-ap-ground) p-2.5 shadow-(--shadow-ap-lg)">
+        <div className="absolute top-[calc(100%+0.5rem)] left-1/2 z-[90] flex w-52 -translate-x-1/2 flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-violet) bg-(--color-ap-ground) p-2.5 shadow-(--shadow-ap-lg)">
           {!active && (
             <p className="px-0.5 text-[0.72em] leading-snug text-(--color-ap-muted)">
               Practice game only — engine pokes are disabled online.
@@ -92,15 +101,6 @@ export function DevConsole() {
           </button>
         </div>
       )}
-      <button
-        type="button"
-        aria-label="Dev console"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-violet) bg-(--color-ap-ink) px-2.5 py-1.5 font-arcade-display text-[0.72em] uppercase tracking-wide text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)"
-      >
-        {open ? '▾' : '▸'} Console
-      </button>
     </div>
   );
 }

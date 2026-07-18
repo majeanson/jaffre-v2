@@ -264,7 +264,12 @@ function TeamSide({
   const pct = Math.max(0, Math.min(100, (score / target) * 100));
   return (
     <span
-      className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''}`}
+      className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''} ${
+        // Your team's whole side glows instead of wearing a "you" chip.
+        isMine
+          ? 'rounded-(--radius-ap-inner) bg-(--color-ap-violet)/15 px-1.5 py-0.5 ring-2 ring-(--color-ap-violet)'
+          : 'px-1.5 py-0.5'
+      }`}
     >
       <span className="flex flex-col items-center gap-0.5 leading-none">
         <span className="flex items-center gap-[0.4em]">
@@ -272,11 +277,7 @@ function TeamSide({
           <span className="font-arcade-display text-[0.62em] tracking-[0.12em] whitespace-nowrap text-(--color-ap-muted) uppercase">
             {name}
           </span>
-          {isMine && (
-            <span className="rounded-[0.35em] border border-(--color-ap-violet) px-[0.3em] font-arcade-display text-[0.5em] tracking-[0.08em] text-(--color-ap-violet-soft) uppercase">
-              {youLabel}
-            </span>
-          )}
+          {isMine && <span className="sr-only">{youLabel}</span>}
         </span>
         <span
           data-testid={testId}

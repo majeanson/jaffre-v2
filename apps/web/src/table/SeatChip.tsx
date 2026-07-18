@@ -92,6 +92,7 @@ export function SeatChip({
         isDealer={info.isDealer}
         isBot={info.isBot}
         isYou={info.isYou}
+        youBadge={false}
         connected={info.connected}
         paint={paint}
       />

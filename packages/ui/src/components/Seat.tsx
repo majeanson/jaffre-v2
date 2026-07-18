@@ -57,6 +57,9 @@ export interface SeatProps {
   readonly isBot?: boolean;
   /** The viewer's own seat — keeps the real name, appends a "(you)" marker. */
   readonly isYou?: boolean;
+  /** Show the visible "(you)" chip (lobby). The table hides it — you already
+   * know your own seat — leaving a screen-reader-only marker. */
+  readonly youBadge?: boolean;
   readonly connected?: boolean;
   /** On small screens, collapse to the avatar only (name stays for SR/title). */
   readonly compact?: boolean;
@@ -83,23 +86,33 @@ export function Seat({
   isDealer = false,
   isBot = false,
   isYou = false,
+  youBadge = true,
   connected = true,
   compact = false,
   paint = null,
 }: SeatProps) {
   const t = T[useLang()];
-  const initial = (name[0] ?? '?').toUpperCase();
+  // "Bot 2" → "B2": carry the number so four bots don't collapse to one "B".
+  const initial = `${(name[0] ?? '?').toUpperCase()}${/\d+/.exec(name)?.[0] ?? ''}`;
   return (
     <div
       title={compact ? name : undefined}
       className={`inline-flex max-w-full items-center gap-[0.6em] rounded-(--radius-ap-control) border-2 bg-(--color-ap-panel) px-[0.55em] py-[0.4em] text-(length:--text-fluid-sm) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) ${
-        compact ? 'max-sm:gap-0 max-sm:p-[0.3em]' : ''
+        compact
+          ? 'max-sm:gap-0 max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none'
+          : ''
       } ${isTurn ? 'border-(--color-ap-violet)' : 'border-(--color-ap-ink)'}`}
     >
       <span
         aria-hidden
         style={paint === null ? { background: seatColor(name) } : undefined}
-        className="relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[1.05em] text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
+        className={`relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 font-arcade-display text-(--color-ap-ink) shadow-(--shadow-ap-sm) ${
+          initial.length > 1 ? 'text-[0.78em]' : 'text-[1.05em]'
+        } ${
+          // With the plate chrome gone on small screens, the avatar itself
+          // carries the turn indicator.
+          compact && isTurn ? 'max-sm:border-(--color-ap-violet)' : ''
+        } border-(--color-ap-ink)`}
       >
         {paint !== null ? (
           // Your personalised avatar: the painting fills the plate; its own
@@ -126,12 +139,15 @@ export function Seat({
       {compact && <span className="sr-only">{name}</span>}
       <span className={`flex min-w-0 items-center gap-[0.4em] ${compact ? 'max-sm:hidden' : ''}`}>
         <span className="truncate font-arcade-ui font-semibold text-(--color-ap-text)">{name}</span>
-        {isYou && (
-          <span className="shrink-0 font-arcade-display text-[0.55em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
-            ({t.you})
-          </span>
-        )}
-        {isTurn ? (
+        {isYou &&
+          (youBadge ? (
+            <span className="shrink-0 font-arcade-display text-[0.55em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
+              ({t.you})
+            </span>
+          ) : (
+            <span className="sr-only">({t.you})</span>
+          ))}
+        {isTurn && !isYou ? (
           <span className="font-arcade-display text-[0.6em] uppercase tracking-[0.1em] text-(--color-ap-violet-soft)">
             {t.playing}
           </span>

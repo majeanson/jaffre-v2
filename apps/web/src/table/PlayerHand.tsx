@@ -37,7 +37,65 @@ const T: Record<
 const DEAL_STAGGER_MS = 90; // matches the deal-in keyframe stagger in tokens.css
 const SORT_STAGGER_MS = 45; // the satisfying cascade when tidying the hand
 
+export interface HandSort {
+  /** The hand in client display order (sorted / dragged); render this. */
+  readonly displayCards: readonly Card[];
+  /** Persist a drag rearrangement (card keys in new order). */
+  readonly setOrder: (keys: readonly string[]) => void;
+  /** Apply the next sort (colours ⇄ values), with the click cascade. */
+  readonly sortHand: () => void;
+  /** Which order the next press applies — drives the button label. */
+  readonly sortMode: 'colour' | 'value';
+}
+
+/** Owns the client-only display order of your hand (sort button + drag). New
+ * rounds bring new card keys, so a stale order naturally falls back to the
+ * dealt order. Never touches game state. Lifted out of PlayerHand so the sort
+ * button can live in the utility row next to chat. */
+export function useHandSort(cards: readonly Card[]): HandSort {
+  const [order, setOrder] = useState<readonly string[]>([]);
+
+  const displayCards = useMemo<readonly Card[]>(() => {
+    const byKey = new Map(cards.map((c) => [cardKey(c), c]));
+    const known = new Set(order);
+    const ordered = order.map((k) => byKey.get(k)).filter((c): c is Card => c !== undefined);
+    const fresh = cards.filter((c) => !known.has(cardKey(c)));
+    return [...ordered, ...fresh];
+  }, [cards, order]);
+
+  // Each press applies one of the two orders, alternating: colours ⇄ values.
+  const [sortMode, setSortMode] = useState<'colour' | 'value'>('colour');
+
+  const sortHand = () => {
+    const sorted = (sortMode === 'colour' ? sortByColour : sortByValue)(displayCards);
+    const keys = sorted.map(cardKey);
+    setOrder(keys);
+    setSortMode(sortMode === 'colour' ? 'value' : 'colour');
+    // The click cascade only when cards actually move — a no-op sort is silent.
+    const changed = displayCards.some((c, i) => cardKey(c) !== keys[i]);
+    if (!changed) return;
+    displayCards.forEach((_, i) => setTimeout(() => playClick('sort'), i * SORT_STAGGER_MS));
+    feedback('sort', 6);
+  };
+
+  return { displayCards, setOrder, sortHand, sortMode };
+}
+
+/** The sort-hand icon button, fed by useHandSort — sits in the utility row. */
+export function HandSortButton({ sort }: { readonly sort: HandSort }) {
+  const t = T[useLang()];
+  return (
+    <IconButton
+      label={sort.sortMode === 'colour' ? t.sortColour : t.sortValue}
+      onClick={sort.sortHand}
+    >
+      <IconSort />
+    </IconButton>
+  );
+}
+
 export interface PlayerHandProps {
+  /** Your hand in display order (from useHandSort). */
   readonly cards: readonly Card[];
   /** Cards you may legally play right now. */
   readonly legal: readonly Card[];
@@ -45,6 +103,8 @@ export interface PlayerHandProps {
   /** True when it's your turn to play a card. */
   readonly active: boolean;
   readonly onPlay: (card: Card) => void;
+  /** Persist a drag rearrangement (card keys in new order). */
+  readonly onReorder: (keys: readonly string[]) => void;
   /** The Coach's suggested card, highlighted in the fan (null when off). */
   readonly recommended?: Card | null;
   /** The card queued to auto-play on your next turn (null when none). */
@@ -62,6 +122,7 @@ export function PlayerHand({
   ledSuit,
   active,
   onPlay,
+  onReorder,
   recommended = null,
   queued = null,
   queueable = [],
@@ -71,18 +132,6 @@ export function PlayerHand({
   // Your painted card (if any) personalises only YOUR red-0/brown-0 — the Hand
   // renders only your cards, so this never leaks onto an opponent's specials.
   const paint = getProfile().paint;
-  // A client-only display order (card keys). New rounds bring new keys, so the
-  // stale order naturally falls back to the dealt order; the sort button and
-  // (future) drag rearrange it. Never touches game state.
-  const [order, setOrder] = useState<readonly string[]>([]);
-
-  const displayCards = useMemo<readonly Card[]>(() => {
-    const byKey = new Map(cards.map((c) => [cardKey(c), c]));
-    const known = new Set(order);
-    const ordered = order.map((k) => byKey.get(k)).filter((c): c is Card => c !== undefined);
-    const fresh = cards.filter((c) => !known.has(cardKey(c)));
-    return [...ordered, ...fresh];
-  }, [cards, order]);
 
   // A fresh full hand (a new round's deal) ticks each card in as it lands —
   // synced to the visual deal-in stagger. Skips the cascade under reduced motion.
@@ -107,42 +156,16 @@ export function PlayerHand({
     return undefined;
   }, [cards.length]);
 
-  // Each press applies one of the two orders, alternating: colours ⇄ values.
-  const [sortMode, setSortMode] = useState<'colour' | 'value'>('colour');
-
-  const sortHand = () => {
-    const sorted = (sortMode === 'colour' ? sortByColour : sortByValue)(displayCards);
-    const keys = sorted.map(cardKey);
-    setOrder(keys);
-    setSortMode(sortMode === 'colour' ? 'value' : 'colour');
-    // The click cascade only when cards actually move — a no-op sort is silent.
-    const changed = displayCards.some((c, i) => cardKey(c) !== keys[i]);
-    if (!changed) return;
-    displayCards.forEach((_, i) => setTimeout(() => playClick('sort'), i * SORT_STAGGER_MS));
-    feedback('sort', 6);
-  };
-
   return (
     <div className="shrink-0 pb-1">
-      {cards.length > 1 && (
-        <div className="flex justify-end px-2">
-          <IconButton
-            label={sortMode === 'colour' ? t.sortColour : t.sortValue}
-            onClick={sortHand}
-            className="mb-0.5"
-          >
-            <IconSort />
-          </IconButton>
-        </div>
-      )}
       <Hand
         active={active}
         paint={paint}
         onReorder={(keys) => {
-          setOrder(keys);
+          onReorder(keys);
           feedback('select', 4);
         }}
-        cards={displayCards.map((card) => {
+        cards={cards.map((card) => {
           const isQueueable = queueable.some((c) => sameCard(c, card));
           return {
             card,

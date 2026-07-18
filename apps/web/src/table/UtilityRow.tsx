@@ -12,15 +12,20 @@ export interface UtilityRowProps {
   readonly defaultLastTrickOpen?: boolean;
   /** Voice + chat controls slot (online rooms only). */
   readonly comms?: ReactNode;
+  /** Sort-hand button — grouped with chat at the row's end. */
+  readonly sort?: ReactNode;
 }
 
-/** Owns the slim row above the hand: your chip, last-trick peek, comms. */
+/** Owns the slim row above the hand: your chip, last-trick peek, chat + sort. */
 export function UtilityRow({
   you,
   lastTrick,
   defaultLastTrickOpen = false,
   comms,
+  sort,
 }: UtilityRowProps) {
+  const hasComms = comms !== undefined && comms !== null && comms !== false;
+  const hasSort = sort !== undefined && sort !== null && sort !== false;
   return (
     <div className="relative z-30 grid w-full max-w-[min(96vw,100rem)] grid-cols-[1fr_auto_1fr] items-center gap-2 py-1">
       <span className="flex items-center gap-2 justify-self-start">
@@ -33,7 +38,13 @@ export function UtilityRow({
       <span className="justify-self-center">
         <SeatChip info={you} peekPlacement="up" />
       </span>
-      <span className="flex items-center gap-2 justify-self-end">{comms}</span>
+      <span className="flex items-center gap-1.5 justify-self-end">
+        {comms}
+        {hasComms && hasSort && (
+          <span aria-hidden className="h-[1.6em] w-[2px] rounded-full bg-(--color-ap-ink)" />
+        )}
+        {sort}
+      </span>
     </div>
   );
 }
