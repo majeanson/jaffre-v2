@@ -11,6 +11,8 @@ import { JaffreMotionConfig } from '@jaffre/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { consumeLoginFragment } from './net/auth.js';
+import { setPlayerName } from './net/socket.js';
 import { installTelemetry } from './net/telemetry.js';
 import { initTheme } from './theme.js';
 import { initCardSkin } from './cosmetics.js';
@@ -20,6 +22,14 @@ initTheme();
 initCardSkin();
 initLang();
 installTelemetry();
+// Google's OAuth callback bounces back with #login=<token> — adopt that
+// identity before anything renders, then reload cosmetics for it.
+void consumeLoginFragment().then((identity) => {
+  if (identity !== null) {
+    setPlayerName(identity.name);
+    location.reload();
+  }
+});
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>

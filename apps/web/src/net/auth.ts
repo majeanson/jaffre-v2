@@ -178,6 +178,147 @@ export async function saveProfile(patch: ProfileFields): Promise<Profile> {
   }
 }
 
+/* ── Real login (optional, on top of guest) ───────────────────────────── */
+
+const LINKS_KEY = 'jaffre-links';
+
+/** Which durable credentials this identity carries (from /me and logins). */
+export interface AccountLinks {
+  readonly email: string | null;
+  readonly google: boolean;
+}
+
+const NO_LINKS: AccountLinks = { email: null, google: false };
+
+/** The cached account links for this browser's identity. */
+export function getLinks(): AccountLinks {
+  const raw = localStorage.getItem(LINKS_KEY);
+  if (raw === null) return NO_LINKS;
+  try {
+    const l = JSON.parse(raw) as Partial<AccountLinks>;
+    return { email: typeof l.email === 'string' ? l.email : null, google: l.google === true };
+  } catch {
+    return NO_LINKS;
+  }
+}
+
+function storeLinks(l: AccountLinks): AccountLinks {
+  localStorage.setItem(LINKS_KEY, JSON.stringify(l));
+  return l;
+}
+
+/** True when the player already linked something durable — the "keep your
+ * progress" nudges hide themselves. */
+export function isLinked(): boolean {
+  const l = getLinks();
+  return l.email !== null || l.google;
+}
+
+/** Which login methods this deployment offers (secrets configured server-side).
+ * {email:false, google:false} on any failure — the UI simply shows nothing. */
+export async function fetchAuthMethods(): Promise<{ email: boolean; google: boolean }> {
+  try {
+    const res = await fetch('/api/auth/methods');
+    if (!res.ok) return { email: false, google: false };
+    const data = (await res.json()) as { email?: unknown; google?: unknown };
+    return { email: data.email === true, google: data.google === true };
+  } catch {
+    return { email: false, google: false };
+  }
+}
+
+/** Ask the server to email a 6-digit code. 'sent' | 'rate' (slow down) | 'error'. */
+export async function startEmailLogin(email: string): Promise<'sent' | 'rate' | 'error'> {
+  try {
+    const res = await fetch('/api/auth/email/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (res.ok) return 'sent';
+    return res.status === 429 ? 'rate' : 'error';
+  } catch {
+    return 'error';
+  }
+}
+
+type LoginResponse = { userId: string; name: string; token: string } & ProfileFields & {
+    links?: AccountLinks;
+  };
+
+function storeLogin(data: LoginResponse): StoredToken {
+  const stored = storeToken(data);
+  storeProfile(profileFrom(data));
+  if (data.links !== undefined) storeLinks(data.links);
+  return stored;
+}
+
+/**
+ * Exchange the emailed code for a session. Sends the current Bearer so an
+ * unlinked address LINKS to this guest (progress carries over). 'wrong' =
+ * mistyped digits (retryable), 'expired' = request a fresh code.
+ */
+export async function verifyEmailLogin(
+  email: string,
+  code: string,
+): Promise<StoredToken | 'wrong' | 'expired' | null> {
+  try {
+    const bearer = read()?.token;
+    const res = await fetch('/api/auth/email/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(bearer !== undefined ? { Authorization: `Bearer ${bearer}` } : {}),
+      },
+      body: JSON.stringify({ email, code }),
+    });
+    if (res.status === 401) return 'wrong';
+    if (res.status === 404) return 'expired';
+    if (!res.ok) return null;
+    return storeLogin((await res.json()) as LoginResponse);
+  } catch {
+    return null;
+  }
+}
+
+/** Where the Google button navigates — carries the current token so the
+ * Google identity links to THIS guest instead of minting a stranger. */
+export function googleLoginUrl(): string {
+  const token = read()?.token;
+  return token === undefined
+    ? '/api/auth/google'
+    : `/api/auth/google?link=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Boot-time: the Google callback bounces back with `#login=<token>&exp=…` (a
+ * fragment — never in server logs). Store it, strip the hash, and refresh the
+ * profile + links from /me. Returns the identity, or null when no fragment.
+ */
+export async function consumeLoginFragment(): Promise<StoredToken | null> {
+  const match = /^#login=([^&]+)/.exec(location.hash);
+  if (match === null || match[1] === undefined) return null;
+  const token = decodeURIComponent(match[1]);
+  history.replaceState(null, '', location.pathname + location.search);
+  try {
+    const payload = JSON.parse(atob(token.split('.')[0] ?? '')) as {
+      uid?: string;
+      name?: string;
+    };
+    if (typeof payload.uid !== 'string' || typeof payload.name !== 'string') return null;
+    const stored = storeToken({ userId: payload.uid, name: payload.name, token });
+    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const data = (await res.json()) as ProfileFields & { links?: AccountLinks };
+      storeProfile(profileFrom(data));
+      if (data.links !== undefined) storeLinks(data.links);
+    }
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
 function storeToken(data: { userId: string; name: string; token: string }): StoredToken {
   const payload = JSON.parse(atob(data.token.split('.')[0] ?? '')) as { exp?: number };
   const stored: StoredToken = {

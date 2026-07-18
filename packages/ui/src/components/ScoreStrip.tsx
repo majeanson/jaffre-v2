@@ -462,7 +462,13 @@ export function ScorePad({
           <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-[#efe6cf]">
             <tr>
               <th scope="col" className={`${headCell} pl-3 text-left`}>
-                {t.round}
+                {/* The fixed first column can't fit the full word on a phone —
+                    "R" pairs with the R1/R2 row labels below. */}
+                <span className="max-sm:hidden">{t.round}</span>
+                <span aria-hidden className="sm:hidden">
+                  R
+                </span>
+                <span className="sr-only sm:hidden">{t.round}</span>
               </th>
               {([0, 1] as const).map((team) => (
                 <th
@@ -473,10 +479,12 @@ export function ScorePad({
                   }`}
                   style={{ color: TEAM_INK[team] }}
                 >
-                  <span className="mr-1 inline-flex align-middle">
+                  {/* One nowrap unit so SUN/MOON never wraps under its glyph;
+                      on a phone the glyph alone carries the team (name sr-only). */}
+                  <span className="inline-flex items-center justify-center gap-1 whitespace-nowrap align-middle">
                     <TeamGlyph team={team} size="0.9em" color={TEAM_INK[team]} />
+                    <span className="max-sm:sr-only">{shortName(teamNames[team])}</span>
                   </span>
-                  {shortName(teamNames[team])}
                 </th>
               ))}
               <th scope="col" className={`${headCell} pr-3 text-right`}>

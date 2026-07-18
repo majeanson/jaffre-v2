@@ -21,6 +21,22 @@ export interface Env {
    */
   SESSION_SECRET?: string;
   /**
+   * Resend API key for email login codes (wrangler secret). OPTIONAL: unset →
+   * /api/auth/email/* return 503 and the client hides the email option. The
+   * marcportal Resend account/key works as-is (from-domain marcportal.com is
+   * already verified there): `wrangler secret put RESEND_API_KEY`.
+   */
+  RESEND_API_KEY?: string;
+  /**
+   * Google OAuth web client (wrangler secrets). OPTIONAL: unset → the
+   * /api/auth/google routes return 503 and the client hides the Google
+   * button. Create at console.cloud.google.com → Credentials → OAuth client
+   * (Web), authorized redirect URI:
+   *   https://jaffre.marcportal.com/api/auth/google/callback
+   */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  /**
    * Cloudflare Realtime TURN key (wrangler secrets). Optional: without them
    * /api/ice returns STUN only and voice works for most-but-not-all NATs.
    * Create a key at dash.cloudflare.com → Realtime → TURN, then:

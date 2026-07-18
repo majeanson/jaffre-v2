@@ -67,10 +67,11 @@ export interface ProfileCardProps {
 }
 
 /**
- * The identity's hero: the paintable PlayerCard (rename right on the card) with
- * a "Customize" disclosure that gathers everything secondary — your name, the
- * colour swatches, paint mode, and the recovery code — out of the first
- * screenful. Colour and painting are separate deliberate acts; both persist
+ * The identity row: by default a SMALL PlayerCard sits beside the "Customize"
+ * disclosure (the JAFFRE wordmark above stays the highlight). Opening Customize
+ * grows the card to full size for painting/renaming, with everything secondary
+ * — name field, colour swatches, paint mode, recovery code — inside the
+ * disclosure. Colour and painting are separate deliberate acts; both persist
  * through the parent so they follow the player across devices.
  */
 export function ProfileCard({
@@ -88,6 +89,7 @@ export function ProfileCard({
 }: ProfileCardProps) {
   const t = T[useLang()];
   const [painting, setPainting] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const fill = color ?? undefined;
 
   // exactOptionalPropertyTypes: only pass optional props when defined.
@@ -102,11 +104,27 @@ export function ProfileCard({
   };
 
   return (
-    <div className="flex w-full max-w-xs flex-col items-center gap-[0.9em]">
-      <PlayerCard {...cardProps} />
+    // Closed: A|B row — small card beside the Customize trigger, so the brand
+    // moment above owns the screen. Open: the card grows to full size (column).
+    <div
+      className={
+        open
+          ? 'flex w-full max-w-xs flex-col items-center gap-[0.9em]'
+          : 'flex w-full max-w-xs items-center justify-center gap-4'
+      }
+    >
+      <div className={open ? '' : 'text-[0.55em]'}>
+        <PlayerCard {...cardProps} />
+      </div>
 
       <Collapsible
-        defaultOpen={defaultOpen}
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Closing mid-paint would leave a tiny editable card — end the mode.
+          if (!next) setPainting(false);
+        }}
+        className={open ? 'w-full' : 'w-auto'}
         summary={
           <>
             <AvatarChip name={name} color={fill} size="sm" />

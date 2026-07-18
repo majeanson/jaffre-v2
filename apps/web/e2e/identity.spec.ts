@@ -20,27 +20,31 @@ async function uidOf(page: Page): Promise<string> {
   });
 }
 
-test('first visit mints an identity and shows a 3-word recovery code that persists', async ({
+/** The minted 3-word code from this browser's localStorage (null pre-mint).
+ * The words are no longer SHOWN — real login is the durable path and the code
+ * is a silent fallback — but the mint still issues + stores them. */
+function codeOf(page: import('@playwright/test').Page): Promise<string | null> {
+  return page.evaluate(() => localStorage.getItem('jaffre-recovery'));
+}
+
+test('first visit mints an identity with a recovery code that persists (hidden)', async ({
   browser,
 }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto('/');
 
-  // The recovery code + name live inside the "Customize" disclosure — open it.
-  await page.getByRole('button', { name: /Customize/ }).click();
+  // The mint lands shortly after load; the code is stored, never displayed.
+  await expect.poll(() => codeOf(page)).toMatch(CODE_RE);
+  const words = await codeOf(page);
 
-  // The card appears once the guest identity is minted.
-  const code = page.getByTestId('recovery-code');
-  await expect(code).toBeVisible();
-  expect((await code.innerText()).trim()).toMatch(CODE_RE);
-  await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
+  // The restore affordance is still there, quietly, under Customize.
+  await page.getByRole('button', { name: /Customize/ }).click();
+  await expect(page.getByRole('button', { name: 'I have a code' })).toBeVisible();
 
   // Same words after a reload — the code is issued exactly once per browser.
-  const words = (await code.innerText()).trim();
   await page.reload();
-  await page.getByRole('button', { name: /Customize/ }).click();
-  await expect(code).toHaveText(words);
+  await expect.poll(() => codeOf(page)).toBe(words);
 
   await context.close();
 });
@@ -53,11 +57,8 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   const a = await contextA.newPage();
   await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Marc-e2e'));
   await a.goto('/');
-  await a.getByRole('button', { name: /Customize/ }).click();
-  const codeEl = a.getByTestId('recovery-code');
-  await expect(codeEl).toBeVisible();
-  const words = (await codeEl.innerText()).trim();
-  expect(words).toMatch(CODE_RE);
+  await expect.poll(() => codeOf(a)).toMatch(CODE_RE);
+  const words = (await codeOf(a)) ?? '';
   const uidA = await uidOf(a);
   await contextA.close();
 
@@ -66,11 +67,11 @@ test('a recovery code restores the same identity (uid + name) in a fresh browser
   const contextB = await browser.newContext();
   const b = await contextB.newPage();
   await b.goto('/');
-  await b.getByRole('button', { name: /Customize/ }).click();
-  await expect(b.getByTestId('recovery-code')).toBeVisible(); // B's own mint done
+  await expect.poll(() => codeOf(b)).toMatch(CODE_RE); // B's own mint done
   const uidB = await uidOf(b);
   expect(uidB).not.toBe(uidA);
 
+  await b.getByRole('button', { name: /Customize/ }).click();
   await b.getByRole('button', { name: 'I have a code' }).click();
   await b.getByPlaceholder('lampe-tricot-hibou').fill(words);
   await b.getByRole('button', { name: 'Restore' }).click();
@@ -126,12 +127,11 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   const a = await contextA.newPage();
   await a.addInitScript(() => localStorage.setItem('jaffre-name', 'Colour-e2e'));
   await a.goto('/');
-  // The recovery code, name, and palette all live in the "Customize" disclosure.
+  // The name + palette live in the "Customize" disclosure; the recovery code
+  // is minted alongside but stays hidden (login is the durable path now).
   await a.getByRole('button', { name: /Customize/ }).click();
-  const codeEl = a.getByTestId('recovery-code');
-  await expect(codeEl).toBeVisible(); // mint done → a token exists to auth the save
-  const wordsA = (await codeEl.innerText()).trim();
-  expect(wordsA).toMatch(CODE_RE);
+  await expect.poll(() => codeOf(a)).toMatch(CODE_RE); // mint done → token exists
+  const wordsA = (await codeOf(a)) ?? '';
 
   const CHOSEN = '#f2b712';
   await a.getByRole('button', { name: `Colour ${CHOSEN}` }).click();
@@ -154,8 +154,8 @@ test('a chosen colour persists server-side and follows a recovery into a fresh b
   const contextB = await browser.newContext();
   const b = await contextB.newPage();
   await b.goto('/');
+  await expect.poll(() => codeOf(b)).toMatch(CODE_RE);
   await b.getByRole('button', { name: /Customize/ }).click();
-  await expect(b.getByTestId('recovery-code')).toBeVisible();
   await b.getByRole('button', { name: 'I have a code' }).click();
   await b.getByPlaceholder('lampe-tricot-hibou').fill(wordsA);
   await b.getByRole('button', { name: 'Restore' }).click();
@@ -179,8 +179,8 @@ test('a wrong code shows the error and keeps the current identity', async ({ bro
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto('/');
+  await expect.poll(() => codeOf(page)).toMatch(CODE_RE);
   await page.getByRole('button', { name: /Customize/ }).click();
-  await expect(page.getByTestId('recovery-code')).toBeVisible();
   const uidBefore = await uidOf(page);
 
   await page.getByRole('button', { name: 'I have a code' }).click();

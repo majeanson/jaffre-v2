@@ -20,6 +20,8 @@ test('#stats renders Your record with the fresh-identity empty state', async ({ 
 
 test('home links to Your record', async ({ page }) => {
   await page.goto('/');
+  // Tables/games/record live behind the single "Your corner" door — open it.
+  await page.getByRole('button', { name: /Your corner/ }).click();
   await page.getByRole('link', { name: 'Your record' }).click();
   await expect(page.getByRole('heading', { name: 'Your record' })).toBeVisible();
   expect(new URL(page.url()).hash).toBe('#stats');

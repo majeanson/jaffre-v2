@@ -3,38 +3,39 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
+import { LinkAccount } from '../components/LinkAccount.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
-import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
+import { getGuestToken, getProfile, isLinked, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { listTables, type TableEntry } from '../net/rooms.js';
 
 const HINT_T: Record<Lang, { hint: string; gotIt: string }> = {
   en: {
-    hint: 'Your 3 secret words (under Customize) bring your name & games back on any device.',
+    hint: 'Link an account (under Customize) to keep your name & games on any device.',
     gotIt: 'Got it',
   },
   fr: {
-    hint: 'Tes 3 mots secrets (sous Personnaliser) ramènent ton nom et tes parties sur n’importe quel appareil.',
+    hint: 'Lie un compte (sous Personnaliser) pour garder ton nom et tes parties sur tous tes appareils.',
     gotIt: 'Compris',
   },
 };
 
-const HINT_KEY = 'jaffre-recovery-hint';
+const HINT_KEY = 'jaffre-link-hint';
 
 /**
- * A one-line, dismissible pointer at the recovery words — the whole mechanism
- * lives inside the Customize disclosure where new players never look. Muted
- * text, no panel: it informs without disturbing the title screen, and once
- * dismissed it never comes back (localStorage).
+ * A one-line, dismissible pointer at account linking — the mechanism lives
+ * inside the Customize disclosure where new players never look. Muted text,
+ * no panel: it informs without disturbing the title screen; dismissing it
+ * (or linking anything) hides it forever.
  */
 function RecoveryHint() {
   const t = HINT_T[useLang()];
-  const [seen, setSeen] = useState(() => localStorage.getItem(HINT_KEY) === '1');
+  const [seen, setSeen] = useState(() => localStorage.getItem(HINT_KEY) === '1' || isLinked());
   if (seen) return null;
   return (
     <p className="rise-in flex w-full max-w-xs items-start justify-center gap-2 text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
@@ -117,7 +118,12 @@ export function Home({
 
   return (
     <main className="flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
-      <HeroBanner />
+      {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
+      <HeroBanner
+        name={staged ? identityStage.name : name}
+        color={shownColor}
+        paint={shownPaint}
+      />
 
       <ProfileCard
         name={staged ? identityStage.name : name}
@@ -130,6 +136,9 @@ export function Home({
         defaultOpen={staged}
         {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
       >
+        {/* Keep-your-progress: real login first; the 3-word restore stays as a
+            quiet fallback underneath ("I have a code"). */}
+        {!staged && <LinkAccount />}
         {staged ? <RecoveryCard stage={identityStage.recovery} /> : <RecoveryCard />}
       </ProfileCard>
 
@@ -146,6 +155,8 @@ export function Home({
             onJoinRoom(code);
           }}
           tables={tables}
+          // Scene viewer stages "Your tables" — open the door so it shows.
+          defaultYoursOpen={demoTables !== undefined}
         />
       </div>
 

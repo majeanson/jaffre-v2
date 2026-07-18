@@ -1,6 +1,7 @@
 import type { EndReason, SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
 import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
+import { LinkNudge } from '../components/LinkAccount.js';
 import { Confetti } from './Confetti.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
@@ -459,6 +460,9 @@ export function GameRecap({
               {t.leave}
             </Cta>
           </div>
+          {/* Quiet post-game moment: this record is worth keeping — link an
+              account. One muted line, gone once anything is linked. */}
+          <LinkNudge />
         </div>
       </div>
     </div>

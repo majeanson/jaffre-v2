@@ -127,11 +127,10 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
     );
   };
 
-  const loading = stage?.kind === 'loading' || (!staged && code === null);
-
-  // Loading + form-closed: on the live screen show only the quiet affordance so
-  // Home doesn't jump around. In the loading scene, show the shimmer.
-  if (loading && !showForm && stage?.kind !== 'loading') {
+  // Live screen: the words stay HIDDEN — real login (LinkAccount, above) is
+  // the durable path now, and the 3-word restore is a quiet fallback behind
+  // "I have a code". Only the scene viewer still stages the plates.
+  if (!staged && !showForm) {
     return (
       <button
         type="button"

@@ -1,5 +1,6 @@
 import { ChatPanel, Cta, useLang, type Lang } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
+import { LinkNudge } from '../components/LinkAccount.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { SeatPicker } from '../room/SeatPicker.js';
@@ -120,6 +121,10 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onSend={sendChat}
           actions={typeof viewer === 'number' ? <VoiceControls me={viewer} /> : undefined}
         />
+
+        {/* Quiet pre-game moment: about to start — one muted line about
+            keeping your games. Gone once anything is linked. */}
+        <LinkNudge />
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Cta variant="secondary" onClick={onLeave}>

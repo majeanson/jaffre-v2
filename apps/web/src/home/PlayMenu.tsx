@@ -20,6 +20,7 @@ const T: Record<
   Lang,
   {
     play: string;
+    yours: string;
     practice: string;
     opponents: string;
     botDifficulty: string;
@@ -57,6 +58,7 @@ const T: Record<
     withCode: 'With code',
     roomCode: 'Room code',
     joinRoom: 'Join room',
+    yours: 'Your corner',
     yourTables: 'Your tables',
     going: (n) => `${String(n)} going`,
     resume: 'Resume',
@@ -84,6 +86,7 @@ const T: Record<
     withCode: 'ou joins avec un code',
     roomCode: 'Code du salon',
     joinRoom: 'Joindre le salon',
+    yours: 'Ton coin',
     yourTables: 'Tes tables',
     going: (n) => `${String(n)} en route`,
     resume: 'Reprendre',
@@ -118,6 +121,8 @@ export interface PlayMenuProps {
   readonly onJoinRoom: (code: string) => void;
   /** Tables this browser has sat at, newest first — the "Your tables" row. */
   readonly tables: readonly TableEntry[];
+  /** Open the "Your corner" door on mount (scene viewer stages it open). */
+  readonly defaultYoursOpen?: boolean;
 }
 
 /** "4 min ago" / "just now" — a coarse relative time for the last snapshot. */
@@ -227,13 +232,20 @@ function useTableStatuses(tables: readonly TableEntry[]): Record<string, TableSt
   return map;
 }
 
-export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
+export function PlayMenu({
+  onPractice,
+  onJoinRoom,
+  tables,
+  defaultYoursOpen = false,
+}: PlayMenuProps) {
   const t = T[useLang()];
   const difficultyLabel = DIFFICULTY_LABEL[useLang()];
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
   // One PLAY door: the split (bots vs friends) only appears after you knock.
   const [open, setOpen] = useState(false);
+  // Same move for everything that's yours: tables, games, record — one door.
+  const [yoursOpen, setYoursOpen] = useState(defaultYoursOpen);
   const statuses = useTableStatuses(tables);
 
   const cycleBot = (seat: 0 | 1 | 2) => {
@@ -363,55 +375,76 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         )}
       </div>
 
-      {tables.length > 0 && (
-        <Panel
-          className="rise-in flex flex-col gap-3 p-5 font-arcade-ui max-sm:p-4 sm:col-span-2"
+      {/* ONE door for everything that's yours — tables, games, record — the
+          same move as the PLAY door above: no three-way split on the title
+          screen. The closed button carries the live-tables count. */}
+      {!yoursOpen ? (
+        <button
+          type="button"
+          onClick={() => setYoursOpen(true)}
+          className="rise-in flex items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-4 font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none sm:col-span-2"
           style={{ '--rise-delay': '220ms' } as CSSProperties}
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <span className="font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase text-(--color-ap-text)">
-              {t.yourTables}
-            </span>
-            <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              {t.going(tables.length)}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {tables.slice(0, 4).map((tbl) => (
-              <TableCard
-                key={tbl.code}
-                table={tbl}
-                status={statuses[tbl.code] ?? null}
-                onResume={() => onJoinRoom(tbl.code)}
-              />
-            ))}
-          </div>
-        </Panel>
-      )}
-
-      <div
-        className="rise-in flex flex-wrap items-center justify-center gap-3 sm:col-span-2"
-        style={{ '--rise-delay': '300ms' } as CSSProperties}
-      >
-        <a
-          href="#history"
-          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-        >
-          <span aria-hidden className="text-(--color-ap-gold)">
-            ♠
-          </span>
-          {t.yourGames}
-        </a>
-        <a
-          href="#stats"
-          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ★
           </span>
-          {t.yourRecord}
-        </a>
-      </div>
+          {t.yours}
+          {tables.length > 0 && (
+            <span className="font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-muted)">
+              {t.going(tables.length)}
+            </span>
+          )}
+          <span aria-hidden>→</span>
+        </button>
+      ) : (
+        <Panel
+          className="rise-in flex flex-col gap-4 p-5 font-arcade-ui max-sm:p-4 sm:col-span-2"
+          style={{ '--rise-delay': '220ms' } as CSSProperties}
+        >
+          {tables.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase text-(--color-ap-text)">
+                  {t.yourTables}
+                </span>
+                <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                  {t.going(tables.length)}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {tables.slice(0, 4).map((tbl) => (
+                  <TableCard
+                    key={tbl.code}
+                    table={tbl}
+                    status={statuses[tbl.code] ?? null}
+                    onResume={() => onJoinRoom(tbl.code)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#history"
+              className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span aria-hidden className="text-(--color-ap-gold)">
+                ♠
+              </span>
+              {t.yourGames}
+            </a>
+            <a
+              href="#stats"
+              className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span aria-hidden className="text-(--color-ap-gold)">
+                ★
+              </span>
+              {t.yourRecord}
+            </a>
+          </div>
+        </Panel>
+      )}
     </section>
   );
 }

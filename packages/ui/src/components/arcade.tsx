@@ -101,6 +101,9 @@ export interface CollapsibleProps {
   /** The detail revealed on expand. */
   readonly children: ReactNode;
   readonly defaultOpen?: boolean;
+  /** Controlled mode — the parent owns the state (its layout may depend on it). */
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
   readonly className?: string;
 }
 
@@ -113,15 +116,22 @@ export function Collapsible({
   summary,
   children,
   defaultOpen = false,
-  className = '',
+  open: controlledOpen,
+  onOpenChange,
+  className = 'w-full',
 }: CollapsibleProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const toggle = () => {
+    setUncontrolledOpen(!open);
+    onOpenChange?.(!open);
+  };
   return (
-    <div className={`flex w-full flex-col gap-[0.6em] ${className}`}>
+    <div className={`flex flex-col gap-[0.6em] ${className}`}>
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className="flex cursor-pointer items-center justify-center gap-[0.5em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[1em] py-[0.55em] font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
       >
         {summary}
