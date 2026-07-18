@@ -92,8 +92,13 @@ export function Seat({
   paint = null,
 }: SeatProps) {
   const t = T[useLang()];
-  // "Bot 2" → "B2": carry the number so four bots don't collapse to one "B".
-  const initial = `${(name[0] ?? '?').toUpperCase()}${/\d+/.exec(name)?.[0] ?? ''}`;
+  // "Bot 2" → "B2"; digit-less names take two letters ("Bro" → "Br") so a
+  // table of Bot 1/Bot 2/Bro never collapses to look-alike pictograms.
+  const digits = /\d+/.exec(name)?.[0];
+  const letters = name.replace(/\s+/g, '');
+  const initial = `${(letters[0] ?? '?').toUpperCase()}${
+    digits ?? (letters[1] ?? '').toLowerCase()
+  }`;
   return (
     <div
       title={compact ? name : undefined}

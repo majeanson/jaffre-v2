@@ -21,7 +21,7 @@ import {
   type Cosmetic,
 } from '../cosmetics.js';
 import { DEFAULT_THEME, THEMES, applyTheme, currentTheme } from '../theme.js';
-import { saveProfile } from '../net/auth.js';
+import { getProfile, saveProfile } from '../net/auth.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { feedback } from '../audio/clicks.js';
 import { Toast } from '../components/Toast.js';
@@ -100,13 +100,16 @@ const SAMPLE: readonly CardData[] = [
   { suit: 'blue', value: 4 },
 ];
 
-/** A small fanned deck, rendered under a given card skin's tokens + renderers. */
+/** A small fanned deck, rendered under a given card skin's tokens + renderers.
+ * Your painted card (if any) rides along on the red 0 — the personalised card
+ * previews as part of every skin, exactly as it looks at the table. */
 function MiniDeck() {
+  const paint = getProfile().paint;
   return (
     <div className="flex items-center justify-center">
       {SAMPLE.map((card, i) => (
         <div key={i} style={{ marginLeft: i === 0 ? 0 : '-0.9em', zIndex: i }}>
-          <PlayingCard card={card} size="sm" tilt={(i - 1) * 7} />
+          <PlayingCard card={card} size="sm" tilt={(i - 1) * 7} paint={paint} />
         </div>
       ))}
     </div>
@@ -143,7 +146,7 @@ function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin
         />
       </div>
       <CardSkinProvider value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }}>
-        <PlayingCard card={{ suit: 'red', value: 0 }} size="sm" />
+        <PlayingCard card={{ suit: 'red', value: 0 }} size="sm" paint={getProfile().paint} />
       </CardSkinProvider>
     </div>
   );
@@ -179,7 +182,7 @@ function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly 
           <div className="flex items-end justify-center">
             {SAMPLE.map((card, i) => (
               <div key={i} style={{ marginLeft: i === 0 ? 0 : '-1.1em', zIndex: i }}>
-                <PlayingCard card={card} size="md" tilt={(i - 1) * 8} />
+                <PlayingCard card={card} size="md" tilt={(i - 1) * 8} paint={getProfile().paint} />
               </div>
             ))}
           </div>

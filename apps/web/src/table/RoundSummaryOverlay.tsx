@@ -1,12 +1,14 @@
 import type { SeatView, Suit } from '@jaffre/engine';
 import {
   Cta,
+  ScorePad,
   SpecialChip,
   SuitShape,
   suitName,
   TeamGlyph,
   useLang,
   type Lang,
+  type ScoreboardRound,
   type TeamSpecials,
 } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
@@ -20,8 +22,7 @@ const T: Record<
     made: string;
     missed: string;
     trickPts: (n: number) => string;
-    thisRound: string;
-    gameTotal: string;
+    you: string;
     noTrump: string;
     trumpTitle: (suit: string) => string;
     waiting: string;
@@ -35,8 +36,7 @@ const T: Record<
     made: 'made',
     missed: 'missed',
     trickPts: (n) => `${n} trick pts`,
-    thisRound: 'This round',
-    gameTotal: 'Game total',
+    you: 'you',
     noTrump: 'No trump',
     trumpTitle: (suit) => `Trump: ${suit}`,
     waiting: 'Waiting for the others…',
@@ -49,8 +49,7 @@ const T: Record<
     made: 'réussit',
     missed: 'rate',
     trickPts: (n) => `${n} pts de levées`,
-    thisRound: 'Cette ronde',
-    gameTotal: 'Total de la partie',
+    you: 'toi',
     noTrump: 'Sans atout',
     trumpTitle: (suit) => `Atout : ${suit}`,
     waiting: 'On attend les autres…',
@@ -70,6 +69,10 @@ export interface RoundSummaryOverlayProps {
   /** True once YOU are ready (disables the button). */
   readonly youReady: boolean;
   readonly onReady: () => void;
+  /** Finished rounds, oldest first — the same written scoresheet as the top bar. */
+  readonly rounds: readonly ScoreboardRound[];
+  /** The viewer's team (highlighted on the sheet + band), null when spectating. */
+  readonly myTeam: 0 | 1 | null;
 }
 
 const teamColor = (t: 0 | 1): string => `var(--color-team-${t === 0 ? 'a' : 'b'})`;
@@ -103,8 +106,8 @@ function TrumpMark({ trump, sansAtout }: { trump: Suit | null; sansAtout: boolea
  * Owns the round-end scoreboard shown while the table waits for the next deal.
  * A modal dialog: it takes focus on mount and hands it back on close. The
  * headline reads the contract result — with the trump that drove it — at a
- * glance; each team card separates the points won THIS ROUND from the running
- * GAME TOTAL as two ruled rows, so the round delta never reads as the total.
+ * glance; below it, this round's points sit as a band fused atop the same
+ * written scoresheet as the top bar, whose totals row carries the game score.
  */
 export function RoundSummaryOverlay({
   summary,
@@ -114,6 +117,8 @@ export function RoundSummaryOverlay({
   readySeats,
   youReady,
   onReady,
+  rounds,
+  myTeam,
 }: RoundSummaryOverlayProps) {
   const tr = T[useLang()];
   const ref = useRef<HTMLDivElement>(null);
@@ -170,58 +175,50 @@ export function RoundSummaryOverlay({
           </span>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm tabular-nums">
-          {([0, 1] as const).map((t) => {
-            const delta = summary.deltas[t] ?? 0;
-            const won = delta >= (summary.deltas[t === 0 ? 1 : 0] ?? 0);
-            const sp = specials[t];
-            return (
-              <div
-                key={t}
-                className={`rounded-(--radius-ap-panel) border-2 bg-(--color-ap-panel) p-2.5 ${won ? 'border-(--color-ap-ink) ring-2' : 'border-(--color-ap-ink)'}`}
-                style={won ? { ['--tw-ring-color' as string]: teamColor(t) } : undefined}
-              >
-                <p
-                  className="flex items-center justify-center gap-1.5 font-semibold"
-                  style={{ color: teamColor(t) }}
+        {/* This round's points as a band fused atop the SAME written scoresheet
+            as the top bar — the round delta and the game totals read as one
+            sheet, never two competing scores. */}
+        <div className="mt-4">
+          <div className="grid grid-cols-2 overflow-hidden rounded-t-(--radius-ap-card) border-[3px] border-b-0 border-(--color-ap-ink) bg-(--color-ap-panel) text-center text-sm tabular-nums">
+            {([0, 1] as const).map((t) => {
+              const delta = summary.deltas[t] ?? 0;
+              const sp = specials[t];
+              const mine = myTeam === t;
+              return (
+                <div
+                  key={t}
+                  className={`flex flex-col items-center gap-0.5 p-2.5 ${
+                    t === 1 ? 'border-l-2 border-(--color-ap-ink)/40' : ''
+                  } ${mine ? 'bg-(--color-ap-violet)/15 ring-2 ring-inset ring-(--color-ap-violet)' : ''}`}
                 >
-                  <TeamGlyph team={t} size="1em" />
-                  {tr.teams[t]}
-                </p>
-                <p className="mt-0.5 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                  {names[t]} & {names[t + 2]}
-                </p>
-                <p className="mt-1.5 flex flex-wrap items-center justify-center gap-1 text-(--color-ap-text)/85">
-                  {tr.trickPts(summary.trickPoints[t])}
-                  {sp.red && <SpecialChip kind="red" />}
-                  {sp.brown && <SpecialChip kind="brown" />}
-                </p>
-
-                {/* Round delta vs game total, as two labelled ruled rows so the
-                    +delta never reads as the running score. Neutral ink for AA
-                    on the flipping panel; made/missed lives in the headline. */}
-                <dl className="mt-2 border-t-2 border-(--color-ap-ink)/25 pt-1.5 text-left">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <dt className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                      {tr.thisRound}
-                    </dt>
-                    <dd className="font-arcade-display text-lg text-(--color-ap-text)">
-                      {delta >= 0 ? '+' : ''}
-                      {delta}
-                    </dd>
-                  </div>
-                  <div className="mt-0.5 flex items-baseline justify-between gap-2 border-t border-(--color-ap-ink)/15 pt-0.5">
-                    <dt className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                      {tr.gameTotal}
-                    </dt>
-                    <dd className="font-arcade-display text-base text-(--color-ap-text)">
-                      {summary.scores[t]}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            );
-          })}
+                  <p className="flex items-center justify-center gap-1.5">
+                    <TeamGlyph team={t} size="1.2em" label={tr.teams[t]} />
+                    {mine && <span className="sr-only">({tr.you})</span>}
+                  </p>
+                  <p className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                    {names[t]} & {names[t + 2]}
+                  </p>
+                  <p className="flex flex-wrap items-center justify-center gap-1 text-(length:--text-fluid-xs) text-(--color-ap-text)/85">
+                    {tr.trickPts(summary.trickPoints[t])}
+                    {sp.red && <SpecialChip kind="red" />}
+                    {sp.brown && <SpecialChip kind="brown" />}
+                  </p>
+                  <p className="font-arcade-display text-xl" style={{ color: teamColor(t) }}>
+                    {delta >= 0 ? '+' : ''}
+                    {delta}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <ScorePad
+            teamNames={tr.teams}
+            scores={summary.scores}
+            target={41}
+            rounds={rounds}
+            myTeam={myTeam}
+            className="max-w-none rounded-t-none"
+          />
         </div>
 
         <div className="mt-5 flex flex-col items-center gap-2">

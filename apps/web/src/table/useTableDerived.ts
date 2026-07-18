@@ -210,7 +210,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
           const seat = (view.dealer + 1 + i) % 4;
           const entry = view.bids.find((b) => b.seat === seat);
           return {
-            name: seat === me ? t.you : (roster.seats[seat]?.name ?? t.player),
+            // Your real name, not "Toi" — the `you` flag bolds your slot.
+            name: roster.seats[seat]?.name ?? (seat === me ? t.you : t.player),
             you: seat === me,
             bid:
               entry === undefined

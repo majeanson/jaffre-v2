@@ -1,5 +1,6 @@
 import type { SeatView } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
+import type { ScoreboardRound } from '@jaffre/ui';
 import { GameRecap } from './GameRecap.js';
 import { RoundSummaryOverlay } from './RoundSummaryOverlay.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -9,6 +10,8 @@ export interface OverlaysProps {
   readonly roster: Roster;
   /** Your absolute seat, or null when spectating. */
   readonly me: number | null;
+  /** Finished rounds for the round summary's written scoresheet. */
+  readonly rounds: readonly ScoreboardRound[];
   /** Declare readiness for the next round. */
   readonly onReady: () => void;
   readonly onRematch?: (() => void) | undefined;
@@ -21,6 +24,7 @@ export function Overlays({
   view,
   roster,
   me,
+  rounds,
   onReady,
   onRematch,
   onSwapSeats,
@@ -38,6 +42,8 @@ export function Overlays({
           readySeats={readySeats}
           youReady={me !== null ? (readySeats[me] ?? false) : true}
           onReady={onReady}
+          rounds={rounds}
+          myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         />
       )}
       {view.phase === 'game_over' && (

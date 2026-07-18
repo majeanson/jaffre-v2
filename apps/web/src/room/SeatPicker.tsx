@@ -26,7 +26,7 @@ const DIFFICULTY_LABEL: Record<Lang, Record<BotDifficulty, string>> = {
 const T: Record<
   Lang,
   {
-    seatTeam: (n: number, team: string) => string;
+    seatLabel: (n: number) => string;
     teamSun: string;
     teamMoon: string;
     you: string;
@@ -37,7 +37,7 @@ const T: Record<
   }
 > = {
   en: {
-    seatTeam: (n, team) => `Seat ${String(n)} · ${team}`,
+    seatLabel: (n) => `Seat ${String(n)}`,
     teamSun: 'Team Sun',
     teamMoon: 'Team Moon',
     you: 'You',
@@ -47,7 +47,7 @@ const T: Record<
     addBot: 'Add bot',
   },
   fr: {
-    seatTeam: (n, team) => `Siège ${String(n)} · ${team}`,
+    seatLabel: (n) => `Siège ${String(n)}`,
     teamSun: 'Équipe Soleil',
     teamMoon: 'Équipe Lune',
     you: 'Toi',
@@ -78,11 +78,14 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps)
         const difficulty = info?.difficulty ?? 'normal';
         return (
           <div key={seat} data-testid={`seat-row-${seat}`} className="flex items-center gap-3">
-            <span className="flex w-20 items-center justify-end gap-1 text-right font-arcade-ui text-xs text-(--color-ap-muted)">
-              <span className="whitespace-nowrap">
-                {t.seatTeam(seat + 1, seat % 2 === 0 ? t.teamSun : t.teamMoon)}
-              </span>
-              <TeamGlyph team={(seat % 2) as 0 | 1} size="0.9em" />
+            {/* The glyph (with an sr-only team name) replaces the team word. */}
+            <span className="flex w-20 items-center justify-end gap-1.5 text-right font-arcade-ui text-xs text-(--color-ap-muted)">
+              <span className="whitespace-nowrap">{t.seatLabel(seat + 1)}</span>
+              <TeamGlyph
+                team={(seat % 2) as 0 | 1}
+                size="1.1em"
+                label={seat % 2 === 0 ? t.teamSun : t.teamMoon}
+              />
             </span>
             {info !== null ? (
               <span className="flex items-center gap-2">

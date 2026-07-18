@@ -82,7 +82,7 @@ test('two clients share a room, play starts, and a disconnect is shown', async (
   const stripB = b.getByTestId('score-strip');
   const norm = (s: string) =>
     s
-      .replace(/\byou\b/gi, '')
+      .replace(/\(?\byou\b\)?/gi, '')
       .replace(/\s+/g, ' ')
       .trim();
   await expect

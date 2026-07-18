@@ -6,6 +6,7 @@ const T: Record<
   Lang,
   {
     pass: string;
+    you: string;
     bidAria: (label: string, sansAtout: boolean) => string;
     playABet: string;
     biddingOrder: string;
@@ -17,6 +18,7 @@ const T: Record<
 > = {
   en: {
     pass: 'Pass',
+    you: 'you',
     bidAria: (label, sa) => `Bid ${label}${sa ? ' sans atout' : ''}`,
     playABet: 'Play a bet',
     biddingOrder: 'Bidding order',
@@ -27,6 +29,7 @@ const T: Record<
   },
   fr: {
     pass: 'Passe',
+    you: 'toi',
     bidAria: (label, sa) => `Miser ${label}${sa ? ' sans atout' : ''}`,
     playABet: 'Joue une mise',
     biddingOrder: 'Ordre des mises',
@@ -192,6 +195,9 @@ export function BetCards({
                 }`}
               >
                 <span className={t.you ? 'font-bold text-(--color-ap-text)' : ''}>{t.name}</span>
+                {t.you && (
+                  <span className="text-[0.85em] text-(--color-ap-violet-soft)">({tt.you})</span>
+                )}
                 {t.bid !== null ? (
                   <span
                     className={`font-arcade-display ${

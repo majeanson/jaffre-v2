@@ -129,6 +129,7 @@ export function Table({
         view={view}
         roster={roster}
         me={me}
+        rounds={derived.scoreboardRounds}
         onReady={() => onAction({ type: 'continue' })}
         onRematch={onRematch}
         onSwapSeats={onSwapSeats}

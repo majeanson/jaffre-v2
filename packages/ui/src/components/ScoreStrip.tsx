@@ -272,12 +272,10 @@ function TeamSide({
       }`}
     >
       <span className="flex flex-col items-center gap-0.5 leading-none">
+        {/* The glyph alone carries the team identity — no SUN/MOON words. */}
         <span className="flex items-center gap-[0.4em]">
-          <TeamGlyph team={team} size="0.9em" />
-          <span className="font-arcade-display text-[0.62em] tracking-[0.12em] whitespace-nowrap text-(--color-ap-muted) uppercase">
-            {name}
-          </span>
-          {isMine && <span className="sr-only">{youLabel}</span>}
+          <TeamGlyph team={team} size="1.2em" label={name} />
+          {isMine && <span className="sr-only">({youLabel})</span>}
         </span>
         <span
           data-testid={testId}
@@ -382,7 +380,7 @@ function BetCell({
  * each team's points and the bet that drove them, a live row for the round
  * underway, and the running totals across the bottom. Ivory face → ink text.
  */
-function ScorePad({
+export function ScorePad({
   teamNames,
   scores,
   target,
@@ -392,6 +390,7 @@ function ScorePad({
   contract,
   trump = null,
   myTeam = null,
+  className = '',
 }: {
   teamNames: readonly [string, string];
   scores: readonly [number, number];
@@ -403,6 +402,8 @@ function ScorePad({
   /** The trump decided for the round in progress (live row); null if undecided. */
   trump?: SuitId | null;
   myTeam?: 0 | 1 | null;
+  /** Extra classes on the pad root (e.g. to fuse it under a header band). */
+  className?: string;
 }) {
   const t = T[useLang()];
   const liveRound =
@@ -431,7 +432,9 @@ function ScorePad({
     'py-1.5 font-arcade-ui text-[0.85em] font-bold tracking-[0.12em] uppercase text-(--color-ap-ink)/70';
 
   return (
-    <div className="w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap)">
+    <div
+      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap) ${className}`}
+    >
       <div
         tabIndex={0}
         role="region"
