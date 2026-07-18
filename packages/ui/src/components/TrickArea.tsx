@@ -7,7 +7,7 @@ const T: Record<Lang, { currentTrick: string }> = {
   fr: { currentTrick: 'Levée en cours' },
 };
 import { cardKey } from '../types.js';
-import { PlayingCard } from './PlayingCard';
+import { PlayingCard, type CardSize } from './PlayingCard';
 
 export interface TrickPlayView {
   /** 0 = bottom (you), 1 = left, 2 = top, 3 = right — table-relative. */
@@ -21,6 +21,8 @@ export interface TrickAreaProps {
   readonly sweepTo?: 0 | 1 | 2 | 3 | null;
   /** Highlight the winning card while a resolved trick is held. */
   readonly highlight?: 0 | 1 | 2 | 3 | null;
+  /** Played-card size — the feltless arena runs 'lg' so the trick fills the stage. */
+  readonly size?: CardSize;
 }
 
 const SLOT: Record<0 | 1 | 2 | 3, string> = {
@@ -51,7 +53,7 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
  * seat's direction and sweep toward the winner; timing comes from motion
  * tokens; with reduced motion everything is instant (MotionConfig).
  */
-export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickAreaProps) {
+export function TrickArea({ plays, sweepTo = null, highlight = null, size = 'md' }: TrickAreaProps) {
   const t = T[useLang()];
   return (
     <div role="group" className="relative h-full w-full" aria-label={t.currentTrick}>
@@ -67,7 +69,7 @@ export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickArea
               exit={{ ...SWEEP_TO[play.position], opacity: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             >
-              <PlayingCard card={play.card} size="md" raised={highlight === play.position} />
+              <PlayingCard card={play.card} size={size} raised={highlight === play.position} />
             </motion.div>
           ))}
         {sweepTo !== null &&
@@ -79,7 +81,7 @@ export function TrickArea({ plays, sweepTo = null, highlight = null }: TrickArea
               animate={{ ...SWEEP_TO[sweepTo], opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.56, delay: i * 0.04, ease: [0.2, 0.9, 0.25, 1] }}
             >
-              <PlayingCard card={play.card} size="md" />
+              <PlayingCard card={play.card} size={size} />
             </motion.div>
           ))}
       </AnimatePresence>
