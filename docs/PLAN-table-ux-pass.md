@@ -124,8 +124,78 @@ commits + tests.
 
 ## Resume prompt (for a fresh session)
 
-> Continue the Jaffré "Table & UX pass" backlog in `docs/PLAN-table-ux-pass.md`.
-> Decisions are locked at the top. Pick up the first unchecked phase, implement
-> it (client-only unless noted), run typecheck/lint/format + the relevant e2e,
-> commit to `main`, and check the item off. Verify the live bundle after deploy.
-> `DEV_UNLOCK_ALL` stays true. Ask only if a new ambiguity appears.
+Paste this into a new session:
+
+> **Finish the Jaffré "Table & UX pass" — Phases D, F, G.**
+>
+> Repo: `C:\Users\marc_\Documents\WebApp\jaffre` (Cloudflare Workers + D1 + Durable
+> Objects backend; Vite/React 19/Zustand frontend; npm workspaces `apps/web`,
+> `apps/server`, `packages/ui|engine|bots|protocol`). The full backlog + locked
+> decisions are in `docs/PLAN-table-ux-pass.md` — Phases A/B/C/E are done (✅);
+> **do the three unchecked phases D, F, G**, one at a time, most-requested first (D).
+>
+> **Workflow (match the existing history):** land each phase as its own commit
+> straight to `main` (it auto-deploys to jaffre.marcportal.com; deploy is gated on
+> the FAST `ci` job = format:check/lint/typecheck/test/build, NOT e2e — so run
+> `npm run typecheck`, `npm run lint`, `npm run format` before every commit, or CI's
+> `format:check` fails). Verify with targeted `npx playwright test -c
+apps/web/playwright.config.ts <spec>` for the areas you touch, and screenshot via a
+> throwaway `apps/web/e2e/_x.spec.ts` (delete it before committing). After deploy,
+> curl the live bundle to confirm. `DEV_UNLOCK_ALL` stays `true`. End commit messages
+> with the Co-Authored-By trailer.
+>
+> **Conventions:** a reskin is a `[data-*]` token block / renderer, never a component
+> edit; team colours come from `--color-team-a`(Sun)/`--color-team-b`(Moon); use the
+> arcade kit (`Cta`, `IconButton`) and the shared `TeamGlyph` (☀/☾) — both already
+> exist. Scenes use the roster name `'You'` so they read "You (you)"; real play uses
+> `playerName()` — that's expected, don't "fix" scenes.
+>
+> **Gotchas (learned the hard way):**
+>
+> - `getGuestToken` dedupes concurrent mints — do NOT add app-mount `fetch`es that
+>   race the room socket's own `getGuestToken` (that broke reconnect via a two-identity
+>   token clobber).
+> - Viewer-relative UI (the "YOU" team chip, "(you)" seat marker) makes two clients'
+>   score-strip text differ — `multiplayer.spec` normalises `\bYOU\b` out before
+>   comparing; keep any new viewer-relative text out of cross-client equality checks.
+> - Windows: the server vitest run ends with a harmless `EBUSY` teardown message —
+>   the tests still pass (42).
+>
+> **Phase D — round summary + trump** (`apps/web/src/table/RoundSummaryOverlay.tsx`,
+> `packages/ui/src/components/ScoreStrip.tsx` `ScorePad`, engine `packages/engine`):
+>
+> - D1: the round-over overlay muddles _this round's_ delta with the _game total_ —
+>   restructure so "points this round" and "game total" are clearly distinct (ideally
+>   reuse the ruled round-table look from `ScorePad`). Also swap the overlay's "Équipe
+>   Soleil/Lune" dot+word for `TeamGlyph`.
+> - D2: show the **trump** with the bet in the round summary + the scorepad bet column;
+>   mark **sans-atout with `*`** (or a no-trump glyph). NOTE: engine `RoundSummary`
+>   (packages/engine/src/types.ts ~L49) has `contract.sansAtout` + `contractMade` but
+>   NOT the trump suit — add `trump: Suit | null` to `RoundSummary` where the round is
+>   scored, thread it into `ScoreboardRound` (ScoreStrip) + the overlay. `suitName()`
+>   from `@jaffre/ui` localises the suit. Add/adjust the server round-summary test if
+>   the shape changes.
+>
+> **Phase F — click a seat → player peek** (`apps/web/src/table/SeatChip.tsx`, a new
+> `PlayerPeek` popover): tap a seat to open a small panel — avatar + name + team
+> (`TeamGlyph`). CONSTRAINT: `/api/stats` is self-scoped (you can only fetch YOUR OWN
+> record), so show the full record only for the viewer's own seat (reuse `fetchStats`);
+> for bots show difficulty (`roster.seats[i].difficulty`); for other humans show
+> name/team/connection only. Close on outside-click/Escape (mirror the last-trick
+> popover). Keep it axe-clean.
+>
+> **Phase G — personalized painted card** (locked: painted card → the viewer's SEAT
+> AVATAR **and** the bonhomme art on the viewer's OWN red-0/brown-0). The paint is a
+> data-URL at `getProfile().paint` (`apps/web/src/net/auth.ts`), viewer-only (other
+> players' paint isn't in the roster).
+>
+> - G1: in `Seat.tsx`, when it's the viewer's seat (`isYou`) and paint exists, render
+>   the painting as the avatar instead of the initial+hue. Thread the paint in via a
+>   prop (SeatChip reads `getProfile().paint`).
+> - G2: the viewer's red-0/brown-0 show the painting. HARD PART: `PlayingCard` doesn't
+>   know card ownership. Only cards in the viewer's HAND are theirs — so pass a `mine`
+>   flag (or a viewer-paint context the `Hand` provides) and have the centre-mark use
+>   the paint only for `mine && value===0`; played-to-table 0-cards keep the normal
+>   bonhomme (ownership is ambiguous there). Design this explicitly; add a scene.
+>
+> Update the checkboxes in this doc as you finish each item.

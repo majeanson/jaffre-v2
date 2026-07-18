@@ -1,6 +1,6 @@
 import type { Card, GameState, Rng, Seat, SeatView, Suit } from '@jaffre/engine';
 import { applyAction, legalCards, sameCard, teamOf, viewFor } from '@jaffre/engine';
-import { inferredVoids, outstanding, outstandingBySuit } from './analysis.js';
+import { equivalenceRuns, inferredVoids, outstanding } from './analysis.js';
 import { heuristicCard } from './heuristics.js';
 
 /**
@@ -36,31 +36,8 @@ export function hardCard(view: SeatView, rng: Rng): Card {
  * (adjacent ranks with no outstanding card between them), anchor on the Hard
  * heuristic's pick, and cap the fan-out. */
 function candidateMoves(view: SeatView, legal: readonly Card[]): Card[] {
-  const outBy = outstandingBySuit(view);
-  const bySuit = new Map<Suit, Card[]>();
-  for (const c of legal) {
-    const arr = bySuit.get(c.suit) ?? [];
-    arr.push(c);
-    bySuit.set(c.suit, arr);
-  }
-
-  const reps: Card[] = [];
-  for (const [suit, cards] of bySuit) {
-    const sorted = [...cards].sort((a, b) => a.value - b.value);
-    const gaps = outBy.get(suit) ?? [];
-    let i = 0;
-    while (i < sorted.length) {
-      let j = i;
-      while (
-        j + 1 < sorted.length &&
-        !gaps.some((v) => v > (sorted[j] as Card).value && v < (sorted[j + 1] as Card).value)
-      ) {
-        j += 1;
-      }
-      reps.push(sorted[i] as Card); // cheapest of the equivalence run
-      i = j + 1;
-    }
-  }
+  // cheapest of each equivalence run
+  const reps: Card[] = equivalenceRuns(legal, view).map((run) => run[0] as Card);
 
   const anchor = heuristicCard(view, ZERO_RNG, 'hard');
   const ordered = [anchor, ...reps.filter((c) => !sameCard(c, anchor))];

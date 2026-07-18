@@ -128,6 +128,64 @@ export function redZeroLive(view: SeatView): boolean {
   return !redZeroCaptured(view) && !view.currentTrick.some((p) => isRedZero(p.card));
 }
 
+/** The brown 0 is still unplayed this round (its −2 hasn't landed yet). */
+export function brownZeroLive(view: SeatView): boolean {
+  return (
+    !view.capturedTricks.some((t) => t.cards.some(isBrownZero)) &&
+    !view.currentTrick.some((p) => isBrownZero(p.card))
+  );
+}
+
+/** Completed tricks so far this round (0..8). */
+export function tricksPlayed(view: SeatView): number {
+  return view.capturedTricks.length;
+}
+
+/**
+ * Group cards into runs of strategically-equal cards: same suit, adjacent once
+ * every outstanding value between them is ruled out. Each run is sorted low to
+ * high; playing any member wins exactly the same tricks.
+ */
+export function equivalenceRuns(cards: readonly Card[], view: SeatView): Card[][] {
+  const outBy = outstandingBySuit(view);
+  const bySuit = new Map<Suit, Card[]>();
+  for (const c of cards) {
+    const arr = bySuit.get(c.suit) ?? [];
+    arr.push(c);
+    bySuit.set(c.suit, arr);
+  }
+
+  const runs: Card[][] = [];
+  for (const [suit, group] of bySuit) {
+    const sorted = [...group].sort((a, b) => a.value - b.value);
+    const gaps = outBy.get(suit) ?? [];
+    let i = 0;
+    while (i < sorted.length) {
+      let j = i;
+      while (
+        j + 1 < sorted.length &&
+        !gaps.some((v) => v > (sorted[j] as Card).value && v < (sorted[j + 1] as Card).value)
+      ) {
+        j += 1;
+      }
+      runs.push(sorted.slice(i, j + 1));
+      i = j + 1;
+    }
+  }
+  return runs;
+}
+
+/**
+ * The lowest card in `pool` strategically equal to `card` — it wins the same
+ * tricks while telling the table the least ("win with the lowest of equals").
+ */
+export function lowestEquivalent(card: Card, pool: readonly Card[], view: SeatView): Card {
+  for (const run of equivalenceRuns(pool, view)) {
+    if (run.some((c) => sameCard(c, card))) return run[0] as Card;
+  }
+  return card;
+}
+
 /** Would playing `card` make me the current winner of the trick in progress? */
 export function wouldWin(card: Card, view: SeatView): boolean {
   if (view.currentTrick.length === 0) return true;
