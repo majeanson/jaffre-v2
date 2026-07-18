@@ -55,10 +55,18 @@ export function buildFrames(
       });
       break;
     }
+    // The engine resolves a trick the instant the 4th card lands, so the
+    // post-action state has an empty currentTrick. Re-show the completed
+    // trick on this frame so the 4th card is actually visible.
+    const completedTrick =
+      action.type === 'play_card' && state.currentTrick.length === 3
+        ? [...state.currentTrick, { seat: action.seat, card: action.card }]
+        : null;
     state = result.state;
     for (const e of result.events) if (e.type === 'round_scored') summaries.push(e.summary);
+    const view = viewFor(state, viewer);
     frames.push({
-      view: viewFor(state, viewer),
+      view: completedTrick === null ? view : { ...view, currentTrick: completedTrick },
       summaries: [...summaries],
       label: labelFor(action),
     });
