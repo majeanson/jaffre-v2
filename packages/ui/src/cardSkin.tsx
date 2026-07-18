@@ -139,4 +139,133 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
       </span>
     ),
   },
+  // Newsprint: the back is a halftone-dot press plate over the ink colour.
+  newsprint: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage:
+            'radial-gradient(var(--color-card-back-line) 0.055em, transparent 0.07em)',
+          backgroundSize: '0.38em 0.38em',
+        }}
+      />
+    ),
+  },
+  // Blueprint: the back is drafting grid paper — fine lines every 0.5em with a
+  // heavier line every 2em, chalk on cyanotype blue.
+  blueprint: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'repeating-linear-gradient(0deg, rgb(125 184 255 / 0.5) 0 0.06em, transparent 0.06em 2em)',
+            'repeating-linear-gradient(90deg, rgb(125 184 255 / 0.5) 0 0.06em, transparent 0.06em 2em)',
+            'repeating-linear-gradient(0deg, rgb(125 184 255 / 0.22) 0 0.05em, transparent 0.05em 0.5em)',
+            'repeating-linear-gradient(90deg, rgb(125 184 255 / 0.22) 0 0.05em, transparent 0.05em 0.5em)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Pixel Parlor: hard 1px-style pixel shadow under every mark (no blur — this
+  // is an 8-bit sprite, not a glow) and a dithered checkerboard back.
+  'pixel-parlor': {
+    centerMark: (card, size) => (
+      <span
+        className="grid place-items-center"
+        style={{ filter: 'drop-shadow(0.07em 0.07em 0 rgb(0 0 0 / 0.45))' }}
+      >
+        {defaultCenter(card, size)}
+      </span>
+    ),
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage:
+            'repeating-conic-gradient(var(--color-card-back-line) 0% 25%, transparent 0% 50%)',
+          backgroundSize: '0.5em 0.5em',
+        }}
+      />
+    ),
+  },
+  // Stained Glass: each mark sits in a leaded round pane, backlit by its own
+  // suit colour.
+  'stained-glass': {
+    centerMark: (card, size) => (
+      <span
+        className="grid place-items-center rounded-full"
+        style={{
+          padding: '0.2em',
+          background: `radial-gradient(closest-side, ${SUIT_STYLES[card.suit].color}33, transparent)`,
+          boxShadow: 'inset 0 0 0 0.07em var(--color-ap-ink)',
+          filter: `drop-shadow(0 0 0.25em ${SUIT_STYLES[card.suit].color})`,
+        }}
+      >
+        {defaultCenter(card, size)}
+      </span>
+    ),
+  },
+  // Vaporwave: the back is a neon sunset — banded sun over a horizon grid.
+  vaporwave: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          background: [
+            'radial-gradient(circle at 50% 40%, #ffb46e 0 0.85em, #ff7ac8 0.85em 1.3em, transparent 1.35em)',
+            'repeating-linear-gradient(0deg, rgb(255 122 200 / 0.3) 0 0.1em, transparent 0.1em 0.5em)',
+            'linear-gradient(180deg, #1a1040, #452a7a)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Gilded: every mark carries a soft gold-leaf aura on the black lacquer.
+  gilded: {
+    centerMark: (card, size) => (
+      <span
+        className="grid place-items-center"
+        style={{ filter: 'drop-shadow(0 0 0.28em rgb(242 183 18 / 0.6))' }}
+      >
+        {defaultCenter(card, size)}
+      </span>
+    ),
+  },
+  // Prismatic: a slowly hue-cycling holo halo BEHIND the mark (the mark itself
+  // keeps its true suit colour — the shape+colour identity never shifts), and
+  // an iridescent foil back that cycles the same way. Both freeze under
+  // reduced motion via .skin-prism.
+  prismatic: {
+    centerMark: (card, size) => (
+      <span className="relative grid place-items-center">
+        <span
+          aria-hidden
+          className="skin-prism absolute inset-[-0.3em] rounded-full"
+          style={{
+            background:
+              'conic-gradient(from 0deg, #ff9ecf, #ffd47d, #9dffc9, #8fc2ff, #d29bff, #ff9ecf)',
+            opacity: 0.4,
+            maskImage: 'radial-gradient(closest-side, black 55%, transparent)',
+            WebkitMaskImage: 'radial-gradient(closest-side, black 55%, transparent)',
+          }}
+        />
+        <span className="relative">{defaultCenter(card, size)}</span>
+      </span>
+    ),
+    back: () => (
+      <div
+        className="skin-prism size-full"
+        style={{
+          background:
+            'linear-gradient(135deg, #ff9ecf 0%, #ffd47d 25%, #9dffc9 50%, #8fc2ff 75%, #d29bff 100%)',
+        }}
+      />
+    ),
+  },
 };

@@ -270,6 +270,331 @@
   --color-ap-gold: #86b6ff;
 }
 
+/* Crimson Lounge: red-velvet casino night — wine felt, brass lamplight, ivory
+ * chips. Free. */
+[data-theme='crimson']:is(:root, :root *) {
+  --color-felt-950: #1c0709;
+  --color-felt-900: #2a0b0f;
+  --color-felt-800: #401318;
+  --color-felt-700: #571b21;
+  --color-lamplight: #f0c060;
+  --color-lamplight-dim: #bd9550;
+  --color-team-a: #f0c060;
+  --color-team-b: #e8a08a;
+  --color-accent: #f0c060;
+  --color-card-face: #f8efe0;
+  --color-card-face-shade: #ecdfc4;
+  --color-card-back: #6e1622;
+  --color-card-back-line: #96303e;
+  --color-suit-red: #cf3838;
+  --color-suit-brown: #a8722a;
+  --color-suit-green: #24805e;
+  --color-suit-blue: #3d63b3;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #3c1014, var(--color-ap-ground) 72%);
+  --color-ap-ground: #170608;
+  --color-ap-panel: #26090d;
+  --color-ap-panel-hover: #331016;
+  --color-ap-text: #f5e6e0;
+  --color-ap-muted: #c09090;
+  --color-ap-violet: #d84a5a;
+  --color-ap-violet-soft: #f08a96;
+  --color-ap-gold: #f0c060;
+}
+
+/* Boreal: a pine-cabin table — mossy greens, warm amber lamplight, linen
+ * cards. Free. */
+[data-theme='boreal']:is(:root, :root *) {
+  --color-felt-950: #06130a;
+  --color-felt-900: #0b2113;
+  --color-felt-800: #14371f;
+  --color-felt-700: #1d4c2b;
+  --color-lamplight: #ffd27a;
+  --color-lamplight-dim: #c9a45e;
+  --color-team-a: #ffd27a;
+  --color-team-b: #8ad8a0;
+  --color-accent: #ffd27a;
+  --color-card-face: #f4f2e6;
+  --color-card-face-shade: #e2ddc6;
+  --color-card-back: #1e5c34;
+  --color-card-back-line: #3a8454;
+  --color-suit-red: #c23f33;
+  --color-suit-brown: #9c6a26;
+  --color-suit-green: #1f7a4d;
+  --color-suit-blue: #33608f;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #163823, var(--color-ap-ground) 72%);
+  --color-ap-ground: #0a1510;
+  --color-ap-panel: #12241a;
+  --color-ap-panel-hover: #182f22;
+  --color-ap-text: #e8f2e6;
+  --color-ap-muted: #8fb39a;
+  --color-ap-violet: #3f9e63;
+  --color-ap-violet-soft: #7cc795;
+  --color-ap-gold: #ffd27a;
+}
+
+/* Sakura: cherry-blossom daylight — petal-pink linens, dark plum text. Uses
+ * the light-flip pattern (see 'light'). Free. */
+[data-theme='sakura']:is(:root, :root *) {
+  --color-felt-950: #e8c8cf;
+  --color-felt-900: #f4d9de;
+  --color-felt-800: #fbe8ea;
+  --color-felt-700: #ffffff;
+  --color-lamplight: #b03a5c;
+  --color-lamplight-dim: #c46a84;
+  --color-team-a: #b03a5c;
+  --color-team-b: #2b6a9c;
+  --color-ivory: #33232a;
+  --color-ivory-shade: #5c4450;
+  --color-accent: #b03a5c;
+  --color-card-face: #fff6f4;
+  --color-card-face-shade: #f4e0e0;
+  --color-card-back: #d87a94;
+  --color-card-back-line: #e8a4b8;
+  --color-suit-red: #c02f4a;
+  --color-suit-brown: #96660f;
+  --color-suit-green: #157a5f;
+  --color-suit-blue: #2b57ad;
+  --color-danger-text: #a82626;
+  --shadow-card: 0 1px 2px rgb(90 45 60 / 0.22), 0 6px 14px rgb(90 45 60 / 0.16);
+  --shadow-card-raised: 0 2px 4px rgb(90 45 60 / 0.28), 0 12px 24px rgb(90 45 60 / 0.2);
+  --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 8px 24px rgb(90 45 60 / 0.18);
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #fff0f2, var(--color-ap-ground) 72%);
+  --color-ap-ground: #faeef0;
+  --color-ap-panel: #ffffff;
+  --color-ap-panel-hover: #f8e0e6;
+  --color-ap-text: #33232a;
+  --color-ap-muted: #8c6875;
+  --color-ap-gold: #c08a10;
+  --color-ap-danger-text: #b3261e;
+}
+
+/* Glacier: ice-shelf daylight — pale blue linens, deep-water accents. Uses the
+ * light-flip pattern. Unlockable. */
+[data-theme='glacier']:is(:root, :root *) {
+  --color-felt-950: #b8ccd8;
+  --color-felt-900: #cfe0e8;
+  --color-felt-800: #e4eef4;
+  --color-felt-700: #ffffff;
+  --color-lamplight: #135f80;
+  --color-lamplight-dim: #4a86a0;
+  --color-team-a: #135f80;
+  --color-team-b: #6a4aa0;
+  --color-ivory: #1c2830;
+  --color-ivory-shade: #3c5060;
+  --color-accent: #135f80;
+  --color-card-face: #fbfdff;
+  --color-card-face-shade: #e4edf4;
+  --color-card-back: #4a90b8;
+  --color-card-back-line: #78b0d0;
+  --color-suit-red: #c02f2f;
+  --color-suit-brown: #96660f;
+  --color-suit-green: #157a5f;
+  --color-suit-blue: #2b57ad;
+  --color-danger-text: #a82626;
+  --shadow-card: 0 1px 2px rgb(40 65 85 / 0.22), 0 6px 14px rgb(40 65 85 / 0.16);
+  --shadow-card-raised: 0 2px 4px rgb(40 65 85 / 0.28), 0 12px 24px rgb(40 65 85 / 0.2);
+  --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.75) inset, 0 8px 24px rgb(40 65 85 / 0.18);
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #f4fafc, var(--color-ap-ground) 72%);
+  --color-ap-ground: #eef6fa;
+  --color-ap-panel: #ffffff;
+  --color-ap-panel-hover: #e0eef6;
+  --color-ap-text: #14212b;
+  --color-ap-muted: #5c7a8a;
+  --color-ap-gold: #c78a00;
+  --color-ap-danger-text: #b3261e;
+}
+
+/* Abyss: bioluminescent deep sea — black-water felt, glowing plankton teal.
+ * Unlockable. */
+[data-theme='abyss']:is(:root, :root *) {
+  --color-felt-950: #020a0f;
+  --color-felt-900: #04141d;
+  --color-felt-800: #082230;
+  --color-felt-700: #0d3244;
+  --color-lamplight: #4de8d0;
+  --color-lamplight-dim: #3aac9c;
+  --color-team-a: #4de8d0;
+  --color-team-b: #7aa8ff;
+  --color-accent: #4de8d0;
+  --color-card-face: #e8f4f2;
+  --color-card-face-shade: #d2e4e2;
+  --color-card-back: #0b3a4a;
+  --color-card-back-line: #1a6478;
+  --color-suit-red: #e85a72;
+  --color-suit-brown: #c79a48;
+  --color-suit-green: #1fae86;
+  --color-suit-blue: #3d84c4;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #0a2a3c, var(--color-ap-ground) 72%);
+  --color-ap-ground: #03101a;
+  --color-ap-panel: #082031;
+  --color-ap-panel-hover: #0c2a40;
+  --color-ap-text: #dff2f2;
+  --color-ap-muted: #7ba3b3;
+  --color-ap-violet: #21b8a8;
+  --color-ap-violet-soft: #66d8cc;
+  --color-ap-gold: #4de8d0;
+}
+
+/* Ember: the smouldering act boss — charred felt, forge-orange light, a cool
+ * teal counterweight for team B. Unlockable. */
+[data-theme='ember']:is(:root, :root *) {
+  --color-felt-950: #150705;
+  --color-felt-900: #220d08;
+  --color-felt-800: #33150c;
+  --color-felt-700: #452012;
+  --color-lamplight: #ff9440;
+  --color-lamplight-dim: #c47438;
+  --color-team-a: #ff9440;
+  --color-team-b: #5fb8c8;
+  --color-accent: #ff9440;
+  --color-card-face: #f5e8d8;
+  --color-card-face-shade: #e6d0b4;
+  --color-card-back: #4a160c;
+  --color-card-back-line: #8c3018;
+  --color-suit-red: #d43e28;
+  --color-suit-brown: #a86a20;
+  --color-suit-green: #3a7a4a;
+  --color-suit-blue: #5568a8;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #4a1c0c, var(--color-ap-ground) 72%);
+  --color-ap-ground: #180a06;
+  --color-ap-panel: #26120a;
+  --color-ap-panel-hover: #331a0e;
+  --color-ap-text: #f5e2d2;
+  --color-ap-muted: #bf9480;
+  --color-ap-violet: #e86a28;
+  --color-ap-violet-soft: #ffa068;
+  --color-ap-gold: #ffb84d;
+}
+
+/* Terminal: green-phosphor CRT — the whole table is a monitor, cards are dark
+ * glass, marks glow like scanlined glyphs. Square corners. Unlockable. */
+[data-theme='terminal']:is(:root, :root *) {
+  --color-felt-950: #010604;
+  --color-felt-900: #041008;
+  --color-felt-800: #0a1c10;
+  --color-felt-700: #0e2818;
+  --color-lamplight: #33ff88;
+  --color-lamplight-dim: #28b866;
+  --color-team-a: #33ff88;
+  --color-team-b: #ffb000;
+  --color-ivory: #c8ffdc;
+  --color-ivory-shade: #8ce8ac;
+  --color-accent: #33ff88;
+  --color-card-face: #0a1a10;
+  --color-card-face-shade: #0f2416;
+  --color-card-back: #04170c;
+  --color-card-back-line: #1d5c32;
+  --color-suit-red: #ff5f56;
+  --color-suit-brown: #ffb000;
+  --color-suit-green: #33ff88;
+  --color-suit-blue: #2ee6d6;
+  --color-ok: #33ff88;
+  --radius-card: 4px;
+  --radius-panel: 6px;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #06180c, var(--color-ap-ground) 72%);
+  --color-ap-ground: #020a05;
+  --color-ap-panel: #06180e;
+  --color-ap-panel-hover: #0a2214;
+  --color-ap-text: #b8ffd0;
+  --color-ap-muted: #55a878;
+  --color-ap-violet: #22cc66;
+  --color-ap-violet-soft: #66ff9c;
+  --color-ap-gold: #ffb000;
+}
+
+/* Synthwave: neon horizon — indigo night, hot-magenta sun, chrome-cyan grid.
+ * Unlockable. */
+[data-theme='synthwave']:is(:root, :root *) {
+  --color-felt-950: #10041f;
+  --color-felt-900: #1a0833;
+  --color-felt-800: #2a0f4e;
+  --color-felt-700: #3a1668;
+  --color-lamplight: #ff5ad2;
+  --color-lamplight-dim: #c246a2;
+  --color-team-a: #ff5ad2;
+  --color-team-b: #29d8ff;
+  --color-accent: #ff5ad2;
+  --color-card-face: #fdf4ff;
+  --color-card-face-shade: #efdff4;
+  --color-card-back: #3b1a6e;
+  --color-card-back-line: #ff5ad2;
+  --color-suit-red: #ff3d7e;
+  --color-suit-brown: #ff9d1f;
+  --color-suit-green: #14d2b0;
+  --color-suit-blue: #3f8bff;
+  --table-backdrop: radial-gradient(1150px 760px at 50% 20%, #4a1a8c, var(--color-ap-ground) 66%);
+  --color-ap-ground: #14062a;
+  --color-ap-panel: #221046;
+  --color-ap-panel-hover: #2c1658;
+  --color-ap-text: #f0e6ff;
+  --color-ap-muted: #a08cc8;
+  --color-ap-violet: #b44dff;
+  --color-ap-violet-soft: #d08cff;
+  --color-ap-gold: #ffcf4d;
+}
+
+/* Gold Leaf: the high-stakes back room — lacquer-black surfaces, gilded
+ * pinstripes, silver for team B. Unlockable. */
+[data-theme='goldleaf']:is(:root, :root *) {
+  --color-felt-950: #0c0a06;
+  --color-felt-900: #16120a;
+  --color-felt-800: #241d10;
+  --color-felt-700: #332916;
+  --color-lamplight: #ffd97a;
+  --color-lamplight-dim: #c4a45c;
+  --color-team-a: #ffd97a;
+  --color-team-b: #c0c8d8;
+  --color-accent: #ffd97a;
+  --color-card-face: #f8f2e0;
+  --color-card-face-shade: #ebe2c8;
+  --color-card-back: #171208;
+  --color-card-back-line: #c8a038;
+  --color-suit-red: #b3402f;
+  --color-suit-brown: #9c7a20;
+  --color-suit-green: #2a7a58;
+  --color-suit-blue: #3c5e9e;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #2e2410, var(--color-ap-ground) 72%);
+  --color-ap-ground: #0d0b07;
+  --color-ap-panel: #191408;
+  --color-ap-panel-hover: #241d10;
+  --color-ap-text: #f2e8d0;
+  --color-ap-muted: #b3a375;
+  --color-ap-violet: #d9a520;
+  --color-ap-violet-soft: #f0c860;
+  --color-ap-gold: #ffd97a;
+}
+
+/* Arcane: the spire's inner sanctum — violet stone, rune-teal glow. Unlocked
+ * the first time you dare a sans-atout bid. */
+[data-theme='arcane']:is(:root, :root *) {
+  --color-felt-950: #0d0618;
+  --color-felt-900: #150c26;
+  --color-felt-800: #21143c;
+  --color-felt-700: #2d1d52;
+  --color-lamplight: #b08cff;
+  --color-lamplight-dim: #8468c4;
+  --color-team-a: #b08cff;
+  --color-team-b: #6ee8c8;
+  --color-accent: #b08cff;
+  --color-card-face: #ece6f8;
+  --color-card-face-shade: #d8cfec;
+  --color-card-back: #2a1454;
+  --color-card-back-line: #5a3aa0;
+  --color-suit-red: #d85a8c;
+  --color-suit-brown: #c89050;
+  --color-suit-green: #3fbf9f;
+  --color-suit-blue: #7a6af0;
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #241448, var(--color-ap-ground) 72%);
+  --color-ap-ground: #0c0716;
+  --color-ap-panel: #170f2a;
+  --color-ap-panel-hover: #201640;
+  --color-ap-text: #eae2f8;
+  --color-ap-muted: #9488b8;
+  --color-ap-violet: #9a6af0;
+  --color-ap-violet-soft: #c0a0ff;
+  --color-ap-gold: #6ee8c8;
+}
+
 /* ── Card skins — a second cosmetic axis (`[data-card-skin]`), independent of
  * the theme. These blocks MUST stay BELOW all [data-theme] blocks: same
  * specificity, so source order wins — a chosen card skin overrides the theme's
@@ -346,6 +671,137 @@
   --color-suit-brown: #ffb020;
   --color-suit-green: #24f0b0;
   --color-suit-blue: #46b4ff;
+}
+
+/* Newsprint: yesterday's paper — pulp-grey stock, black-ink suits with just
+ * enough tint to tell apart, a halftone-dot back (renderer). Free. */
+[data-card-skin='newsprint']:is(:root, :root *) {
+  --color-card-face: #f0ede4;
+  --color-card-face-shade: #ddd8ca;
+  --color-card-back: #2b2b28;
+  --color-card-back-line: #4a4a44;
+  --color-suit-red: #b8342e;
+  --color-suit-brown: #7a6a4a;
+  --color-suit-green: #4a6a52;
+  --color-suit-blue: #47597a;
+}
+
+/* Blueprint: drafting-table cyanotype — deep blue stock, chalk-bright suit
+ * inks, a grid-paper back (renderer). Free. */
+[data-card-skin='blueprint']:is(:root, :root *) {
+  --color-card-face: #1d3a6e;
+  --color-card-face-shade: #16305c;
+  --color-card-back: #16305c;
+  --color-card-back-line: #7db8ff;
+  --color-suit-red: #ff8f7d;
+  --color-suit-brown: #ffcf7d;
+  --color-suit-green: #7de8b8;
+  --color-suit-blue: #9cc8ff;
+}
+
+/* Woodcut: a medieval print shop — heavy parchment, four hand-carved ink
+ * colours. Pure token skin. Unlockable. */
+[data-card-skin='woodcut']:is(:root, :root *) {
+  --color-card-face: #efe3c4;
+  --color-card-face-shade: #dfcfa2;
+  --color-card-back: #3a2a1a;
+  --color-card-back-line: #5c4630;
+  --color-suit-red: #8c2f22;
+  --color-suit-brown: #5c4322;
+  --color-suit-green: #3d5a2a;
+  --color-suit-blue: #2c3e5e;
+}
+
+/* Pixel Parlor: an 8-bit cartridge deck — console-palette suits, a hard
+ * dithered checker back + crisp pixel shadow on the mark (renderer).
+ * Unlockable. */
+[data-card-skin='pixel-parlor']:is(:root, :root *) {
+  --color-card-face: #f8f8e8;
+  --color-card-face-shade: #d8d8c0;
+  --color-card-back: #2038c8;
+  --color-card-back-line: #4868e8;
+  --color-suit-red: #e40058;
+  --color-suit-brown: #d87800;
+  --color-suit-green: #00a844;
+  --color-suit-blue: #0078f8;
+}
+
+/* Stained Glass: smoked cathedral panes — near-black glass face, jewel suits
+ * lit from behind (renderer adds the lead ring + glow). Unlockable. */
+[data-card-skin='stained-glass']:is(:root, :root *) {
+  --color-card-face: #241a2e;
+  --color-card-face-shade: #302440;
+  --color-card-back: #1a1024;
+  --color-card-back-line: #6a4a8c;
+  --color-suit-red: #e0485e;
+  --color-suit-brown: #e8a03a;
+  --color-suit-green: #35c88a;
+  --color-suit-blue: #5a8ce8;
+}
+
+/* Vaporwave: mall-at-midnight pastels — blush face, sherbet suits, a sunset
+ * grid back (renderer). Unlockable. */
+[data-card-skin='vaporwave']:is(:root, :root *) {
+  --color-card-face: #fdf0f8;
+  --color-card-face-shade: #f0dcee;
+  --color-card-back: #2a1a4e;
+  --color-card-back-line: #ff7ac8;
+  --color-suit-red: #ff5f9e;
+  --color-suit-brown: #e8873a;
+  --color-suit-green: #1fb8a8;
+  --color-suit-blue: #7a7aff;
+}
+
+/* Gilded: lacquer-black card, metal-leaf suits, a gold-pinstripe back; the
+ * renderer gives every mark a soft gold aura. Unlockable. */
+[data-card-skin='gilded']:is(:root, :root *) {
+  --color-card-face: #141210;
+  --color-card-face-shade: #201c18;
+  --color-card-back: #0d0b08;
+  --color-card-back-line: #d9a520;
+  --color-suit-red: #e87a5e;
+  --color-suit-brown: #f0c060;
+  --color-suit-green: #9ec86a;
+  --color-suit-blue: #8ab0d8;
+}
+
+/* Blood Moon: your nemesis's deck — bone face, dried-ink suits, an eclipse-red
+ * back. Pure token skin, earned by losing. Unlockable. */
+[data-card-skin='bloodmoon']:is(:root, :root *) {
+  --color-card-face: #ece2d4;
+  --color-card-face-shade: #dbccb8;
+  --color-card-back: #3d0a10;
+  --color-card-back-line: #7a1a24;
+  --color-suit-red: #a01f2e;
+  --color-suit-brown: #7a4a28;
+  --color-suit-green: #4a6650;
+  --color-suit-blue: #4a4a6e;
+}
+
+/* Prismatic: the holo-foil rare — cool pearl face, saturated suits, an
+ * iridescent back + slow hue-cycling glow on the mark (renderer). Unlockable. */
+[data-card-skin='prismatic']:is(:root, :root *) {
+  --color-card-face: #f4f4fa;
+  --color-card-face-shade: #e0e0ec;
+  --color-card-back: #1a1a2a;
+  --color-card-back-line: #8a8aff;
+  --color-suit-red: #ff4d6e;
+  --color-suit-brown: #ffb020;
+  --color-suit-green: #22d89a;
+  --color-suit-blue: #4d8aff;
+}
+
+/* Sans Atout: the no-trump deck — white-on-white porcelain, silver back,
+ * suits reduced to quiet heraldic tints. Pure token skin. Unlockable. */
+[data-card-skin='sans-atout']:is(:root, :root *) {
+  --color-card-face: #fbfbfd;
+  --color-card-face-shade: #e8e8ee;
+  --color-card-back: #eceef2;
+  --color-card-back-line: #b8b8c8;
+  --color-suit-red: #b05264;
+  --color-suit-brown: #9a7e52;
+  --color-suit-green: #5e8e78;
+  --color-suit-blue: #6478a8;
 }
 
 @layer base {
@@ -558,6 +1014,12 @@
     overflow: hidden;
   }
 
+  /* Prismatic skin: a slow hue cycle over whatever filter/gradient sits inside.
+   * Static (frozen at its base hue) under reduced motion. */
+  .skin-prism {
+    /* reduced-motion: no animation, the base hue stands */
+  }
+
   /* Loading = a wave of pixel blocks bobbing in sequence (the arcade take on a
    * skeleton). Blocks sit at rest, dimmed, under reduced motion. Stagger each
    * block with an inline `animation-delay`. */
@@ -597,6 +1059,15 @@
     }
     .ap-glow {
       animation: ap-glow 3s ease-in-out infinite;
+    }
+    .skin-prism {
+      animation: skin-prism 8s linear infinite;
+    }
+  }
+
+  @keyframes skin-prism {
+    to {
+      filter: hue-rotate(360deg);
     }
   }
 

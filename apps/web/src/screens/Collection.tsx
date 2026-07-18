@@ -102,7 +102,9 @@ const SAMPLE: readonly CardData[] = [
 
 /** A small fanned deck, rendered under a given card skin's tokens + renderers.
  * Your painted card (if any) rides along on the red 0 — the personalised card
- * previews as part of every skin, exactly as it looks at the table. */
+ * previews as part of every skin, exactly as it looks at the table. The fan
+ * ends on a face-DOWN card so the skin's back (striped or custom-printed)
+ * shows in the tile too. */
 function MiniDeck() {
   const paint = getProfile().paint;
   return (
@@ -112,6 +114,9 @@ function MiniDeck() {
           <PlayingCard card={card} size="sm" tilt={(i - 1) * 7} paint={paint} />
         </div>
       ))}
+      <div style={{ marginLeft: '-0.9em', zIndex: SAMPLE.length }}>
+        <PlayingCard card={{ suit: 'red', value: 5 }} size="sm" tilt={14} faceDown />
+      </div>
     </div>
   );
 }
