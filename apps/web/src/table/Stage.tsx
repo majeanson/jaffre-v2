@@ -37,9 +37,8 @@ export function Stage({
         aria-hidden
         className="felt-oval pointer-events-none absolute inset-[7%] rounded-[46%] max-sm:inset-x-[2%] max-sm:inset-y-[3%]"
       />
-      {/* Trick insets keep cards clear of the seat chips; cards render above
-          chips as a fallback so a chip never covers a played card. On phones the
-          box widens with the felt so the bigger cards use the space. */}
+      {/* Trick insets keep cards clear of the seat chips. On phones the box
+          widens with the felt so the bigger cards use the space. */}
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[15%] max-sm:inset-y-[10%]">
         <TrickArea plays={trickPlays} sweepTo={sweepTo} highlight={winnerPosition} size="lg" />
       </div>
@@ -48,14 +47,18 @@ export function Stage({
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·
           bot"). Phone: compact avatar tokens pulled ONTO the felt, diagonally
           offset beside their own played card, so the rim isn't dead space.
+          z-20 keeps the chips — and everything they pop up (tap peek, bid
+          bubble, bot-swap countdown) — ABOVE the played cards: an outer z-0
+          would trap those popovers under the trick no matter their own z.
+          The seat positions are chosen to stay clear of the card slots.
           top-4 keeps the top chip (and its bid bubble) below the top bar. */}
-      <div className="absolute top-4 left-1/2 z-0 -translate-x-1/2 max-sm:top-[3%] max-sm:left-[30%]">
+      <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2 max-sm:top-[3%] max-sm:left-[30%]">
         <SeatChip info={seatInfo(2)} compact />
       </div>
-      <div className="absolute left-0 top-1/2 z-0 -translate-y-1/2 max-sm:left-[3.5%] max-sm:top-[34%]">
+      <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2 max-sm:left-[3.5%] max-sm:top-[34%]">
         <SeatChip info={seatInfo(1)} compact peekAlign="start" />
       </div>
-      <div className="absolute right-0 top-1/2 z-0 -translate-y-1/2 max-sm:right-[3.5%] max-sm:top-[34%]">
+      <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 max-sm:right-[3.5%] max-sm:top-[34%]">
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />
       </div>
       {bidOverlay}

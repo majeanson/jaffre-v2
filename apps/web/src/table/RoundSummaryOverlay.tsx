@@ -5,7 +5,6 @@ import {
   SpecialChip,
   SuitShape,
   suitName,
-  TeamGlyph,
   useLang,
   type Lang,
   type ScoreboardRound,
@@ -21,7 +20,11 @@ const T: Record<
     round: (n: number) => string;
     made: string;
     missed: string;
-    trickPts: (n: number) => string;
+    /** Plain-language result: what happened and what it cost/earned. */
+    explainMade: (name: string, bid: number, pts: number, team: string, delta: number) => string;
+    explainMissed: (name: string, bid: number, pts: number, team: string, delta: number) => string;
+    explainOther: (team: string, delta: number) => string;
+    sansAtoutNote: string;
     you: string;
     noTrump: string;
     trumpTitle: (suit: string) => string;
@@ -35,7 +38,12 @@ const T: Record<
     round: (n) => `Round ${n}`,
     made: 'made',
     missed: 'missed',
-    trickPts: (n) => `${n} trick pts`,
+    explainMade: (name, bid, pts, team, delta) =>
+      `${name} took ${pts} trick points on a bet of ${bid} — ${team} scores +${delta}.`,
+    explainMissed: (name, bid, pts, team, delta) =>
+      `${name} needed ${bid} but took ${pts} trick points — ${team} loses ${Math.abs(delta)}.`,
+    explainOther: (team, delta) => ` ${team} takes ${delta >= 0 ? `+${delta}` : delta}.`,
+    sansAtoutNote: ' No trump: stake ×2.',
     you: 'you',
     noTrump: 'No trump',
     trumpTitle: (suit) => `Trump: ${suit}`,
@@ -48,7 +56,12 @@ const T: Record<
     round: (n) => `Ronde ${n}`,
     made: 'réussit',
     missed: 'rate',
-    trickPts: (n) => `${n} pts de levées`,
+    explainMade: (name, bid, pts, team, delta) =>
+      `${name} a pris ${pts} points de levées sur une mise de ${bid} — ${team} marque +${delta}.`,
+    explainMissed: (name, bid, pts, team, delta) =>
+      `${name} visait ${bid} mais n'a pris que ${pts} points de levées — ${team} perd ${Math.abs(delta)}.`,
+    explainOther: (team, delta) => ` ${team} prend ${delta >= 0 ? `+${delta}` : delta}.`,
+    sansAtoutNote: ' Sans atout : mise ×2.',
     you: 'toi',
     noTrump: 'Sans atout',
     trumpTitle: (suit) => `Atout : ${suit}`,
@@ -147,8 +160,7 @@ export function RoundSummaryOverlay({
           {tr.round(summary.roundIndex + 1)}
         </p>
 
-        {/* Contract result headline: ✓/✗, who, made/missed, for which team, on
-            which trump. */}
+        {/* Contract result headline: ✓/✗, who, made/missed, on which trump. */}
         <div className="mt-2 flex items-center justify-center gap-3">
           <span
             className={`grid size-9 shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-xl text-(--color-ap-ink) ${
@@ -157,57 +169,52 @@ export function RoundSummaryOverlay({
           >
             {made ? '✓' : '✗'}
           </span>
-          <span className="text-left leading-tight">
-            <span className="flex items-center gap-1.5 font-arcade-display text-lg uppercase text-(--color-ap-text)">
-              <span>
-                {contractName} {made ? tr.made : tr.missed} {summary.contract.value}
-              </span>
-              <TrumpMark trump={summary.trump} sansAtout={summary.contract.sansAtout} />
+          <span className="flex items-center gap-1.5 font-arcade-display text-lg uppercase text-(--color-ap-text)">
+            <span>
+              {contractName} {made ? tr.made : tr.missed} {summary.contract.value}
             </span>
-            {/* Team colour flips WITH the skin, staying legible on the ground. */}
-            <span
-              className="mt-0.5 flex items-center gap-1.5 text-(length:--text-fluid-xs) font-semibold"
-              style={{ color: teamColor(contractTeam) }}
-            >
-              <TeamGlyph team={contractTeam} size="1em" label={tr.teams[contractTeam]} />
-              {tr.teams[contractTeam]}
-            </span>
+            <TrumpMark trump={summary.trump} sansAtout={summary.contract.sansAtout} />
           </span>
         </div>
 
-        {/* This round's points as a band fused atop the SAME written scoresheet
-            as the top bar — the round delta and the game totals read as one
-            sheet, never two competing scores. */}
+        {/* The result, in plain words — what happened and what it cost. */}
+        <p className="mx-auto mt-2 max-w-[19rem] text-center text-(length:--text-fluid-sm) leading-snug text-(--color-ap-muted)">
+          {(made ? tr.explainMade : tr.explainMissed)(
+            contractName,
+            summary.contract.value,
+            summary.trickPoints[contractTeam],
+            tr.teams[contractTeam],
+            summary.deltas[contractTeam] ?? 0,
+          )}
+          {tr.explainOther(
+            tr.teams[(1 - contractTeam) as 0 | 1],
+            summary.deltas[1 - contractTeam] ?? 0,
+          )}
+          {summary.contract.sansAtout ? tr.sansAtoutNote : ''}
+        </p>
+
+        {/* THIS round's points — the focus: two big team-coloured deltas (with
+            any captured specials), fused atop the written scoresheet where the
+            same round's row is highlighted. */}
         <div className="mt-4">
-          <div className="grid grid-cols-2 overflow-hidden rounded-t-(--radius-ap-card) border-[3px] border-b-0 border-(--color-ap-ink) bg-(--color-ap-panel) text-center text-sm tabular-nums">
+          <div className="flex items-center justify-center gap-8 rounded-t-(--radius-ap-card) border-[3px] border-b-0 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2.5 tabular-nums">
             {([0, 1] as const).map((t) => {
               const delta = summary.deltas[t] ?? 0;
               const sp = specials[t];
               const mine = myTeam === t;
               return (
-                <div
-                  key={t}
-                  className={`flex flex-col items-center gap-0.5 p-2.5 ${
-                    t === 1 ? 'border-l-2 border-(--color-ap-ink)/40' : ''
-                  } ${mine ? 'bg-(--color-ap-violet)/15 ring-2 ring-inset ring-(--color-ap-violet)' : ''}`}
-                >
-                  <p className="flex items-center justify-center gap-1.5">
-                    <TeamGlyph team={t} size="1.2em" label={tr.teams[t]} />
-                    {mine && <span className="sr-only">({tr.you})</span>}
-                  </p>
-                  <p className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                    {names[t]} & {names[t + 2]}
-                  </p>
-                  <p className="flex flex-wrap items-center justify-center gap-1 text-(length:--text-fluid-xs) text-(--color-ap-text)/85">
-                    {tr.trickPts(summary.trickPoints[t])}
-                    {sp.red && <SpecialChip kind="red" />}
-                    {sp.brown && <SpecialChip kind="brown" />}
-                  </p>
-                  <p className="font-arcade-display text-xl" style={{ color: teamColor(t) }}>
+                <span key={t} className="flex items-center gap-1.5">
+                  <span
+                    className="font-arcade-display text-(length:--text-fluid-2xl) leading-none"
+                    style={{ color: teamColor(t) }}
+                  >
                     {delta >= 0 ? '+' : ''}
                     {delta}
-                  </p>
-                </div>
+                  </span>
+                  {sp.red && <SpecialChip kind="red" />}
+                  {sp.brown && <SpecialChip kind="brown" />}
+                  {mine && <span className="sr-only">({tr.you})</span>}
+                </span>
               );
             })}
           </div>
@@ -217,6 +224,7 @@ export function RoundSummaryOverlay({
             target={41}
             rounds={rounds}
             myTeam={myTeam}
+            highlightRound={summary.roundIndex + 1}
             className="max-w-none rounded-t-none"
           />
         </div>

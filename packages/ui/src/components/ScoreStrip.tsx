@@ -396,6 +396,7 @@ export function ScorePad({
   contract,
   trump = null,
   myTeam = null,
+  highlightRound,
   className = '',
 }: {
   teamNames: readonly [string, string];
@@ -408,6 +409,9 @@ export function ScorePad({
   /** The trump decided for the round in progress (live row); null if undecided. */
   trump?: SuitId | null;
   myTeam?: 0 | 1 | null;
+  /** Round number to spotlight (the round-summary dialog marks the round it
+   * is explaining) — that row gets a soft gold tint. */
+  highlightRound?: number | undefined;
   /** Extra classes on the pad root (e.g. to fuse it under a header band). */
   className?: string;
 }) {
@@ -481,7 +485,13 @@ export function ScorePad({
           </thead>
           <tbody>
             {rounds.map((r) => (
-              <tr key={r.round} className="border-b border-(--color-ap-ink)/10 last:border-0">
+              <tr
+                key={r.round}
+                className={`border-b border-(--color-ap-ink)/10 last:border-0 ${
+                  // The round being explained (round summary) pops off the pad.
+                  r.round === highlightRound ? 'bg-(--color-ap-gold)/20 font-bold' : ''
+                }`}
+              >
                 <td className="py-1 pl-3 text-left font-arcade-ui text-(--color-ap-ink)/60">
                   R{r.round}
                 </td>
