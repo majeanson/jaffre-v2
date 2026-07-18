@@ -99,11 +99,18 @@ land.
       (Add-bot seeds Normal then tap-to-cycle; bots already get distinct
       names/numbers — good enough; a pick-on-add popover can come later if wanted.)
 
-## Phase F — Player info on click ⬜
+## Phase F — Player info on click ✅
 
-- [ ] **F1. Expand a seat → player info/stats.** Click/tap a seat chip to open a
-      small player panel: name, team, avatar; for humans, their record (reuse the
-      stats fetch); for bots, difficulty. Files: `Seat.tsx`, a `PlayerPeek` popover.
+- [x] **F1. Expand a seat → player info/stats.** Tapping any seat chip opens a
+      `PlayerPeek` popover: team glyph + name + connection, then a body that respects
+      the self-scoped `/api/stats` — your OWN seat shows your record (games/wins/
+      win-rate/streak via `fetchStats`), a bot shows its colour-coded difficulty
+      (green/gold/red like the lobby), any other human shows name/team/connection
+      only (no fetch). A transparent overlay button keeps `Seat` presentational
+      (axe-clean); closes on Escape/outside-click and returns focus (mirrors the
+      last-trick popover); edge-aware placement keeps left/right/bottom seats
+      on-screen. Files: `SeatChip.tsx`, new `PlayerPeek.tsx`, `useTableDerived.ts`
+      (seat `difficulty`), `Stage.tsx`/`UtilityRow.tsx` (placement).
 
 ## Phase G — Personalized card (bigger) ⬜
 

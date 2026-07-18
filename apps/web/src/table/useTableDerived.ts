@@ -1,6 +1,6 @@
 import type { Card, SeatView, Suit } from '@jaffre/engine';
 import { legalBidChoices, legalCards } from '@jaffre/engine';
-import type { Roster } from '@jaffre/protocol';
+import type { BotDifficulty, Roster } from '@jaffre/protocol';
 import type {
   AuctionTurn,
   BidOption,
@@ -65,6 +65,8 @@ export interface SeatChipInfo {
   readonly isTurn: boolean;
   readonly isDealer: boolean;
   readonly isBot: boolean;
+  /** For a bot seat, the difficulty it plays at (peek shows it); null for humans. */
+  readonly difficulty: BotDifficulty | null;
   readonly connected: boolean;
   /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
   readonly botSwapAt: number | null;
@@ -289,6 +291,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       isTurn: view.turn === seat && view.phase !== 'game_over',
       isDealer: view.dealer === seat,
       isBot: info.isBot,
+      difficulty: info.difficulty ?? null,
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
       bidText: bidTextFor(seat),

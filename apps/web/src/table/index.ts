@@ -8,6 +8,7 @@ export * from './GameLogPanel.js';
 export * from './GameRecap.js';
 export * from './LastTrickPeek.js';
 export * from './Overlays.js';
+export * from './PlayerPeek.js';
 export * from './PlayerHand.js';
 export * from './RoundSummaryOverlay.js';
 export * from './SeatChip.js';

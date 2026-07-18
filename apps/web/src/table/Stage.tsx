@@ -48,10 +48,10 @@ export function Stage({
         <SeatChip info={seatInfo(2)} compact />
       </div>
       <div className="absolute left-0 top-1/2 z-0 -translate-y-1/2">
-        <SeatChip info={seatInfo(1)} compact />
+        <SeatChip info={seatInfo(1)} compact peekAlign="start" />
       </div>
       <div className="absolute right-0 top-1/2 z-0 -translate-y-1/2">
-        <SeatChip info={seatInfo(3)} compact />
+        <SeatChip info={seatInfo(3)} compact peekAlign="end" />
       </div>
       {bidOverlay}
     </div>

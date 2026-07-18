@@ -31,7 +31,7 @@ export function UtilityRow({
       {/* Your own seat, centered under the felt — the bottom seat mirroring the
           top opponent, so all four players read as sat around the table. */}
       <span className="justify-self-center">
-        <SeatChip info={you} />
+        <SeatChip info={you} peekPlacement="up" />
       </span>
       <span className="flex items-center gap-2 justify-self-end">{comms}</span>
     </div>
