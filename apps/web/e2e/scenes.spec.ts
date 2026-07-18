@@ -71,20 +71,29 @@ test('glossary: color-family entries with wiki cross-links', async ({ page }) =>
   const dialog = page.getByRole('dialog', { name: 'How to play' });
   await expect(dialog).toBeVisible();
 
-  // Open the glossary and check a bonhomme entry with its definition.
+  // Inline wiki term: clicking a colored term pops the mini card in place —
+  // the reader keeps their spot; nothing scrolls away.
+  await dialog.getByRole('button', { name: 'trump suit' }).click();
+  const pop = dialog.locator('#gloss-pop');
+  await expect(pop.getByText('Trump (atout)')).toBeVisible();
+
+  // See-also inside the popup hops wiki-style without moving the anchor.
+  await pop.getByRole('button', { name: 'Ruff (coupe)' }).click();
+  await expect(pop.getByText('Ruff (coupe)', { exact: true })).toBeVisible();
+
+  // First Escape dismisses only the popup; the sheet stays open.
+  await page.keyboard.press('Escape');
+  await expect(pop).toBeHidden();
+  await expect(dialog).toBeVisible();
+
+  // The full glossary section still lists every entry with its definition.
   await dialog.getByText('Glossary', { exact: true }).click();
   await expect(dialog.locator('#gloss-red0').getByText('The red 0 (joffre)')).toBeVisible();
   await expect(dialog.getByText(/The \+5 bonhomme/)).toBeVisible();
 
-  // Cross-link: the red-0 entry's "see also" jumps to the boss-card entry.
+  // A see-also link inside a section entry opens the popup too.
   await dialog.locator('#gloss-red0').getByRole('button', { name: 'Boss card (maître)' }).click();
-  await expect(dialog.locator('#gloss-maitre')).toBeVisible();
-
-  // Inline wiki term: clicking a colored term in the rules opens the glossary.
-  await page.reload();
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'trump suit' }).click();
-  await expect(dialog.locator('#gloss-atout').getByText('Trump (atout)')).toBeVisible();
+  await expect(pop.getByText('Boss card (maître)')).toBeVisible();
 
   await expectNoSeriousViolations(page, 'glossary open');
 });

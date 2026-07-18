@@ -7,7 +7,7 @@ import {
   type CardData,
   type Lang,
 } from '@jaffre/ui';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { TEAMS } from '../teams.js';
 
@@ -151,6 +151,7 @@ type ConceptId =
   | 'chute'
   | 'mise'
   | 'sansatout'
+  | 'hailmary'
   | 'brasseur';
 
 interface Concept {
@@ -248,6 +249,15 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     },
     see: ['mise', 'atout'],
   },
+  hailmary: {
+    color: BLUE,
+    term: { en: '12 sans atout (hail-mary)', fr: '12 sans atout (tout ou rien)' },
+    def: {
+      en: 'An optional table rule: call 12 sans atout and make it to win the whole game on the spot — miss it and you lose the game outright. The comeback gamble when you are far behind. Making 12 means taking every trick but the one carrying the brown 0 (a clean sweep is only 11).',
+      fr: "Une règle de table optionnelle : demande 12 sans atout et réussis-la pour gagner toute la partie d'un coup — rate-la et tu perds la partie sur-le-champ. Le pari de remontée quand tu tires de l'arrière. Réussir 12, c'est prendre toutes les levées sauf celle du 0 brun (ramasser les huit n'en fait que 11).",
+    },
+    see: ['sansatout', 'mise'],
+  },
   brasseur: {
     color: BLUE,
     term: { en: 'Dealer (brasseur)', fr: 'Le brasseur' },
@@ -264,7 +274,7 @@ const GLOSSARY_GROUPS: readonly { readonly ids: readonly ConceptId[] }[] = [
   { ids: ['red0', 'brown0'] },
   { ids: ['levee', 'maitre'] },
   { ids: ['atout', 'coupe', 'chute'] },
-  { ids: ['mise', 'sansatout', 'brasseur'] },
+  { ids: ['mise', 'sansatout', 'hailmary', 'brasseur'] },
 ];
 
 /** Open the glossary disclosure and scroll its entry into view, with a flash. */
@@ -289,17 +299,102 @@ function termColor(id: ConceptId): string {
   return `color-mix(in srgb, ${CONCEPTS[id].color} 45%, var(--color-ap-text))`;
 }
 
-/** An inline glossary term — colored by its concept family, links to the entry. */
+/** Where a mini glossary popup should appear, in scroll-region coordinates. */
+interface PopState {
+  readonly id: ConceptId;
+  readonly x: number;
+  readonly y: number;
+  readonly up: boolean;
+}
+
+/** Opens the mini glossary popup for a concept, anchored at the clicked term. */
+const GlossOpenCtx = createContext<(id: ConceptId, el: HTMLElement) => void>(() => {});
+
+/** An inline glossary term — colored by its concept family, pops the mini card
+ * in place so the reader never loses their spot in the rules. */
 function G({ id, children }: { readonly id: ConceptId; readonly children: ReactNode }) {
+  const open = useContext(GlossOpenCtx);
   return (
     <button
       type="button"
-      onClick={() => jumpToTerm(id)}
+      onClick={(e) => open(id, e.currentTarget)}
       className="cursor-pointer font-semibold underline decoration-dotted underline-offset-2 hover:brightness-125"
       style={{ color: termColor(id), textDecorationColor: CONCEPTS[id].color }}
     >
       {children}
     </button>
+  );
+}
+
+/** The mini glossary popup: definition + see-also hops, anchored at the term. */
+function GlossaryPopover({
+  pop,
+  lang,
+  onClose,
+  popRef,
+}: {
+  readonly pop: PopState;
+  readonly lang: Lang;
+  readonly onClose: () => void;
+  readonly popRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const c = CONCEPTS[pop.id];
+  return (
+    <div
+      id="gloss-pop"
+      ref={popRef}
+      role="dialog"
+      aria-label={c.term[lang]}
+      className="absolute z-20 w-[min(21rem,88%)] rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 text-(length:--text-fluid-xs) leading-relaxed shadow-(--shadow-ap-hero)"
+      style={{
+        left: pop.x,
+        top: pop.y,
+        marginTop: 0, // opt out of the region's space-y rhythm
+        transform: pop.up ? 'translateY(-100%)' : undefined,
+        borderLeftColor: c.color,
+        borderLeftWidth: 4,
+      }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p
+          className="font-arcade-display uppercase tracking-wide"
+          style={{ color: termColor(pop.id) }}
+        >
+          {c.term[lang]}
+        </p>
+        <button
+          type="button"
+          aria-label={lang === 'fr' ? 'Fermer' : 'Close'}
+          onClick={onClose}
+          className="-mr-1 -mt-1 grid size-6 shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text)"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="mt-1 text-(--color-ap-text)/85">{c.def[lang]}</p>
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-(--color-ap-muted)">
+        {c.see.length > 0 && (
+          <>
+            <span>{T[lang].seeAlso}</span>
+            {c.see.map((s) => (
+              <G key={s} id={s}>
+                {CONCEPTS[s].term[lang]}
+              </G>
+            ))}
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            jumpToTerm(pop.id);
+          }}
+          className="ml-auto cursor-pointer underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+        >
+          {T[lang].glossary} ↓
+        </button>
+      </p>
+    </div>
   );
 }
 
@@ -441,6 +536,20 @@ function RulesEn() {
           score <Strong>−bet</Strong> (×2 sans atout). The defenders always keep the trick points
           they took. First team to <Strong>41</Strong> wins — if both teams cross in the same round,
           the higher total takes it (the contract team on an exact tie).
+        </p>
+      </Rule>
+
+      <Rule title="Hail-Mary 12 sans atout">
+        <p>
+          An <Strong>optional table rule</Strong>, switched on in the lobby before the game. Call{' '}
+          <G id="hailmary">12 sans atout</G> and make it — your team{' '}
+          <Strong>wins the whole game on the spot</Strong>. Miss it and you{' '}
+          <Strong>lose the game outright</Strong>, whatever the score. It is the comeback gamble
+          when you are far behind.
+        </p>
+        <p>
+          Making 12 means <Strong>12 trick points</Strong>: take every trick but hand the{' '}
+          <G id="brown0">brown 0</G> to the other team — a clean sweep of all eight is only 11.
         </p>
       </Rule>
 
@@ -758,6 +867,21 @@ function RulesFr() {
         </p>
       </Rule>
 
+      <Rule title="12 sans atout — tout ou rien">
+        <p>
+          Une <Strong>règle de table optionnelle</Strong>, activée dans le salon avant la partie.
+          Demande <G id="hailmary">12 sans atout</G> et réussis-la — ton équipe{' '}
+          <Strong>gagne toute la partie sur-le-champ</Strong>. Rate-la et tu{' '}
+          <Strong>perds la partie d'un coup</Strong>, peu importe le pointage. C'est le pari de
+          remontée quand tu tires de l'arrière.
+        </p>
+        <p>
+          Réussir 12, ça veut dire <Strong>12 points de levées</Strong> : prends toutes les levées
+          mais refile le <G id="brown0">0 brun</G> à l'autre équipe — ramasser les huit levées n'en
+          fait que 11.
+        </p>
+      </Rule>
+
       <Rule title="Lire la table">
         <ul className="list-disc space-y-1 pl-4">
           <li>
@@ -1007,6 +1131,45 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
   const t = T[lang];
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  // Mini glossary popup, anchored where the term was clicked (region coords).
+  const [pop, setPop] = useState<PopState | null>(null);
+  const popOpenRef = useRef(false);
+  popOpenRef.current = pop !== null;
+
+  const openTerm = (id: ConceptId, el: HTMLElement): void => {
+    setPop((prev) => {
+      // A see-also hop from inside the popup keeps the anchor — wiki style.
+      if (prev !== null && popRef.current !== null && popRef.current.contains(el)) {
+        return { ...prev, id };
+      }
+      const region = regionRef.current;
+      if (region === null) return prev;
+      const rr = region.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      const up = er.top - rr.top > region.clientHeight * 0.55;
+      const x = Math.max(8, Math.min(er.left - rr.left, region.clientWidth - 320));
+      const y = up
+        ? er.top - rr.top + region.scrollTop - 6
+        : er.bottom - rr.top + region.scrollTop + 6;
+      return { id, x, y, up };
+    });
+  };
+
+  // The popup dismisses on any press outside it (a press on another term
+  // closes it here, then that term's click reopens it at the new anchor).
+  useEffect(() => {
+    if (pop === null) return;
+    const onDown = (e: PointerEvent): void => {
+      const target = e.target;
+      if (target instanceof Node && popRef.current?.contains(target)) return;
+      setPop(null);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [pop]);
 
   // Focus moves into the dialog on open; Escape closes; Tab stays inside.
   useEffect(() => {
@@ -1014,6 +1177,11 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
+        // First Escape only dismisses the glossary popup; the sheet stays.
+        if (popOpenRef.current) {
+          setPop(null);
+          return;
+        }
         onClose();
         return;
       }
@@ -1039,78 +1207,88 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
   // rise-in footer — would otherwise become the containing block and pin
   // this "fullscreen" sheet to itself.
   return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-3 sm:p-6">
-      <div
-        aria-hidden
-        onClick={onClose}
-        className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="help-title"
-        className="pop-in relative flex max-h-[min(88dvh,60rem)] w-[min(96vw,46rem)] flex-col overflow-hidden rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) font-arcade-ui shadow-(--shadow-ap-hero)"
-      >
-        <header className="flex items-center justify-between gap-4 border-b-2 border-(--color-ap-ink) px-5 py-3.5">
-          <h2
-            id="help-title"
-            className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)"
-          >
-            {t.title}
-          </h2>
-          <button
-            ref={closeRef}
-            type="button"
-            aria-label={t.close}
-            onClick={onClose}
-            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-          >
-            ✕
-          </button>
-        </header>
-
-        {/* Scrollable region must be keyboard-focusable (axe). */}
+    <GlossOpenCtx.Provider value={openTerm}>
+      <div className="fixed inset-0 z-50 grid place-items-center p-3 sm:p-6">
         <div
-          role="region"
-          aria-label={t.rules}
-          tabIndex={0}
-          className="space-y-3 overflow-y-auto px-5 py-4"
+          aria-hidden
+          onClick={onClose}
+          className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
+        />
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="help-title"
+          className="pop-in relative flex max-h-[min(88dvh,60rem)] w-[min(96vw,46rem)] flex-col overflow-hidden rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) font-arcade-ui shadow-(--shadow-ap-hero)"
         >
-          {lang === 'fr' ? <RulesFr /> : <RulesEn />}
+          <header className="flex items-center justify-between gap-4 border-b-2 border-(--color-ap-ink) px-5 py-3.5">
+            <h2
+              id="help-title"
+              className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)"
+            >
+              {t.title}
+            </h2>
+            <button
+              ref={closeRef}
+              type="button"
+              aria-label={t.close}
+              onClick={onClose}
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+            >
+              ✕
+            </button>
+          </header>
 
-          <div className="flex items-center gap-3 pt-1" aria-hidden>
-            <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
-            <span className="text-(length:--text-fluid-xs) tracking-wide text-(--color-ap-muted)">
-              {t.divider}
-            </span>
-            <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
-          </div>
+          {/* Scrollable region must be keyboard-focusable (axe). */}
+          <div
+            ref={regionRef}
+            role="region"
+            aria-label={t.rules}
+            tabIndex={0}
+            className="relative space-y-3 overflow-y-auto px-5 py-4"
+          >
+            {lang === 'fr' ? <RulesFr /> : <RulesEn />}
 
-          <details className="group rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-ap-card) p-4 hover:bg-(--color-ap-panel-hover)">
-              <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
-                {t.advanced}
-                <span className="ml-2 align-middle text-(length:--text-fluid-xs) font-normal text-(--color-ap-muted)">
-                  {t.optional}
-                </span>
+            <div className="flex items-center gap-3 pt-1" aria-hidden>
+              <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
+              <span className="text-(length:--text-fluid-xs) tracking-wide text-(--color-ap-muted)">
+                {t.divider}
               </span>
-              <span
-                aria-hidden
-                className="text-(--color-ap-muted) transition-transform duration-(--duration-flick) group-open:rotate-90"
-              >
-                ▸
-              </span>
-            </summary>
-            <div className="space-y-2 border-t-2 border-(--color-ap-ink) px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ap-text)/85">
-              {lang === 'fr' ? <TipsFr /> : <TipsEn />}
+              <span className="h-0.5 flex-1 bg-(--color-ap-ink)/25" />
             </div>
-          </details>
 
-          <Glossary lang={lang} />
+            <details className="group rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-ap-card) p-4 hover:bg-(--color-ap-panel-hover)">
+                <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
+                  {t.advanced}
+                  <span className="ml-2 align-middle text-(length:--text-fluid-xs) font-normal text-(--color-ap-muted)">
+                    {t.optional}
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className="text-(--color-ap-muted) transition-transform duration-(--duration-flick) group-open:rotate-90"
+                >
+                  ▸
+                </span>
+              </summary>
+              <div className="space-y-2 border-t-2 border-(--color-ap-ink) px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed text-(--color-ap-text)/85">
+                {lang === 'fr' ? <TipsFr /> : <TipsEn />}
+              </div>
+            </details>
+
+            <Glossary lang={lang} />
+
+            {/* Absolute within the scroll content: the popup sits beside the
+             * clicked term and scrolls with the text — no lost reading spot.
+             * Rendered last so the space-y rhythm of the cards is untouched. */}
+            {pop !== null && (
+              <GlossaryPopover pop={pop} lang={lang} onClose={() => setPop(null)} popRef={popRef} />
+            )}
+          </div>
         </div>
       </div>
-    </div>,
+    </GlossOpenCtx.Provider>,
     document.body,
   );
 }
