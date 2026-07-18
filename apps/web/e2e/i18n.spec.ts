@@ -39,6 +39,18 @@ test('the advanced strategy sections render in French', async ({ browser }) => {
   await context.close();
 });
 
+test('the glossary renders in Québécois French', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'fr-CA' });
+  const page = await context.newPage();
+  await page.goto('/#scenes/home-help');
+  const dialog = page.getByRole('dialog', { name: 'Comment jouer' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByText('Glossaire', { exact: true }).click();
+  await expect(dialog.locator('#gloss-red0').getByText('Le 0 rouge (joffre)')).toBeVisible();
+  await expect(dialog.getByText(/le plus gros lot de la ronde/)).toBeVisible();
+  await context.close();
+});
+
 test('the staged stats scene renders in French', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'fr-CA' });
   const page = await context.newPage();

@@ -66,6 +66,29 @@ test('advanced strategy: five themed sections inside the disclosure', async ({ p
   await expectNoSeriousViolations(page, 'advanced strategy open');
 });
 
+test('glossary: color-family entries with wiki cross-links', async ({ page }) => {
+  await page.goto('/#scenes/home-help');
+  const dialog = page.getByRole('dialog', { name: 'How to play' });
+  await expect(dialog).toBeVisible();
+
+  // Open the glossary and check a bonhomme entry with its definition.
+  await dialog.getByText('Glossary', { exact: true }).click();
+  await expect(dialog.locator('#gloss-red0').getByText('The red 0 (joffre)')).toBeVisible();
+  await expect(dialog.getByText(/The \+5 bonhomme/)).toBeVisible();
+
+  // Cross-link: the red-0 entry's "see also" jumps to the boss-card entry.
+  await dialog.locator('#gloss-red0').getByRole('button', { name: 'Boss card (maître)' }).click();
+  await expect(dialog.locator('#gloss-maitre')).toBeVisible();
+
+  // Inline wiki term: clicking a colored term in the rules opens the glossary.
+  await page.reload();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'trump suit' }).click();
+  await expect(dialog.locator('#gloss-atout').getByText('Trump (atout)')).toBeVisible();
+
+  await expectNoSeriousViolations(page, 'glossary open');
+});
+
 test('home fits a phone viewport — no primary control clipped', async ({ page }) => {
   // Regression: the play grid had no base grid-cols-1, so below `sm` its single
   // implicit column sized to its content and grew past `w-full`. main's

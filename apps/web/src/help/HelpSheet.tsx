@@ -1,4 +1,12 @@
-import { PlayingCard, SUIT_NAMES, SUIT_STYLES, SuitShape, useLang, type Lang } from '@jaffre/ui';
+import {
+  PlayingCard,
+  SUIT_NAMES,
+  SUIT_STYLES,
+  SuitShape,
+  useLang,
+  type CardData,
+  type Lang,
+} from '@jaffre/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { TEAMS } from '../teams.js';
@@ -19,6 +27,8 @@ const T: Record<
     divider: string;
     advanced: string;
     optional: string;
+    glossary: string;
+    seeAlso: string;
   }
 > = {
   en: {
@@ -28,6 +38,8 @@ const T: Record<
     divider: 'for when you’ve played a few rounds',
     advanced: 'Advanced strategy',
     optional: 'optional',
+    glossary: 'Glossary',
+    seeAlso: 'See also',
   },
   fr: {
     title: 'Comment jouer',
@@ -36,6 +48,8 @@ const T: Record<
     divider: 'pour quand tu auras joué quelques rondes',
     advanced: 'Stratégie avancée',
     optional: 'facultatif',
+    glossary: 'Glossaire',
+    seeAlso: 'Voir aussi',
   },
 };
 
@@ -58,9 +72,12 @@ function Strong({ children }: { readonly children: ReactNode }) {
 
 function Tip({ label, children }: { readonly label: string; readonly children: ReactNode }) {
   return (
-    <p>
-      <Strong>{label}</Strong> {children}
-    </p>
+    <div>
+      <h4 className="text-(length:--text-fluid-sm) font-semibold leading-snug text-(--color-ap-gold)/90">
+        {label}
+      </h4>
+      <p className="mt-0.5">{children}</p>
+    </div>
   );
 }
 
@@ -81,6 +98,264 @@ function TipSection({ title, children }: { readonly title: string; readonly chil
       </summary>
       <div className="space-y-2 border-t-2 border-(--color-ap-ink)/50 px-3 pb-3 pt-2.5">
         {children}
+      </div>
+    </details>
+  );
+}
+
+/**
+ * A featured mini example under a tip: the trick so far, and "your" card
+ * looping a gentle played-onto-the-trick animation. Uses the real PlayingCard,
+ * so examples render in whatever card skin the player has equipped.
+ */
+function TipExample({
+  trick,
+  you,
+  caption,
+}: {
+  readonly trick: readonly CardData[];
+  readonly you: CardData;
+  readonly caption: string;
+}) {
+  return (
+    <figure className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-(--radius-ap-control) border border-(--color-ap-ink)/40 bg-(--color-ap-ground)/50 p-2.5">
+      <span className="flex items-center gap-1.5" aria-hidden>
+        {trick.map((c) => (
+          <PlayingCard key={`${c.suit}${c.value}`} card={c} size="sm" />
+        ))}
+        <span className="px-0.5 text-(--color-ap-muted)">←</span>
+        <span className="tip-play">
+          <PlayingCard card={you} size="sm" raised />
+        </span>
+      </span>
+      <figcaption className="min-w-40 flex-1 text-(length:--text-fluid-xs) leading-snug text-(--color-ap-muted)">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
+/**
+ * The concept glossary. Every concept belongs to a color family — the two
+ * bonhommes wear their suit colors, trick concepts are gold, trump concepts
+ * green, auction concepts blue — and inline mentions link to the entry
+ * wiki-style, with cross-references between related entries.
+ */
+type ConceptId =
+  | 'red0'
+  | 'brown0'
+  | 'levee'
+  | 'maitre'
+  | 'atout'
+  | 'coupe'
+  | 'chute'
+  | 'mise'
+  | 'sansatout'
+  | 'brasseur';
+
+interface Concept {
+  readonly color: string;
+  readonly term: Record<Lang, string>;
+  readonly def: Record<Lang, string>;
+  readonly see: readonly ConceptId[];
+}
+
+const GOLD = 'var(--color-ap-gold)';
+const RED = 'var(--color-suit-red)';
+const BROWN = 'var(--color-suit-brown)';
+const GREEN = 'var(--color-suit-green)';
+const BLUE = 'var(--color-suit-blue)';
+
+const CONCEPTS: Record<ConceptId, Concept> = {
+  red0: {
+    color: RED,
+    term: { en: 'The red 0 (joffre)', fr: 'Le 0 rouge (joffre)' },
+    def: {
+      en: 'The +5 bonhomme: whoever wins the trick it lands in scores 5 extra points — that trick is worth 6 in total, the biggest prize of the round.',
+      fr: "Le bonhomme à +5 : l'équipe qui gagne la levée où il tombe marque 5 points de plus — cette levée-là vaut 6 au total, le plus gros lot de la ronde.",
+    },
+    see: ['brown0', 'levee', 'maitre'],
+  },
+  brown0: {
+    color: BROWN,
+    term: { en: 'The brown 0', fr: 'Le 0 brun' },
+    def: {
+      en: 'The −2 bonhomme: the trick it lands in costs its winner 2 points. A gift you re-gift — discard it on a trick the opponents are winning.',
+      fr: 'Le bonhomme à −2 : la levée où il tombe coûte 2 points à qui la gagne. Un cadeau que tu refiles — défausse-le sur une levée que les adversaires sont en train de gagner.',
+    },
+    see: ['red0', 'chute'],
+  },
+  levee: {
+    color: GOLD,
+    term: { en: 'Trick (levée)', fr: 'La levée' },
+    def: {
+      en: 'One card from each of the four players. The highest trump takes it — no trump played, the highest card of the led suit. Each trick is 1 point; 8 tricks plus the two 0s make 11 points a round.',
+      fr: "Une carte de chacun des quatre joueurs. L'atout le plus haut la remporte — pas d'atout joué, c'est la plus haute carte de la couleur demandée. Chaque levée vaut 1 point; 8 levées plus les deux 0, ça fait 11 points par ronde.",
+    },
+    see: ['maitre', 'atout', 'red0'],
+  },
+  maitre: {
+    color: GOLD,
+    term: { en: 'Boss card (maître)', fr: 'La carte maîtresse' },
+    def: {
+      en: "A card nothing still in play can beat: every higher card of its suit is already gone. Count what's been played to know when yours turn boss — and remember a trump can still ruff it.",
+      fr: "Une carte que plus rien en jeu ne peut battre : toutes les plus hautes de sa couleur sont déjà sorties. Compte ce qui est sorti pour savoir quand les tiennes deviennent maîtresses — et oublie pas qu'un atout peut encore la couper.",
+    },
+    see: ['levee', 'coupe'],
+  },
+  atout: {
+    color: GREEN,
+    term: { en: 'Trump (atout)', fr: "L'atout" },
+    def: {
+      en: "The suit named by the contract winner's very first card. Any trump beats any card of the other suits — you only get to play one when you can't follow, or when trump itself is led.",
+      fr: "La couleur nommée par la toute première carte du gagnant du contrat. N'importe quel atout bat n'importe quelle carte des autres couleurs — tu peux juste en jouer un quand tu ne peux pas fournir, ou quand on entame atout.",
+    },
+    see: ['coupe', 'sansatout', 'mise'],
+  },
+  coupe: {
+    color: GREEN,
+    term: { en: 'Ruff (coupe)', fr: 'La coupe' },
+    def: {
+      en: "Winning a trick with a trump because you're void in the led suit. The cheap way to steal big tricks — including the one carrying the red 0.",
+      fr: 'Gagner une levée avec un atout parce que tu es en chute dans la couleur demandée. Le moyen pas cher de voler les grosses levées — y compris celle qui transporte le 0 rouge.',
+    },
+    see: ['chute', 'atout', 'red0'],
+  },
+  chute: {
+    color: GREEN,
+    term: { en: 'Void (chute)', fr: 'La chute' },
+    def: {
+      en: 'Holding no cards of a suit. A void turns that suit into ruffing chances — you can even build one on purpose by shedding a lone card early.',
+      fr: "N'avoir aucune carte d'une couleur. Une chute transforme cette couleur-là en occasions de couper — tu peux même t'en fabriquer une exprès en jetant une carte seule de bonne heure.",
+    },
+    see: ['coupe', 'brown0'],
+  },
+  mise: {
+    color: BLUE,
+    term: { en: 'The bid (mise)', fr: 'La mise' },
+    def: {
+      en: 'Your contract: 7 to 12 trick points, one round of bidding, dealer last. Make it and score +bid; miss it and score −bid. Bid the smallest number that wins the auction.',
+      fr: 'Ton contrat : 7 à 12 points de levées, une seule ronde de mises, le brasseur en dernier. Fais-la et tu marques +la mise; rate-la et tu marques −la mise. Mise le plus petit nombre qui remporte les mises.',
+    },
+    see: ['sansatout', 'brasseur', 'levee'],
+  },
+  sansatout: {
+    color: BLUE,
+    term: { en: 'Sans atout', fr: 'Le sans atout' },
+    def: {
+      en: 'A contract with no trump suit at all: the stake doubles, and an equal bid played sans atout outbids the plain one. Wants running suits and a stopper everywhere.',
+      fr: "Un contrat sans aucune couleur d'atout : la mise double, et une mise égale jouée sans atout l'emporte sur la mise ordinaire. Ça prend des couleurs qui déroulent et un arrêt partout.",
+    },
+    see: ['mise', 'atout'],
+  },
+  brasseur: {
+    color: BLUE,
+    term: { en: 'Dealer (brasseur)', fr: 'Le brasseur' },
+    def: {
+      en: 'Deals the 8 cards and speaks last in the auction — and when all four players pass, the brasseur is stuck with a forced bid of 7.',
+      fr: 'Brasse et donne les 8 cartes, puis parle en dernier aux mises — et quand les quatre joueurs passent, le brasseur est pris avec une mise forcée de 7.',
+    },
+    see: ['mise'],
+  },
+};
+
+/** Glossary display groups — one color family per group. */
+const GLOSSARY_GROUPS: readonly { readonly ids: readonly ConceptId[] }[] = [
+  { ids: ['red0', 'brown0'] },
+  { ids: ['levee', 'maitre'] },
+  { ids: ['atout', 'coupe', 'chute'] },
+  { ids: ['mise', 'sansatout', 'brasseur'] },
+];
+
+/** Open the glossary disclosure and scroll its entry into view, with a flash. */
+function jumpToTerm(id: ConceptId): void {
+  const details = document.getElementById('help-glossary');
+  if (details instanceof HTMLDetailsElement) details.open = true;
+  const entry = document.getElementById(`gloss-${id}`);
+  if (entry === null) return;
+  entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  entry.animate(
+    [
+      { backgroundColor: 'color-mix(in srgb, currentColor 18%, transparent)' },
+      { backgroundColor: 'transparent' },
+    ],
+    { duration: 1100, easing: 'ease-out' },
+  );
+}
+
+/** A concept color blended toward the theme's text color — keeps the family
+ * hue recognizable while passing contrast on the panel in both themes. */
+function termColor(id: ConceptId): string {
+  return `color-mix(in srgb, ${CONCEPTS[id].color} 45%, var(--color-ap-text))`;
+}
+
+/** An inline glossary term — colored by its concept family, links to the entry. */
+function G({ id, children }: { readonly id: ConceptId; readonly children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={() => jumpToTerm(id)}
+      className="cursor-pointer font-semibold underline decoration-dotted underline-offset-2 hover:brightness-125"
+      style={{ color: termColor(id), textDecorationColor: CONCEPTS[id].color }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GlossaryEntry({ id, lang }: { readonly id: ConceptId; readonly lang: Lang }) {
+  const c = CONCEPTS[id];
+  return (
+    <div
+      id={`gloss-${id}`}
+      className="rounded-r-(--radius-ap-control) border-l-4 py-1.5 pl-3"
+      style={{ borderColor: c.color, color: termColor(id) }}
+    >
+      <p className="font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide">
+        {c.term[lang]}
+      </p>
+      <p className="mt-0.5 text-(--color-ap-text)/85">{c.def[lang]}</p>
+      {c.see.length > 0 && (
+        <p className="mt-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+          {T[lang].seeAlso}{' '}
+          {c.see.map((s, i) => (
+            <span key={s}>
+              {i > 0 && ' · '}
+              <G id={s}>{CONCEPTS[s].term[lang]}</G>
+            </span>
+          ))}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The wiki-style glossary: entries grouped by color family, cross-linked. */
+function Glossary({ lang }: { readonly lang: Lang }) {
+  return (
+    <details
+      id="help-glossary"
+      className="group rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-ap-card) p-4 hover:bg-(--color-ap-panel-hover)">
+        <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
+          {T[lang].glossary}
+        </span>
+        <span
+          aria-hidden
+          className="text-(--color-ap-muted) transition-transform duration-(--duration-flick) group-open:rotate-90"
+        >
+          ▸
+        </span>
+      </summary>
+      <div className="space-y-4 border-t-2 border-(--color-ap-ink) px-4 pb-4 pt-3 text-(length:--text-fluid-sm) leading-relaxed">
+        {GLOSSARY_GROUPS.map((g) => (
+          <div key={g.ids[0]} className="space-y-2.5">
+            {g.ids.map((id) => (
+              <GlossaryEntry key={id} id={id} lang={lang} />
+            ))}
+          </div>
+        ))}
       </div>
     </details>
   );
@@ -111,25 +386,26 @@ function RulesEn() {
       <Rule title="Bidding">
         <p>
           One round only — each player speaks once, dealer last:{' '}
-          <Strong>bid 7 to 12 trick points</Strong> or pass. Bidding <Strong>sans atout</Strong>{' '}
-          means playing with no trump and <Strong>doubles the stake</Strong> — and an equal bid
-          played sans atout outbids the plain one. If all four players pass, the dealer is forced to
-          a bid of 7.
+          <Strong>bid 7 to 12 trick points</Strong> or pass. Bidding{' '}
+          <G id="sansatout">sans atout</G> means playing with no trump and{' '}
+          <Strong>doubles the stake</Strong> — and an equal bid played sans atout outbids the plain
+          one. If all four players pass, the <G id="brasseur">dealer</G> is forced to a bid of 7.
         </p>
       </Rule>
 
       <Rule title="Trump">
         <p>
-          The <Strong>first card the contract winner leads</Strong> sets the trump suit for the
-          round (there is none on a sans-atout contract). You must{' '}
-          <Strong>follow the led suit</Strong> whenever you can.
+          The <Strong>first card the contract winner leads</Strong> sets the{' '}
+          <G id="atout">trump suit</G> for the round (there is none on a sans-atout contract). You
+          must <Strong>follow the led suit</Strong> whenever you can.
         </p>
       </Rule>
 
       <Rule title="Tricks">
         <p>
-          The <Strong>highest trump</Strong> in the trick wins it; if nobody played a trump, the{' '}
-          <Strong>highest card of the led suit</Strong> wins. The winner leads the next trick.
+          The <Strong>highest trump</Strong> in the <G id="levee">trick</G> wins it; if nobody
+          played a trump, the <Strong>highest card of the led suit</Strong> wins. The winner leads
+          the next trick.
         </p>
       </Rule>
 
@@ -142,13 +418,15 @@ function RulesEn() {
           <figure className="flex flex-col items-center gap-1.5">
             <PlayingCard card={{ suit: 'red', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              Red 0 · <span className="font-semibold text-(--color-suit-green)">+5 points</span>
+              <G id="red0">Red 0</G> ·{' '}
+              <span className="font-semibold text-(--color-suit-green)">+5 points</span>
             </figcaption>
           </figure>
           <figure className="flex flex-col items-center gap-1.5">
             <PlayingCard card={{ suit: 'brown', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              Brown 0 · <span className="font-semibold text-(--color-suit-red)">−2 points</span>
+              <G id="brown0">Brown 0</G> ·{' '}
+              <span className="font-semibold text-(--color-suit-red)">−2 points</span>
             </figcaption>
           </figure>
         </div>
@@ -235,20 +513,46 @@ function TipsEn() {
           Holding <Strong>red 7-6</Strong>? Lead red: whoever holds the red 0 has to follow, and it
           falls <Strong>under your winner</Strong> for +5. Holding the red 0 yourself while void in
           the suit led? <Strong>Drop it onto a trick your partner has already won.</Strong>
+          <TipExample
+            trick={[{ suit: 'red', value: 7 }]}
+            you={{ suit: 'red', value: 0 }}
+            caption="You lead the red 7 — the red 0 must follow, and falls under your winner: +5."
+          />
         </Tip>
         <Tip label="The brown 0 is a gift you re-gift (−2).">
           Hand it to a trick the <Strong>opponents</Strong> are winning — best of all when you
           can&rsquo;t follow suit and would waste a card anyway. Never dump it on your partner.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 7 },
+              { suit: 'green', value: 4 },
+            ]}
+            you={{ suit: 'brown', value: 0 }}
+            caption="Their green 7 has the trick — your brown 0 hitches a ride: −2 for them."
+          />
         </Tip>
         <Tip label="Keep a low brown as your escape hatch.">
           While the brown 0 is in your hand, <Strong>keep a low brown beside it</Strong>. When brown
           is led at you, duck with the low one — never win the very trick your −2 has to land in.
           The brown 0 only leaves on tricks the opponents are winning.
+          <TipExample
+            trick={[{ suit: 'brown', value: 6 }]}
+            you={{ suit: 'brown', value: 2 }}
+            caption="Brown led at you — duck with the 2, and the 0 stays safe for an opponent's trick."
+          />
         </Tip>
         <Tip label="Throw the brown 0 instead of ruffing.">
           When a trick is already lost — or winning it gains you nothing — don&rsquo;t spend a trump
           on it. <Strong>Discard the brown 0 instead</Strong>: you lose the trick either way, and
           now it costs them 2.
+          <TipExample
+            trick={[
+              { suit: 'blue', value: 7 },
+              { suit: 'blue', value: 3 },
+            ]}
+            you={{ suit: 'brown', value: 0 }}
+            caption="Their blue 7 is boss — don't spend a trump; the brown 0 rides along instead."
+          />
         </Tip>
         <Tip label="Ask the two questions every trick.">
           Before you play: <Strong>is the red 0 still out? is the brown 0 still out?</Strong> While
@@ -274,6 +578,14 @@ function TipsEn() {
           <Strong>Shed it on someone else&rsquo;s trick by trick 3 or 4</Strong>, and from then on
           you ruff that suit instead of following. Five blues and a lone red? Throw the red early —
           then every red trick, red 0 included, can be yours for a trump.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 7 },
+              { suit: 'green', value: 5 },
+            ]}
+            you={{ suit: 'red', value: 1 }}
+            caption="Their trick anyway — shed your lone red 1; from now on, red tricks meet your trumps."
+          />
         </Tip>
         <Tip label="Tricks 7 and 8 are dump magnets.">
           Nobody has safe cards left at the end — the last tricks collect every forced discard:
@@ -288,6 +600,15 @@ function TipsEn() {
           One exception: if your partner still has to play and might feed you the red 0,{' '}
           <Strong>win big and visible</Strong> — partner only drops the +5 on a trick they can prove
           is yours.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 4 },
+              { suit: 'green', value: 3 },
+              { suit: 'green', value: 2 },
+            ]}
+            you={{ suit: 'green', value: 5 }}
+            caption="Holding 7-6-5: the 5 wins this trick just as surely — and tells the table nothing."
+          />
         </Tip>
       </TipSection>
 
@@ -305,8 +626,9 @@ function TipsEn() {
         </Tip>
         <Tip label="Make the declarer ruff, and ruff again.">
           <Strong>Four trumps behind the declarer is a weapon.</Strong> Every time you get in, lead
-          the suit they&rsquo;re void in and force them to trump it. Each ruff shortens their trumps
-          toward yours — until the round comes when you hold more than they do.
+          the suit they&rsquo;re <G id="chute">void</G> in and force them to trump it. Each{' '}
+          <G id="coupe">ruff</G> shortens their trumps toward yours — until the round comes when you
+          hold more than they do.
         </Tip>
         <Tip label="Read the first card — with a grain of salt.">
           The declarer&rsquo;s first card names trump, so it&rsquo;s also a statement:{' '}
@@ -322,8 +644,8 @@ function TipsEn() {
           isn&rsquo;t.
         </Tip>
         <Tip label="Count what&rsquo;s been played.">
-          Every played card is public. Track the high cards that are gone — yours may now be
-          <Strong> unbeatable</Strong> — and note who <Strong>failed to follow a suit</Strong>:
+          Every played card is public. Track the high cards that are gone — yours may now be{' '}
+          <G id="maitre">unbeatable</G> — and note who <Strong>failed to follow a suit</Strong>:
           they&rsquo;re out of it, so don&rsquo;t lead it into their trump.
         </Tip>
         <Tip label="Play with your partner.">
@@ -343,8 +665,8 @@ function TipsEn() {
         <Tip label="Play the score, not just the hand.">
           First team to <Strong>41</Strong> ends it. When the other team sits at 35 or more, a cheap
           contract hands them the game — <Strong>bid to deny</Strong>, even a notch past comfort.
-          Trailing badly? <Strong>Sans atout doubles the stake</Strong> — the natural catch-up
-          weapon, and a needless risk when you&rsquo;re the team ahead.
+          Trailing badly? <G id="sansatout">Sans atout</G> <Strong>doubles the stake</Strong> — the
+          natural catch-up weapon, and a needless risk when you&rsquo;re the team ahead.
         </Tip>
       </TipSection>
     </>
@@ -377,25 +699,26 @@ function RulesFr() {
         <p>
           Une seule ronde de mises — chaque joueur parle une fois, le brasseur en dernier :{' '}
           <Strong>mise de 7 à 12 points de levées</Strong>, ou passe. Miser{' '}
-          <Strong>sans atout</Strong> veut dire jouer sans couleur d'atout et{' '}
+          <G id="sansatout">sans atout</G> veut dire jouer sans couleur d'atout et{' '}
           <Strong>double la mise (mise ×2)</Strong> — et une mise égale jouée sans atout l'emporte
-          sur la mise ordinaire. Si les quatre joueurs passent, le brasseur est forcé de miser 7.
+          sur la mise ordinaire. Si les quatre joueurs passent, le <G id="brasseur">brasseur</G> est
+          forcé de miser 7.
         </p>
       </Rule>
 
       <Rule title="L'atout">
         <p>
-          La <Strong>première carte jouée par le gagnant du contrat</Strong> détermine l'atout de la
-          ronde (il n'y en a pas sur un contrat sans atout). Tu dois{' '}
+          La <Strong>première carte jouée par le gagnant du contrat</Strong> détermine{' '}
+          <G id="atout">l'atout</G> de la ronde (il n'y en a pas sur un contrat sans atout). Tu dois{' '}
           <Strong>fournir la couleur demandée</Strong> chaque fois que tu le peux.
         </p>
       </Rule>
 
       <Rule title="Les levées">
         <p>
-          L'<Strong>atout le plus haut</Strong> dans la levée la remporte; si personne n'a joué
-          d'atout, la <Strong>plus haute carte de la couleur demandée</Strong> gagne. Le gagnant
-          entame la levée suivante.
+          L'<Strong>atout le plus haut</Strong> dans la <G id="levee">levée</G> la remporte; si
+          personne n'a joué d'atout, la <Strong>plus haute carte de la couleur demandée</Strong>{' '}
+          gagne. Le gagnant entame la levée suivante.
         </p>
       </Rule>
 
@@ -408,13 +731,15 @@ function RulesFr() {
           <figure className="flex flex-col items-center gap-1.5">
             <PlayingCard card={{ suit: 'red', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              Rouge 0 · <span className="font-semibold text-(--color-suit-green)">+5 points</span>
+              <G id="red0">Rouge 0</G> ·{' '}
+              <span className="font-semibold text-(--color-suit-green)">+5 points</span>
             </figcaption>
           </figure>
           <figure className="flex flex-col items-center gap-1.5">
             <PlayingCard card={{ suit: 'brown', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-              Brun 0 · <span className="font-semibold text-(--color-suit-red)">−2 points</span>
+              <G id="brown0">Brun 0</G> ·{' '}
+              <span className="font-semibold text-(--color-suit-red)">−2 points</span>
             </figcaption>
           </figure>
         </div>
@@ -505,21 +830,47 @@ function TipsFr() {
           fournir, et il tombe <Strong>sous ta gagnante</Strong> pour +5. C'est toi qui as le 0
           rouge et tu ne peux pas fournir?{' '}
           <Strong>Dépose-le sur une levée que ton partenaire a déjà gagnée.</Strong>
+          <TipExample
+            trick={[{ suit: 'red', value: 7 }]}
+            you={{ suit: 'red', value: 0 }}
+            caption="Tu entames le 7 rouge — le 0 rouge doit fournir et tombe sous ta gagnante : +5."
+          />
         </Tip>
         <Tip label="Le zéro brun, c'est un cadeau que tu refiles (−2).">
           Donne-le sur une levée que les <Strong>adversaires</Strong> sont en train de gagner —
           encore mieux quand tu ne peux pas fournir et que tu gaspillerais une carte de toute façon.
           Ne le refile jamais à ton partenaire.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 7 },
+              { suit: 'green', value: 4 },
+            ]}
+            you={{ suit: 'brown', value: 0 }}
+            caption="Le 7 vert adverse tient la levée — ton 0 brun embarque dessus : −2 pour eux."
+          />
         </Tip>
         <Tip label="Garde un petit brun comme porte de sortie.">
           Tant que le 0 brun est dans ta main, <Strong>garde un petit brun à côté</Strong>. Quand on
           entame brun vers toi, fournis le petit et perds la levée — ne gagne jamais la levée où ton
           −2 doit atterrir. Le 0 brun sort seulement sur une levée que les adversaires gagnent.
+          <TipExample
+            trick={[{ suit: 'brown', value: 6 }]}
+            you={{ suit: 'brown', value: 2 }}
+            caption="On entame brun vers toi — fournis le 2, pis le 0 reste en sécurité pour une levée adverse."
+          />
         </Tip>
         <Tip label="Jette le zéro brun au lieu de couper.">
           Quand une levée est déjà perdue — ou que la gagner ne te donne rien — ne dépense pas un
           atout dessus. <Strong>Défausse le 0 brun à la place</Strong> : tu perds la levée de toute
           façon, et maintenant elle leur coûte 2.
+          <TipExample
+            trick={[
+              { suit: 'blue', value: 7 },
+              { suit: 'blue', value: 3 },
+            ]}
+            you={{ suit: 'brown', value: 0 }}
+            caption="Leur 7 bleu est maître — gaspille pas d'atout; le 0 brun embarque à la place."
+          />
         </Tip>
         <Tip label="Pose-toi les deux questions à chaque levée.">
           Avant de jouer : <Strong>le 0 rouge est-il encore en jeu? le 0 brun aussi?</Strong> Tant
@@ -547,6 +898,14 @@ function TipsFr() {
           partir de là tu coupes cette couleur au lieu de fournir. Cinq bleus et un rouge tout seul?
           Jette le rouge de bonne heure — ensuite chaque levée rouge, 0 rouge inclus, peut être à
           toi pour un atout.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 7 },
+              { suit: 'green', value: 5 },
+            ]}
+            you={{ suit: 'red', value: 1 }}
+            caption="Leur levée de toute façon — jette ton 1 rouge seul; les prochaines levées rouges rencontrent tes atouts."
+          />
         </Tip>
         <Tip label="Les levées 7 et 8 sont des aimants à défausses.">
           Plus personne n'a de cartes sûres à la fin — les dernières levées ramassent toutes les
@@ -562,6 +921,15 @@ function TipsFr() {
           pas. Une exception : si ton partenaire doit encore jouer et pourrait te donner le 0 rouge,{' '}
           <Strong>gagne gros et visible</Strong> — il ne dépose le +5 que sur une levée qu'il peut
           prouver gagnée.
+          <TipExample
+            trick={[
+              { suit: 'green', value: 4 },
+              { suit: 'green', value: 3 },
+              { suit: 'green', value: 2 },
+            ]}
+            you={{ suit: 'green', value: 5 }}
+            caption="Avec 7-6-5 : le 5 gagne cette levée aussi sûrement — et ne dit rien à la table."
+          />
         </Tip>
       </TipSection>
 
@@ -579,8 +947,9 @@ function TipsFr() {
         </Tip>
         <Tip label="Fais couper le meneur, encore et encore.">
           <Strong>Quatre atouts derrière le meneur, c'est une arme.</Strong> Chaque fois que tu
-          prends la main, entame la couleur où il est en chute et force-le à couper. Chaque coupe
-          rapproche ses atouts des tiens — jusqu'à la ronde où c'est toi qui en as le plus.
+          prends la main, entame la couleur où il est en <G id="chute">chute</G> et force-le à
+          couper. Chaque <G id="coupe">coupe</G> rapproche ses atouts des tiens — jusqu'à la ronde
+          où c'est toi qui en as le plus.
         </Tip>
         <Tip label="Lis la première carte — avec un grain de sel.">
           La première carte du meneur nomme l'atout, alors c'est aussi une déclaration :{' '}
@@ -597,7 +966,7 @@ function TipsFr() {
         </Tip>
         <Tip label="Compte ce qui est sorti.">
           Chaque carte jouée est publique. Suis les grosses cartes déjà sorties — les tiennes sont
-          peut-être maintenant <Strong>imbattables</Strong> — et remarque qui{' '}
+          peut-être maintenant <G id="maitre">imbattables</G> — et remarque qui{' '}
           <Strong>n'a pas fourni une couleur</Strong> : il n'en a plus, alors ne l'entame pas dans
           son atout.
         </Tip>
@@ -620,9 +989,9 @@ function TipsFr() {
         <Tip label="Joue le pointage, pas juste ta main.">
           La première équipe à <Strong>41</Strong> finit la partie. Quand l'autre équipe est rendue
           à 35 ou plus, un petit contrat leur donne la partie — <Strong>mise pour bloquer</Strong>,
-          même un cran au-dessus de ton confort. Loin derrière?{' '}
-          <Strong>Le sans atout double la mise</Strong> — l'arme de rattrapage naturelle, et un
-          risque inutile quand c'est toi qui mènes.
+          même un cran au-dessus de ton confort. Loin derrière? <G id="sansatout">Le sans atout</G>{' '}
+          <Strong>double la mise</Strong> — l'arme de rattrapage naturelle, et un risque inutile
+          quand c'est toi qui mènes.
         </Tip>
       </TipSection>
     </>
@@ -737,6 +1106,8 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
               {lang === 'fr' ? <TipsFr /> : <TipsEn />}
             </div>
           </details>
+
+          <Glossary lang={lang} />
         </div>
       </div>
     </div>,

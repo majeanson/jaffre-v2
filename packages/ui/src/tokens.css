@@ -395,7 +395,8 @@
   .special-burst,
   .score-flash,
   .deal-in,
-  .rise-in {
+  .rise-in,
+  .tip-play {
     /* reduced-motion: no keyframes, elements simply appear */
   }
 
@@ -422,12 +423,35 @@
     .confetti-piece {
       animation: jaffre-confetti 1400ms ease-in both;
     }
+    /* Help-sheet mini examples: "your" card gets played onto the trick,
+     * gently and forever. */
+    .tip-play {
+      animation: jaffre-tip-play 2.8s var(--ease-snap) infinite;
+    }
   }
 
   /* All entrance animations must END at `transform: none`: fill-mode `both`
    * retains the last keyframe forever, and any retained transform — even an
    * identity one — makes the element a containing block that captures
    * position:fixed descendants (e.g. the help sheet inside a rise-in div). */
+  @keyframes jaffre-tip-play {
+    0%,
+    12% {
+      transform: translateY(0.45em) rotate(3deg) scale(0.96);
+      opacity: 0.55;
+    }
+    38%,
+    78% {
+      transform: none;
+      opacity: 1;
+    }
+    92%,
+    100% {
+      transform: translateY(0.45em) rotate(3deg) scale(0.96);
+      opacity: 0.55;
+    }
+  }
+
   @keyframes jaffre-pop {
     0% {
       transform: scale(0.5) translateY(8px);
