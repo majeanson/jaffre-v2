@@ -135,37 +135,34 @@ export function Table({
         onSwapSeats={onSwapSeats}
         onLeave={onLeave}
       />
+      <UtilityRow
+        you={seatInfo(0)}
+        lastTrick={derived.lastTrick}
+        defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
+        comms={online && <Comms defaultChatOpen={initialUi?.chatOpen ?? false} />}
+        sort={me !== null && view.hand.length > 1 && <HandSortButton sort={handSort} />}
+      />
       <GameLogPanel
         lines={log.map((l) => l.text)}
         visible={logOpen}
         onClose={() => setLogOpen(false)}
       />
-      {/* Controls float over the hand's side gutters on desktop and drop to a
-          slim row above the hand on phone — both anchored to this wrapper. */}
-      <div className="relative flex w-full max-w-[min(96vw,100rem)] flex-col items-center">
-        <UtilityRow
-          lastTrick={derived.lastTrick}
-          defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
-          comms={online && <Comms defaultChatOpen={initialUi?.chatOpen ?? false} />}
-          sort={me !== null && view.hand.length > 1 && <HandSortButton sort={handSort} />}
+      {me !== null && (
+        <PlayerHand
+          cards={handSort.displayCards}
+          legal={derived.legal}
+          ledSuit={derived.ledSuit}
+          active={myTurn && view.phase === 'playing'}
+          onPlay={(card) => onAction({ type: 'play_card', card })}
+          onReorder={handSort.setOrder}
+          recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}
+          queued={derived.queued}
+          queueable={derived.queueable}
+          onQueueToggle={(card) =>
+            setQueued(derived.queued !== null && sameCard(card, derived.queued) ? null : card)
+          }
         />
-        {me !== null && (
-          <PlayerHand
-            cards={handSort.displayCards}
-            legal={derived.legal}
-            ledSuit={derived.ledSuit}
-            active={myTurn && view.phase === 'playing'}
-            onPlay={(card) => onAction({ type: 'play_card', card })}
-            onReorder={handSort.setOrder}
-            recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}
-            queued={derived.queued}
-            queueable={derived.queueable}
-            onQueueToggle={(card) =>
-              setQueued(derived.queued !== null && sameCard(card, derived.queued) ? null : card)
-            }
-          />
-        )}
-      </div>
+      )}
     </main>
   );
 }

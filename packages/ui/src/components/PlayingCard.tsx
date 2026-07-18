@@ -5,7 +5,7 @@ import { cardLabel, SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
 import { Bonhomme } from './Bonhomme.js';
 
-export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
+export type CardSize = 'sm' | 'md' | 'lg';
 
 /**
  * Fluid sizing: cards scale with the viewport (vmin) so the table reads from
@@ -17,8 +17,6 @@ const SIZE_CLASSES: Record<CardSize, string> = {
   sm: 'w-[clamp(2.1rem,5vmin,3.4rem)] text-[clamp(0.55rem,1.3vmin,0.8rem)]',
   md: 'w-[clamp(4.4rem,12vmin,9rem)] text-[clamp(0.95rem,2.3vmin,1.7rem)]',
   lg: 'w-[clamp(6rem,15vmin,12rem)] text-[clamp(1rem,2.6vmin,2rem)]',
-  // The feltless arena's trick — the biggest card on the table, the focal point.
-  xl: 'w-[clamp(6.5rem,19vmin,15rem)] text-[clamp(1.1rem,3.3vmin,2.5rem)]',
 };
 
 export interface PlayingCardProps {
