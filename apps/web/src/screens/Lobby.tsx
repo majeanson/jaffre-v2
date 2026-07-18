@@ -26,11 +26,9 @@ const T: Record<
     connecting: string;
     start: string;
     waiting: string;
-    voice: string;
     back: string;
     howToPlay: string;
     hailMary: string;
-    hailMaryHint: string;
   }
 > = {
   en: {
@@ -40,11 +38,9 @@ const T: Record<
     connecting: 'Connecting…',
     start: 'Start the game',
     waiting: 'Waiting for 4 players…',
-    voice: 'Table voice',
     back: '← Back home',
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
-    hailMaryHint: 'Bid & make 12 sans atout to win the game outright — miss it and you lose.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -53,12 +49,9 @@ const T: Record<
     connecting: 'Connexion…',
     start: 'Commencer la partie',
     waiting: 'En attente de 4 joueurs…',
-    voice: 'Vocal de table',
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
     hailMary: '12 sans atout — tout ou rien',
-    hailMaryHint:
-      "Demande et réussis un 12 sans atout pour gagner d'un coup — rate-le et tu perds.",
   },
 };
 
@@ -69,7 +62,9 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   const sendChat = useChatSend();
   const full = roster !== null && roster.seats.every((s) => s !== null);
   const seated = typeof viewer === 'number';
-  const hailMary = roster?.rules?.hailMary12 ?? false;
+  // House rule ships ON — new rooms start with Hail-Mary enabled (server
+  // default matches; unchecking is the deliberate act).
+  const hailMary = roster?.rules?.hailMary12 ?? true;
 
   return (
     <main className="table-felt grid min-h-screen place-items-center p-6">
@@ -110,11 +105,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
             onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked })}
             className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
           />
-          <span className="flex flex-col gap-0.5">
-            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
-              {t.hailMary}
-            </span>
-            <span className="text-xs text-(--color-ap-muted)">{t.hailMaryHint}</span>
+          <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+            {t.hailMary}
           </span>
         </label>
 
@@ -122,16 +114,12 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           {full ? t.start : t.waiting}
         </Cta>
 
-        {typeof viewer === 'number' && (
-          <div className="flex flex-col items-center gap-1.5">
-            <span className="text-[11px] font-semibold tracking-widest text-(--color-ap-muted) uppercase">
-              {t.voice}
-            </span>
-            <VoiceControls me={viewer} />
-          </div>
-        )}
-
-        <ChatPanel entries={chat} onSend={sendChat} />
+        {/* Voice sits inside the chat's send row — one comms surface. */}
+        <ChatPanel
+          entries={chat}
+          onSend={sendChat}
+          actions={typeof viewer === 'number' ? <VoiceControls me={viewer} /> : undefined}
+        />
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Cta variant="secondary" onClick={onLeave}>

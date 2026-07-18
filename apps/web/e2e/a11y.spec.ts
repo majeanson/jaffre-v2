@@ -28,9 +28,12 @@ test('home screen has no serious axe violations', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
   await expectNoSeriousViolations(page, 'home');
 
-  // The two inputs are reachable by keyboard and properly named.
+  // The two inputs are reachable by keyboard and properly named. Room code
+  // lives behind the single PLAY door — open it, then re-audit the open state.
   await expect(page.getByLabel('Your name')).toBeVisible();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await expect(page.getByLabel('Room code')).toBeVisible();
+  await expectNoSeriousViolations(page, 'home play open');
 });
 
 test('practice table mid-bidding has no serious axe violations', async ({ page }) => {

@@ -530,7 +530,7 @@ export class GameRoom implements DurableObject {
     const buf = new Uint32Array(1);
     crypto.getRandomValues(buf);
     const seed = buf[0] ?? 0;
-    const game = createGame(seed, this.meta.rules ?? { hailMary12: false });
+    const game = createGame(seed, this.meta.rules ?? { hailMary12: true });
     this.game = game;
     this.meta.started = true;
     this.meta.startedAt = Date.now();
@@ -840,7 +840,7 @@ export class GameRoom implements DurableObject {
       started: this.meta.started,
       seriesWins: this.meta.seriesWins,
       seriesGames: this.meta.seriesGames,
-      rules: this.meta.rules ?? { hailMary12: false },
+      rules: this.meta.rules ?? { hailMary12: true },
     };
   }
 

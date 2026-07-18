@@ -1,21 +1,28 @@
-import { Select, useLang, type Lang } from '@jaffre/ui';
+import { useLang, type Lang } from '@jaffre/ui';
 import { applyLang, LANGS } from '../lang.js';
+import { ICON_BTN_NEUTRAL } from './IconButton.js';
 
 const LABEL: Record<Lang, string> = { en: 'Language', fr: 'Langue' };
 
-/** Language picker — the one inline chrome dropdown; applyLang re-renders the
- * app root. (Skins/themes moved to the Collection gallery — see SkinLink.) */
+/**
+ * EN/FR toggle — the same affordance as the in-game options drawer's language
+ * button: one tap flips to the other language. The button face shows the
+ * language you'd switch TO ("FR" on an English screen), Silkscreen-set so it
+ * reads as a control, with the full name in the accessible label.
+ */
 export function LangSwitcher() {
   const lang = useLang();
+  const other = LANGS.find((l) => l.id !== lang) ?? LANGS[0];
+  if (other === undefined) return null;
   return (
-    <label className="flex items-center gap-1.5 font-arcade-ui text-xs text-(--color-ap-muted)">
-      <span className="max-sm:sr-only">{LABEL[lang]}</span>
-      <Select
-        label={LABEL[lang]}
-        value={lang}
-        onChange={(value) => applyLang(value as Lang)}
-        options={LANGS.map((l) => ({ value: l.id, label: l.label }))}
-      />
-    </label>
+    <button
+      type="button"
+      onClick={() => applyLang(other.id)}
+      aria-label={`${LABEL[lang]} · ${other.label}`}
+      title={`${LABEL[lang]} · ${other.label}`}
+      className={`${ICON_BTN_NEUTRAL} font-arcade-display text-[0.65em] uppercase`}
+    >
+      {other.id.toUpperCase()}
+    </button>
   );
 }

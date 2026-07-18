@@ -115,7 +115,12 @@ test('home fits a phone viewport — no primary control clipped', async ({ page 
     expect(box.x + box.width, `${what} right edge`).toBeLessThanOrEqual(width + 0.5);
   };
 
-  await fits(await page.getByRole('region', { name: 'Play' }).boundingBox(), 'Play panel');
+  await fits(
+    await page.getByRole('region', { name: 'Play', exact: true }).boundingBox(),
+    'Play panel',
+  );
+  // The bots/friends split hides behind the single PLAY door — open it first.
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await fits(
     await page.getByRole('button', { name: 'Create a room' }).boundingBox(),
     'Create a room',

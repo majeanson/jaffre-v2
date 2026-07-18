@@ -1,4 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
+import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
@@ -99,12 +101,16 @@ export function Home({
         />
       </div>
 
-      {/* Solid panel so the chrome text sits on a real background axe can read. */}
+      {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
+          how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
+          one thing everywhere. Solid panel so axe can read the contrast. */}
       <div
-        className="rise-in flex items-center gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2 shadow-(--shadow-ap-sm)"
+        className="rise-in flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
         style={{ '--rise-delay': '280ms' } as CSSProperties}
       >
-        <HelpButton defaultOpen={helpOpen} />
+        <HelpButton defaultOpen={helpOpen} className={ICON_BTN_NEUTRAL}>
+          <IconQuestion />
+        </HelpButton>
         <SkinLink />
         <LangSwitcher />
       </div>

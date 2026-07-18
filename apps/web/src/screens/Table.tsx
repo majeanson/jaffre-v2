@@ -100,7 +100,6 @@ export function Table({
             return !on;
           })
         }
-        voice={online && me !== null ? <VoiceControls me={me} /> : undefined}
         share={online && roomCode !== undefined ? <ShareButton code={roomCode} /> : undefined}
         devConsole={dev && DEV_CONSOLE_ENABLED ? <DevConsole /> : undefined}
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
@@ -139,7 +138,14 @@ export function Table({
         you={seatInfo(0)}
         lastTrick={derived.lastTrick}
         defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
-        comms={online && <Comms defaultChatOpen={initialUi?.chatOpen ?? false} />}
+        comms={
+          online && (
+            <Comms
+              defaultChatOpen={initialUi?.chatOpen ?? false}
+              voice={me !== null ? <VoiceControls me={me} /> : undefined}
+            />
+          )
+        }
         sort={me !== null && view.hand.length > 1 && <HandSortButton sort={handSort} />}
       />
       <GameLogPanel

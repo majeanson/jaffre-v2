@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLang, type Lang } from '../i18n.js';
 
 const T: Record<
@@ -53,6 +53,8 @@ export interface ChatPanelProps {
   readonly collapsible?: boolean;
   /** Collapsible only: mount with the popover already open (scene viewer). */
   readonly defaultOpen?: boolean;
+  /** Extra controls in the send row, after the Send button (e.g. voice). */
+  readonly actions?: ReactNode;
 }
 
 const MAX_CHARS = 500;
@@ -68,6 +70,7 @@ export function ChatPanel({
   onSend,
   collapsible = false,
   defaultOpen = false,
+  actions,
 }: ChatPanelProps) {
   const t = T[useLang()];
   const [open, setOpen] = useState(!collapsible || defaultOpen);
@@ -162,7 +165,7 @@ export function ChatPanel({
           e.preventDefault();
           submit();
         }}
-        className="flex items-center gap-1.5"
+        className="flex flex-wrap items-center gap-1.5"
       >
         <input
           type="text"
@@ -180,6 +183,9 @@ export function ChatPanel({
         >
           {t.send}
         </button>
+        {/* Voice (or other controls) live in the send row; the live voice bar
+            wraps to its own full-width line when it grows chips. */}
+        {actions}
       </form>
       {hint && <p className="px-1 text-[11px] text-(--color-ap-gold)">{t.slowDown}</p>}
     </div>

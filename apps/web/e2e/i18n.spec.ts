@@ -11,19 +11,23 @@ test('a French browser gets the French home screen by default', async ({ browser
   const context = await browser.newContext({ locale: 'fr-CA' });
   const page = await context.newPage();
   await page.goto('/');
-  await expect(page.getByText('Pratique contre les bots')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Jouer', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ton record' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
+  // The bots/friends split lives behind the PLAY door.
+  await page.getByRole('button', { name: 'Jouer', exact: true }).click();
+  await expect(page.getByText('Pratique contre les bots')).toBeVisible();
   await context.close();
 });
 
-test('the language picker switches to French and persists', async ({ page }) => {
+test('the language toggle switches to French and persists', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Practice vs bots')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
-  await expect(page.getByText('Pratique contre les bots')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  // The EN/FR toggle flips to the other language in one tap.
+  await page.getByRole('button', { name: 'Language · Français' }).click();
+  await expect(page.getByRole('button', { name: 'Jouer', exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Pratique contre les bots')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Jouer', exact: true })).toBeVisible();
 });
 
 test('the advanced strategy sections render in French', async ({ browser }) => {

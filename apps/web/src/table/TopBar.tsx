@@ -71,8 +71,6 @@ export interface TopBarProps {
   readonly onToggleLog: () => void;
   readonly coachOn: boolean;
   readonly onToggleCoach: () => void;
-  /** Voice controls (online rooms) — lives inside the Options drawer. */
-  readonly voice?: ReactNode;
   /** Share-this-table button (online rooms) — lives inside the Options drawer. */
   readonly share?: ReactNode;
   /** Dev console trigger (practice + dev builds) — sits next to Options. */
@@ -99,7 +97,6 @@ export function TopBar({
   onToggleLog,
   coachOn,
   onToggleCoach,
-  voice,
   share,
   devConsole,
   defaultDetailsOpen = false,
@@ -175,7 +172,6 @@ export function TopBar({
                 >
                   <IconList />
                 </IconButton>
-                {voice}
                 {share}
               </div>
             )}

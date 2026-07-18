@@ -9,17 +9,10 @@ import { expect, test } from '@playwright/test';
  * seeded game history is needed.
  */
 
-test('home links to the Collection gallery', async ({ page }) => {
+test('home links to the Collection gallery via the cards-icon chrome button', async ({ page }) => {
   await page.goto('/');
+  // ONE entry point now: the chrome's cards icon (same symbol as in-game).
   await page.getByRole('link', { name: 'Collection' }).click();
-  await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
-  expect(new URL(page.url()).hash).toBe('#collection');
-});
-
-test('the Skins chrome link redirects to the Collection gallery', async ({ page }) => {
-  await page.goto('/');
-  // The former "Skin" dropdown is now just a link into the gallery.
-  await page.getByRole('link', { name: 'Skins' }).click();
   await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
   expect(new URL(page.url()).hash).toBe('#collection');
 });

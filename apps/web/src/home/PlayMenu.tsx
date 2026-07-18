@@ -37,7 +37,6 @@ const T: Record<
     moon: (n: number) => string;
     yourGames: string;
     yourRecord: string;
-    collection: string;
     finished: string;
     yourTurn: string;
     inPlay: string;
@@ -66,7 +65,6 @@ const T: Record<
     moon: (n) => `Moon ${String(n)}`,
     yourGames: 'Your games',
     yourRecord: 'Your record',
-    collection: 'Collection',
     finished: 'Finished · rematch?',
     yourTurn: 'Your turn',
     inPlay: 'In play',
@@ -94,7 +92,6 @@ const T: Record<
     moon: (n) => `Lune ${String(n)}`,
     yourGames: 'Tes parties',
     yourRecord: 'Ton record',
-    collection: 'Collection',
     finished: 'Terminée · revanche?',
     yourTurn: 'À ton tour',
     inPlay: 'En jeu',
@@ -235,6 +232,8 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
   const difficultyLabel = DIFFICULTY_LABEL[useLang()];
   const [code, setCode] = useState('');
   const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
+  // One PLAY door: the split (bots vs friends) only appears after you knock.
+  const [open, setOpen] = useState(false);
   const statuses = useTableStatuses(tables);
 
   const cycleBot = (seat: 0 | 1 | 2) => {
@@ -258,8 +257,10 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
       aria-label={t.play}
       className="grid w-full grid-cols-1 gap-3 font-arcade-ui sm:grid-cols-2"
     >
+      {/* ONE door in: a single PLAY panel. The bots-vs-friends split only
+          appears after you press it — no split on the title screen itself. */}
       <div
-        className="rise-in group relative flex flex-col gap-3 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-(--color-ap-ink) shadow-(--shadow-ap-lg) max-sm:p-4"
+        className="rise-in group relative flex flex-col gap-4 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-(--color-ap-ink) shadow-(--shadow-ap-lg) max-sm:p-4 sm:col-span-2"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
       >
         <span
@@ -268,88 +269,99 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
         >
           ♠
         </span>
-        <span className="block font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase">
-          {t.practice}
-        </span>
-        {/* The three bots live right inside the pill — tap one to cycle its
-            difficulty. (Nested here as real buttons, so the pill itself can't
-            be one big button; "Play now" is the action.) */}
-        <div
-          className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
-          aria-label={t.botDifficulty}
-        >
-          <span className="font-arcade-display uppercase tracking-wide opacity-70">
-            {t.opponents}
-          </span>
-          {([0, 1, 2] as const).map((seat) => (
-            <button
-              key={seat}
-              type="button"
-              onClick={() => cycleBot(seat)}
-              className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-            >
-              {PRACTICE_BOT_NAMES[seat]} · {difficultyLabel[bots[seat]]}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onPractice}
-          className="mt-1 inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-        >
-          {t.playNow}
-          <span
-            aria-hidden
-            className="transition-transform duration-(--duration-flick) group-hover:translate-x-1"
-          >
-            →
-          </span>
-        </button>
-      </div>
-
-      <Panel
-        className="rise-in flex flex-col gap-3 p-5 max-sm:p-4"
-        style={{ '--rise-delay': '140ms' } as CSSProperties}
-      >
-        <span className="font-arcade-display text-[clamp(1.4rem,2.8vmin,1.8rem)] uppercase text-(--color-ap-text)">
-          {t.playFriends}
-        </span>
-        <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
-          {t.createRoom}
-        </Cta>
-        <div
-          aria-hidden
-          className="flex items-center gap-3 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-muted)"
-        >
-          <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-          {t.withCode}
-          <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-        </div>
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            joinTyped();
-          }}
-        >
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="early-newt-os"
-            aria-label={t.roomCode}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
-          />
+        {!open ? (
           <button
-            type="submit"
-            className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+            type="button"
+            onClick={() => setOpen(true)}
+            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(1.2rem,3.5vmin,2.2rem)] font-arcade-display text-[clamp(1.9rem,4.5vmin,2.8rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
-            {t.joinRoom}
+            {t.play}
+            <span
+              aria-hidden
+              className="transition-transform duration-(--duration-flick) group-hover:translate-x-1"
+            >
+              →
+            </span>
           </button>
-        </form>
-      </Panel>
+        ) : (
+          // Base grid-cols-1 is load-bearing: an implicit column sizes to its
+          // content and can silently overflow a 390px viewport (see the
+          // scenes.spec "home fits" regression note).
+          <div className="relative z-10 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="flex flex-col gap-3">
+              <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
+                {t.practice}
+              </span>
+              {/* Tap a bot to cycle its difficulty; "Play now" starts. */}
+              <div
+                className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
+                aria-label={t.botDifficulty}
+              >
+                <span className="font-arcade-display uppercase tracking-wide">{t.opponents}</span>
+                {([0, 1, 2] as const).map((seat) => (
+                  <button
+                    key={seat}
+                    type="button"
+                    onClick={() => cycleBot(seat)}
+                    className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                  >
+                    {PRACTICE_BOT_NAMES[seat]} · {difficultyLabel[bots[seat]]}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={onPractice}
+                className="mt-auto inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+              >
+                {t.playNow}
+                <span aria-hidden>→</span>
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
+                {t.playFriends}
+              </span>
+              <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
+                {t.createRoom}
+              </Cta>
+              {/* Full-opacity ink: a faded label on the violet ground fails AA. */}
+              <div
+                aria-hidden
+                className="flex items-center gap-3 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide"
+              >
+                <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
+                {t.withCode}
+                <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
+              </div>
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  joinTyped();
+                }}
+              >
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="early-newt-os"
+                  aria-label={t.roomCode}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
+                />
+                <button
+                  type="submit"
+                  className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                >
+                  {t.joinRoom}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
 
       {tables.length > 0 && (
         <Panel
@@ -398,15 +410,6 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             ★
           </span>
           {t.yourRecord}
-        </a>
-        <a
-          href="#collection"
-          className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-        >
-          <span aria-hidden className="text-(--color-ap-gold)">
-            ◆
-          </span>
-          {t.collection}
         </a>
       </div>
     </section>
