@@ -114,6 +114,10 @@ export function Seat({
         className={`relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 font-arcade-display text-(--color-ap-ink) shadow-(--shadow-ap-sm) ${
           initial.length > 1 ? 'text-[0.78em]' : 'text-[1.05em]'
         } ${
+          // Phone table seats are avatar-only: scale the token up (the em box
+          // rides the font) so it reads as a person, not a speck on the felt.
+          compact ? (initial.length > 1 ? 'max-sm:text-[1.35em]' : 'max-sm:text-[1.8em]') : ''
+        } ${
           // With the plate chrome gone on small screens, the avatar itself
           // carries the turn indicator.
           compact && isTurn ? 'max-sm:border-(--color-ap-violet)' : ''
@@ -130,9 +134,10 @@ export function Seat({
         ) : (
           initial
         )}
-        {/* team pictogram, corner-badged on the avatar */}
-        <span className="absolute -top-[0.3em] -left-[0.3em] grid size-[1em] place-items-center rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
-          <TeamGlyph team={team} size="0.7em" />
+        {/* team pictogram, corner-badged on the avatar — small and tucked into
+            the corner so it never covers the face. */}
+        <span className="absolute -top-[0.28em] -left-[0.28em] grid size-[0.8em] place-items-center rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel)">
+          <TeamGlyph team={team} size="0.5em" />
         </span>
         <span
           title={connected ? t.connected : t.disconnected}

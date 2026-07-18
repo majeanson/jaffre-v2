@@ -139,6 +139,17 @@ export function IconGlobe() {
   );
 }
 
+/** Last trick: a clock face with a counter-clockwise "look back" arrow. */
+export function IconHistory() {
+  return (
+    <Svg>
+      <path d="M4.5 12a7.5 7.5 0 1 1 2.2 5.3" />
+      <path d="M4.5 13.5V17h3.5" />
+      <path d="M12 8.5V12l2.8 1.8" />
+    </Svg>
+  );
+}
+
 /** Voice / microphone: a capsule on a stand. */
 export function IconMic() {
   return (

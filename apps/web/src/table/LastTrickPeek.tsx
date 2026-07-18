@@ -1,6 +1,7 @@
 import { PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
-import { GHOST_BTN_SM } from '../components/buttonStyles.js';
+import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
+import { IconHistory } from '../components/icons.js';
 import type { LastTrickInfo } from './useTableDerived.js';
 
 const T: Record<Lang, { lastTrick: string }> = {
@@ -54,17 +55,20 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
 
   return (
     <div className="relative" ref={rootRef}>
+      {/* Icon-only trigger — the aria-label carries the name ("Last trick"). */}
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={GHOST_BTN_SM}
+        aria-label={t.lastTrick}
+        title={t.lastTrick}
+        className={ICON_BTN_NEUTRAL}
       >
-        {t.lastTrick}
+        <IconHistory />
       </button>
       {open && (
-        <div className="absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 shadow-(--shadow-ap-lg)">
+        <div className="absolute bottom-full right-0 z-30 mb-2 flex flex-col gap-1.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-3 shadow-(--shadow-ap-lg)">
           <div className="relative size-[clamp(9rem,22vmin,13rem)]">
             {trick.plays.map((play) => (
               <span

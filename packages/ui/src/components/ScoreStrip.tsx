@@ -265,17 +265,23 @@ function TeamSide({
   return (
     <span
       className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''} ${
-        // Your team's whole side glows instead of wearing a "you" chip.
+        // Your team's side gets a soft tint — no heavy ring boxing it in.
         isMine
-          ? 'rounded-(--radius-ap-inner) bg-(--color-ap-violet)/15 px-1.5 py-0.5 ring-2 ring-(--color-ap-violet)'
+          ? 'rounded-(--radius-ap-inner) bg-(--color-ap-violet)/12 px-1.5 py-0.5'
           : 'px-1.5 py-0.5'
       }`}
     >
       <span className="flex flex-col items-center gap-0.5 leading-none">
-        {/* The glyph alone carries the team identity — no SUN/MOON words. */}
-        <span className="flex items-center gap-[0.4em]">
+        {/* The glyph alone carries the team identity — no SUN/MOON words. A
+            small violet dot quietly marks the viewer's own side. */}
+        <span className="flex items-center gap-[0.35em]">
           <TeamGlyph team={team} size="1.2em" label={name} />
-          {isMine && <span className="sr-only">({youLabel})</span>}
+          {isMine && (
+            <>
+              <span aria-hidden className="size-[0.4em] rounded-full bg-(--color-ap-violet-soft)" />
+              <span className="sr-only">({youLabel})</span>
+            </>
+          )}
         </span>
         <span
           data-testid={testId}
@@ -671,9 +677,11 @@ export function ScoreStrip({
             youLabel={t.you}
             testId="team-score-1"
           />
+          {/* Plain chevron — the whole strip is the button, so the affordance
+              doesn't need its own boxed chrome. */}
           <span
             aria-hidden
-            className={`grid size-[1.7em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-[0.7em] text-(--color-ap-muted) transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`shrink-0 text-[0.8em] text-(--color-ap-muted) transition-transform ${open ? 'rotate-180' : ''}`}
           >
             ▾
           </span>
