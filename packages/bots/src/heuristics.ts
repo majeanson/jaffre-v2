@@ -11,7 +11,7 @@ import {
   trickCtx,
   trumpsOutstanding,
 } from './analysis.js';
-import { bestTrump } from './evaluate.js';
+import { bestTrump, evalTrump } from './evaluate.js';
 
 export type Level = 'normal' | 'hard';
 
@@ -44,14 +44,35 @@ function byValue(cards: readonly Card[], dir: 'asc' | 'desc'): Card[] {
   return [...cards].sort((a, b) => s * (a.value - b.value));
 }
 
-/** Opening lead as declarer: name trump (your best suit) and lead it high to draw. */
+/** Opening lead as declarer: name trump (your best suit) and lead it high to draw.
+ * On a forced 7 the hand has no best suit worth the name — take the longest one:
+ * trump length is the only strength a junk hand can still lean on. */
 function openingLead(view: SeatView): Card {
-  const suit = bestTrump(view.hand).suit;
+  const suit = view.contract?.forced === true ? longestSuit(view.hand) : bestTrump(view.hand).suit;
   const inSuit = byValue(
     view.hand.filter((c) => c.suit === suit),
     'desc',
   );
   return inSuit[0] ?? (byValue(view.hand, 'desc')[0] as Card);
+}
+
+function longestSuit(hand: readonly Card[]): Suit {
+  const counts = new Map<Suit, number>();
+  for (const c of hand) counts.set(c.suit, (counts.get(c.suit) ?? 0) + 1);
+  let best: Suit | null = null;
+  let bestLen = -1;
+  for (const [suit, n] of counts) {
+    if (
+      n > bestLen ||
+      (n === bestLen &&
+        best !== null &&
+        evalTrump(hand, suit).expectedPoints > evalTrump(hand, best).expectedPoints)
+    ) {
+      best = suit;
+      bestLen = n;
+    }
+  }
+  return best as Suit;
 }
 
 function leadCard(view: SeatView, legal: readonly Card[], level: Level, rng: Rng): Card {
@@ -71,6 +92,10 @@ function leadCard(view: SeatView, legal: readonly Card[], level: Level, rng: Rng
   }
 
   // Cash a sure winner in a side suit (never the red 0 — it is not a boss).
+  // Cash HIGH, not low: a visibly unbeatable winner is partner communication —
+  // partner can prove the trick is safe and drop the red 0 on it. Winning with
+  // the lowest of equals (cross-play: −6.5 pts) starves partner of that
+  // certainty; concealment only pays against humans, so it stays a human tip.
   const bosses = legal.filter(
     (c) => !isRedZero(c) && (trump === null || c.suit !== trump) && isBoss(c, view, trumpAware),
   );
@@ -111,15 +136,28 @@ function supportPartner(view: SeatView, legal: readonly Card[], ctx: TrickCtx): 
   const redZero = legal.find(isRedZero);
   if (partnerCertain && redZero !== undefined) return redZero;
 
+  return [...legal].sort(
+    (a, b) => sheddingRank(view, a, 50) - sheddingRank(view, b, 50),
+  )[0] as Card;
+}
+
+/**
+ * How willingly we part with a card when not fighting for the trick — lower is
+ * shed first. `brownHold` prices holding the brown 0 (higher when partner is
+ * winning: never gift our own side the −2).
+ */
+function sheddingRank(view: SeatView, c: Card, brownHold: number): number {
   const trump = view.trump;
-  const rank = (c: Card): number => {
-    let r = c.value;
-    if (trump !== null && c.suit === trump) r += 100; // don't trump partner
-    if (isBrownZero(c)) r += 50; // don't gift partner the −2
-    if (isRedZero(c)) r += 200; // never throw the +5
-    return r;
-  };
-  return [...legal].sort((a, b) => rank(a) - rank(b))[0] as Card;
+  let r = c.value;
+  if (isRedZero(c)) r += 200; // never throw the +5
+  if (trump !== null && c.suit === trump) r += 100; // keep trumps
+  if (isBrownZero(c)) r += brownHold; // hold it for a cleaner dump
+  // Deliberately NO slough-to-void or brown-exit bonuses here: both were
+  // cross-play tested against the previous bot and lost (~−2.5 pts each) —
+  // shedding plain low cards keeps more late-round trick potential than
+  // engineering voids the bot rarely converts. They live on as human tips in
+  // the HelpSheet, where reading opponents can actually cash them in.
+  return r;
 }
 
 /** An opponent is winning: decide whether the trick is worth taking. */
@@ -175,13 +213,7 @@ function discard(view: SeatView, legal: readonly Card[], ctx: TrickCtx): Card {
   const opponentCertain = ctx.winning !== null && certainWinner(ctx.winning, view);
   if (brown !== undefined && (ctx.position === 3 || opponentCertain)) return brown;
 
-  const trump = view.trump;
-  const rank = (c: Card): number => {
-    let r = c.value;
-    if (isRedZero(c)) r += 200;
-    if (trump !== null && c.suit === trump) r += 100; // keep trumps
-    if (isBrownZero(c)) r += 30; // hold it for a cleaner dump
-    return r;
-  };
-  return [...legal].sort((a, b) => rank(a) - rank(b))[0] as Card;
+  return [...legal].sort(
+    (a, b) => sheddingRank(view, a, 30) - sheddingRank(view, b, 30),
+  )[0] as Card;
 }

@@ -22,6 +22,9 @@ import { Stats } from './Stats.js';
 import { Table } from './Table.js';
 import { Visitor } from './Visitor.js';
 
+/** Mirrors PROFILE_KEY in net/auth.ts — the cached-cosmetics localStorage key. */
+const PROFILE_KEY = 'jaffre-profile';
+
 export interface ScenesProps {
   /** Scene id from '#scenes/<id>'; null or unknown falls back to the first. */
   readonly sceneId: string | null;
@@ -95,10 +98,28 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     const prevSkin = currentCardSkin();
     if (current?.theme === 'light') root.dataset['theme'] = 'light';
     if (current?.cardSkin !== undefined) applyCardSkin(current.cardSkin);
+    // Some scenes force a painted-card cosmetic so the personalised avatar +
+    // own 0-cards render. It lives in the same 'jaffre-profile' localStorage
+    // key net/auth.ts reads; save the raw value and restore it on exit so a
+    // scene never leaks its demo paint onto the real player.
+    const prevProfile = localStorage.getItem(PROFILE_KEY);
+    if (current?.paint !== undefined) {
+      let profile: Record<string, unknown> = {};
+      try {
+        profile = prevProfile !== null ? (JSON.parse(prevProfile) as Record<string, unknown>) : {};
+      } catch {
+        profile = {};
+      }
+      localStorage.setItem(PROFILE_KEY, JSON.stringify({ ...profile, paint: current.paint }));
+    }
     return () => {
       if (prevTheme === undefined) delete root.dataset['theme'];
       else root.dataset['theme'] = prevTheme;
       if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
+      if (current?.paint !== undefined) {
+        if (prevProfile === null) localStorage.removeItem(PROFILE_KEY);
+        else localStorage.setItem(PROFILE_KEY, prevProfile);
+      }
     };
   }, [current]);
 

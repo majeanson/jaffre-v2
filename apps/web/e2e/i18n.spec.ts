@@ -26,6 +26,19 @@ test('the language picker switches to French and persists', async ({ page }) => 
   await expect(page.getByText('Pratique contre les bots')).toBeVisible();
 });
 
+test('the advanced strategy sections render in French', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'fr-CA' });
+  const page = await context.newPage();
+  await page.goto('/#scenes/home-help');
+  const dialog = page.getByRole('dialog', { name: 'Comment jouer' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByText('Stratégie avancée').click();
+  await expect(dialog.getByText('Les deux bonshommes (0 rouge et 0 brun)')).toBeVisible();
+  await dialog.getByText('Les deux bonshommes (0 rouge et 0 brun)').click();
+  await expect(dialog.getByText('Garde un petit brun comme porte de sortie.')).toBeVisible();
+  await context.close();
+});
+
 test('the staged stats scene renders in French', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'fr-CA' });
   const page = await context.newPage();

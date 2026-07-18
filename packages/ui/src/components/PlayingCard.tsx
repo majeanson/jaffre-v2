@@ -31,6 +31,10 @@ export interface PlayingCardProps {
   readonly queued?: boolean;
   /** Small deterministic tilt (degrees) for a hand-held look. */
   readonly tilt?: number;
+  /** The viewer's painted-card art (data URL). Rendered ONLY on their own
+   * red-0/brown-0 — the Hand passes it; table-played cards never do, so
+   * ownership stays unambiguous and only your specials get personalised. */
+  readonly paint?: string | null;
 }
 
 export function PlayingCard({
@@ -42,6 +46,7 @@ export function PlayingCard({
   recommended = false,
   queued = false,
   tilt = 0,
+  paint = null,
 }: PlayingCardProps) {
   const lang = useLang();
   const { renderers } = useCardSkin();
@@ -107,7 +112,18 @@ export function PlayingCard({
           The bonhomme cards also carry a small suit shape beneath the figure so
           the suit stays identifiable even in a low-colour skin (e.g. noir). */}
       <span className="absolute inset-0 grid place-items-center">
-        {renderers.centerMark ? (
+        {(isRedZero || isBrownZero) && paint !== null ? (
+          // Your own special, personalised: the painting takes the bonhomme's
+          // place; the small suit shape stays so the card is still readable.
+          <span className="flex flex-col items-center gap-[0.12em]">
+            <img
+              src={paint}
+              alt=""
+              className="size-[2.6em] rounded-[0.2em] border-[0.1em] border-(--color-ap-ink) object-cover shadow-(--shadow-ap-sm)"
+            />
+            <SuitShape suit={card.suit} size="0.62em" />
+          </span>
+        ) : renderers.centerMark ? (
           renderers.centerMark(card, '2em')
         ) : isRedZero || isBrownZero ? (
           <span className="flex flex-col items-center gap-[0.12em]">

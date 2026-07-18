@@ -1,6 +1,16 @@
 import type { Action, BidChoice, Card, SeatView, Suit } from '@jaffre/engine';
 import { legalCards, teamOf } from '@jaffre/engine';
-import { cheapestWinner, isBoss, isBrownZero, isRedZero, trickCtx, wouldWin } from './analysis.js';
+import {
+  cheapestWinner,
+  isBoss,
+  isBrownZero,
+  isRedZero,
+  lowestEquivalent,
+  redZeroLive,
+  trickCtx,
+  tricksPlayed,
+  wouldWin,
+} from './analysis.js';
 import { bestTrump, pickBid } from './evaluate.js';
 import { heuristicCard } from './heuristics.js';
 
@@ -73,6 +83,17 @@ export function suggest(view: SeatView, lang: CoachLang = 'en'): Advice {
 }
 
 function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
+  // Dealer facing three passes: passing here IS bidding 7 — say so.
+  const dealerForced =
+    bid.kind === 'pass' &&
+    view.viewer === view.dealer &&
+    view.bids.length === 3 &&
+    view.bids.every((b) => b.choice.kind === 'pass');
+  if (dealerForced) {
+    return lang === 'fr'
+      ? 'Trois passes — passer te force à 7. Prépare-toi : ta plus longue couleur comme atout, ton partenaire en renfort, et le 0 brun sorti au plus vite.'
+      : 'Three passes — passing puts the forced 7 on you. Plan for it: longest suit as trump, lean on your partner, and get the brown 0 out early.';
+  }
   if (lang === 'fr') {
     if (bid.kind === 'pass') return 'Ta main est mince — passe et joue en défense.';
     const kind = bid.sansAtout
@@ -101,6 +122,11 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
     view.contract.seat === seat &&
     !view.trumpDecided
   ) {
+    if (view.contract.forced) {
+      return fr
+        ? `Forcé à 7 — nomme ta plus longue couleur comme atout (${SUIT_NAME.fr[card.suit]}), appuie-toi sur ton partenaire et refile le 0 brun sur leurs levées.`
+        : `Forced to 7 — name your longest suit trump (${SUIT_NAME.en[card.suit]}), lean on your partner, and dump the brown 0 on their tricks.`;
+    }
     return fr
       ? `Ouvre en ${SUIT_NAME.fr[card.suit]} — ta première carte nomme l'atout, et ouvrir haut commence à faire sortir les leurs.`
       : `Lead ${SUIT_NAME.en[card.suit]} — your first card names it trump, and leading high starts drawing theirs.`;
@@ -113,6 +139,18 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
         : `Lead trump (${n}) to strip the defenders of theirs.`;
     }
     if (isBoss(card, view, true)) {
+      // Leading red from strength while the +5 is still out forces the red 0
+      // to follow — it falls under our winner.
+      if (card.suit === 'red' && redZeroLive(view) && !isRedZero(card)) {
+        return fr
+          ? `Ouvre rouge avec ton ${n} — le 0 rouge est encore en jeu, et celui qui le tient doit fournir : il peut tomber sous ta gagnante pour +5.`
+          : `Lead red with your ${n} — the Red 0 is still out, and whoever holds it must follow: it can fall under your winner for +5.`;
+      }
+      if (concealedBy(card, view)) {
+        return fr
+          ? `Encaisse avec le ${n} — il gagne les mêmes levées que tes plus hautes et ne dit rien à la table.`
+          : `Cash with ${n} — it wins the same tricks as your higher cards and tells the table nothing.`;
+      }
       return fr
         ? `Encaisse ton ${n} — rien en jeu ne peut le battre.`
         : `Cash your ${n} — nothing out can beat it.`;
@@ -141,6 +179,11 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
     }
     const cheap = cheapestWinner(legalCards(view.hand, ctx.ledSuit), view);
     if (cheap !== null && isBoss(cheap, view, true)) {
+      if (concealedBy(card, view)) {
+        return fr
+          ? `Gagne avec le ${n} — la plus petite de tes égales prend la même levée sans montrer ton jeu.`
+          : `Win with ${n} — the lowest of your equals takes the same trick without showing your hand.`;
+      }
       return fr
         ? `Prends la levée avec ton ${n} — impossible à battre.`
         : `Take the trick with your ${n} — it can't be beaten.`;
@@ -159,17 +202,53 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
     return fr
       ? 'Tu ne peux pas gagner celle-là — donne-leur le 0 brun pour le −2.'
       : "You can't win this — dump the Brown 0 on them for −2.";
+
+  // Ducking with the low brown while the −2 is still ours: the escape card.
+  if (card.suit === 'brown' && !isBrownZero(card) && view.hand.some(isBrownZero)) {
+    return fr
+      ? `Fournis le ${n} et perds la levée — ne gagne jamais celle où ton 0 brun devra atterrir.`
+      : `Duck with ${n} — never win the trick your Brown 0 has to leave in.`;
+  }
   if (view.trump !== null && card.suit === view.trump) {
     return fr
       ? `Impossible de gagner à bon compte — garde tes atouts et jette le ${n} seulement s'il n'y a rien d'autre.`
       : `Can't win cheaply — hold your trumps and throw ${n} only if nothing else.`;
   }
+
+  // Sloughing the last card of a side suit: a void is a future ruff.
+  const lastOfSuit = view.hand.filter((h) => h.suit === card.suit).length === 1;
+  const holdsTrump = view.trump !== null && view.hand.some((h) => h.suit === view.trump);
+  if (
+    lastOfSuit &&
+    holdsTrump &&
+    card.suit !== view.trump &&
+    !isRedZero(card) &&
+    tricksPlayed(view) <= 3
+  ) {
+    const redNote = redZeroLive(view) && card.suit !== 'red';
+    return fr
+      ? `Jette ton dernier ${SUIT_NAME.fr[card.suit]} — une chute là te permet de couper ensuite${redNote ? ', et le 0 rouge est encore en jeu' : ''}.`
+      : `Throw your last ${SUIT_NAME.en[card.suit]} — a void there lets you ruff later${redNote ? ', and the Red 0 is still out' : ''}.`;
+  }
+
   const keepingRedZero = view.hand.some(isRedZero) && !isRedZero(card);
-  return keepingRedZero
-    ? fr
+  if (keepingRedZero) {
+    return fr
       ? `Tu ne peux pas gagner — jette le ${n} et garde le 0 rouge pour plus tard.`
-      : `You can't win — throw ${n} and keep the Red 0 for later.`
-    : fr
-      ? `Tu ne peux pas gagner cette levée — jette ta carte la plus faible, le ${n}.`
-      : `You can't win this trick — throw your weakest card, ${n}.`;
+      : `You can't win — throw ${n} and keep the Red 0 for later.`;
+  }
+  const redWatch = redZeroLive(view) && card.suit !== 'red';
+  return fr
+    ? `Tu ne peux pas gagner cette levée — jette ta carte la plus faible, le ${n}.${redWatch ? ' Le 0 rouge est encore en jeu — garde de quoi gagner une levée rouge.' : ''}`
+    : `You can't win this trick — throw your weakest card, ${n}.${redWatch ? ' The Red 0 is still out — keep a way to win a red trick.' : ''}`;
+}
+
+/** True when `card` is the low end of a run of equals — the concealment play. */
+function concealedBy(card: Card, view: SeatView): boolean {
+  const pool = view.hand.filter((h) => h.suit === card.suit);
+  return (
+    pool.some((h) => h.value > card.value) &&
+    lowestEquivalent(pool.sort((a, b) => b.value - a.value)[0] as Card, pool, view).value ===
+      card.value
+  );
 }

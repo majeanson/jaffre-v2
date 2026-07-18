@@ -444,6 +444,10 @@ const LOADERS: Record<SceneId, () => void> = {
     'og-deck',
     (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
   ),
+  // Seed 2 deals seat 0 (you) BOTH specials; the opening bidding state keeps
+  // your full hand on screen (seat 1 bids first, no overlay) so the painted
+  // red-0/brown-0 show alongside the painted seat avatar (paint from meta).
+  'painted-card': () => inject({ state: createGame(2), lastEvents: [], summaries: [] }),
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

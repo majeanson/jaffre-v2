@@ -1,5 +1,6 @@
 import { Seat, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
+import { getProfile } from '../net/auth.js';
 import { PlayerPeek } from './PlayerPeek.js';
 import { formatCountdown, useCountdown } from './useCountdown.js';
 import type { SeatChipInfo } from './useTableDerived.js';
@@ -77,6 +78,10 @@ export function SeatChip({
 
   if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">{t.empty}</span>;
 
+  // Your own seat wears your painted card (if any) as its avatar; other seats
+  // never receive paint (the roster doesn't carry other players' paint).
+  const paint = info.isYou ? getProfile().paint : null;
+
   return (
     <span ref={rootRef} className="relative inline-block max-w-full min-w-0">
       <Seat
@@ -88,6 +93,7 @@ export function SeatChip({
         isBot={info.isBot}
         isYou={info.isYou}
         connected={info.connected}
+        paint={paint}
       />
       {/* Transparent hit target over the presentational nameplate — keeps Seat
           free of interactive descendants (axe-clean) and the whole plate tappable. */}

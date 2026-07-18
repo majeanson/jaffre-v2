@@ -112,14 +112,21 @@ land.
       on-screen. Files: `SeatChip.tsx`, new `PlayerPeek.tsx`, `useTableDerived.ts`
       (seat `difficulty`), `Stage.tsx`/`UtilityRow.tsx` (placement).
 
-## Phase G — Personalized card (bigger) ⬜
+## Phase G — Personalized card (bigger) ✅
 
-- [ ] **G1. Painted card → seat avatar.** Use the player's painted card (already
-      stored in the profile) as their seat avatar/pictogram where available.
-- [ ] **G2. Painted card → your own 0-cards.** Your red 0 / brown 0 bonhommes
-      render your painting (opt-in). Renderer reads the local profile paint; only
-      applies to the viewer's own specials. Files: `cardSkin.tsx`, `PlayingCard.tsx`,
-      profile plumbing.
+- [x] **G1. Painted card → seat avatar.** When it's the viewer's own seat and
+      `getProfile().paint` exists, `Seat` renders the painting as the avatar (in
+      place of the initial+hue), keeping the team badge + connection dot on top.
+      `SeatChip` reads the paint (viewer-only — the roster carries no other
+      player's paint) and threads it in. Files: `Seat.tsx`, `SeatChip.tsx`.
+- [x] **G2. Painted card → your own 0-cards.** `PlayingCard` gains an opt-in
+      `paint` prop; it replaces the bonhomme with the painting ONLY for a red-0/
+      brown-0, and only the `Hand` passes it (via `PlayerHand` → `getProfile().paint`).
+      Since only the viewer's own cards render through the Hand, table-played 0-cards
+      never receive paint and keep the normal bonhomme — ownership stays unambiguous.
+      New `painted-card` scene (seed 2 deals seat 0 both specials; `paint` seeded via
+      `SceneMeta`, restored on exit). Files: `PlayingCard.tsx`, `Hand.tsx`,
+      `PlayerHand.tsx`, `sceneManifest.ts`, `scenes.ts`, `Scenes.tsx`.
 
 ---
 

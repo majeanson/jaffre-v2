@@ -60,6 +60,9 @@ export interface SeatProps {
   readonly connected?: boolean;
   /** On small screens, collapse to the avatar only (name stays for SR/title). */
   readonly compact?: boolean;
+  /** The viewer's painted-card art (data URL): shown as their own avatar in
+   * place of the initial+hue. Only ever passed for the viewer's own seat. */
+  readonly paint?: string | null;
 }
 
 /**
@@ -82,6 +85,7 @@ export function Seat({
   isYou = false,
   connected = true,
   compact = false,
+  paint = null,
 }: SeatProps) {
   const t = T[useLang()];
   const initial = (name[0] ?? '?').toUpperCase();
@@ -94,10 +98,20 @@ export function Seat({
     >
       <span
         aria-hidden
-        style={{ background: seatColor(name) }}
+        style={paint === null ? { background: seatColor(name) } : undefined}
         className="relative grid size-[2.1em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[1.05em] text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
       >
-        {initial}
+        {paint !== null ? (
+          // Your personalised avatar: the painting fills the plate; its own
+          // rounding matches so the corner badges (siblings) stay unclipped.
+          <img
+            src={paint}
+            alt=""
+            className="absolute inset-0 size-full rounded-[calc(var(--radius-ap-inner)-0.1em)] object-cover"
+          />
+        ) : (
+          initial
+        )}
         {/* team pictogram, corner-badged on the avatar */}
         <span className="absolute -top-[0.3em] -left-[0.3em] grid size-[1em] place-items-center rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm)">
           <TeamGlyph team={team} size="0.7em" />

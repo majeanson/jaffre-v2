@@ -31,6 +31,9 @@ export interface SceneMeta {
   readonly theme?: 'light';
   /** Force a card skin for this scene (default: the stored one, i.e. arcade). */
   readonly cardSkin?: string;
+  /** Seed the viewer's painted-card cosmetic (data URL) for this scene, so the
+   * personalised avatar + own 0-cards render; restored to the real one on exit. */
+  readonly paint?: string;
   /** Playwright locator that must be visible once the scene renders. */
   readonly probe: string;
   /** Playwright locator that must NOT be visible in this scene. */
@@ -303,6 +306,15 @@ export const SCENE_METAS = [
     screen: 'table',
     cardSkin: 'og-deck',
     probe: '[role="option"][data-playable="true"]',
+  },
+  {
+    id: 'painted-card',
+    label: 'Play — your painted card (avatar + own 0s)',
+    screen: 'table',
+    // A little hand-painted doodle stands in for the player's own canvas.
+    paint:
+      "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Crect%20width='48'%20height='48'%20fill='%235b2a86'/%3E%3Ccircle%20cx='24'%20cy='19'%20r='11'%20fill='%23ffd23f'/%3E%3Cpath%20d='M9%2041%20Q24%2028%2039%2041'%20stroke='%233ddc97'%20stroke-width='5'%20fill='none'/%3E%3C/svg%3E",
+    probe: 'role=listbox[name="Your hand"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

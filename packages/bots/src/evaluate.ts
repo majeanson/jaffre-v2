@@ -22,6 +22,8 @@ const W = {
   ruffSingleton: 0.3,
   partner: 1.1, // expected help from partner's tricks
   brownPenalty: 0.5, // expected drag from the brown 0
+  ltcSlack: 0.5, // how far past the losing-trick count the optimist may reach
+  saRunBonus: 0.5, // per running-suit card beyond the top two (sans-atout tempo)
 } as const;
 
 export interface TrumpEval {
@@ -47,6 +49,25 @@ function redZeroProb(hand: readonly Card[], trump: Suit | null, tricks: number):
   return 0.3;
 }
 
+/**
+ * Losing-trick count adapted to 8-rank suits: in each suit only the top
+ * min(3, length) ranks matter — count how many of 7/6/5 (restricted to that
+ * window) the hand is missing. A second, pessimistic lens on hand strength;
+ * `evalTrump` never bids past it by more than `W.ltcSlack`.
+ */
+export function losingTrickCount(hand: readonly Card[]): number {
+  const bySuit = valuesBySuit(hand);
+  let losers = 0;
+  for (const s of SUITS) {
+    const vals = bySuit.get(s) as number[];
+    const window = Math.min(3, vals.length);
+    for (const top of [7, 6, 5].slice(0, window)) {
+      if (!vals.includes(top)) losers += 1;
+    }
+  }
+  return losers;
+}
+
 export function evalTrump(hand: readonly Card[], trump: Suit): TrumpEval {
   const bySuit = valuesBySuit(hand);
   const trumps = bySuit.get(trump) as number[];
@@ -68,7 +89,8 @@ export function evalTrump(hand: readonly Card[], trump: Suit): TrumpEval {
     }
   }
 
-  const expectedTricks = Math.min(8, tricks);
+  const ltcTricks = 8 - losingTrickCount(hand);
+  const expectedTricks = Math.min(8, tricks, ltcTricks + W.ltcSlack);
   const pRed = redZeroProb(hand, trump, expectedTricks);
   const expectedPoints = expectedTricks + W.partner + 5 * pRed - W.brownPenalty;
   return { suit: trump, expectedTricks, expectedPoints };
@@ -87,6 +109,10 @@ export interface SansAtoutEval {
   readonly expectedPoints: number;
   readonly bosses: number;
   readonly suitsWithBoss: number;
+  /** Suits headed by 7-6 — they can be run from the top without losing the lead. */
+  readonly runningSuits: number;
+  /** Suits holding cards but no stopper (no 7, no guarded 6) — fatal sans atout. */
+  readonly unstopped: number;
 }
 
 /** Sans-atout needs top cards spread across suits — one long weak suit is fatal. */
@@ -94,6 +120,9 @@ export function evalSansAtout(hand: readonly Card[]): SansAtoutEval {
   const bySuit = valuesBySuit(hand);
   let bosses = 0;
   let suitsWithBoss = 0;
+  let runningSuits = 0;
+  let runBonus = 0;
+  let unstopped = 0;
   for (const s of SUITS) {
     const vals = bySuit.get(s) as number[];
     let suitBoss = 0;
@@ -101,10 +130,22 @@ export function evalSansAtout(hand: readonly Card[]): SansAtoutEval {
     if (vals.includes(6) && vals.includes(7)) suitBoss += 1;
     if (suitBoss > 0) suitsWithBoss += 1;
     bosses += suitBoss;
+    if (vals.includes(7) && vals.includes(6)) {
+      runningSuits += 1;
+      // Consecutive top cards past 7-6 keep the run going: 7-6-5(-4…) never
+      // surrenders the lead — the sans-atout tempo edge (declarer leads first).
+      let next = 5;
+      while (vals.includes(next)) {
+        runBonus += W.saRunBonus;
+        next -= 1;
+      }
+    }
+    const stopped = vals.includes(7) || (vals.includes(6) && vals.length >= 2);
+    if (vals.length > 0 && !stopped) unstopped += 1;
   }
   const pRed = Math.min(0.5, redZeroProb(hand, null, bosses));
-  const expectedPoints = bosses * 1.05 + 1.0 + 5 * pRed;
-  return { expectedPoints, bosses, suitsWithBoss };
+  const expectedPoints = bosses * 1.05 + 1.0 + 5 * pRed + runBonus;
+  return { expectedPoints, bosses, suitsWithBoss, runningSuits, unstopped };
 }
 
 export interface BidOpts {
@@ -150,7 +191,10 @@ export function pickBid(view: SeatView, opts: BidOpts): BidChoice {
   if (opts.allowSansAtout) {
     const sa = evalSansAtout(view.hand);
     const saCeil = Math.min(12, Math.floor(sa.expectedPoints - opts.margin));
-    if (sa.suitsWithBoss >= 3 && saCeil >= 7) {
+    // An unstopped suit is an open runway for the defenders — never sans atout.
+    // Spread bosses OR two running suits both qualify as control.
+    const saShape = sa.unstopped === 0 && (sa.suitsWithBoss >= 3 || sa.runningSuits >= 2);
+    if (saShape && saCeil >= 7) {
       const sans = legal
         .filter((c) => c.sansAtout && c.value <= saCeil)
         .sort((a, b) => a.value - b.value)[0];

@@ -43,6 +43,29 @@ test('help sheet overlays the viewport (fixed positioning not captured by animat
   expect(overlay.height).toBe(viewport.height);
 });
 
+test('advanced strategy: five themed sections inside the disclosure', async ({ page }) => {
+  await page.goto('/#scenes/home-help');
+  const dialog = page.getByRole('dialog', { name: 'How to play' });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByText('Advanced strategy').click();
+  for (const section of [
+    'Bidding & hand reading',
+    'The two bonhommes (red 0 & brown 0)',
+    'Declarer play',
+    'Defense & inference',
+    'Playing to 41',
+  ]) {
+    await expect(dialog.getByText(section, { exact: true })).toBeVisible();
+  }
+
+  // Tips live inside their section's own disclosure.
+  await dialog.getByText('Declarer play', { exact: true }).click();
+  await expect(dialog.getByText('Win with the lowest of equals.')).toBeVisible();
+
+  await expectNoSeriousViolations(page, 'advanced strategy open');
+});
+
 test('home fits a phone viewport — no primary control clipped', async ({ page }) => {
   // Regression: the play grid had no base grid-cols-1, so below `sm` its single
   // implicit column sized to its content and grew past `w-full`. main's

@@ -39,6 +39,9 @@ export interface HandProps {
    * allowed even when the hand isn't `active` (you can tidy any time).
    */
   readonly onReorder?: (keys: readonly string[]) => void;
+  /** The viewer's painted-card art (data URL), shown on their own red-0/brown-0.
+   * These are the viewer's cards by definition, so passing it here is safe. */
+  readonly paint?: string | null;
 }
 
 /** Drag a card up past this (px) to play it — the "throw it on the table" gesture. */
@@ -57,7 +60,15 @@ const PLAY_DY = -60;
  * high enough) or computes the target slot from pointer-x vs the other
  * cards' centres and rewrites the order.
  */
-export function Hand({ cards, onPlay, onQueueToggle, active = true, label, onReorder }: HandProps) {
+export function Hand({
+  cards,
+  onPlay,
+  onQueueToggle,
+  active = true,
+  label,
+  onReorder,
+  paint = null,
+}: HandProps) {
   const lang = useLang();
   const t = T[lang];
   const ariaLabel = label ?? t.yourHand;
@@ -179,6 +190,7 @@ export function Hand({ cards, onPlay, onQueueToggle, active = true, label, onReo
                   dimmed={active && entry.disabled === true}
                   recommended={entry.recommended === true}
                   queued={entry.queued === true}
+                  paint={paint}
                 />
                 {entry.queued === true && <span className="sr-only">{t.queued}</span>}
                 {!playable && entry.disabledReason !== undefined && (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { feedback, playClick } from '../audio/clicks.js';
 import { IconButton } from '../components/IconButton.js';
 import { IconSort } from '../components/icons.js';
+import { getProfile } from '../net/auth.js';
 
 const FR_SUIT: Record<Suit, string> = { red: 'rouge', brown: 'brun', green: 'vert', blue: 'bleu' };
 
@@ -67,6 +68,9 @@ export function PlayerHand({
   onQueueToggle,
 }: PlayerHandProps) {
   const t = T[useLang()];
+  // Your painted card (if any) personalises only YOUR red-0/brown-0 — the Hand
+  // renders only your cards, so this never leaks onto an opponent's specials.
+  const paint = getProfile().paint;
   // A client-only display order (card keys). New rounds bring new keys, so the
   // stale order naturally falls back to the dealt order; the sort button and
   // (future) drag rearrange it. Never touches game state.
@@ -133,6 +137,7 @@ export function PlayerHand({
       )}
       <Hand
         active={active}
+        paint={paint}
         onReorder={(keys) => {
           setOrder(keys);
           feedback('select', 4);
