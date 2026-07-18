@@ -119,11 +119,7 @@ export function Home({
   return (
     <main className="flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
       {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
-      <HeroBanner
-        name={staged ? identityStage.name : name}
-        color={shownColor}
-        paint={shownPaint}
-      />
+      <HeroBanner name={staged ? identityStage.name : name} color={shownColor} paint={shownPaint} />
 
       <ProfileCard
         name={staged ? identityStage.name : name}

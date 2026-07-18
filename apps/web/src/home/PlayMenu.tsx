@@ -247,6 +247,17 @@ export function PlayMenu({
   // Same move for everything that's yours: tables, games, record — one door.
   const [yoursOpen, setYoursOpen] = useState(defaultYoursOpen);
   const statuses = useTableStatuses(tables);
+  // A live table is waiting on YOU — the closed door announces it.
+  const yourTurn = tables.some((tbl) => {
+    const s = statuses[tbl.code];
+    return (
+      s != null &&
+      s.started &&
+      (s.phase === 'playing' || s.phase === 'bidding') &&
+      typeof tbl.yourSeat === 'number' &&
+      s.turn === tbl.yourSeat
+    );
+  });
 
   const cycleBot = (seat: 0 | 1 | 2) => {
     const next = bots.map((d, i) =>
@@ -382,17 +393,26 @@ export function PlayMenu({
         <button
           type="button"
           onClick={() => setYoursOpen(true)}
-          className="rise-in flex items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-4 font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none sm:col-span-2"
+          className={`rise-in flex items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-4 font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase tracking-wide text-(--color-ap-text) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none sm:col-span-2 ${
+            yourTurn ? 'ap-glow' : 'shadow-(--shadow-ap-sm)'
+          }`}
           style={{ '--rise-delay': '220ms' } as CSSProperties}
         >
           <span aria-hidden className="text-(--color-ap-gold)">
             ★
           </span>
           {t.yours}
-          {tables.length > 0 && (
-            <span className="font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-muted)">
-              {t.going(tables.length)}
+          {yourTurn ? (
+            <span className="flex items-center gap-1.5 font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-ok)">
+              <span aria-hidden className="size-2 animate-pulse rounded-full bg-(--color-ap-ok)" />
+              {t.yourTurn}
             </span>
+          ) : (
+            tables.length > 0 && (
+              <span className="font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-muted)">
+                {t.going(tables.length)}
+              </span>
+            )
           )}
           <span aria-hidden>→</span>
         </button>
