@@ -6,6 +6,7 @@ import { LangSwitcher } from '../components/LangSwitcher.js';
 import { LinkAccount } from '../components/LinkAccount.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
+import { AttractMode } from '../home/AttractMode.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { ProfileCard } from '../home/ProfileCard.js';
@@ -92,6 +93,8 @@ export function Home({
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
+  // Tap-your-card on the hero fan → ProfileCard opens with the brush out.
+  const [paintSignal, setPaintSignal] = useState(0);
   const tables = demoTables ?? listTables();
 
   // Establish identity as soon as the home screen shows (not only once the
@@ -117,9 +120,19 @@ export function Home({
   const shownPaint = staged ? identityStage.paint : profile.paint;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
+    // `isolate relative` scopes the attract layer's -z-10 so the ghost trick
+    // paints above the ground colour but below every real control.
+    <main className="isolate relative flex min-h-dvh flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
+      {/* Idle long enough and ghost players deal a faint trick behind the UI. */}
+      {!staged && <AttractMode />}
+
       {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
-      <HeroBanner name={staged ? identityStage.name : name} color={shownColor} paint={shownPaint} />
+      <HeroBanner
+        name={staged ? identityStage.name : name}
+        color={shownColor}
+        paint={shownPaint}
+        {...(staged ? {} : { onCardClick: () => setPaintSignal((s) => s + 1) })}
+      />
 
       <ProfileCard
         name={staged ? identityStage.name : name}
@@ -130,6 +143,7 @@ export function Home({
         onPaint={savePaint}
         nameError={staged ? (identityStage.nameError ?? null) : null}
         defaultOpen={staged}
+        paintSignal={paintSignal}
         {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
       >
         {/* Keep-your-progress: real login first; the 3-word restore stays as a

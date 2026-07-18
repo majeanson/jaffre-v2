@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AvatarChip, Collapsible, Cta, PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { NameField } from './NameField.js';
 
@@ -64,6 +64,8 @@ export interface ProfileCardProps {
   readonly children?: ReactNode;
   /** Open the disclosure on mount (scene viewer stages it open). */
   readonly defaultOpen?: boolean;
+  /** Bump to jump straight into paint mode (tap-your-card on the hero fan). */
+  readonly paintSignal?: number;
 }
 
 /**
@@ -86,11 +88,20 @@ export function ProfileCard({
   nameError = null,
   children,
   defaultOpen = false,
+  paintSignal = 0,
 }: ProfileCardProps) {
   const t = T[useLang()];
   const [painting, setPainting] = useState(false);
   const [open, setOpen] = useState(defaultOpen);
   const fill = color ?? undefined;
+
+  // Tap-your-card on the hero fan: land here with the brush already out.
+  useEffect(() => {
+    if (paintSignal > 0) {
+      setOpen(true);
+      setPainting(true);
+    }
+  }, [paintSignal]);
 
   // exactOptionalPropertyTypes: only pass optional props when defined.
   const cardProps = {

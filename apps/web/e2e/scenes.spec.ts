@@ -20,6 +20,13 @@ for (const scene of SCENE_METAS) {
   });
 }
 
+test('tapping your card in the hero fan opens Customize in paint mode', async ({ page }) => {
+  await page.goto('/#scenes/home');
+  await page.getByRole('button', { name: 'Your card — tap to paint it' }).click();
+  // The disclosure opens with the brush already out: paint mode's exit button.
+  await expect(page.getByRole('button', { name: 'Done painting' })).toBeVisible();
+});
+
 test('help sheet overlays the viewport (fixed positioning not captured by animations)', async ({
   page,
 }) => {
