@@ -1,3 +1,4 @@
+import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
@@ -11,6 +12,51 @@ import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { listTables, type TableEntry } from '../net/rooms.js';
+
+const HINT_T: Record<Lang, { hint: string; gotIt: string }> = {
+  en: {
+    hint: 'Your 3 secret words (under Customize) bring your name & games back on any device.',
+    gotIt: 'Got it',
+  },
+  fr: {
+    hint: 'Tes 3 mots secrets (sous Personnaliser) ramènent ton nom et tes parties sur n’importe quel appareil.',
+    gotIt: 'Compris',
+  },
+};
+
+const HINT_KEY = 'jaffre-recovery-hint';
+
+/**
+ * A one-line, dismissible pointer at the recovery words — the whole mechanism
+ * lives inside the Customize disclosure where new players never look. Muted
+ * text, no panel: it informs without disturbing the title screen, and once
+ * dismissed it never comes back (localStorage).
+ */
+function RecoveryHint() {
+  const t = HINT_T[useLang()];
+  const [seen, setSeen] = useState(() => localStorage.getItem(HINT_KEY) === '1');
+  if (seen) return null;
+  return (
+    <p className="rise-in flex w-full max-w-xs items-start justify-center gap-2 text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+      <span aria-hidden className="text-(--color-ap-gold)">
+        ✦
+      </span>
+      <span>{t.hint}</span>
+      <button
+        type="button"
+        aria-label={t.gotIt}
+        title={t.gotIt}
+        onClick={() => {
+          localStorage.setItem(HINT_KEY, '1');
+          setSeen(true);
+        }}
+        className="shrink-0 cursor-pointer px-1 text-(--color-ap-muted) hover:text-(--color-ap-text)"
+      >
+        ✕
+      </button>
+    </p>
+  );
+}
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -86,6 +132,8 @@ export function Home({
       >
         {staged ? <RecoveryCard stage={identityStage.recovery} /> : <RecoveryCard />}
       </ProfileCard>
+
+      {!staged && <RecoveryHint />}
 
       <div className="w-full max-w-[min(92vw,44rem)]">
         <PlayMenu
