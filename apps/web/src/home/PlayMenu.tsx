@@ -176,20 +176,38 @@ function TableCard({
   // stale the moment games finish while this browser is away.
   const seriesWins = status?.seriesWins ?? table.seriesWins;
   return (
-    <div className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)">
+    <div
+      data-testid="table-card"
+      className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)"
+    >
       {badge !== null && (
         <span className="flex items-center gap-1.5 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-[0.1em] text-(--color-ap-text)">
           <span className={`size-2 rounded-full ${badge.dot}`} aria-hidden />
           {badge.label}
         </span>
       )}
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 truncate font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
           {table.code}
         </span>
-        <span className="shrink-0 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-          {ago(table.updatedAt, t)}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+            {ago(table.updatedAt, t)}
+          </span>
+          {/* Forget-this-table lives in the corner as a ✕ — a full-width row
+              pairing it beside Resume overflowed the narrow two-column card. */}
+          {onLeave !== undefined && (
+            <button
+              type="button"
+              onClick={onLeave}
+              aria-label={t.leaveTable(table.code)}
+              title={t.leaveTable(table.code)}
+              className="grid size-[1.8em] cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) text-[0.8em] text-(--color-ap-muted) shadow-(--shadow-ap-sm) transition-[transform,box-shadow,color] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text) active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
       {table.seats.length > 0 && (
         <div className="flex items-center">
@@ -211,23 +229,9 @@ function TableCard({
           <span style={{ color: 'var(--color-team-b)' }}>{t.moon(seriesWins[1])}</span>
         </span>
       )}
-      <div className="flex gap-2">
-        <Cta type="button" onClick={onResume} className="flex-1">
-          {t.resume}
-        </Cta>
-        {onLeave !== undefined && (
-          <Cta
-            type="button"
-            variant="secondary"
-            onClick={onLeave}
-            aria-label={t.leaveTable(table.code)}
-            title={t.leaveTable(table.code)}
-            className="shrink-0 px-[0.9em]"
-          >
-            ✕
-          </Cta>
-        )}
-      </div>
+      <Cta type="button" onClick={onResume} className="w-full">
+        {t.resume}
+      </Cta>
     </div>
   );
 }
@@ -382,8 +386,11 @@ export function PlayMenu({
                 {t.withCode}
                 <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
               </div>
+              {/* Stack input over button: the join label is long in French
+                  ("Joindre le salon") and a side-by-side row squished the field
+                  down to a sliver in the narrow rail. Full-width both. */}
               <form
-                className="flex gap-2"
+                className="flex flex-col gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   joinTyped();
@@ -397,11 +404,11 @@ export function PlayMenu({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  className="min-w-0 flex-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
+                  className="w-full min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
                 />
                 <button
                   type="submit"
-                  className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                  className="w-full cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
                 >
                   {t.joinRoom}
                 </button>

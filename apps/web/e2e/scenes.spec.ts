@@ -105,35 +105,106 @@ test('glossary: color-family entries with wiki cross-links', async ({ page }) =>
   await expectNoSeriousViolations(page, 'glossary open');
 });
 
-test('home fits a phone viewport — no primary control clipped', async ({ page }) => {
-  // Regression: the play grid had no base grid-cols-1, so below `sm` its single
-  // implicit column sized to its content and grew past `w-full`. main's
-  // overflow-x-clip then hid the overflow with no scrollbar — silently cutting
-  // the "Join room" button off the right edge. A document scrollWidth check
-  // can't see this (clip == no scroll); assert the controls fit instead.
-  const width = 390;
-  await page.setViewportSize({ width, height: 844 });
-  await page.goto('/#scenes/home');
-  await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
+/**
+ * Overflow guard across every media width: phone → large phone → tablet → the
+ * `lg` two-column breakpoint → wide desktop. The title screen's `main` clips
+ * horizontal overflow (`overflow-x-clip`), so a runaway control is hidden with
+ * NO scrollbar — a document scrollWidth check can't see it. We assert the real
+ * controls fit their container instead. Widths straddle every Tailwind
+ * breakpoint the home layout responds to (sm 640, lg 1024).
+ */
+const MEDIA_WIDTHS = [360, 390, 414, 768, 820, 1024, 1280, 1440] as const;
 
-  const fits = async (box: { x: number; width: number } | null, what: string) => {
-    if (box === null) throw new Error(`missing ${what}`);
-    expect(box.x, `${what} left edge`).toBeGreaterThanOrEqual(-0.5);
-    expect(box.x + box.width, `${what} right edge`).toBeLessThanOrEqual(width + 0.5);
-  };
+const fitsWithin = (
+  child: { x: number; width: number } | null,
+  right: number,
+  left: number,
+  what: string,
+  width: number,
+) => {
+  if (child === null) throw new Error(`missing ${what} @${String(width)}px`);
+  expect(child.x, `${what} left edge @${String(width)}px`).toBeGreaterThanOrEqual(left - 0.5);
+  expect(child.x + child.width, `${what} right edge @${String(width)}px`).toBeLessThanOrEqual(
+    right + 0.5,
+  );
+};
 
-  await fits(
-    await page.getByRole('region', { name: 'Play', exact: true }).boundingBox(),
-    'Play panel',
-  );
-  // The bots/friends split hides behind the single PLAY door — open it first.
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await fits(
-    await page.getByRole('button', { name: 'Create a room' }).boundingBox(),
-    'Create a room',
-  );
-  await fits(await page.getByRole('button', { name: 'Join room' }).boundingBox(), 'Join room');
-});
+for (const width of MEDIA_WIDTHS) {
+  test(`home play controls fit the viewport at ${String(width)}px`, async ({ page }) => {
+    // Regression: the play grid had no base grid-cols-1, so below `sm` its
+    // single implicit column sized to its content and grew past `w-full`,
+    // clipping "Join room" off the right edge. Also the French "Joindre le
+    // salon" label used to squish the code input to a sliver in a side-by-side
+    // row (now stacked).
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/#scenes/home');
+    await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
+
+    await fitsWithin(
+      await page.getByRole('region', { name: 'Play', exact: true }).boundingBox(),
+      width,
+      0,
+      'Play panel',
+      width,
+    );
+    // The bots/friends split hides behind the single PLAY door — open it first.
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    for (const [name, what] of [
+      ['Create a room', 'Create a room'],
+      ['Join room', 'Join room'],
+    ] as const) {
+      await fitsWithin(
+        await page.getByRole('button', { name }).boundingBox(),
+        width,
+        0,
+        what,
+        width,
+      );
+    }
+    await fitsWithin(
+      await page.getByRole('textbox', { name: 'Room code' }).boundingBox(),
+      width,
+      0,
+      'Room code input',
+      width,
+    );
+  });
+
+  test(`your-tables card controls stay inside their card at ${String(width)}px`, async ({
+    page,
+  }) => {
+    // Regression: at the `lg` breakpoint the two-column console shrinks each
+    // table card to ~200px, and a Resume + ✕ button row (Resume already at its
+    // text min-width, ✕ shrink-0) spilled the ✕ past the card edge. The ✕ now
+    // lives in the card header corner and Resume is full-width.
+    await page.setViewportSize({ width, height: 1200 });
+    await page.goto('/#scenes/your-tables');
+    await expect(page.getByTestId('table-card').first()).toBeVisible();
+
+    const overflows = await page.evaluate(() => {
+      const TOL = 0.5;
+      const out: string[] = [];
+      for (const card of document.querySelectorAll('[data-testid="table-card"]')) {
+        const cb = card.getBoundingClientRect();
+        for (const control of card.querySelectorAll('button, input, a')) {
+          const r = control.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.left < cb.left - TOL || r.right > cb.right + TOL) {
+            const label = (control.getAttribute('aria-label') ?? control.textContent ?? '')
+              .trim()
+              .slice(0, 24);
+            out.push(
+              `"${label}" [${String(Math.round(r.left))}→${String(Math.round(r.right))}] ` +
+                `escapes card [${String(Math.round(cb.left))}→${String(Math.round(cb.right))}]`,
+            );
+          }
+        }
+      }
+      return out;
+    });
+    expect(overflows, `controls overflowing their card at ${String(width)}px`).toEqual([]);
+  });
+}
 
 test('scene picker: hash is the source of truth, unknown ids fall back', async ({ page }) => {
   const last = SCENE_METAS[SCENE_METAS.length - 1];

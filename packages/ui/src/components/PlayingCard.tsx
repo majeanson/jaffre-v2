@@ -115,7 +115,7 @@ export function PlayingCard({
         {(isRedZero || isBrownZero) && paint !== null ? (
           // Your own special, personalised: the painting takes the bonhomme's
           // place; the small suit shape stays so the card is still readable.
-          <span className="flex flex-col items-center gap-[0.12em]">
+          <span className="flex flex-col items-center gap-[0.34em]">
             <img
               src={paint}
               alt=""
@@ -126,7 +126,7 @@ export function PlayingCard({
         ) : renderers.centerMark ? (
           renderers.centerMark(card, '2em')
         ) : isRedZero || isBrownZero ? (
-          <span className="flex flex-col items-center gap-[0.12em]">
+          <span className="flex flex-col items-center gap-[0.34em]">
             <Bonhomme kind={isRedZero ? 'joffre' : 'allemagne'} size="2.6em" />
             <SuitShape suit={card.suit} size="0.62em" />
           </span>

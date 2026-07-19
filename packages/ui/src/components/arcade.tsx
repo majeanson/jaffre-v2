@@ -420,23 +420,26 @@ export function PlayerCard({
 }: PlayerCardProps) {
   const t = T[useLang()];
   const initial = (name.trim()[0] ?? '?').toUpperCase();
+  const hasPaint = paint !== undefined && paint !== '';
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const [brush, setBrush] = useState<string>(color ?? PALETTE[0]);
   const [erasing, setErasing] = useState(false);
 
-  // Paint the saved image in once the canvas mounts (or when `paint` changes).
+  // Load the saved image into the canvas once it mounts (paint mode) or when
+  // `paint` changes. `editable` is a dep because the canvas only exists in
+  // paint mode — entering it must redraw the saved art onto the fresh element.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas === null) return;
     const ctx = canvas.getContext('2d');
     if (ctx === null) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (paint === undefined || paint === '') return;
+    if (!hasPaint) return;
     const img = new Image();
     img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    img.src = paint;
-  }, [paint]);
+    img.src = paint as string;
+  }, [paint, hasPaint, editable]);
 
   const pointAt = (e: ReactPointerEvent<HTMLCanvasElement>): [number, number] => {
     const canvas = canvasRef.current;
@@ -456,7 +459,7 @@ export function PlayerCard({
     ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
     ctx.fillStyle = brush;
     ctx.beginPath();
-    ctx.arc(x, y, erasing ? 16 : 9, 0, Math.PI * 2);
+    ctx.arc(x, y, erasing ? 24 : 14, 0, Math.PI * 2);
     ctx.fill();
   };
 
@@ -503,7 +506,38 @@ export function PlayerCard({
         </span>
         {/* centre block */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.6em] p-[1em]">
-          <AvatarChip name={name} color={color} size="lg" />
+          {/* The ONE identity surface: a paintable avatar square — the very
+              chip that later shows at your seat and on your own 0-cards, so what
+              you paint here is exactly what appears in play (no more "full card"
+              vs "avatar" split). Saved paint fills the square; in paint mode the
+              canvas rides on top of it. */}
+          <span
+            aria-hidden={!editable}
+            className="relative grid size-[4em] place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display text-[2em] leading-none text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
+            style={{ background: color ?? 'var(--color-ap-violet)' }}
+          >
+            {!hasPaint && <span>{initial}</span>}
+            {hasPaint && !editable && (
+              <img
+                src={paint}
+                alt=""
+                className="absolute inset-0 size-full rounded-[inherit] object-cover"
+              />
+            )}
+            {editable && (
+              <canvas
+                ref={canvasRef}
+                width={200}
+                height={200}
+                aria-label={t.paintCard(name)}
+                className="absolute inset-0 size-full cursor-crosshair touch-none rounded-[inherit]"
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                onPointerCancel={onUp}
+              />
+            )}
+          </span>
           {onName !== undefined ? (
             <input
               value={name}
@@ -512,9 +546,7 @@ export function PlayerCard({
               maxLength={20}
               aria-label={t.yourName}
               placeholder={t.player}
-              // Sit above the paint canvas so the field stays clickable; the
-              // canvas only captures pointers in paint mode anyway.
-              className="relative z-10 w-full min-w-0 bg-transparent text-center font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink) outline-none placeholder:text-(--color-ap-ink)/40 focus:underline"
+              className="w-full min-w-0 bg-transparent text-center font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink) outline-none placeholder:text-(--color-ap-ink)/40 focus:underline"
             />
           ) : (
             <span className="max-w-full truncate font-arcade-display text-[1.2em] uppercase text-(--color-ap-ink)">
@@ -522,18 +554,6 @@ export function PlayerCard({
             </span>
           )}
         </div>
-        {/* paint layer on top */}
-        <canvas
-          ref={canvasRef}
-          width={260}
-          height={347}
-          aria-label={editable ? t.paintCard(name) : undefined}
-          className={`absolute inset-0 size-full rounded-[inherit] ${editable ? 'cursor-crosshair touch-none' : 'pointer-events-none'}`}
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onPointerCancel={onUp}
-        />
       </div>
 
       {editable && (

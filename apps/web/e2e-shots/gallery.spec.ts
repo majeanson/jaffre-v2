@@ -20,8 +20,19 @@ import { SHOTS_DIR } from './shots-shared.js';
  */
 const SEED_MAIN = 27; // red 0 in the round-1 hand — same seed the scenes use
 
+// Desktop / the `lg` two-column breakpoint / tablet / phone. The 1024 rail is
+// where the title-console cards get narrowest — the width class where
+// Resume/✕ and other button rows overflow first (see the asserting overflow
+// guard in e2e/scenes.spec.ts, which covers the full range).
 const VIEWPORTS = [
   { name: 'desktop', viewport: { width: 1600, height: 900 }, isMobile: false, hasTouch: false },
+  {
+    name: 'small-desktop',
+    viewport: { width: 1024, height: 900 },
+    isMobile: false,
+    hasTouch: false,
+  },
+  { name: 'tablet', viewport: { width: 768, height: 1024 }, isMobile: false, hasTouch: false },
   { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
 ] as const;
 
