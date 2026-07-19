@@ -1,12 +1,36 @@
+import { execSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+/**
+ * Stamp dist/version.json with the commit sha so scripts/verify-deploy.ts can
+ * prove the LIVE bundle matches the deployed commit (not just green CI). Kept
+ * out of the SW precache glob on purpose — reads must always hit the network.
+ */
+function versionStamp(): Plugin {
+  return {
+    name: 'version-stamp',
+    apply: 'build',
+    closeBundle() {
+      const sha =
+        process.env.GITHUB_SHA ?? execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+      writeFileSync(
+        resolve(import.meta.dirname, 'dist/version.json'),
+        JSON.stringify({ sha, builtAt: new Date().toISOString() }),
+      );
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    versionStamp(),
     VitePWA({
       // 'prompt': a waiting worker surfaces the in-app "update available" toast
       // instead of silently swapping code mid-hand.

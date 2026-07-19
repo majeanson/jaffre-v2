@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "sim": "tsx scripts/sim.ts",
     "botbench": "tsx scripts/botbench.ts",
+    "verify:deploy": "tsx scripts/verify-deploy.ts",
     "devkit": "npm run devkit -w packages/ui",
     "dev": "npm run dev -w apps/server"
   },
