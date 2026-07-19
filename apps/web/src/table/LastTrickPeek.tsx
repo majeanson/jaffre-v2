@@ -37,9 +37,13 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
   const buttonRef = useRef<HTMLButtonElement>(null);
   const empty = trick === null;
 
-  // The trick clearing (new round/game) closes any peek left open.
+  // The trick clearing (new round/game) closes any peek left open. Only a
+  // non-empty → empty TRANSITION counts: mounting empty must not clobber
+  // defaultOpen while a staged/incoming trick is still a beat away.
+  const wasEmpty = useRef(empty);
   useEffect(() => {
-    if (empty) setOpen(false);
+    if (empty && !wasEmpty.current) setOpen(false);
+    wasEmpty.current = empty;
   }, [empty]);
 
   useEffect(() => {

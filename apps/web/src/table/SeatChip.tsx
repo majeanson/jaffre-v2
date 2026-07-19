@@ -111,7 +111,9 @@ export function SeatChip({
         <span
           data-testid="botswap-countdown"
           role="status"
-          className="pointer-events-none absolute -bottom-2 left-1/2 z-20 w-max max-w-[min(11rem,44vw)] -translate-x-1/2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm)"
+          className={`pointer-events-none absolute left-1/2 z-20 w-max max-w-[min(11rem,44vw)] -translate-x-1/2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${
+            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
         >
           {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
         </span>
