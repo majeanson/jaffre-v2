@@ -1090,6 +1090,31 @@ export default {
       return env.GAME_ROOM.get(id).fetch(new Request('https://do/status'));
     }
 
+    // POST /api/room/:code/leave — permanently give up your seat in a room
+    // without opening a socket (the home "Your tables" row). Same identity
+    // rules as /ws: verified token in token mode, plain ?u= fallback otherwise.
+    const leaveMatch = /^\/api\/room\/([A-Za-z0-9-]{1,32})\/leave$/.exec(url.pathname);
+    if (leaveMatch && request.method === 'POST') {
+      const id = env.GAME_ROOM.idFromName(leaveMatch[1] as string);
+      let uid: string | null;
+      if (isUsableSecret(env.SESSION_SECRET)) {
+        const token = bearerToken(request);
+        const identity = token !== null ? await verifyToken(token, env.SESSION_SECRET) : null;
+        if (identity === null) {
+          return Response.json({ error: 'Invalid or missing token' }, { status: 401 });
+        }
+        uid = identity.uid;
+      } else {
+        uid = url.searchParams.get('u');
+        if (uid === null || uid === '') {
+          return Response.json({ error: 'Missing u query param' }, { status: 400 });
+        }
+      }
+      return env.GAME_ROOM.get(id).fetch(
+        new Request('https://do/leave', { method: 'POST', headers: { 'X-User-Id': uid } }),
+      );
+    }
+
     // /ws/:roomCode — WebSocket upgrade routed to the room's Durable Object.
     const wsMatch = /^\/ws\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname);
     if (wsMatch) {

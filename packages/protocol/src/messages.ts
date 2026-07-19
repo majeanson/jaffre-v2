@@ -60,6 +60,9 @@ export const clientMessageSchema = z.union([
   z.object({ t: z.literal('set_rules'), hailMary12: z.boolean() }),
   // Between games only: re-pair the table (swap seats 1 & 2) before a rematch.
   z.object({ t: z.literal('swap_seats') }),
+  // Give up your seat for good: mid-game a bot takes over, otherwise the seat
+  // frees up. The socket may close right after — order doesn't matter.
+  z.object({ t: z.literal('leave') }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),

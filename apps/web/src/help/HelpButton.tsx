@@ -11,6 +11,9 @@ const T: Record<Lang, { howToPlay: string }> = {
 export interface HelpButtonProps {
   /** Accessible label; 'How to play' on menus, 'Help' on the table. */
   readonly label?: string;
+  /** Optional visible title shown beside an icon child (collapses to icon-only
+   * on narrow screens). Used with an icon trigger in the options drawer. */
+  readonly text?: string;
   /** Full chrome override for tighter spots (e.g. the lobby footer). */
   readonly className?: string;
   /** Mount with the sheet already open (scene viewer). */
@@ -25,6 +28,7 @@ export interface HelpButtonProps {
  */
 export function HelpButton({
   label,
+  text,
   className = `px-3 py-1.5 text-sm text-(--color-ap-text) ${GHOST_BTN}`,
   defaultOpen = false,
   children,
@@ -44,6 +48,11 @@ export function HelpButton({
         className={className}
       >
         {children ?? shownLabel}
+        {children !== undefined && text !== undefined && (
+          <span className="hidden font-arcade-display text-[0.65em] uppercase sm:inline">
+            {text}
+          </span>
+        )}
       </button>
       {open && (
         <HelpSheet

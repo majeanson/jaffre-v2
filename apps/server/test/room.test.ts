@@ -972,6 +972,86 @@ describe('GameRoom', () => {
     },
   );
 
+  /** Skip past buffered seat welcomes (sit/onJoin each send one) to the
+   * demotion welcome a leave produces. */
+  async function nextSpectatorWelcome(client: Client) {
+    const deadline = Date.now() + 5000;
+    for (;;) {
+      const w = await client.next('welcome');
+      if (w.viewer === 'spectator') return w;
+      if (Date.now() > deadline) throw new Error('no spectator welcome arrived');
+    }
+  }
+
+  it('frees a seat on leave — pre-game vacates, and the HTTP route works without a socket', async () => {
+    const room = 'room-leave';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await alice.next('roster');
+
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 1 });
+    await bob.next('roster');
+
+    // Alice leaves over the socket: she drops to spectator (fresh welcome) and
+    // her pre-game seat frees up entirely.
+    alice.send({ t: 'leave' });
+    const demoted = await nextSpectatorWelcome(alice);
+    expect(demoted.viewer).toBe('spectator');
+    const afterLeave = await pollUntil(async () => {
+      const r = bob.latestRoster();
+      return r !== null && r.seats[0] === null ? r : undefined;
+    }, "alice's seat to free up");
+    expect(afterLeave.seats[1]).toMatchObject({ name: 'Bob', isBot: false });
+
+    // Bob leaves over HTTP (the home "Your tables" row) — no socket needed.
+    const res = await SELF.fetch(`https://example.com/api/room/${room}/leave?u=bob`, {
+      method: 'POST',
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ left: true });
+    const emptied = await pollUntil(async () => {
+      const r = alice.latestRoster();
+      return r !== null && r.seats[1] === null ? r : undefined;
+    }, "bob's seat to free up");
+    expect(emptied.seats).toEqual([null, null, null, null]);
+
+    // Leaving without a seat is a harmless no-op.
+    const again = await SELF.fetch(`https://example.com/api/room/${room}/leave?u=bob`, {
+      method: 'POST',
+    });
+    expect(await again.json()).toEqual({ left: false });
+    await endQuiet(room, alice, bob);
+  });
+
+  it('hands a mid-game leaver’s seat to a bot so the table stays playable', async () => {
+    const room = 'room-leave-midgame';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    await setupStartedGame(alice); // seat 0 human + 3 bots, phase bidding
+
+    // A spectator observes the roster (alice's socket also stays open, as a
+    // spectator, after she gives the seat up).
+    const carol = await Client.connect(room, 'carol', 'Carol');
+    carol.send({ t: 'join' });
+    await carol.next('welcome');
+
+    alice.send({ t: 'leave' });
+    const demoted = await nextSpectatorWelcome(alice);
+    expect(demoted.viewer).toBe('spectator');
+    expect(demoted.view?.hand).toEqual([]); // no hand for a spectator
+    const swapped = await pollUntil(async () => {
+      const r = carol.latestRoster();
+      return r?.seats[0]?.isBot === true ? r : undefined;
+    }, 'the seat to hand to a bot');
+    expect(swapped.seats[0]).toMatchObject({ isBot: true, connected: true });
+
+    await endQuiet(room, alice, carol);
+  });
+
   it('enforces seat security for a second user', async () => {
     const room = 'room-security';
     const alice = await Client.connect(room, 'alice', 'Alice');

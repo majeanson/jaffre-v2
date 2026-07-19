@@ -14,7 +14,7 @@ import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
-import { listTables, type TableEntry } from '../net/rooms.js';
+import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -51,7 +51,13 @@ export function Home({
   const [profile, setProfile] = useState<Profile>(getProfile());
   // Tap-your-card on the hero fan → ProfileCard opens with the brush out.
   const [paintSignal, setPaintSignal] = useState(0);
-  const tables = demoTables ?? listTables();
+  // Stateful so quitting a table drops its card without a reload.
+  const [storedTables, setStoredTables] = useState<readonly TableEntry[]>(listTables);
+  const tables = demoTables ?? storedTables;
+  const quitTable = (code: string) => {
+    void leaveTable(code); // forgets locally right away, frees the seat async
+    setStoredTables(listTables());
+  };
 
   // Establish identity as soon as the home screen shows (not only once the
   // recovery card mounts — it now lives inside the Customize disclosure) so a
@@ -78,67 +84,79 @@ export function Home({
   return (
     // `isolate relative` scopes the attract layer's -z-10 so the ghost trick
     // paints above the ground colour but below every real control.
-    <main className="isolate relative flex min-h-full flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
+    <main className="isolate relative flex min-h-full flex-col items-center overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4 lg:justify-center">
       {/* Idle long enough and ghost players deal a faint trick behind the UI. */}
       {!staged && <AttractMode />}
 
-      {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
-      <HeroBanner
-        name={staged ? identityStage.name : name}
-        color={shownColor}
-        paint={shownPaint}
-        {...(staged ? {} : { onCardClick: () => setPaintSignal((s) => s + 1) })}
-      />
+      {/* Title console: one centered stack on mobile, two balanced rails on the
+          desktop. LEFT is the brand moment + your painted identity; RIGHT is the
+          play actions and the quiet chrome — kept full-width so PLAY, "Ton coin"
+          and the toolbar all share one edge. */}
+      <div className="grid w-full max-w-[min(92vw,44rem)] grid-cols-1 items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
+        {/* LEFT — brand fan + painted identity card */}
+        <div className="flex flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
+          {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
+          <HeroBanner
+            name={staged ? identityStage.name : name}
+            color={shownColor}
+            paint={shownPaint}
+            {...(staged ? {} : { onCardClick: () => setPaintSignal((s) => s + 1) })}
+          />
 
-      <ProfileCard
-        name={staged ? identityStage.name : name}
-        color={shownColor}
-        paint={shownPaint}
-        editable={!staged}
-        onColor={chooseColor}
-        onPaint={savePaint}
-        nameError={staged ? (identityStage.nameError ?? null) : null}
-        defaultOpen={staged}
-        paintSignal={paintSignal}
-        {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
-      >
-        {/* Scene viewer still stages the recovery plates; live players reach
-            every login path (Google / email code / 3-word restore) through the
-            one "Log in" button in the chrome bar below. */}
-        {staged && <RecoveryCard stage={identityStage.recovery} />}
-      </ProfileCard>
+          <ProfileCard
+            name={staged ? identityStage.name : name}
+            color={shownColor}
+            paint={shownPaint}
+            editable={!staged}
+            onColor={chooseColor}
+            onPaint={savePaint}
+            nameError={staged ? (identityStage.nameError ?? null) : null}
+            defaultOpen={staged}
+            paintSignal={paintSignal}
+            {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
+          >
+            {/* Scene viewer still stages the recovery plates; live players reach
+                every login path (Google / email code / 3-word restore) through
+                the one "Log in" button in the chrome bar below. */}
+            {staged && <RecoveryCard stage={identityStage.recovery} />}
+          </ProfileCard>
+        </div>
 
-      <div className="w-full max-w-[min(92vw,44rem)]">
-        <PlayMenu
-          onPractice={() => {
-            saveName();
-            onPractice();
-          }}
-          onJoinRoom={(code) => {
-            saveName();
-            onJoinRoom(code);
-          }}
-          tables={tables}
-          // Scene viewer stages "Your tables" — open the door so it shows.
-          defaultYoursOpen={demoTables !== undefined}
-        />
-      </div>
+        {/* RIGHT — play actions, then quiet chrome, all one column width */}
+        <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
+          <PlayMenu
+            onPractice={() => {
+              saveName();
+              onPractice();
+            }}
+            onJoinRoom={(code) => {
+              saveName();
+              onJoinRoom(code);
+            }}
+            tables={tables}
+            {...(staged ? {} : { onLeaveTable: quitTable })}
+            // Scene viewer stages "Your tables" — open the door so it shows.
+            defaultYoursOpen={demoTables !== undefined}
+          />
 
-      {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
-          how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
-          one thing everywhere. Solid panel so axe can read the contrast. */}
-      <div
-        className="rise-in flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
-        style={{ '--rise-delay': '280ms' } as CSSProperties}
-      >
-        <HelpButton defaultOpen={helpOpen} className={ICON_BTN_NEUTRAL}>
-          <IconQuestion />
-        </HelpButton>
-        <SkinLink />
-        <InstallButton />
-        <NotificationsToggle />
-        <LangSwitcher />
-        {!staged && <LoginButton />}
+          {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
+              how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
+              one thing everywhere. Full-width bar so it lines up under the play
+              actions; icons stay centered. Solid panel so axe reads the contrast. */}
+          <div
+            className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
+            style={{ '--rise-delay': '280ms' } as CSSProperties}
+          >
+            <HelpButton defaultOpen={helpOpen} className={ICON_BTN_NEUTRAL}>
+              <IconQuestion />
+            </HelpButton>
+            <SkinLink />
+            <InstallButton />
+            <NotificationsToggle />
+            <LangSwitcher />
+            {!staged && <LoginButton />}
+          </div>
+        </div>
       </div>
     </main>
   );

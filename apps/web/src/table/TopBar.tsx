@@ -11,7 +11,7 @@ import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { applyLang, LANGS } from '../lang.js';
-import { IconButton, ICON_BTN_NEUTRAL } from '../components/IconButton.js';
+import { IconButton, ICON_BTN_LABELED } from '../components/IconButton.js';
 import {
   IconCards,
   IconGear,
@@ -32,8 +32,11 @@ const T: Record<
     skins: string;
     language: string;
     howToPlay: string;
+    help: string;
     coach: string;
+    coachTitle: string;
     gameLog: string;
+    log: string;
   }
 > = {
   en: {
@@ -42,8 +45,11 @@ const T: Record<
     skins: 'Skins',
     language: 'Language',
     howToPlay: 'How to play',
+    help: 'Help',
     coach: 'Coach — suggest a move on your turn',
+    coachTitle: 'Coach',
     gameLog: 'Game log',
+    log: 'Log',
   },
   fr: {
     leave: 'Quitter la table',
@@ -51,8 +57,11 @@ const T: Record<
     skins: 'Habillages',
     language: 'Langue',
     howToPlay: 'Comment jouer',
+    help: 'Aide',
     coach: 'Coach — suggère un coup à ton tour',
+    coachTitle: 'Coach',
     gameLog: 'Journal de partie',
+    log: 'Journal',
   },
 };
 
@@ -143,21 +152,23 @@ export function TopBar({
                 data-testid="options-drawer"
                 className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
               >
-                <IconButton label={t.skins} onClick={() => setSkinsOpen(true)}>
+                <IconButton label={t.skins} text={t.skins} onClick={() => setSkinsOpen(true)}>
                   <IconCards />
                 </IconButton>
                 <IconButton
                   label={`${t.language} · ${otherLang?.label ?? ''}`}
+                  text={(otherLang?.id ?? 'en').toUpperCase()}
                   onClick={() => otherLang && applyLang(otherLang.id)}
                 >
                   <IconGlobe />
                 </IconButton>
-                <SoundToggle />
-                <HelpButton label={t.howToPlay} className={ICON_BTN_NEUTRAL}>
+                <SoundToggle labeled />
+                <HelpButton label={t.howToPlay} text={t.help} className={ICON_BTN_LABELED}>
                   <IconQuestion />
                 </HelpButton>
                 <IconButton
                   label={t.coach}
+                  text={t.coachTitle}
                   aria-pressed={coachOn}
                   active={coachOn}
                   onClick={onToggleCoach}
@@ -166,6 +177,7 @@ export function TopBar({
                 </IconButton>
                 <IconButton
                   label={t.gameLog}
+                  text={t.log}
                   aria-expanded={logOpen}
                   active={logOpen}
                   onClick={onToggleLog}

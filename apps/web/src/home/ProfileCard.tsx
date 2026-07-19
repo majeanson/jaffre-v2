@@ -115,16 +115,13 @@ export function ProfileCard({
   };
 
   return (
-    // Closed: A|B row — small card beside the Customize trigger, so the brand
-    // moment above owns the screen. Open: the card grows to full size (column).
-    <div
-      className={
-        open
-          ? 'flex w-full max-w-xs flex-col items-center gap-[0.9em]'
-          : 'flex w-full max-w-xs items-center justify-center gap-4'
-      }
-    >
-      <div className={open ? '' : 'text-[0.55em]'}>
+    // Always a centered column: your card over the Customize trigger. Closed,
+    // the card stays small (the hero fan above already shows it big) so the
+    // brand moment owns the screen; opening grows it to full size for painting.
+    // (Was a side-by-side A|B row, which left the short trigger floating awkwardly
+    // against the tall card on narrow screens.)
+    <div className="flex w-full max-w-xs flex-col items-center gap-[0.8em]">
+      <div className={open ? '' : 'text-[0.5em]'}>
         <PlayerCard {...cardProps} />
       </div>
 

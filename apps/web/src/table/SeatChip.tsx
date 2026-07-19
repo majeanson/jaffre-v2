@@ -78,6 +78,15 @@ export function SeatChip({
 
   if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">{t.empty}</span>;
 
+  // Everything floated off the chip (countdown pill, peek) shares this anchor
+  // so edge seats never spill a centered pill off a narrow screen.
+  const alignX =
+    peekAlign === 'start'
+      ? 'left-0'
+      : peekAlign === 'end'
+        ? 'right-0'
+        : 'left-1/2 -translate-x-1/2';
+
   // Your own seat wears your painted card (if any) as its avatar; other seats
   // never receive paint (the roster doesn't carry other players' paint).
   const paint = info.isYou ? getProfile().paint : null;
@@ -111,7 +120,7 @@ export function SeatChip({
         <span
           data-testid="botswap-countdown"
           role="status"
-          className={`pointer-events-none absolute left-1/2 z-20 w-max max-w-[min(11rem,44vw)] -translate-x-1/2 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${
+          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${alignX} ${
             peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
@@ -120,7 +129,9 @@ export function SeatChip({
       )}
       {info.bidText !== null && (
         <span
-          className={`pointer-events-none absolute -top-3 -right-2 z-20 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.6em] py-[0.15em] text-(length:--text-fluid-xs) font-arcade-display shadow-(--shadow-ap-sm) ${
+          className={`pointer-events-none absolute -top-3 z-20 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.6em] py-[0.15em] text-(length:--text-fluid-xs) font-arcade-display shadow-(--shadow-ap-sm) ${
+            peekAlign === 'end' ? '-left-2' : '-right-2'
+          } ${
             info.isContract
               ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
               : 'bg-(--color-ap-panel) text-(--color-ap-text)'
@@ -131,13 +142,9 @@ export function SeatChip({
       )}
       {open && (
         <span
-          className={`absolute z-40 ${
-            peekAlign === 'start'
-              ? 'left-0'
-              : peekAlign === 'end'
-                ? 'right-0'
-                : 'left-1/2 -translate-x-1/2'
-          } ${peekPlacement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          className={`absolute z-40 ${alignX} ${
+            peekPlacement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+          }`}
         >
           <PlayerPeek info={info} />
         </span>

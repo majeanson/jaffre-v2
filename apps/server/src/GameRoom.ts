@@ -140,6 +140,16 @@ export class GameRoom implements DurableObject {
         seriesWins: this.meta.seriesWins,
       });
     }
+    // Permanent leave without a socket — the home "Your tables" row lets you
+    // quit a room you're not connected to. The worker authenticates and
+    // forwards the identity, same as the WS path.
+    if (new URL(request.url).pathname === '/leave' && request.method === 'POST') {
+      await this.load();
+      const uid = request.headers.get('X-User-Id');
+      if (uid === null || uid === '') return new Response('Missing identity', { status: 400 });
+      const left = await this.unseatUser(uid);
+      return Response.json({ left });
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
@@ -199,6 +209,9 @@ export class GameRoom implements DurableObject {
         return;
       case 'swap_seats':
         await this.onSwapSeats(ws, att);
+        return;
+      case 'leave':
+        await this.onLeave(ws, att);
         return;
       case 'ready':
         await this.onReady(ws, att);
@@ -453,6 +466,45 @@ export class GameRoom implements DurableObject {
       }
     }
     this.broadcastRoster({});
+  }
+
+  /** A seated player gives up their seat for good (recap "Leave" / home row). */
+  private async onLeave(ws: WebSocket, att: Attachment): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    await this.unseatUser(att.userId);
+  }
+
+  /**
+   * Vacate a user's seat permanently. Mid-game the seat goes to a bot (the
+   * game must stay playable for the other three); otherwise it simply frees
+   * up. Their sockets, if any, drop to spectator. False if they had no seat.
+   */
+  private async unseatUser(userId: string): Promise<boolean> {
+    const seat = this.seatOf(userId);
+    if (seat === null) return false;
+    const midGame = this.meta.started && this.game !== null && this.game.phase !== 'game_over';
+    this.meta.seats[seat] = midGame ? { bot: true, difficulty: 'normal' } : null;
+    if (this.meta.disconnectedSince?.[userId] !== undefined) {
+      this.meta.disconnectedSince = Object.fromEntries(
+        Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== userId),
+      );
+    }
+    await this.ctx.storage.put('meta', this.meta);
+    for (const socket of this.ctx.getWebSockets()) {
+      const a = this.attachment(socket);
+      if (a.userId !== userId || typeof a.viewer !== 'number') continue;
+      a.viewer = 'spectator';
+      socket.serializeAttachment(a);
+      if (a.joined) this.sendWelcome(socket, a);
+    }
+    this.broadcastRoster({});
+    // The replacing bot may be the round_over holdout or the seat on turn.
+    await this.continueIfAllReady();
+    await this.scheduleNextWake();
+    return true;
   }
 
   private async onAddBot(

@@ -7,6 +7,7 @@ import { Toast } from './components/Toast.js';
 import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
+import { forgetTable } from './net/rooms.js';
 import { leaveVoice } from './voice/rtc.js';
 import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { History } from './screens/History.js';
@@ -182,8 +183,20 @@ function AppRoutes() {
         roomCode={route.code}
         onAction={(action) => send({ t: 'action', action })}
         onLeave={() => (location.hash = '')}
+        onLeaveTable={() => {
+          // Recap "Leave": give the seat up for good (the top-bar leave stays a
+          // soft hop — seat kept, resume from "Your tables").
+          send({ t: 'leave' });
+          forgetTable(route.code);
+          location.hash = '';
+        }}
         onRematch={() => send({ t: 'start' })}
-        onSwapSeats={() => send({ t: 'swap_seats' })}
+        // One click: re-pair the teams AND deal the next game. The DO handles
+        // messages in order, so start sees the swapped seating.
+        onSwapSeats={() => {
+          send({ t: 'swap_seats' });
+          send({ t: 'start' });
+        }}
       />
     ) : (
       <Lobby code={route.code} onLeave={() => (location.hash = '')} />

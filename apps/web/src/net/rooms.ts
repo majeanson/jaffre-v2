@@ -1,4 +1,5 @@
 import type { Roster } from '@jaffre/protocol';
+import { getGuestToken } from './auth.js';
 
 /**
  * A local record of the tables this browser has sat at — powers the home
@@ -77,6 +78,28 @@ export async function fetchTableStatus(code: string): Promise<TableStatus | null
     return (await res.json()) as TableStatus;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Permanently give up your seat at `code` and drop its card from the row.
+ * Works without a socket to the room (the home "Your tables" row); the seat
+ * frees up in the lobby / after a game, or hands to a bot mid-game. The
+ * server call is best-effort — the card is gone locally either way.
+ */
+export async function leaveTable(code: string): Promise<void> {
+  forgetTable(code);
+  try {
+    const name = localStorage.getItem('jaffre-name') ?? 'Player';
+    const auth = await getGuestToken(name);
+    // ?u= is the no-secret dev fallback; ignored by the worker in token mode.
+    const uid = localStorage.getItem('jaffre-uid') ?? '';
+    await fetch(`/api/room/${encodeURIComponent(code)}/leave?u=${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      ...(auth !== null ? { headers: { Authorization: `Bearer ${auth.token}` } } : {}),
+    });
+  } catch {
+    // Offline / room gone — nothing to clean up server-side right now.
   }
 }
 

@@ -8,6 +8,8 @@ import { Toast } from './Toast.js';
 export interface ShareButtonProps {
   /** Room code — the invite link is `${origin}/#room/<code>`. */
   readonly code: string;
+  /** Show the title beside the icon where there's room (options drawer). */
+  readonly labeled?: boolean;
 }
 
 /**
@@ -15,16 +17,22 @@ export interface ShareButtonProps {
  * sheet — the room link front-and-centre — while the link also lands on the
  * clipboard with a transient "Link copied" toast.
  */
-const T: Record<Lang, { share: string; copied: string; inviteText: string }> = {
-  en: { share: 'Share this table', copied: 'Link copied', inviteText: 'Join my Jaffre table!' },
+const T: Record<Lang, { share: string; title: string; copied: string; inviteText: string }> = {
+  en: {
+    share: 'Share this table',
+    title: 'Share',
+    copied: 'Link copied',
+    inviteText: 'Join my Jaffre table!',
+  },
   fr: {
     share: 'Partager cette table',
+    title: 'Partager',
     copied: 'Lien copié',
     inviteText: 'Viens jouer au Jaffre à ma table!',
   },
 };
 
-export function ShareButton({ code }: ShareButtonProps) {
+export function ShareButton({ code, labeled = false }: ShareButtonProps) {
   const t = T[useLang()];
   const [copied, setCopied] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -55,7 +63,7 @@ export function ShareButton({ code }: ShareButtonProps) {
 
   return (
     <>
-      <IconButton label={t.share} onClick={onShare}>
+      <IconButton label={t.share} text={labeled ? t.title : undefined} onClick={onShare}>
         <IconShare />
       </IconButton>
       {sheetOpen && (

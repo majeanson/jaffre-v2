@@ -30,6 +30,8 @@ import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
 export interface TableProps {
   readonly onAction: (action: ClientAction) => void;
   readonly onLeave: () => void;
+  /** Permanently give the seat up (recap "Leave"); falls back to onLeave. */
+  readonly onLeaveTable?: () => void;
   /** Start a fresh game with the same table. */
   readonly onRematch?: () => void;
   /** Re-pair the table between games (online rooms only). */
@@ -53,6 +55,7 @@ export interface TableProps {
 export function Table({
   onAction,
   onLeave,
+  onLeaveTable,
   onRematch,
   onSwapSeats,
   online = false,
@@ -103,7 +106,9 @@ export function Table({
             return !on;
           })
         }
-        share={online && roomCode !== undefined ? <ShareButton code={roomCode} /> : undefined}
+        share={
+          online && roomCode !== undefined ? <ShareButton code={roomCode} labeled /> : undefined
+        }
         devConsole={dev && DEV_CONSOLE_ENABLED ? <DevConsole /> : undefined}
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
@@ -135,7 +140,7 @@ export function Table({
         onReady={() => onAction({ type: 'continue' })}
         onRematch={onRematch}
         onSwapSeats={onSwapSeats}
-        onLeave={onLeave}
+        onLeave={onLeaveTable ?? onLeave}
       />
       <UtilityRow
         you={seatInfo(0)}

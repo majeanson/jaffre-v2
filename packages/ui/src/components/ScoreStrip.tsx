@@ -668,8 +668,11 @@ export function ScoreStrip({
           <span className="flex min-w-0 items-center gap-2">
             {contract !== null ? (
               <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-(--color-ap-text) tabular-nums">
+                {/* The bet value rides in the fraction's denominator once play
+                    starts — repeating it next to the name reads "Broski 7 0/7". */}
                 <span className="truncate font-arcade-display uppercase">
-                  {contract.playerName} {contract.value}
+                  {contract.playerName}
+                  {contract.progress === undefined ? ` ${contract.value}` : ''}
                   {contract.sansAtout ? ' SA' : ''}
                 </span>
                 {contract.progress !== undefined && (

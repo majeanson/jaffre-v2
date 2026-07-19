@@ -33,6 +33,7 @@ const T: Record<
     yourTables: string;
     going: (n: number) => string;
     resume: string;
+    leaveTable: (code: string) => string;
     tonight: string;
     sun: (n: number) => string;
     moon: (n: number) => string;
@@ -62,6 +63,7 @@ const T: Record<
     yourTables: 'Your tables',
     going: (n) => `${String(n)} going`,
     resume: 'Resume',
+    leaveTable: (code) => `Leave table ${code}`,
     tonight: 'Tonight:',
     sun: (n) => `Sun ${String(n)}`,
     moon: (n) => `Moon ${String(n)}`,
@@ -90,6 +92,7 @@ const T: Record<
     yourTables: 'Tes tables',
     going: (n) => `${String(n)} en route`,
     resume: 'Reprendre',
+    leaveTable: (code) => `Quitter la table ${code}`,
     tonight: 'Ce soir :',
     sun: (n) => `Soleil ${String(n)}`,
     moon: (n) => `Lune ${String(n)}`,
@@ -121,6 +124,8 @@ export interface PlayMenuProps {
   readonly onJoinRoom: (code: string) => void;
   /** Tables this browser has sat at, newest first — the "Your tables" row. */
   readonly tables: readonly TableEntry[];
+  /** Permanently quit a table from its card (frees the seat, drops the card). */
+  readonly onLeaveTable?: (code: string) => void;
   /** Open the "Your corner" door on mount (scene viewer stages it open). */
   readonly defaultYoursOpen?: boolean;
 }
@@ -157,13 +162,19 @@ function TableCard({
   table,
   status,
   onResume,
+  onLeave,
 }: {
   readonly table: TableEntry;
   readonly status?: TableStatus | null;
   readonly onResume: () => void;
+  /** Permanently quit this table (frees the seat, drops the card). */
+  readonly onLeave?: () => void;
 }) {
   const t = T[useLang()];
   const badge = liveBadge(status, table.yourSeat, t);
+  // Prefer the live tally from the status peek: the localStorage snapshot goes
+  // stale the moment games finish while this browser is away.
+  const seriesWins = status?.seriesWins ?? table.seriesWins;
   return (
     <div className="flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm)">
       {badge !== null && (
@@ -193,17 +204,30 @@ function TableCard({
           ))}
         </div>
       )}
-      {table.seriesWins !== undefined && (
+      {seriesWins !== undefined && (
         <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.12em] text-(--color-ap-muted) tabular-nums">
-          {t.tonight}{' '}
-          <span style={{ color: 'var(--color-team-a)' }}>{t.sun(table.seriesWins[0])}</span>
+          {t.tonight} <span style={{ color: 'var(--color-team-a)' }}>{t.sun(seriesWins[0])}</span>
           {' — '}
-          <span style={{ color: 'var(--color-team-b)' }}>{t.moon(table.seriesWins[1])}</span>
+          <span style={{ color: 'var(--color-team-b)' }}>{t.moon(seriesWins[1])}</span>
         </span>
       )}
-      <Cta type="button" onClick={onResume} className="w-full">
-        {t.resume}
-      </Cta>
+      <div className="flex gap-2">
+        <Cta type="button" onClick={onResume} className="flex-1">
+          {t.resume}
+        </Cta>
+        {onLeave !== undefined && (
+          <Cta
+            type="button"
+            variant="secondary"
+            onClick={onLeave}
+            aria-label={t.leaveTable(table.code)}
+            title={t.leaveTable(table.code)}
+            className="shrink-0 px-[0.9em]"
+          >
+            ✕
+          </Cta>
+        )}
+      </div>
     </div>
   );
 }
@@ -236,6 +260,7 @@ export function PlayMenu({
   onPractice,
   onJoinRoom,
   tables,
+  onLeaveTable,
   defaultYoursOpen = false,
 }: PlayMenuProps) {
   const t = T[useLang()];
@@ -296,7 +321,7 @@ export function PlayMenu({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(1.2rem,3.5vmin,2.2rem)] font-arcade-display text-[clamp(1.9rem,4.5vmin,2.8rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
+            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             {t.play}
             <span
@@ -438,6 +463,9 @@ export function PlayMenu({
                     table={tbl}
                     status={statuses[tbl.code] ?? null}
                     onResume={() => onJoinRoom(tbl.code)}
+                    {...(onLeaveTable !== undefined
+                      ? { onLeave: () => onLeaveTable(tbl.code) }
+                      : {})}
                   />
                 ))}
               </div>
