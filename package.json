@@ -20,6 +20,7 @@
     "sim": "tsx scripts/sim.ts",
     "botbench": "tsx scripts/botbench.ts",
     "verify:deploy": "tsx scripts/verify-deploy.ts",
+    "audit:contrast": "node scripts/contrast-audit.mjs packages/ui/src/tokens.css",
     "devkit": "npm run devkit -w packages/ui",
     "dev": "npm run dev -w apps/server"
   },

@@ -167,7 +167,7 @@ function Scorepad({
   const hdr =
     'px-[0.7em] py-[0.5em] text-left font-arcade-ui text-[0.62em] font-bold uppercase tracking-[0.12em] text-(--color-ap-ink)/60';
   return (
-    <div className="overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap-lg)">
+    <div className="overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap-lg)">
       <table className="w-full border-collapse tabular-nums">
         <caption className="sr-only">{t.scoresCaption}</caption>
         <thead>

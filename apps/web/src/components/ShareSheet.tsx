@@ -104,7 +104,7 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
 
         {/* QR + the room code as ivory word-plates. */}
         <div className="flex items-stretch gap-3">
-          <div className="grid size-[7.5em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-card-face) p-2 shadow-(--shadow-ap-sm)">
+          <div className="grid size-[7.5em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-paper) p-2 shadow-(--shadow-ap-sm)">
             <QrCode value={url} label={t.scanToJoin(code)} className="size-full" />
           </div>
           <div className="flex min-w-0 flex-col justify-center gap-2">

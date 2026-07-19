@@ -39,6 +39,14 @@
   --color-card-back: #7c2d3e;
   --color-card-back-line: #9c4356;
 
+  /* Product paper — the score sheet, bet cards, badges, QR panel, hero card:
+   * surfaces that print constant near-black inks (--color-ap-ink, --color-ink,
+   * the score pad's TEAM_INK pencils). ALWAYS light. Themes may TINT it; card
+   * skins must NEVER touch it — --color-card-face belongs to PlayingCard
+   * alone, and a dark card skin (neon, gilded…) must not black out the UI. */
+  --color-ap-paper: #f6efdf;
+  --color-ap-paper-shade: #efe6cf;
+
   /* Suits — deuteranopia-safe; never used without the shape glyph */
   --color-suit-red: #d43a3a;
   --color-suit-brown: #b07a2e;
@@ -97,7 +105,7 @@
   --color-ap-violet: #7a6ff0; /* primary CTA */
   --color-ap-violet-soft: #a897f0; /* accents, badges, notification dots */
   --color-ap-gold: #f2b712; /* wordmark, win-rate stat */
-  --color-ap-gold-deep: #d99a00; /* gold that reads on the ivory card face; constant across skins */
+  --color-ap-gold-deep: #a87500; /* gold that READS (≥3:1) on every theme's paper; constant across skins */
   --color-ap-text: #ebe6f5;
   --color-ap-muted: #9a8fbf;
   --color-ap-ok: #58b884;
@@ -148,6 +156,8 @@
   --color-accent: #9a6a12;
   --color-card-face: #fdfaf1;
   --color-card-face-shade: #efe8d5;
+  --color-ap-paper: #fdfaf1;
+  --color-ap-paper-shade: #efe8d5;
   --color-suit-red: #c02f2f;
   --color-suit-brown: #96660f;
   --color-suit-green: #157a5f;
@@ -164,7 +174,9 @@
   --color-ap-panel-hover: #f0ecfa;
   --color-ap-text: #181225;
   --color-ap-muted: #6f6689;
-  --color-ap-gold: #d99a00;
+  --color-ap-gold: #9a6a12;
+  --color-ap-violet-soft: #7a5fd0;
+  --color-ap-ok: #1e7a52;
   --color-ap-danger-text: #b3261e;
 }
 
@@ -182,11 +194,13 @@
   --color-accent: #ffd54a;
   --color-card-face: #fffdf4;
   --color-card-face-shade: #f2ecd8;
+  --color-ap-paper: #fffdf4;
+  --color-ap-paper-shade: #f2ecd8;
   --color-card-back: #ff4d7d;
   --color-card-back-line: #ff7ba0;
   --color-suit-red: #ff3d5e;
-  --color-suit-brown: #ff9d1f;
-  --color-suit-green: #14d29a;
+  --color-suit-brown: #d97800;
+  --color-suit-green: #0f9c72;
   --color-suit-blue: #3f8bff;
   --color-ok: #14d29a;
   --color-danger: #ff3d5e;
@@ -206,6 +220,7 @@
   --color-ap-ground: #2a1358;
   --color-ap-panel: #3a1f7a;
   --color-ap-panel-hover: #472a8e;
+  --color-ap-muted: #ad9fd8;
   --table-backdrop: radial-gradient(1150px 760px at 50% 20%, #6a34c8, var(--color-ap-ground) 66%);
 }
 
@@ -223,6 +238,8 @@
   --color-accent: #e8b866;
   --color-card-face: #f4e8cf;
   --color-card-face-shade: #e6d5b2;
+  --color-ap-paper: #f4e8cf;
+  --color-ap-paper-shade: #e6d5b2;
   --color-card-back: #7a4a24;
   --color-card-back-line: #9c6a3c;
   --color-suit-red: #b3402f;
@@ -253,12 +270,14 @@
   --color-accent: #86b6ff;
   --color-card-face: #eef1f8;
   --color-card-face-shade: #dbe0ec;
+  --color-ap-paper: #eef1f8;
+  --color-ap-paper-shade: #dbe0ec;
   --color-card-back: #1c2c52;
   --color-card-back-line: #34508c;
   --color-suit-red: #e0556a;
-  --color-suit-brown: #c79150;
-  --color-suit-green: #3fb58c;
-  --color-suit-blue: #5b8bff;
+  --color-suit-brown: #9c6f2a;
+  --color-suit-green: #1f8a66;
+  --color-suit-blue: #3f63d9;
   --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #131f3c, var(--color-ap-ground) 72%);
   --color-ap-ground: #080c18;
   --color-ap-panel: #121a2e;
@@ -284,6 +303,8 @@
   --color-accent: #f0c060;
   --color-card-face: #f8efe0;
   --color-card-face-shade: #ecdfc4;
+  --color-ap-paper: #f8efe0;
+  --color-ap-paper-shade: #ecdfc4;
   --color-card-back: #6e1622;
   --color-card-back-line: #96303e;
   --color-suit-red: #cf3838;
@@ -315,6 +336,8 @@
   --color-accent: #ffd27a;
   --color-card-face: #f4f2e6;
   --color-card-face-shade: #e2ddc6;
+  --color-ap-paper: #f4f2e6;
+  --color-ap-paper-shade: #e2ddc6;
   --color-card-back: #1e5c34;
   --color-card-back-line: #3a8454;
   --color-suit-red: #c23f33;
@@ -348,6 +371,8 @@
   --color-accent: #b03a5c;
   --color-card-face: #fff6f4;
   --color-card-face-shade: #f4e0e0;
+  --color-ap-paper: #fff6f4;
+  --color-ap-paper-shade: #f4e0e0;
   --color-card-back: #d87a94;
   --color-card-back-line: #e8a4b8;
   --color-suit-red: #c02f4a;
@@ -364,7 +389,9 @@
   --color-ap-panel-hover: #f8e0e6;
   --color-ap-text: #33232a;
   --color-ap-muted: #8c6875;
-  --color-ap-gold: #c08a10;
+  --color-ap-gold: #96660f;
+  --color-ap-violet-soft: #7a5fd0;
+  --color-ap-ok: #1e7a52;
   --color-ap-danger-text: #b3261e;
 }
 
@@ -384,6 +411,8 @@
   --color-accent: #135f80;
   --color-card-face: #fbfdff;
   --color-card-face-shade: #e4edf4;
+  --color-ap-paper: #fbfdff;
+  --color-ap-paper-shade: #e4edf4;
   --color-card-back: #4a90b8;
   --color-card-back-line: #78b0d0;
   --color-suit-red: #c02f2f;
@@ -400,7 +429,9 @@
   --color-ap-panel-hover: #e0eef6;
   --color-ap-text: #14212b;
   --color-ap-muted: #5c7a8a;
-  --color-ap-gold: #c78a00;
+  --color-ap-gold: #8a6200;
+  --color-ap-violet-soft: #7a5fd0;
+  --color-ap-ok: #1e7a52;
   --color-ap-danger-text: #b3261e;
 }
 
@@ -418,11 +449,13 @@
   --color-accent: #4de8d0;
   --color-card-face: #e8f4f2;
   --color-card-face-shade: #d2e4e2;
+  --color-ap-paper: #e8f4f2;
+  --color-ap-paper-shade: #d2e4e2;
   --color-card-back: #0b3a4a;
   --color-card-back-line: #1a6478;
   --color-suit-red: #e85a72;
-  --color-suit-brown: #c79a48;
-  --color-suit-green: #1fae86;
+  --color-suit-brown: #9a742a;
+  --color-suit-green: #148066;
   --color-suit-blue: #3d84c4;
   --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #0a2a3c, var(--color-ap-ground) 72%);
   --color-ap-ground: #03101a;
@@ -449,6 +482,8 @@
   --color-accent: #ff9440;
   --color-card-face: #f5e8d8;
   --color-card-face-shade: #e6d0b4;
+  --color-ap-paper: #f5e8d8;
+  --color-ap-paper-shade: #e6d0b4;
   --color-card-back: #4a160c;
   --color-card-back-line: #8c3018;
   --color-suit-red: #d43e28;
@@ -482,6 +517,10 @@
   --color-accent: #33ff88;
   --color-card-face: #0a1a10;
   --color-card-face-shade: #0f2416;
+  /* Cards are dark glass by design, but the paper surfaces (score sheet, bet
+   * cards) stay printable: pale phosphor, ink still reads. */
+  --color-ap-paper: #d8ffe6;
+  --color-ap-paper-shade: #b4f0cc;
   --color-card-back: #04170c;
   --color-card-back-line: #1d5c32;
   --color-suit-red: #ff5f56;
@@ -516,11 +555,13 @@
   --color-accent: #ff5ad2;
   --color-card-face: #fdf4ff;
   --color-card-face-shade: #efdff4;
+  --color-ap-paper: #fdf4ff;
+  --color-ap-paper-shade: #efdff4;
   --color-card-back: #3b1a6e;
   --color-card-back-line: #ff5ad2;
   --color-suit-red: #ff3d7e;
-  --color-suit-brown: #ff9d1f;
-  --color-suit-green: #14d2b0;
+  --color-suit-brown: #d17300;
+  --color-suit-green: #0f9c85;
   --color-suit-blue: #3f8bff;
   --table-backdrop: radial-gradient(1150px 760px at 50% 20%, #4a1a8c, var(--color-ap-ground) 66%);
   --color-ap-ground: #14062a;
@@ -547,6 +588,8 @@
   --color-accent: #ffd97a;
   --color-card-face: #f8f2e0;
   --color-card-face-shade: #ebe2c8;
+  --color-ap-paper: #f8f2e0;
+  --color-ap-paper-shade: #ebe2c8;
   --color-card-back: #171208;
   --color-card-back-line: #c8a038;
   --color-suit-red: #b3402f;
@@ -578,11 +621,13 @@
   --color-accent: #b08cff;
   --color-card-face: #ece6f8;
   --color-card-face-shade: #d8cfec;
+  --color-ap-paper: #ece6f8;
+  --color-ap-paper-shade: #d8cfec;
   --color-card-back: #2a1454;
   --color-card-back-line: #5a3aa0;
-  --color-suit-red: #d85a8c;
-  --color-suit-brown: #c89050;
-  --color-suit-green: #3fbf9f;
+  --color-suit-red: #c23a72;
+  --color-suit-brown: #96682e;
+  --color-suit-green: #1a8a6e;
   --color-suit-blue: #7a6af0;
   --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #241448, var(--color-ap-ground) 72%);
   --color-ap-ground: #0c0716;
@@ -721,8 +766,8 @@
   --color-card-back: #2038c8;
   --color-card-back-line: #4868e8;
   --color-suit-red: #e40058;
-  --color-suit-brown: #d87800;
-  --color-suit-green: #00a844;
+  --color-suit-brown: #c96e00;
+  --color-suit-green: #008a38;
   --color-suit-blue: #0078f8;
 }
 
@@ -746,9 +791,9 @@
   --color-card-face-shade: #f0dcee;
   --color-card-back: #2a1a4e;
   --color-card-back-line: #ff7ac8;
-  --color-suit-red: #ff5f9e;
-  --color-suit-brown: #e8873a;
-  --color-suit-green: #1fb8a8;
+  --color-suit-red: #e0347a;
+  --color-suit-brown: #c96a1a;
+  --color-suit-green: #0f8f82;
   --color-suit-blue: #7a7aff;
 }
 
@@ -785,10 +830,10 @@
   --color-card-face-shade: #e0e0ec;
   --color-card-back: #1a1a2a;
   --color-card-back-line: #8a8aff;
-  --color-suit-red: #ff4d6e;
-  --color-suit-brown: #ffb020;
-  --color-suit-green: #22d89a;
-  --color-suit-blue: #4d8aff;
+  --color-suit-red: #e02a50;
+  --color-suit-brown: #b87500;
+  --color-suit-green: #0f9468;
+  --color-suit-blue: #3a6ee8;
 }
 
 /* Sans Atout: the no-trump deck — white-on-white porcelain, silver back,

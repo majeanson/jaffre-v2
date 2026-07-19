@@ -57,7 +57,7 @@ export function BidPanel({
               onClick={() => onBid({ value, sansAtout })}
               className={`${
                 enabled
-                  ? 'h-12 w-12 max-sm:h-11 max-sm:w-11 rounded-lg font-bold tabular-nums text-lg border bg-(--color-card-face) text-(--color-ink) border-black/20 hover:bg-(--color-lamplight) active:translate-y-px cursor-pointer'
+                  ? 'h-12 w-12 max-sm:h-11 max-sm:w-11 rounded-lg font-bold tabular-nums text-lg border bg-(--color-ap-paper) text-(--color-ink) border-black/20 hover:bg-(--color-lamplight)/35 active:translate-y-px cursor-pointer'
                   : 'h-12 w-12 max-sm:h-11 max-sm:w-11 rounded-lg font-bold tabular-nums text-lg border bg-white/5 text-(--color-ivory)/25 border-white/5 cursor-not-allowed'
               } ${isRecommended ? 'outline outline-2 outline-(--color-lamplight) outline-offset-2' : ''}`}
             >

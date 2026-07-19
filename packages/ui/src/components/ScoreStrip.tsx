@@ -151,7 +151,9 @@ const shortName = (name: string): string => name.replace(/^(team|équipe)\s+/i, 
 const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
 /** Deep team colours that meet AA on the ivory scorepad's cream header in BOTH
  * skins (the felt team vars are light in the dark skin and vanish on cream). */
-const TEAM_INK = ['#8a5c00', '#1c5f78'] as const;
+// Pencil inks on the paper pad — dark enough for AA on every theme's
+// --color-ap-paper-shade (the header band), not just the default cream.
+const TEAM_INK = ['#6e4a00', '#1c5f78'] as const;
 
 /** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
 export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
@@ -444,7 +446,7 @@ export function ScorePad({
 
   return (
     <div
-      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) text-(--color-ap-ink) shadow-(--shadow-ap) ${className}`}
+      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap) ${className}`}
     >
       <div
         tabIndex={0}
@@ -459,7 +461,7 @@ export function ScorePad({
         <table className="w-full table-fixed tabular-nums" data-testid="scorepad">
           <caption className="sr-only">{t.scoreboard}</caption>
           {cols}
-          <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-[#efe6cf]">
+          <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-(--color-ap-paper-shade)">
             <tr>
               <th scope="col" className={`${headCell} pl-3 text-left`}>
                 {/* The fixed first column can't fit the full word on a phone —
@@ -552,7 +554,7 @@ export function ScorePad({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center border-t-2 border-(--color-ap-ink) bg-[#efe6cf]">
+      <div className="flex items-center border-t-2 border-(--color-ap-ink) bg-(--color-ap-paper-shade)">
         <table className="w-full table-fixed tabular-nums">
           {cols}
           <tbody>

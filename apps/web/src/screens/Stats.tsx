@@ -353,7 +353,7 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
                 recent-form sparkline. The card face stays ivory in both skins,
                 so its text is ink, not the flipping --color-ap-text. */}
             <section
-              className="rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) p-[1.1em] shadow-(--shadow-ap-lg)"
+              className="rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) p-[1.1em] shadow-(--shadow-ap-lg)"
               style={{
                 backgroundImage:
                   'repeating-linear-gradient(transparent 0 27px, rgb(11 7 19 / 0.07) 27px 28px)',

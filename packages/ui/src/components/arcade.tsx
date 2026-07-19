@@ -184,7 +184,7 @@ export interface WordPlateProps {
 /** An ivory pill for a recovery word (LAMPE / TRICOT / HIBOU). */
 export function WordPlate({ children }: WordPlateProps) {
   return (
-    <span className="inline-block rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-card-face) px-[0.9em] py-[0.45em] font-arcade-display text-[1.05em] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap-sm)">
+    <span className="inline-block rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-paper) px-[0.9em] py-[0.45em] font-arcade-display text-[1.05em] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap-sm)">
       {children}
     </span>
   );
@@ -482,7 +482,7 @@ export function PlayerCard({
 
   return (
     <div className="flex flex-col items-center gap-[0.9em]">
-      <div className="ap-foil ap-wobble relative aspect-[3/4] w-[13em] rounded-(--radius-ap-hero) border-[3px] border-(--color-ap-ink) bg-(--color-card-face) shadow-(--shadow-ap-hero)">
+      <div className="ap-foil ap-wobble relative aspect-[3/4] w-[13em] rounded-(--radius-ap-hero) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) shadow-(--shadow-ap-hero)">
         {/* corner initials */}
         <span
           aria-hidden

@@ -107,7 +107,7 @@ function BetCard({
       } ${
         pass
           ? 'bg-(--color-ap-panel) text-(--color-ap-muted)'
-          : 'bg-(--color-card-face) text-(--color-ap-ink)'
+          : 'bg-(--color-ap-paper) text-(--color-ap-ink)'
       } ${recommended ? 'outline outline-[3px] outline-(--color-ap-violet) outline-offset-2 -translate-y-1' : ''} ${
         hot
           ? 'outline outline-[3px] outline-(--color-ap-gold-deep) outline-offset-2 -translate-y-1'
