@@ -15,6 +15,19 @@ const SECRET = 's'.repeat(48);
 function loginEnv(): Env {
   return { ...testEnv, SESSION_SECRET: SECRET, RESEND_API_KEY: 're_test_key' } as unknown as Env;
 }
+/** Auth env with NO login method configured. Strips the auth secrets rather
+ * than trusting testEnv to lack them: vitest-pool-workers loads `.dev.vars`,
+ * so a developer's real RESEND_API_KEY would otherwise leak in and flip the
+ * "unconfigured deployment" tests. */
+function bareEnv(): Env {
+  return {
+    ...testEnv,
+    SESSION_SECRET: SECRET,
+    RESEND_API_KEY: undefined,
+    GOOGLE_CLIENT_ID: undefined,
+    GOOGLE_CLIENT_SECRET: undefined,
+  } as unknown as Env;
+}
 
 const fetchAs = worker.fetch as unknown as (request: Request, env: Env) => Promise<Response>;
 
@@ -91,10 +104,7 @@ describe('login helpers', () => {
 
 describe('/api/auth/methods', () => {
   it('reports which methods this deployment can offer', async () => {
-    const bare = await fetchAs(new Request('https://example.com/api/auth/methods'), {
-      ...testEnv,
-      SESSION_SECRET: SECRET,
-    } as unknown as Env);
+    const bare = await fetchAs(new Request('https://example.com/api/auth/methods'), bareEnv());
     expect(await bare.json()).toEqual({ email: false, google: false });
     const withEmail = await fetchAs(
       new Request('https://example.com/api/auth/methods'),
@@ -154,10 +164,7 @@ describe('email code sign-in', () => {
   });
 
   it('503s cleanly when email login is not configured', async () => {
-    const res = await fetchAs(post('/api/auth/email/start', { email: 'a@example.com' }), {
-      ...testEnv,
-      SESSION_SECRET: SECRET,
-    } as unknown as Env);
+    const res = await fetchAs(post('/api/auth/email/start', { email: 'a@example.com' }), bareEnv());
     expect(res.status).toBe(503);
   });
 });
