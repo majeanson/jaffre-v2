@@ -19,6 +19,18 @@ let state: GameState | null = null;
 let rng: Rng = mulberry32(0);
 let botTimer: ReturnType<typeof setTimeout> | null = null;
 let botDifficulties: PracticeBots = ['normal', 'normal', 'normal'];
+// While true, bots hold — the tutorial intro is up and the auction must wait.
+let paused = false;
+
+/**
+ * Freeze (or resume) the bots. Used by the practice tutorial so the deal's
+ * auction doesn't resolve behind the intro overlay. Inert online (no state).
+ */
+export function setLocalPaused(next: boolean): void {
+  if (paused === next) return;
+  paused = next;
+  if (!paused) scheduleBots();
+}
 
 function localRoster(bots: PracticeBots): Roster {
   return {
@@ -48,6 +60,7 @@ export function startLocalGame(seed?: number): void {
 export function stopLocalGame(): void {
   if (botTimer !== null) clearTimeout(botTimer);
   botTimer = null;
+  paused = false;
   state = null;
 }
 
@@ -132,6 +145,7 @@ export function redeal(seed?: number): void {
 function scheduleBots(afterTrick = false): void {
   if (botTimer !== null) clearTimeout(botTimer);
   botTimer = null;
+  if (paused) return;
   if (state === null || state.phase === 'game_over') return;
   // round_over waits for the human's Ready click — bots are always ready.
   if (state.phase === 'round_over') return;
