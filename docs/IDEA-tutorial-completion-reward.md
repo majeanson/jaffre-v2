@@ -1,7 +1,7 @@
 # Idea: unlock a cosmetic for completing the how-to-play tutorial
 
 Status: **idea / parked for a proper pass** (2026-07-21). The progression UI
-(table pip + Help checklist) and replay ship first; the *reward* is deferred
+(table pip + Help checklist) and replay ship first; the _reward_ is deferred
 because it doesn't fit the current unlock model without a small architectural
 decision. This doc captures the intent and the wrinkle so the future pass
 starts informed.
