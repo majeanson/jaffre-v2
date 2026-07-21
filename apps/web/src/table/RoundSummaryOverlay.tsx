@@ -148,6 +148,26 @@ export function RoundSummaryOverlay({
   const contractTeam = (summary.contract.seat % 2) as 0 | 1;
   const made = summary.contractMade;
 
+  /** One team's big round delta with any specials it captured this round. */
+  const teamDelta = (t: 0 | 1) => {
+    const delta = summary.deltas[t] ?? 0;
+    const sp = specials[t];
+    return (
+      <span className="flex items-center gap-1.5">
+        <span
+          className="font-arcade-display text-(length:--text-fluid-2xl) leading-none"
+          style={{ color: teamColor(t) }}
+        >
+          {delta >= 0 ? '+' : ''}
+          {delta}
+        </span>
+        {sp.red && <SpecialChip kind="red" />}
+        {sp.brown && <SpecialChip kind="brown" />}
+        {myTeam === t && <span className="sr-only">({tr.you})</span>}
+      </span>
+    );
+  };
+
   return (
     <div
       ref={ref}
@@ -157,7 +177,7 @@ export function RoundSummaryOverlay({
       aria-modal="true"
       aria-label={tr.summary}
     >
-      <div className="w-[23rem] max-w-[92vw] rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
+      <div className="w-[26rem] max-w-[92vw] rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <p className="text-center font-arcade-display text-[11px] tracking-[0.2em] text-(--color-ap-muted) uppercase">
           {tr.round(summary.roundIndex + 1)}
         </p>
@@ -198,27 +218,14 @@ export function RoundSummaryOverlay({
         {/* THIS round's points — the focus: two big team-coloured deltas (with
             any captured specials), fused atop the written scoresheet where the
             same round's row is highlighted. */}
-        <div className="mt-4">
-          <div className="flex items-center justify-center gap-8 rounded-t-(--radius-ap-card) border-[3px] border-b-0 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2.5 tabular-nums">
-            {([0, 1] as const).map((t) => {
-              const delta = summary.deltas[t] ?? 0;
-              const sp = specials[t];
-              const mine = myTeam === t;
-              return (
-                <span key={t} className="flex items-center gap-1.5">
-                  <span
-                    className="font-arcade-display text-(length:--text-fluid-2xl) leading-none"
-                    style={{ color: teamColor(t) }}
-                  >
-                    {delta >= 0 ? '+' : ''}
-                    {delta}
-                  </span>
-                  {sp.red && <SpecialChip kind="red" />}
-                  {sp.brown && <SpecialChip kind="brown" />}
-                  {mine && <span className="sr-only">({tr.you})</span>}
-                </span>
-              );
-            })}
+        <div className="mt-4 overflow-hidden rounded-(--radius-ap-card) shadow-(--shadow-ap)">
+          <div className="flex items-center justify-center gap-6 rounded-t-(--radius-ap-card) border-[3px] border-b-0 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2.5 tabular-nums">
+            {teamDelta(0)}
+            {/* A hairline rule splits the two teams' round scores. Uses the
+                muted token so it reads on the panel in every skin (the band is
+                dark in most themes, ivory-white in the light ones). */}
+            <span aria-hidden className="h-7 w-px shrink-0 bg-(--color-ap-muted)/50" />
+            {teamDelta(1)}
           </div>
           <ScorePad
             teamNames={tr.teams}
@@ -228,6 +235,7 @@ export function RoundSummaryOverlay({
             myTeam={myTeam}
             highlightRound={summary.roundIndex + 1}
             className="max-w-none rounded-t-none"
+            shadowClass=""
           />
         </div>
 
