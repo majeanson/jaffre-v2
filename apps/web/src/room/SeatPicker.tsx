@@ -1,6 +1,9 @@
 import type { Viewer } from '@jaffre/engine';
 import type { BotDifficulty, Roster } from '@jaffre/protocol';
 import { Cta, Seat, TeamGlyph, useLang, type Lang } from '@jaffre/ui';
+import { IconButton } from '../components/IconButton.js';
+import { IconSwap, IconX } from '../components/icons.js';
+import { botAvatar } from '../paint/botAvatars.js';
 
 /** Difficulty chips are colour-coded so the table reads at a glance: green
  * (easy) → gold (normal) → red (hard). */
@@ -108,6 +111,7 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: Sea
                   team={(seat % 2) as 0 | 1}
                   isBot={info.isBot}
                   connected={info.connected}
+                  paint={info.isBot ? botAvatar(seat) : null}
                 />
                 {info.isBot && !started && (
                   <button
@@ -121,18 +125,23 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: Sea
                   </button>
                 )}
                 {canSwapHere && (
-                  <Cta variant="secondary" data-testid={`swap-${seat}`} onClick={() => onSit(seat)}>
-                    {t.swapHere}
-                  </Cta>
+                  <IconButton
+                    label={t.swapHere}
+                    data-testid={`swap-${seat}`}
+                    onClick={() => onSit(seat)}
+                  >
+                    <IconSwap />
+                  </IconButton>
                 )}
                 {info.isBot && !started && (
-                  <Cta
-                    variant="secondary"
+                  <IconButton
+                    danger
+                    label={t.removeBot}
                     data-testid={`remove-bot-${seat}`}
                     onClick={() => onRemoveBot(seat)}
                   >
-                    {t.removeBot}
-                  </Cta>
+                    <IconX />
+                  </IconButton>
                 )}
               </span>
             ) : (

@@ -11,6 +11,7 @@ import type {
 import { useLang, type Lang } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
 import { toPosition, useGameStore } from '../state/gameStore.js';
+import { botAvatar } from '../paint/botAvatars.js';
 import { queueableCards } from './queue.js';
 import { teamSpecialsFrom } from './specials.js';
 
@@ -67,6 +68,9 @@ export interface SeatChipInfo {
   readonly isBot: boolean;
   /** For a bot seat, the difficulty it plays at (peek shows it); null for humans. */
   readonly difficulty: BotDifficulty | null;
+  /** A pixel avatar to render in place of the initial token (bot sprites; the
+   * viewer's own paint is applied separately). Null → fall back to the initial. */
+  readonly avatar: string | null;
   readonly connected: boolean;
   /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
   readonly botSwapAt: number | null;
@@ -295,6 +299,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       isDealer: view.dealer === seat,
       isBot: info.isBot,
       difficulty: info.difficulty ?? null,
+      avatar: info.isBot ? botAvatar(seat) : null,
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
       autoPlay: info.autoPlay ?? false,

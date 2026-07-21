@@ -46,6 +46,27 @@ export function IconRobot() {
   );
 }
 
+/** Swap seats: two arrows trading places. */
+export function IconSwap() {
+  return (
+    <Svg>
+      <path d="M4 8h13" />
+      <path d="M14 5l3 3-3 3" />
+      <path d="M20 16H7" />
+      <path d="M10 13l-3 3 3 3" />
+    </Svg>
+  );
+}
+
+/** Remove / close: an X. */
+export function IconX() {
+  return (
+    <Svg>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </Svg>
+  );
+}
+
 /** Options: gear. */
 export function IconGear() {
   return (

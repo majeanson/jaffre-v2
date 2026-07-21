@@ -90,9 +90,9 @@ export function SeatChip({
         ? 'right-0'
         : 'left-1/2 -translate-x-1/2';
 
-  // Your own seat wears your painted card (if any) as its avatar; other seats
-  // never receive paint (the roster doesn't carry other players' paint).
-  const paint = info.isYou ? getProfile().paint : null;
+  // Your own seat wears your painted card (if any); bot seats wear their pixel
+  // sprite; other humans never receive paint (the roster doesn't carry it).
+  const paint = info.isYou ? getProfile().paint : info.avatar;
 
   return (
     <span ref={rootRef} className="relative inline-block max-w-full min-w-0">
