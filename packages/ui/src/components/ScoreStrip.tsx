@@ -401,6 +401,7 @@ export function ScorePad({
   myTeam = null,
   highlightRound,
   className = '',
+  shadowClass = 'shadow-(--shadow-ap)',
 }: {
   teamNames: readonly [string, string];
   scores: readonly [number, number];
@@ -417,6 +418,9 @@ export function ScorePad({
   highlightRound?: number | undefined;
   /** Extra classes on the pad root (e.g. to fuse it under a header band). */
   className?: string;
+  /** The pad's own drop shadow. Set to '' when a wrapping card carries the
+   * shadow instead (e.g. the round-summary fused band + pad). */
+  shadowClass?: string;
 }) {
   const t = T[useLang()];
   const liveRound =
@@ -426,9 +430,9 @@ export function ScorePad({
 
   const cols = (
     <colgroup>
-      <col className="w-14" />
-      <col className="w-[19%]" />
-      <col className="w-[19%]" />
+      <col className="w-12" />
+      <col className="w-[22%]" />
+      <col className="w-[22%]" />
       <col />
     </colgroup>
   );
@@ -446,7 +450,7 @@ export function ScorePad({
 
   return (
     <div
-      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px] ${className}`}
+      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) ${shadowClass} [&_:focus-visible]:outline-offset-[-2px] ${className}`}
     >
       <div
         tabIndex={0}
@@ -476,15 +480,15 @@ export function ScorePad({
                 <th
                   key={team}
                   scope="col"
-                  className={`py-1.5 text-center font-arcade-ui text-[0.85em] font-bold tracking-[0.1em] uppercase ${
+                  className={`px-0.5 py-1.5 text-center font-arcade-ui text-[0.85em] font-bold tracking-[0.05em] uppercase ${
                     team === myTeam ? 'underline decoration-2 underline-offset-2' : ''
                   }`}
                   style={{ color: TEAM_INK[team] }}
                 >
                   {/* One nowrap unit so SUN/MOON never wraps under its glyph;
                       on a phone the glyph alone carries the team (name sr-only). */}
-                  <span className="inline-flex items-center justify-center gap-1 whitespace-nowrap align-middle">
-                    <TeamGlyph team={team} size="0.9em" color={TEAM_INK[team]} />
+                  <span className="inline-flex items-center justify-center gap-[0.3em] whitespace-nowrap align-middle">
+                    <TeamGlyph team={team} size="0.85em" color={TEAM_INK[team]} />
                     <span className="max-sm:sr-only">{shortName(teamNames[team])}</span>
                   </span>
                 </th>
