@@ -141,6 +141,7 @@ function AppRoutes() {
     return (
       <Table
         dev
+        tutorial
         onAction={sendLocalAction}
         onLeave={() => (location.hash = '')}
         onRematch={() => startLocalGame()}

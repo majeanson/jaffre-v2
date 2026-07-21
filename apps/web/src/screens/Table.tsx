@@ -14,6 +14,7 @@ import {
   PlayerHand,
   Stage,
   TopBar,
+  TutorialCoach,
   UtilityRow,
   WaitingScreen,
   useHandSort,
@@ -49,6 +50,8 @@ export interface TableProps {
   readonly bottomInset?: boolean;
   /** Real play (App) → show the dev console; scenes/replay leave it off. */
   readonly dev?: boolean;
+  /** Practice only: run the one-time first-practice tutorial over the felt. */
+  readonly tutorial?: boolean;
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
@@ -61,6 +64,7 @@ export function Table({
   online = false,
   bottomInset = false,
   dev = false,
+  tutorial = false,
   roomCode,
   frozenHold = false,
   initialUi,
@@ -178,6 +182,7 @@ export function Table({
           }
         />
       )}
+      {tutorial && <TutorialCoach />}
     </main>
   );
 }

@@ -14,6 +14,8 @@ import { TEAMS } from '../teams.js';
 
 export interface HelpSheetProps {
   readonly onClose: () => void;
+  /** Open with the glossary expanded and this concept scrolled into view. */
+  readonly jumpTo?: ConceptId;
 }
 
 const FOCUSABLE =
@@ -142,7 +144,7 @@ function TipExample({
  * green, auction concepts blue — and inline mentions link to the entry
  * wiki-style, with cross-references between related entries.
  */
-type ConceptId =
+export type ConceptId =
   | 'red0'
   | 'brown0'
   | 'levee'
@@ -1127,7 +1129,7 @@ function TipsFr() {
  * The rules, in one themed full-screen sheet. Shared by Home, Lobby, and the
  * table so "how do I play?" is never more than one tap away.
  */
-export function HelpSheet({ onClose }: HelpSheetProps) {
+export function HelpSheet({ onClose, jumpTo }: HelpSheetProps) {
   const lang = useLang();
   const t = T[lang];
   useScrollLock();
@@ -1204,6 +1206,14 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose]);
+
+  // Deep-link from a tutorial "Learn more": once painted, open the glossary
+  // at the requested concept so the reader lands right on its entry.
+  useEffect(() => {
+    if (jumpTo === undefined) return undefined;
+    const raf = requestAnimationFrame(() => jumpToTerm(jumpTo));
+    return () => cancelAnimationFrame(raf);
+  }, [jumpTo]);
 
   // Portaled to <body>: an animated (transformed) ancestor — e.g. Home's
   // rise-in footer — would otherwise become the containing block and pin
