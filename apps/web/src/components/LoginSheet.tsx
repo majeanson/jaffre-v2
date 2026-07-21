@@ -14,6 +14,7 @@ import {
 } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { GHOST_BTN } from './buttonStyles.js';
+import { useScrollLock } from './useScrollLock.js';
 
 const T: Record<
   Lang,
@@ -142,6 +143,7 @@ function Hint({ children }: { readonly children: string }) {
  */
 export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
   const t = T[useLang()];
+  useScrollLock();
   const [methods, setMethods] = useState<{ email: boolean; google: boolean } | null>(null);
   // Email-code flow: entering the address, then entering the received digits.
   const [emailStage, setEmailStage] = useState<'email' | 'code'>('email');
@@ -244,7 +246,7 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
         aria-modal="true"
         aria-label={t.login}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
+        className="flex max-h-[92dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
       >
         <div aria-hidden className="mx-auto h-1.5 w-11 rounded-full bg-(--color-ap-ink)/40" />
 

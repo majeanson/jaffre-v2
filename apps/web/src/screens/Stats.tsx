@@ -461,7 +461,7 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
 
             {/* Scorepad — ruled ledger of recent games. */}
             {recent.length > 0 && (
-              <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)">
+              <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px]">
                 <div
                   className={`border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] ${MICRO_LABEL}`}
                 >

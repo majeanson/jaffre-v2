@@ -367,7 +367,7 @@ export function IconRail({ children, footer, orientation = 'vertical', label }: 
       <div
         role={label !== undefined ? 'group' : undefined}
         aria-label={label}
-        className={`inline-flex overflow-hidden rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm) divide-(--color-ap-ink) ${dir}`}
+        className={`inline-flex overflow-hidden rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap-sm) divide-(--color-ap-ink) [&_:focus-visible]:outline-offset-[-2px] ${dir}`}
       >
         {children}
       </div>

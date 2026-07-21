@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
+import { SLOT_INSTALL, useBottomSlot } from '../components/bottomSlot.js';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconDownload } from '../components/icons.js';
 import {
@@ -35,6 +36,7 @@ export function InstallButton() {
   const t = T[useLang()];
   const [, bump] = useState(0);
   const [iosOpen, setIosOpen] = useState(false);
+  const cardVisible = useBottomSlot(SLOT_INSTALL, iosOpen);
   useEffect(() => onInstallAvailabilityChange(() => bump((n) => n + 1)), []);
 
   if (isStandalone()) return null;
@@ -55,7 +57,7 @@ export function InstallButton() {
       >
         <IconDownload />
       </button>
-      {iosOpen && (
+      {iosOpen && cardVisible && (
         <div
           role="dialog"
           aria-label={t.iosTitle}

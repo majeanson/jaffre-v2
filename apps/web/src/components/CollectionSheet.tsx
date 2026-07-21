@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
 import { Collection } from '../screens/Collection.js';
+import { useScrollLock } from './useScrollLock.js';
 
 const T: Record<Lang, { close: string }> = {
   en: { close: 'Close' },
@@ -16,6 +17,7 @@ const T: Record<Lang, { close: string }> = {
  */
 export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
   const t = T[useLang()];
+  useScrollLock();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -23,7 +25,7 @@ export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-y-auto">
+    <div className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain">
       <Collection onLeave={onClose} leaveLabel={t.close} />
     </div>
   );

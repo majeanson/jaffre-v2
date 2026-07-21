@@ -11,6 +11,7 @@ import {
   type TeamSpecials,
 } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
+import { useScrollLock } from '../components/useScrollLock.js';
 
 const T: Record<
   Lang,
@@ -135,6 +136,7 @@ export function RoundSummaryOverlay({
 }: RoundSummaryOverlayProps) {
   const tr = T[useLang()];
   const ref = useRef<HTMLDivElement>(null);
+  useScrollLock();
   useEffect(() => {
     const previous = document.activeElement;
     ref.current?.focus();

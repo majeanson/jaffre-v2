@@ -1,6 +1,7 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import type { Lang } from '@jaffre/ui';
 import { useLang } from '@jaffre/ui';
+import { SLOT_UPDATE, useBottomSlot } from '../components/bottomSlot.js';
 
 const T: Record<Lang, { ready: string; reload: string; dismiss: string }> = {
   en: { ready: 'A new version is ready', reload: 'Refresh', dismiss: 'Later' },
@@ -21,8 +22,9 @@ export function UpdateToast() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW();
+  const visible = useBottomSlot(SLOT_UPDATE, needRefresh);
 
-  if (!needRefresh) return null;
+  if (!needRefresh || !visible) return null;
   return (
     <div
       role="status"

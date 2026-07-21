@@ -9,6 +9,7 @@ import {
 } from '@jaffre/ui';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useScrollLock } from '../components/useScrollLock.js';
 import { TEAMS } from '../teams.js';
 
 export interface HelpSheetProps {
@@ -1129,6 +1130,7 @@ function TipsFr() {
 export function HelpSheet({ onClose }: HelpSheetProps) {
   const lang = useLang();
   const t = T[lang];
+  useScrollLock();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
@@ -1245,7 +1247,7 @@ export function HelpSheet({ onClose }: HelpSheetProps) {
             role="region"
             aria-label={t.rules}
             tabIndex={0}
-            className="relative space-y-3 overflow-y-auto px-5 py-4"
+            className="relative space-y-3 overflow-y-auto overscroll-contain px-5 py-4"
           >
             {lang === 'fr' ? <RulesFr /> : <RulesEn />}
 
