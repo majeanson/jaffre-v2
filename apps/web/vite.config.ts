@@ -32,8 +32,9 @@ export default defineConfig({
     tailwindcss(),
     versionStamp(),
     VitePWA({
-      // 'prompt': a waiting worker surfaces the in-app "update available" toast
-      // instead of silently swapping code mid-hand.
+      // 'prompt' keeps the update under app control — UpdateToast then applies
+      // a waiting deploy automatically (flash a notice, then reload) and polls
+      // for new deploys, so every client runs current code without a choice.
       registerType: 'prompt',
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
