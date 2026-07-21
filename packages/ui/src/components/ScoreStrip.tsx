@@ -660,8 +660,10 @@ export function ScoreStrip({
 
         {/* Center: the live state — action, bet, trump. No filler. */}
         <span className="flex min-w-0 flex-col items-center gap-1 px-1 leading-none">
+          {/* Whose-turn line — the novice's anchor. On phones it shrinks
+              instead of disappearing: turn state must survive there too. */}
           {action !== undefined && (
-            <span className="font-arcade-display text-[0.62em] tracking-[0.14em] whitespace-nowrap text-(--color-ap-violet-soft) uppercase max-sm:hidden">
+            <span className="font-arcade-display text-[0.62em] tracking-[0.14em] whitespace-nowrap text-(--color-ap-violet-soft) uppercase max-sm:text-[0.55em] max-sm:tracking-[0.1em]">
               {action}
             </span>
           )}

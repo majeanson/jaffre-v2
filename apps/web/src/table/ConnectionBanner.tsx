@@ -24,7 +24,7 @@ export function ConnectionBanner() {
     <div
       data-testid="connection-banner"
       role="status"
-      className="fixed top-[calc(9rem+env(safe-area-inset-top))] left-1/2 z-[45] -translate-x-1/2 rounded-(--radius-ap-control) border-2 border-(--color-ap-danger) bg-(--color-ap-ink) px-4 py-1.5 font-arcade-ui text-sm font-semibold text-white shadow-(--shadow-ap)"
+      className="fixed top-[calc(9rem+env(safe-area-inset-top))] left-1/2 z-[48] -translate-x-1/2 rounded-(--radius-ap-control) border-2 border-(--color-ap-danger) bg-(--color-ap-ink) px-4 py-1.5 font-arcade-ui text-sm font-semibold text-white shadow-(--shadow-ap)"
     >
       <span className="mr-2 inline-block size-2 animate-pulse rounded-full bg-(--color-ap-danger)" />
       {t.reconnecting}

@@ -230,7 +230,14 @@ export function BetCards({
         </p>
       )}
 
-      <div role="group" aria-label={tt.betCards} className="flex items-end gap-[0.9vmin]">
+      {/* flex-wrap: on a 320px screen the seven cards outgrow the row at the
+          clamp floor — Pass wraps to a centered second line instead of
+          pushing the sheet into horizontal overflow. */}
+      <div
+        role="group"
+        aria-label={tt.betCards}
+        className="flex flex-wrap items-end justify-center gap-[0.9vmin]"
+      >
         {values.map((value) => {
           const legal = options.some((o) => o.value === value && o.sansAtout === sansAtout);
           const isRecommended =
