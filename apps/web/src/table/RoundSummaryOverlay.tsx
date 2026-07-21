@@ -150,7 +150,7 @@ export function RoundSummaryOverlay({
     <div
       ref={ref}
       tabIndex={-1}
-      className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4 outline-none"
+      className="fixed inset-0 z-[45] grid place-items-center bg-black/50 p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={tr.summary}

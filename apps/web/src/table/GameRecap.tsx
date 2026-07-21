@@ -1,6 +1,7 @@
 import type { EndReason, SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
 import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
+import { useEffect, useRef } from 'react';
 import { LinkNudge } from '../components/LinkAccount.js';
 import { Confetti } from './Confetti.js';
 
@@ -254,6 +255,17 @@ export function GameRecap({
   endReason,
 }: GameRecapProps) {
   const t = T[useLang()];
+  // Same focus contract as RoundSummaryOverlay: the hand unmounts at game
+  // over, so without this a keyboard/SR user is dropped on <body> and must
+  // tab blindly to find Rematch. Restore wherever focus was on unmount.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    ref.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
+    };
+  }, []);
   // The hail-mary ending: the last round's 12-sans-atout contract decided the
   // game. Swept → the bidding team wins; missed → the defenders take it.
   const lastRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
@@ -268,10 +280,12 @@ export function GameRecap({
     `font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) ${uc}`;
   return (
     <div
+      ref={ref}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={t.gameOver}
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4 outline-none"
     >
       <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <Confetti />

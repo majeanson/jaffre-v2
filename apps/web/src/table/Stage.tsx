@@ -58,10 +58,13 @@ export function Stage({
       {/* Position 1 sits low on the left (not mid-rim) — the table reads as an
           anti-clockwise turn of the classic N/S/E/W diamond. Its peek opens
           upward so it can't spill past the stage's bottom edge. */}
-      <div className="absolute bottom-[4%] left-0 z-20 max-sm:bottom-[9%] max-sm:left-[3.5%]">
+      {/* Phone: your own chip lives right of the utility bar (UtilityRow), so
+          the felt's bottom rim is free — this seat hugs the bottom-left corner
+          instead of floating mid-rim, keeping the middle clear for cards. */}
+      <div className="absolute bottom-[4%] left-0 z-20 max-sm:bottom-[4%] max-sm:left-[2%]">
         <SeatChip info={seatInfo(1)} compact peekAlign="start" peekPlacement="up" />
       </div>
-      <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 max-sm:right-[3.5%] max-sm:top-[34%]">
+      <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 max-sm:right-[2%] max-sm:top-[34%]">
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />
       </div>
       {bidOverlay}
