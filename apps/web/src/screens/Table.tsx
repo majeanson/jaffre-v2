@@ -143,6 +143,7 @@ export function Table({
               order={derived.auctionOrder}
               onAction={onAction}
               recommended={derived.coach?.bid ?? null}
+              coachTip={derived.coach?.tip ?? null}
               hailMary12={view.rules?.hailMary12 ?? false}
             />
           )

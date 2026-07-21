@@ -2,6 +2,7 @@ import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { BetCards, type AuctionTurn, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
+import { CoachTipPill } from './CoachHint.js';
 
 export interface BidOverlayProps {
   readonly options: readonly BidOption[];
@@ -10,6 +11,9 @@ export interface BidOverlayProps {
   readonly onAction: (action: ClientAction) => void;
   /** The Coach's suggested bid on this turn, when it's switched on. */
   readonly recommended?: BidChoice | null;
+  /** The Coach's one-line tip, stacked above the panel so it never hides the
+   * bet cards (the bottom-anchored CoachHint would collide with them). */
+  readonly coachTip?: string | null;
   /** True when the "Hail-Mary 12 sans atout" house rule is on this game. */
   readonly hailMary12?: boolean;
 }
@@ -20,6 +24,7 @@ export function BidOverlay({
   order,
   onAction,
   recommended = null,
+  coachTip = null,
   hailMary12 = false,
 }: BidOverlayProps) {
   const coaching = recommended !== null;
@@ -28,25 +33,34 @@ export function BidOverlay({
       ? { value: recommended.value, sansAtout: recommended.sansAtout }
       : null;
   return (
-    <div className="absolute inset-0 z-20 grid place-items-center">
-      <BetCards
-        options={options}
-        {...(order !== undefined ? { order } : {})}
-        coaching={coaching}
-        recommended={recommendedOption}
-        hailMary12={hailMary12}
-        onPass={() => {
-          feedback('play');
-          onAction({ type: 'place_bid', choice: { kind: 'pass' } });
-        }}
-        onBid={(o) => {
-          feedback('play');
-          onAction({
-            type: 'place_bid',
-            choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
-          });
-        }}
-      />
+    <div className="absolute inset-0 z-20 grid place-items-center px-3">
+      {/* Tip above the panel, cards below: the two never fight for the same
+          space, so the coach's bidding advice stays fully readable. */}
+      <div className="flex flex-col items-center gap-[1.4vmin]">
+        {coachTip !== null && coachTip !== '' && (
+          <div className="pointer-events-none">
+            <CoachTipPill tip={coachTip} />
+          </div>
+        )}
+        <BetCards
+          options={options}
+          {...(order !== undefined ? { order } : {})}
+          coaching={coaching}
+          recommended={recommendedOption}
+          hailMary12={hailMary12}
+          onPass={() => {
+            feedback('play');
+            onAction({ type: 'place_bid', choice: { kind: 'pass' } });
+          }}
+          onBid={(o) => {
+            feedback('play');
+            onAction({
+              type: 'place_bid',
+              choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
+            });
+          }}
+        />
+      </div>
     </div>
   );
 }

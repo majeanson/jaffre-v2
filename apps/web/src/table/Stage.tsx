@@ -28,6 +28,10 @@ export function Stage({
   bidOverlay,
   coachTip = null,
 }: StageProps) {
+  // On a bidding turn the centered bet panel owns the middle-to-bottom of the
+  // stage; BidOverlay renders the coach tip stacked above it there, so the
+  // bottom-anchored hint below would only duplicate it (and get overlapped).
+  const bidding = Boolean(bidOverlay);
   return (
     <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
       {/* The green felt playing surface — a discrete oval on the arcade ground.
@@ -43,7 +47,9 @@ export function Stage({
         <TrickArea plays={trickPlays} sweepTo={sweepTo} highlight={winnerPosition} size="lg" />
       </div>
       {banner !== null && <TrickBanner banner={banner} />}
-      {banner === null && coachTip !== null && coachTip !== '' && <CoachHint tip={coachTip} />}
+      {banner === null && !bidding && coachTip !== null && coachTip !== '' && (
+        <CoachHint tip={coachTip} />
+      )}
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·
           bot"). Phone: compact avatar tokens pulled ONTO the felt, diagonally
           offset beside their own played card, so the rim isn't dead space.
