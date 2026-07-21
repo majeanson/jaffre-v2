@@ -430,9 +430,9 @@ export function ScorePad({
 
   const cols = (
     <colgroup>
-      <col className="w-12" />
-      <col className="w-[22%]" />
-      <col className="w-[22%]" />
+      <col className="w-16" />
+      <col className="w-[21%]" />
+      <col className="w-[21%]" />
       <col />
     </colgroup>
   );
@@ -467,7 +467,7 @@ export function ScorePad({
           {cols}
           <thead className="sticky top-0 border-b-2 border-(--color-ap-ink) bg-(--color-ap-paper-shade)">
             <tr>
-              <th scope="col" className={`${headCell} pl-3 text-left`}>
+              <th scope="col" className={`${headCell} pl-3 pr-2 text-left`}>
                 {/* The fixed first column can't fit the full word on a phone —
                     "R" pairs with the R1/R2 row labels below. */}
                 <span className="max-sm:hidden">{t.round}</span>
