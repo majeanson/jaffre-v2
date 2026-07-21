@@ -1,5 +1,5 @@
 import type { Action, BidChoice, Card, SeatView, Suit } from '@jaffre/engine';
-import { legalCards, teamOf } from '@jaffre/engine';
+import { SUITS, legalCards, teamOf } from '@jaffre/engine';
 import {
   cheapestWinner,
   isBoss,
@@ -94,18 +94,85 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
       ? 'Trois passes — passer te force à 7. Prépare-toi : ta plus longue couleur comme atout, ton partenaire en renfort, et le 0 brun sorti au plus vite.'
       : 'Three passes — passing puts the forced 7 on you. Plan for it: longest suit as trump, lean on your partner, and get the brown 0 out early.';
   }
-  if (lang === 'fr') {
-    if (bid.kind === 'pass') return 'Ta main est mince — passe et joue en défense.';
-    const kind = bid.sansAtout
-      ? `mise ${bid.value} sans atout — tu as des gagnantes dans chaque couleur`
-      : `le ${SUIT_NAME.fr[bestTrump(view.hand).suit]} est ta couleur la plus forte, alors mise ${bid.value}`;
-    return `${kind}. Mise seulement ce qu'il te faut — surmiser ne rapporte jamais plus.`;
+  // Read the dealt hand so the recommendation rests on concrete, qualitative
+  // facts (never percentages — a product decision). All facts derive from
+  // view.hand; nothing is hardcoded.
+  const fr = lang === 'fr';
+  const hasRed0 = view.hand.some(isRedZero);
+  const hasBrown0 = view.hand.some(isBrownZero);
+
+  // The +5 / −2 zeros, tucked onto the plan as a single short tail.
+  const assetTail = hasRed0
+    ? fr
+      ? ', et le 0 rouge te vaut +5'
+      : ', and the red 0 banks +5'
+    : hasBrown0
+      ? fr
+        ? ', et refile le 0 brun (−2) au plus vite'
+        : ', and shed the brown 0 (−2) early'
+      : '';
+
+  if (bid.kind === 'pass') {
+    const longest = Math.max(...SUITS.map((s) => view.hand.filter((c) => c.suit === s).length));
+    const passTail = hasRed0
+      ? fr
+        ? ', mais garde le 0 rouge pour son +5'
+        : ', but keep the red 0 safe for its +5'
+      : hasBrown0
+        ? fr
+          ? ', et cherche à te débarrasser du 0 brun'
+          : ', and look to unload the brown 0'
+        : '';
+    return fr
+      ? `Main mince — ta plus longue couleur ne fait que ${longest} et tu manques de grosses cartes. Passe et défends${passTail}.`
+      : `Thin hand — your longest suit is only ${longest} and you're short of top cards. Pass and defend${passTail}.`;
   }
-  if (bid.kind === 'pass') return 'This hand is thin — pass and play defense.';
-  const kind = bid.sansAtout
-    ? `bid ${bid.value} sans atout — you have winners in every suit`
-    : `${SUIT_NAME.en[bestTrump(view.hand).suit]} is your strongest suit, so bid ${bid.value}`;
-  return `${kind}. Bid only what you need — overbidding never scores more.`;
+
+  if (bid.sansAtout) {
+    return fr
+      ? `Des gagnantes dans chaque couleur — mise ${bid.value} sans atout. Sans atout, chaque 7 que tu tiens est une levée sûre${assetTail}.`
+      : `Winners in every suit — bid ${bid.value} sans atout. With no trump, every 7 you hold is a sure trick${assetTail}.`;
+  }
+
+  // Trump bid: describe how strong the chosen suit actually is.
+  const suit = bestTrump(view.hand).suit;
+  const shape = suitShape(view.hand, suit);
+  const suitName = fr ? SUIT_NAME.fr[suit] : SUIT_NAME.en[suit].toLowerCase();
+  const plural = shape.count === 1 ? '' : 's';
+
+  // Sure-winner note — accurate to the engine: the 7 of the TRUMP suit always
+  // wins, and a run from the top (7-6-5…) is that many sure tricks.
+  let topNote: string;
+  if (shape.runFromTop >= 3) {
+    topNote = fr ? `, dont une suite 7-6-5 de levées sûres` : `, incl. a 7-6-5 run of sure tricks`;
+  } else if (shape.runFromTop === 2) {
+    topNote = fr
+      ? ` dont le 7 et le 6 — deux levées sûres`
+      : ` incl. the 7 and 6 — two sure tricks`;
+  } else if (shape.holds7) {
+    topNote = fr
+      ? ` dont le 7, qui gagne toujours comme atout`
+      : ` incl. the 7, which always wins as trump`;
+  } else if (shape.count >= 4) {
+    topNote = fr ? ` — tu contrôles la couleur` : ` — that's control of the suit`;
+  } else {
+    topNote = '';
+  }
+
+  return fr
+    ? `Tu as ${shape.count} ${suitName}${plural}${topNote}. Prends le ${suitName} comme atout; une mise de ${bid.value} passe bien ici${assetTail}.`
+    : `You hold ${shape.count} ${suitName}${plural}${topNote}. Lean ${suitName} trump; a bid of ${bid.value} is safe here${assetTail}.`;
+}
+
+/** One suit's shape in hand: how many held, whether the 7 is there, and the length of the run down from the 7 (7-6-5…). */
+function suitShape(
+  hand: readonly Card[],
+  suit: Suit,
+): { count: number; holds7: boolean; runFromTop: number } {
+  const vals = hand.filter((c) => c.suit === suit).map((c) => c.value as number);
+  let runFromTop = 0;
+  for (let v = 7; v >= 0 && vals.includes(v); v--) runFromTop += 1;
+  return { count: vals.length, holds7: vals.includes(7), runFromTop };
 }
 
 function playTip(view: SeatView, card: Card, lang: CoachLang): string {
