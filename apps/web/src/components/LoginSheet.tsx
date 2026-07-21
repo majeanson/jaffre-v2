@@ -1,16 +1,18 @@
-import { Cta, useLang, type Lang } from '@jaffre/ui';
+import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   fetchAuthMethods,
+  getGuestToken,
   getLinks,
+  getRecoveryCode,
   googleLoginUrl,
   isLinked,
   recoverIdentity,
   startEmailLogin,
   verifyEmailLogin,
 } from '../net/auth.js';
-import { setPlayerName } from '../net/socket.js';
+import { playerName, setPlayerName } from '../net/socket.js';
 import { GHOST_BTN } from './buttonStyles.js';
 
 const T: Record<
@@ -37,6 +39,10 @@ const T: Record<
     checking: string;
     wrong: string;
     expired: string;
+    yourWords: string;
+    yourWordsHint: string;
+    copy: string;
+    copied: string;
     haveWords: string;
     wordsHint: string;
     namePlaceholder: string;
@@ -68,6 +74,11 @@ const T: Record<
     checking: 'Checking…',
     wrong: 'Wrong code — check the digits.',
     expired: 'Code expired — send a new one.',
+    yourWords: 'Your recovery code',
+    yourWordsHint:
+      'No account needed — these three words get your name and games back on a new phone. Write them down or copy them somewhere safe.',
+    copy: 'Copy',
+    copied: 'Copied',
     haveWords: 'I have a 3-word code',
     wordsHint:
       'Got words like lampe-tricot-hibou from another device? They bring those games back.',
@@ -100,6 +111,11 @@ const T: Record<
     checking: 'Vérification…',
     wrong: 'Mauvais code — vérifie les chiffres.',
     expired: 'Code expiré — demande-en un nouveau.',
+    yourWords: 'Ton code de récupération',
+    yourWordsHint:
+      "Pas besoin de compte — ces trois mots ramènent ton nom et tes parties sur un nouveau téléphone. Note-les ou copie-les en lieu sûr.",
+    copy: 'Copier',
+    copied: 'Copié',
     haveWords: "J'ai un code à 3 mots",
     wordsHint:
       "Tu as des mots comme lampe-tricot-hibou d'un autre appareil? Ils ramènent ces parties.",
@@ -139,11 +155,35 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
   const [wordsName, setWordsName] = useState('');
   const [wordsBusy, setWordsBusy] = useState(false);
   const [wordsError, setWordsError] = useState<string | null>(null);
+  // A guest's own 3-word code — the thing the restore field on another device
+  // will ask for. Shown here because this sheet is the one "keep my games"
+  // surface a guest ever opens.
+  const [myCode, setMyCode] = useState(getRecoveryCode);
+  const [copied, setCopied] = useState(false);
   const links = getLinks();
 
   useEffect(() => {
     void fetchAuthMethods().then(setMethods);
   }, []);
+
+  useEffect(() => {
+    // Mint if this browser somehow has no identity yet, so the words exist.
+    if (isLinked() || myCode !== null) return;
+    void getGuestToken(playerName()).then(() => setMyCode(getRecoveryCode()));
+  }, [myCode]);
+
+  const copyCode = () => {
+    if (myCode === null) return;
+    void navigator.clipboard
+      .writeText(myCode)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        // Clipboard API unavailable/denied — the words are still on screen.
+      });
+  };
 
   const sendCode = async (e: FormEvent) => {
     e.preventDefault();
@@ -274,6 +314,33 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
                     {emailError}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* The guest's own 3-word code — the only place it is ever shown,
+                so a guest can keep their games without linking anything. */}
+            {myCode !== null && (
+              <div className="flex flex-col items-center gap-1.5 border-t-2 border-(--color-ap-ink)/30 pt-3">
+                <p className="font-arcade-display text-[0.8em] uppercase tracking-wide text-(--color-ap-text)">
+                  {t.yourWords}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-[0.5em]">
+                  {myCode
+                    .split('-')
+                    .filter((w) => w !== '')
+                    .map((w, i) => (
+                      <WordPlate key={i}>{w}</WordPlate>
+                    ))}
+                  {/* Raw code for screen readers + e2e; the plates are
+                      decorative (CSS-uppercased, unsafe to innerText-read). */}
+                  <span data-testid="recovery-code" className="sr-only">
+                    {myCode}
+                  </span>
+                </div>
+                <Hint>{t.yourWordsHint}</Hint>
+                <Cta type="button" variant="secondary" onClick={copyCode}>
+                  {copied ? t.copied : t.copy}
+                </Cta>
               </div>
             )}
 

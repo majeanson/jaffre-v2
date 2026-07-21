@@ -28,6 +28,7 @@ const T: Record<
     error: string;
     noGames: string;
     noGamesBody: string;
+    practiceNote: string;
     winRate: string;
     wonCount: (n: number) => string;
     lastGames: (n: number, wins: number) => string;
@@ -60,6 +61,7 @@ const T: Record<
     noGames: 'No games yet',
     noGamesBody:
       'Play your first hand and the book starts filling in — win rate, streak, and the people you sit with.',
+    practiceNote: 'Practice games against bots stay off the record — only room games count.',
     winRate: 'Win rate · all time',
     wonCount: (n) => `${String(n)} won`,
     lastGames: (n, wins) => `Last ${String(n)} games — ${String(wins)} won.`,
@@ -95,6 +97,8 @@ const T: Record<
     noGames: 'Pas encore de parties',
     noGamesBody:
       'Joue ta première main et le carnet commence à se remplir — taux de victoires, séquence, et le monde avec qui tu joues.',
+    practiceNote:
+      'Les parties de pratique contre les bots ne comptent pas — seules les parties en salon sont enregistrées.',
     winRate: 'Taux de victoires · à vie',
     wonCount: (n) => `${String(n)} gagnée${n === 1 ? '' : 's'}`,
     lastGames: (n, wins) =>
@@ -346,6 +350,7 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
               {t.noGames}
             </div>
             <p className="mt-[0.5em]">{t.noGamesBody}</p>
+            <p className="mt-[0.5em] text-[0.85em] text-(--color-ap-muted)">{t.practiceNote}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">

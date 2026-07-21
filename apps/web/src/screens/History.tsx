@@ -21,6 +21,7 @@ const T: Record<
     vsThem: (names: string) => string;
     loading: string;
     empty: string;
+    practiceNote: string;
     error: string;
   }
 > = {
@@ -35,6 +36,7 @@ const T: Record<
     vsThem: (names) => `vs ${names}`,
     loading: 'Loading…',
     empty: 'No finished games yet. Finish a game and it will appear here to replay.',
+    practiceNote: 'Practice games against bots stay off the record — only room games count.',
     error: 'History needs the online server. Play a room game and it will show up here.',
   },
   fr: {
@@ -48,6 +50,8 @@ const T: Record<
     vsThem: (names) => `contre ${names}`,
     loading: 'Chargement…',
     empty: 'Pas encore de partie terminée. Finis une partie et elle apparaîtra ici pour la revoir.',
+    practiceNote:
+      'Les parties de pratique contre les bots ne comptent pas — seules les parties en salon sont enregistrées.',
     error:
       "L'historique a besoin du serveur en ligne. Joue une partie en salon et elle apparaîtra ici.",
   },
@@ -159,9 +163,10 @@ export function History({ onLeave, demoGames }: HistoryProps) {
         ) : games === null ? (
           <p className="p-6 text-center text-(--color-ap-muted)">{t.loading}</p>
         ) : games.length === 0 ? (
-          <p className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-6 text-center text-(--color-ap-muted) shadow-(--shadow-ap)">
-            {t.empty}
-          </p>
+          <div className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-6 text-center text-(--color-ap-muted) shadow-(--shadow-ap)">
+            <p>{t.empty}</p>
+            <p className="mt-2 text-[0.85em]">{t.practiceNote}</p>
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             {games.map((g) => (

@@ -68,7 +68,8 @@ export function Table({
   const log = useGameStore((s) => s.log);
   const setQueued = useGameStore((s) => s.setQueued);
   const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
-  const [coachOn, setCoachOn] = useState(loadCoachPref);
+  // Coach defaults on in practice (the learning table) until explicitly set.
+  const [coachOn, setCoachOn] = useState(() => loadCoachPref(!online));
   const derived = useTableDerived(coachOn);
   const handSort = useHandSort(derived?.view.hand ?? []);
   useTrickHold(frozenHold);

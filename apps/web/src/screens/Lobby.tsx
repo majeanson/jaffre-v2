@@ -30,6 +30,7 @@ const T: Record<
     back: string;
     howToPlay: string;
     hailMary: string;
+    hailMaryHint: string;
   }
 > = {
   en: {
@@ -38,10 +39,11 @@ const T: Record<
     reconnecting: 'Reconnecting…',
     connecting: 'Connecting…',
     start: 'Start the game',
-    waiting: 'Waiting for 4 players…',
+    waiting: 'Waiting for players — add bots to fill the table',
     back: '← Back home',
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
+    hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -49,10 +51,11 @@ const T: Record<
     reconnecting: 'Reconnexion…',
     connecting: 'Connexion…',
     start: 'Commencer la partie',
-    waiting: 'En attente de 4 joueurs…',
+    waiting: 'En attente de joueurs — ajoute des bots pour remplir la table',
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
     hailMary: '12 sans atout — tout ou rien',
+    hailMaryHint: 'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
   },
 };
 
@@ -106,8 +109,11 @@ export function Lobby({ code, onLeave }: LobbyProps) {
             onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked })}
             className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
           />
-          <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
-            {t.hailMary}
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+              {t.hailMary}
+            </span>
+            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.hailMaryHint}</span>
           </span>
         </label>
 
