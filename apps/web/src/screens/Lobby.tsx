@@ -31,6 +31,7 @@ const T: Record<
     howToPlay: string;
     hailMary: string;
     hailMaryHint: string;
+    fillBots: string;
   }
 > = {
   en: {
@@ -44,6 +45,7 @@ const T: Record<
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
     hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
+    fillBots: 'Fill empty seats with bots',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -56,6 +58,7 @@ const T: Record<
     howToPlay: 'Comment jouer',
     hailMary: '12 sans atout — tout ou rien',
     hailMaryHint: 'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
+    fillBots: 'Remplir les sièges vides avec des bots',
   },
 };
 
@@ -95,6 +98,23 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onSit={(seat) => send({ t: 'sit', seat })}
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
         />
+
+        {/* One tap instead of three: a solo host fills the table in one go.
+            Per-seat Add bot stays for mixed tables (two humans + two bots). */}
+        {roster !== null && !roster.started && !full && (
+          <Cta
+            variant="secondary"
+            data-testid="fill-bots"
+            className="w-full"
+            onClick={() => {
+              roster.seats.forEach((s, seat) => {
+                if (s === null) send({ t: 'add_bot', seat: seat as 0 | 1 | 2 | 3, difficulty: 'normal' });
+              });
+            }}
+          >
+            {t.fillBots}
+          </Cta>
+        )}
 
         <label
           className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${

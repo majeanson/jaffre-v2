@@ -10,6 +10,7 @@ import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
+import { PracticeNudge } from '../home/PracticeNudge.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
@@ -124,6 +125,16 @@ export function Home({
 
         {/* RIGHT — play actions, then quiet chrome, all one column width */}
         <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
+          {/* First-visit pointer to the coached practice game. Standing tables
+              mean the player already knows the way in — skip the tutorial hint. */}
+          {!staged && tables.length === 0 && (
+            <PracticeNudge
+              onPractice={() => {
+                saveName();
+                onPractice();
+              }}
+            />
+          )}
           <PlayMenu
             onPractice={() => {
               saveName();

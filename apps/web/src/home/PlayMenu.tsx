@@ -22,6 +22,8 @@ const T: Record<
     play: string;
     yours: string;
     practice: string;
+    practiceSub: string;
+    friendsSub: string;
     opponents: string;
     botDifficulty: string;
     playNow: string;
@@ -51,6 +53,8 @@ const T: Record<
   en: {
     play: 'Play',
     practice: 'Practice vs bots',
+    practiceSub: 'Instant game vs bots — stays off your record.',
+    friendsSub: 'Create a room and share its code — these games count.',
     opponents: 'Opponents',
     botDifficulty: 'Bot difficulty',
     playNow: 'Play now',
@@ -80,6 +84,8 @@ const T: Record<
   fr: {
     play: 'Jouer',
     practice: 'Pratique contre les bots',
+    practiceSub: 'Partie instantanée contre les bots — rien au dossier.',
+    friendsSub: 'Crée un salon et partage son code — ces parties comptent.',
     opponents: 'Adversaires',
     botDifficulty: 'Difficulté des bots',
     playNow: 'Jouer maintenant',
@@ -344,6 +350,10 @@ export function PlayMenu({
               <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
                 {t.practice}
               </span>
+              {/* Full-opacity ink (see the withCode note): muted fails AA here. */}
+              <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
+                {t.practiceSub}
+              </span>
               {/* Tap a bot to cycle its difficulty; "Play now" starts. */}
               <div
                 className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
@@ -373,6 +383,9 @@ export function PlayMenu({
             <div className="flex flex-col gap-3">
               <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
                 {t.playFriends}
+              </span>
+              <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
+                {t.friendsSub}
               </span>
               <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
                 {t.createRoom}
