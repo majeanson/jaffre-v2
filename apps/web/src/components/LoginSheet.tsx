@@ -114,7 +114,7 @@ const T: Record<
     expired: 'Code expiré — demande-en un nouveau.',
     yourWords: 'Ton code de récupération',
     yourWordsHint:
-      "Pas besoin de compte — ces trois mots ramènent ton nom et tes parties sur un nouveau téléphone. Note-les ou copie-les en lieu sûr.",
+      'Pas besoin de compte — ces trois mots ramènent ton nom et tes parties sur un nouveau téléphone. Note-les ou copie-les en lieu sûr.',
     copy: 'Copier',
     copied: 'Copié',
     haveWords: "J'ai un code à 3 mots",

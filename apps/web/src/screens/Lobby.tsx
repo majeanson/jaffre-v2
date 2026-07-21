@@ -57,7 +57,8 @@ const T: Record<
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
     hailMary: '12 sans atout — tout ou rien',
-    hailMaryHint: 'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
+    hailMaryHint:
+      'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
     fillBots: 'Remplir les sièges vides avec des bots',
   },
 };
@@ -108,7 +109,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
             className="w-full"
             onClick={() => {
               roster.seats.forEach((s, seat) => {
-                if (s === null) send({ t: 'add_bot', seat: seat as 0 | 1 | 2 | 3, difficulty: 'normal' });
+                if (s === null)
+                  send({ t: 'add_bot', seat: seat as 0 | 1 | 2 | 3, difficulty: 'normal' });
               });
             }}
           >
