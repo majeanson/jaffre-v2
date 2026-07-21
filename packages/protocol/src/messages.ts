@@ -63,6 +63,10 @@ export const clientMessageSchema = z.union([
   // Give up your seat for good: mid-game a bot takes over, otherwise the seat
   // frees up. The socket may close right after — order doesn't matter.
   z.object({ t: z.literal('leave') }),
+  // Voluntary AFK: while on, the server plays your turns at 'hard'. The seat
+  // stays yours; turning it off returns control. Seat is inferred from the
+  // sender — never from the wire.
+  z.object({ t: z.literal('set_autoplay'), on: z.boolean() }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
@@ -89,6 +93,9 @@ export interface RosterSeat {
    * (not remaining) so the client can tick it down locally between rosters.
    */
   readonly botSwapAt?: number;
+  /** True when this seated human has voluntary auto-play on — the server is
+   * playing their turns at 'hard' until they turn it off. */
+  readonly autoPlay?: boolean;
 }
 
 export interface Roster {

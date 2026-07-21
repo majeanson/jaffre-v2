@@ -5,7 +5,16 @@
  */
 
 export type SceneScreen =
-  'table' | 'home' | 'lobby' | 'history' | 'stats' | 'replay' | 'visitor' | 'share' | 'collection';
+  | 'table'
+  | 'home'
+  | 'lobby'
+  | 'history'
+  | 'stats'
+  | 'replay'
+  | 'visitor'
+  | 'share'
+  | 'collection'
+  | 'paint';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -203,6 +212,12 @@ export const SCENE_METAS = [
     probe: '[data-testid="botswap-countdown"]',
   },
   {
+    id: 'seat-autoplay-badge',
+    label: 'Opponent on auto-play — bot playing',
+    screen: 'table',
+    probe: '[data-testid="autoplay-badge"]',
+  },
+  {
     id: 'spectator',
     label: 'Spectator view',
     screen: 'table',
@@ -311,10 +326,17 @@ export const SCENE_METAS = [
     id: 'painted-card',
     label: 'Play — your painted card (avatar + own 0s)',
     screen: 'table',
-    // A little hand-painted doodle stands in for the player's own canvas.
+    // A 16×16 pixel doodle (the studio's smiley starter) stands in for the
+    // player's own avatar, in the same format the Paint Studio saves.
     paint:
-      "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='48'%3E%3Crect%20width='48'%20height='48'%20fill='%235b2a86'/%3E%3Ccircle%20cx='24'%20cy='19'%20r='11'%20fill='%23ffd23f'/%3E%3Cpath%20d='M9%2041%20Q24%2028%2039%2041'%20stroke='%233ddc97'%20stroke-width='5'%20fill='none'/%3E%3C/svg%3E",
+      'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20width%3D%2216%22%20height%3D%2216%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20x%3D%224%22%20y%3D%221%22%20width%3D%228%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2212%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%223%22%20width%3D%2214%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%224%22%20width%3D%2214%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%225%22%20width%3D%2216%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%226%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%226%22%20width%3D%226%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%226%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%226%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%227%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%227%22%20width%3D%226%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%227%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%227%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%228%22%20width%3D%2216%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%229%22%20width%3D%2216%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2210%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%2210%22%20width%3D%2210%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%2210%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%2211%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2211%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%2211%22%20width%3D%228%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2211%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%2211%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%2212%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%2212%22%20width%3D%228%22%20height%3D%221%22%20fill%3D%22%230b0713%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2212%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%2213%22%20width%3D%2214%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2214%22%20width%3D%2212%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%2215%22%20width%3D%228%22%20height%3D%221%22%20fill%3D%22%23f2b712%22%2F%3E%3C%2Fsvg%3E',
     probe: 'role=listbox[name="Your hand"]',
+  },
+  {
+    id: 'paint-studio',
+    label: 'Paint Studio — pixel editor',
+    screen: 'paint',
+    probe: '[data-testid="pixel-grid"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

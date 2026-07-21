@@ -408,6 +408,19 @@ const LOADERS: Record<SceneId, () => void> = {
     };
     inject(cached('mid-trick', midTrick), { roster });
   },
+  'seat-autoplay-badge': () => {
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: true, autoPlay: true },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+    };
+    inject(cached('mid-trick', midTrick), { roster });
+  },
   spectator: gameScene('spectator', midTrick, {
     viewer: 'spectator',
     roster: SPECTATOR_ROSTER,
@@ -448,6 +461,8 @@ const LOADERS: Record<SceneId, () => void> = {
   // your full hand on screen (seat 1 bids first, no overlay) so the painted
   // red-0/brown-0 show alongside the painted seat avatar (paint from meta).
   'painted-card': () => inject({ state: createGame(2), lastEvents: [], summaries: [] }),
+  // The Paint Studio renders from the cached profile (no engine state) — no-op.
+  'paint-studio': () => undefined,
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

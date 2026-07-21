@@ -25,3 +25,21 @@ describe('add_bot difficulty', () => {
     expect(msg).toEqual({ t: 'add_bot', seat: 3, difficulty: 'normal' });
   });
 });
+
+describe('set_autoplay', () => {
+  it('accepts on and off', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: true }))).toEqual({
+      t: 'set_autoplay',
+      on: true,
+    });
+    expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: false }))).toEqual({
+      t: 'set_autoplay',
+      on: false,
+    });
+  });
+
+  it('rejects a missing or non-boolean flag', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: 'yes' }))).toBeNull();
+  });
+});

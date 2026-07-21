@@ -17,6 +17,7 @@ import { Collection } from './Collection.js';
 import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
+import { PaintStudio } from './PaintStudio.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
 import { Table } from './Table.js';
@@ -197,6 +198,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       {current.screen === 'collection' && (
         <Collection key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
       )}
+      {current.screen === 'paint' && <PaintStudio key={current.id} onLeave={onLeave} />}
       {current.screen === 'share' && (
         <>
           <main className="min-h-full bg-(--color-ap-ground)" />

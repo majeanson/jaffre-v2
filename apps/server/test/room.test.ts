@@ -972,6 +972,82 @@ describe('GameRoom', () => {
     },
   );
 
+  it(
+    'voluntary auto-play plays the seat while on, carries the roster flag, and toggling off returns control',
+    { timeout: 30_000 },
+    async () => {
+      interface StoredMeta {
+        autoPlay?: Record<string, boolean>;
+      }
+      interface StoredLog {
+        action: Action;
+      }
+      const room = 'room-autoplay';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(client); // seat 0 human + 3 bots
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Reach alice's own turn with no pending alarm: from here only the test
+      // (or her auto-play) can move the room.
+      const before = await driveToQuiescentHumanTurn(stub, client);
+      const seqBefore = before.seq;
+
+      // Turn auto-play ON. The seat stays alice's; the roster must advertise it,
+      // and the handler arms the alarm so her held turn is played on bot cadence.
+      client.send({ t: 'set_autoplay', on: true });
+      let onFlag: boolean | undefined;
+      const onDeadline = Date.now() + 5000;
+      while (Date.now() < onDeadline && onFlag !== true) {
+        const r = await client.next('roster');
+        const seat0 = r.roster.seats[0];
+        onFlag = seat0?.autoPlay;
+        expect(seat0?.isBot).toBe(false); // still a human seat, just auto-played
+      }
+      expect(onFlag).toBe(true);
+      const stored = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.autoPlay?.['alice'];
+      });
+      expect(stored).toBe(true);
+
+      // The alarm now plays FOR alice: the next log entry is a seat-0 action.
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const applied = await runInDurableObject(stub, (_instance, state) =>
+        state.storage.get<StoredLog>(`log:${seqBefore + 1}`),
+      );
+      expect(applied).toBeDefined();
+      const action = applied?.action;
+      expect(action?.type === 'place_bid' || action?.type === 'play_card').toBe(true);
+      if (action?.type === 'place_bid' || action?.type === 'play_card') {
+        expect(action.seat).toBe(0);
+      }
+
+      // Turn auto-play OFF: the flag clears and control returns to alice. Reach
+      // her turn again with no alarm armed, then prove an alarm wake does NOT
+      // auto-advance her seat (a connected human's turn is hers to play).
+      client.send({ t: 'set_autoplay', on: false });
+      const offCleared = await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.autoPlay?.['alice'] === undefined ? true : undefined;
+          }),
+        'auto-play cleared',
+      );
+      expect(offCleared).toBe(true);
+
+      const quiet = await driveToQuiescentHumanTurn(stub, client);
+      // No alarm is armed for a connected human whose auto-play is off, and
+      // forcing a wake leaves the sequence untouched — the turn waits for her.
+      await runDurableObjectAlarm(stub);
+      const after = await snapshot(stub);
+      expect(after.seq).toBe(quiet.seq);
+      expect(after.turn).toBe(0);
+
+      await endQuiet(room, client);
+    },
+  );
+
   /** Skip past buffered seat welcomes (sit/onJoin each send one) to the
    * demotion welcome a leave produces. */
   async function nextSpectatorWelcome(client: Client) {

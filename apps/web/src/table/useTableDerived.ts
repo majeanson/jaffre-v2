@@ -70,6 +70,8 @@ export interface SeatChipInfo {
   readonly connected: boolean;
   /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
   readonly botSwapAt: number | null;
+  /** True when this human seat has voluntary auto-play on (a bot plays for them). */
+  readonly autoPlay: boolean;
   /** The seat's auction declaration ("8 SA", "Pass"), null before it bids. */
   readonly bidText: string | null;
   /** True when this seat holds the contract (highlights the bid bubble). */
@@ -295,6 +297,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       difficulty: info.difficulty ?? null,
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
+      autoPlay: info.autoPlay ?? false,
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
     };

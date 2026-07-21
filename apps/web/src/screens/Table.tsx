@@ -36,6 +36,8 @@ export interface TableProps {
   readonly onRematch?: () => void;
   /** Re-pair the table between games (online rooms only). */
   readonly onSwapSeats?: () => void;
+  /** Toggle voluntary auto-play for your own seat (online rooms only). */
+  readonly onToggleAutoPlay?: (on: boolean) => void;
   /** True in a room (chat + voice); false in practice mode (bots don't chat). */
   readonly online?: boolean;
   /** The room code (online rooms only) — feeds the Share button's invite link. */
@@ -58,6 +60,7 @@ export function Table({
   onLeaveTable,
   onRematch,
   onSwapSeats,
+  onToggleAutoPlay,
   online = false,
   bottomInset = false,
   dev = false,
@@ -106,6 +109,14 @@ export function Table({
             saveCoachPref(!on);
             return !on;
           })
+        }
+        autoPlay={
+          online && onToggleAutoPlay !== undefined && me !== null
+            ? {
+                on: seatInfo(0)?.autoPlay ?? false,
+                onToggle: () => onToggleAutoPlay(!(seatInfo(0)?.autoPlay ?? false)),
+              }
+            : undefined
         }
         share={
           online && roomCode !== undefined ? <ShareButton code={roomCode} labeled /> : undefined

@@ -11,6 +11,7 @@ const T: Record<
     empty: string;
     away: (countdown: string) => string;
     botTakingOver: string;
+    autoPlay: string;
     peek: (name: string) => string;
   }
 > = {
@@ -18,12 +19,14 @@ const T: Record<
     empty: 'empty',
     away: (countdown) => `Away — bot in ${countdown}`,
     botTakingOver: 'Bot taking over…',
+    autoPlay: 'Auto-play — bot playing',
     peek: (name) => `Show ${name}'s info`,
   },
   fr: {
     empty: 'libre',
     away: (countdown) => `Absent — bot dans ${countdown}`,
     botTakingOver: 'Le bot prend la relève…',
+    autoPlay: 'Jeu auto — le bot joue',
     peek: (name) => `Voir les infos de ${name}`,
   },
 };
@@ -125,6 +128,19 @@ export function SeatChip({
           }`}
         >
           {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
+        </span>
+      )}
+      {/* Voluntary auto-play: a bot is covering this connected human's turns.
+          Distinct from the disconnect countdown (which only shows when away). */}
+      {secondsLeft === null && info.autoPlay && (
+        <span
+          data-testid="autoplay-badge"
+          role="status"
+          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-ink) shadow-(--shadow-ap-sm) ${alignX} ${
+            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
+          {t.autoPlay}
         </span>
       )}
       {info.bidText !== null && (

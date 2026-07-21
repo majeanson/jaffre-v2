@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AvatarChip, Collapsible, Cta, PlayerCard, useLang, type Lang } from '@jaffre/ui';
+import { IDENTITY_PALETTE } from '../paint/palette.js';
 import { NameField } from './NameField.js';
 
 const T: Record<
@@ -9,7 +10,6 @@ const T: Record<
     yourColour: string;
     colour: (hex: string) => string;
     paint: string;
-    donePainting: string;
   }
 > = {
   en: {
@@ -17,30 +17,18 @@ const T: Record<
     yourColour: 'Your colour',
     colour: (hex) => `Colour ${hex}`,
     paint: 'Paint your card',
-    donePainting: 'Done painting',
   },
   fr: {
     customize: 'Personnaliser',
     yourColour: 'Ta couleur',
     colour: (hex) => `Couleur ${hex}`,
     paint: 'Peins ta carte',
-    donePainting: 'Fini de peindre',
   },
 };
 
-/** The identity palette — same hexes the PlayerCard brush offers, so a chosen
- * colour and a painted stroke read as one set. Suit/accent colours from the
- * shared kit. */
-const PALETTE = [
-  '#7a6ff0',
-  '#f2b712',
-  '#e05252',
-  '#58b884',
-  '#82c7dc',
-  '#f2c66d',
-  '#b07a2e',
-  '#ebe6f5',
-] as const;
+/** The identity palette — the shared studio hexes, so a chosen colour and a
+ * painted pixel read as one set. */
+const PALETTE = IDENTITY_PALETTE;
 
 const noop = () => undefined;
 
@@ -48,12 +36,12 @@ export interface ProfileCardProps {
   readonly name: string;
   readonly color: string | null;
   readonly paint: string | null;
-  /** Live screen: offer the colour swatches + paint mode. Scenes: static. */
+  /** Live screen: offer the colour swatches + paint entry. Scenes: static. */
   readonly editable?: boolean;
   /** A palette colour was chosen — persist it. */
   readonly onColor?: (hex: string) => void;
-  /** The card was painted (data URL) — persist it. */
-  readonly onPaint?: (dataUrl: string) => void;
+  /** Open the Paint Studio (live screen only). */
+  readonly onPaint?: () => void;
   /** Name edited (on the card or in the field) — fires on each keystroke. */
   readonly onName?: (name: string) => void;
   /** Persist the (trimmed) name — called on blur. */
@@ -64,8 +52,6 @@ export interface ProfileCardProps {
   readonly children?: ReactNode;
   /** Open the disclosure on mount (scene viewer stages it open). */
   readonly defaultOpen?: boolean;
-  /** Bump to jump straight into paint mode (tap-your-card on the hero fan). */
-  readonly paintSignal?: number;
 }
 
 /**
@@ -88,28 +74,16 @@ export function ProfileCard({
   nameError = null,
   children,
   defaultOpen = false,
-  paintSignal = 0,
 }: ProfileCardProps) {
   const t = T[useLang()];
-  const [painting, setPainting] = useState(false);
   const [open, setOpen] = useState(defaultOpen);
   const fill = color ?? undefined;
-
-  // Tap-your-card on the hero fan: land here with the brush already out.
-  useEffect(() => {
-    if (paintSignal > 0) {
-      setOpen(true);
-      setPainting(true);
-    }
-  }, [paintSignal]);
 
   // exactOptionalPropertyTypes: only pass optional props when defined.
   const cardProps = {
     name,
-    editable: editable && painting,
     ...(color !== null ? { color } : {}),
     ...(paint !== null ? { paint } : {}),
-    ...(onPaint !== undefined ? { onPaint } : {}),
     // Inline rename lives on the card on the live screen (not the inert scenes).
     ...(editable && onName !== undefined ? { onName, onNameCommit: onNameCommit ?? noop } : {}),
   };
@@ -117,9 +91,7 @@ export function ProfileCard({
   return (
     // Always a centered column: your card over the Customize trigger. Closed,
     // the card stays small (the hero fan above already shows it big) so the
-    // brand moment owns the screen; opening grows it to full size for painting.
-    // (Was a side-by-side A|B row, which left the short trigger floating awkwardly
-    // against the tall card on narrow screens.)
+    // brand moment owns the screen; opening reveals colour + the paint entry.
     <div className="flex w-full max-w-xs flex-col items-center gap-[0.8em]">
       <div className={open ? '' : 'text-[0.5em]'}>
         <PlayerCard {...cardProps} />
@@ -127,11 +99,7 @@ export function ProfileCard({
 
       <Collapsible
         open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          // Closing mid-paint would leave a tiny editable card — end the mode.
-          if (!next) setPainting(false);
-        }}
+        onOpenChange={setOpen}
         className={open ? 'w-full' : 'w-auto'}
         summary={
           <>
@@ -147,7 +115,7 @@ export function ProfileCard({
           error={nameError}
         />
 
-        {editable && !painting && (
+        {editable && (
           <>
             <div
               role="group"
@@ -173,15 +141,10 @@ export function ProfileCard({
                 );
               })}
             </div>
-            <Cta type="button" variant="secondary" onClick={() => setPainting(true)}>
+            <Cta type="button" variant="secondary" onClick={() => onPaint?.()}>
               {t.paint}
             </Cta>
           </>
-        )}
-        {editable && painting && (
-          <Cta type="button" variant="secondary" onClick={() => setPainting(false)}>
-            {t.donePainting}
-          </Cta>
         )}
 
         {children}
