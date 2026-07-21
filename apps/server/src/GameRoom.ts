@@ -205,6 +205,9 @@ export class GameRoom implements DurableObject {
       case 'add_bot':
         await this.onAddBot(ws, att, msg.seat, msg.difficulty);
         return;
+      case 'remove_bot':
+        await this.onRemoveBot(ws, att, msg.seat);
+        return;
       case 'start':
         await this.onStart(ws, att);
         return;
@@ -405,26 +408,48 @@ export class GameRoom implements DurableObject {
       this.meta.started &&
       this.game !== null &&
       this.game.phase !== 'game_over';
-    if (!midGameTakeover) {
-      if (occupant !== null) {
-        // A human (or a bot pre-start, where seating changes are handled below
-        // only if the game hasn't started) occupies the seat.
-        this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
-        return;
-      }
-      if (this.meta.started) {
-        this.send(ws, {
-          t: 'error',
-          code: 'ALREADY_STARTED',
-          message: 'Cannot change seats after the game has started',
-        });
-        return;
+    // The sitter's current seat, if any — a seated player who moves onto an
+    // occupied seat swaps with its owner; a spectator has none to swap back.
+    const oldSeat = this.seatOf(att.userId);
+
+    // Once the game is live, the ONLY allowed seat change is a mid-game bot
+    // takeover. Everything else is fixed.
+    if (this.meta.started && !midGameTakeover) {
+      this.send(
+        ws,
+        occupant !== null
+          ? { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` }
+          : {
+              t: 'error',
+              code: 'ALREADY_STARTED',
+              message: 'Cannot change seats after the game has started',
+            },
+      );
+      return;
+    }
+
+    // Decide what goes back into the sitter's old seat. Pre-game, moving onto an
+    // occupied seat is a swap (bot ↔ you, or human ↔ you); a spectator taking a
+    // bot seat just displaces the bot (nothing to swap back), but may never bump
+    // a seated human.
+    let displaced: SeatOwner = null;
+    if (occupant !== null && !midGameTakeover) {
+      if (typeof occupant === 'string') {
+        if (oldSeat === null) {
+          this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
+          return;
+        }
+        displaced = occupant; // the other human moves to the sitter's old seat
+      } else {
+        displaced = oldSeat !== null ? occupant : null; // swap the bot back, or drop it
       }
     }
+
     for (const s of SEATS) {
       if (this.meta.seats[s] === att.userId) this.meta.seats[s] = null;
     }
     this.meta.seats[seat] = att.userId;
+    if (oldSeat !== null && displaced !== null) this.meta.seats[oldSeat] = displaced;
     this.meta.names[att.userId] = att.name;
     if (this.meta.disconnectedSince?.[att.userId] !== undefined) {
       this.meta.disconnectedSince = Object.fromEntries(
@@ -437,6 +462,39 @@ export class GameRoom implements DurableObject {
     // Fresh welcome so the sitter's client adopts its new viewer identity —
     // the store only learns `viewer` from welcome snapshots.
     this.sendWelcome(ws, att);
+    // A swapped-out human moved seats too — refresh their clients' viewer.
+    if (typeof displaced === 'string' && oldSeat !== null) {
+      for (const socket of this.ctx.getWebSockets()) {
+        const a = this.attachment(socket);
+        if (a.userId !== displaced || typeof a.viewer !== 'number') continue;
+        a.viewer = oldSeat;
+        socket.serializeAttachment(a);
+        if (a.joined) this.sendWelcome(socket, a);
+      }
+    }
+    this.broadcastRoster({});
+  }
+
+  /** Empty a bot seat back to vacant (pre-game only). */
+  private async onRemoveBot(ws: WebSocket, att: Attachment, seat: Seat): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    if (this.meta.started) {
+      this.send(ws, {
+        t: 'error',
+        code: 'ALREADY_STARTED',
+        message: 'Cannot remove bots after the game has started',
+      });
+      return;
+    }
+    if (!isBotOwner(this.meta.seats[seat])) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: `Seat ${seat} has no bot` });
+      return;
+    }
+    this.meta.seats[seat] = null;
+    await this.ctx.storage.put('meta', this.meta);
     this.broadcastRoster({});
   }
 

@@ -15,6 +15,7 @@ export interface SeatPickerProps {
   readonly viewer: Viewer | null;
   readonly onSit: (seat: 0 | 1 | 2 | 3) => void;
   readonly onAddBot: (seat: 0 | 1 | 2 | 3, difficulty: BotDifficulty) => void;
+  readonly onRemoveBot: (seat: 0 | 1 | 2 | 3) => void;
 }
 
 const DIFFICULTY_ORDER: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
@@ -33,7 +34,9 @@ const T: Record<
     cycleBot: string;
     moveHere: string;
     sitHere: string;
+    swapHere: string;
     addBot: string;
+    removeBot: string;
   }
 > = {
   en: {
@@ -44,7 +47,9 @@ const T: Record<
     cycleBot: 'Tap to change bot difficulty',
     moveHere: 'Move here',
     sitHere: 'Sit here',
+    swapHere: 'Swap here',
     addBot: 'Add bot',
+    removeBot: 'Remove bot',
   },
   fr: {
     seatLabel: (n) => `Siège ${String(n)}`,
@@ -54,7 +59,9 @@ const T: Record<
     cycleBot: 'Touche pour changer la difficulté du bot',
     moveHere: 'Déplace-toi ici',
     sitHere: 'Assis-toi ici',
+    swapHere: 'Échanger ici',
     addBot: 'Ajouter un bot',
+    removeBot: 'Retirer le bot',
   },
 };
 
@@ -65,7 +72,7 @@ function nextDifficulty(current: BotDifficulty): BotDifficulty {
 
 /** Owns the lobby seat rows: who sits where, with sit-here / add-bot actions
  * and a per-bot difficulty toggle (Easy → Normal → Hard) before the game starts. */
-export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps) {
+export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: SeatPickerProps) {
   const lang = useLang();
   const t = T[lang];
   const difficultyLabel = DIFFICULTY_LABEL[lang];
@@ -76,6 +83,12 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps)
       {([0, 1, 2, 3] as const).map((seat) => {
         const info = roster?.seats[seat] ?? null;
         const difficulty = info?.difficulty ?? 'normal';
+        const isSelf = seat === viewer;
+        // Pre-game you can move onto any seat that isn't yours: an empty one
+        // (sit/move) or an occupied one (swap). A spectator can't bump a seated
+        // human, so a human seat only offers the swap to someone already seated.
+        const canSwapHere =
+          !started && !isSelf && info !== null && (info.isBot || (!info.isBot && seated));
         return (
           <div key={seat} data-testid={`seat-row-${seat}`} className="flex items-center gap-3">
             {/* The glyph (with an sr-only team name) replaces the team word. */}
@@ -88,10 +101,10 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps)
               />
             </span>
             {info !== null ? (
-              <span className="flex items-center gap-2">
+              <span className="flex flex-wrap items-center gap-2">
                 <Seat
                   name={info.name}
-                  isYou={seat === viewer}
+                  isYou={isSelf}
                   team={(seat % 2) as 0 | 1}
                   isBot={info.isBot}
                   connected={info.connected}
@@ -106,6 +119,20 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot }: SeatPickerProps)
                   >
                     {difficultyLabel[difficulty]}
                   </button>
+                )}
+                {canSwapHere && (
+                  <Cta variant="secondary" data-testid={`swap-${seat}`} onClick={() => onSit(seat)}>
+                    {t.swapHere}
+                  </Cta>
+                )}
+                {info.isBot && !started && (
+                  <Cta
+                    variant="secondary"
+                    data-testid={`remove-bot-${seat}`}
+                    onClick={() => onRemoveBot(seat)}
+                  >
+                    {t.removeBot}
+                  </Cta>
                 )}
               </span>
             ) : (

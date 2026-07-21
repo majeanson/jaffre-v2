@@ -174,6 +174,17 @@ async function driveToQuiescentHumanTurn(
   }
 }
 
+/** Wait for a `welcome` whose viewer matches, draining any stale ones buffered
+ * from earlier sits (each sit emits a welcome the caller may not have read). */
+async function welcomeViewer(client: Client, viewer: number | 'spectator'): Promise<void> {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    const w = await client.next('welcome');
+    if (w.viewer === viewer) return;
+    if (Date.now() > deadline) throw new Error(`no welcome with viewer ${String(viewer)}`);
+  }
+}
+
 /** Poll `read` until it returns non-undefined, with a generous deadline. */
 async function pollUntil<T>(read: () => Promise<T | undefined>, what: string): Promise<T> {
   const deadline = Date.now() + 10_000;
@@ -378,6 +389,79 @@ describe('GameRoom', () => {
     expect(roster.roster.seats[2]).toMatchObject({ isBot: true, difficulty: 'easy' });
 
     await endQuiet('room-difficulty', client);
+  });
+
+  it('removes a bot pre-game and rejects removing a non-bot seat', async () => {
+    const room = 'room-removebot';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    client.send({ t: 'join' });
+    await client.next('welcome');
+    client.send({ t: 'sit', seat: 0 });
+    await client.next('roster');
+    client.send({ t: 'add_bot', seat: 1, difficulty: 'hard' });
+    let roster = await client.next('roster');
+    expect(roster.roster.seats[1]).toMatchObject({ isBot: true });
+
+    // Remove the bot → the seat goes vacant.
+    client.send({ t: 'remove_bot', seat: 1 });
+    roster = await client.next('roster');
+    expect(roster.roster.seats[1]).toBeNull();
+
+    // Removing from a human seat (no bot) is a BAD_MESSAGE.
+    client.send({ t: 'remove_bot', seat: 0 });
+    const err = await client.next('error');
+    expect(err.code).toBe('BAD_MESSAGE');
+
+    await endQuiet(room, client);
+  });
+
+  it('pre-game: a seated player swaps with a bot, swaps with a human, and a spectator cannot bump a human', async () => {
+    const room = 'room-preswap';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await alice.next('roster');
+    alice.send({ t: 'add_bot', seat: 1, difficulty: 'hard' });
+    await alice.next('roster');
+
+    // Alice (seat 0) moves onto the bot at seat 1 → they trade places.
+    alice.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(alice, 1);
+    const r1 = await pollUntil(async () => {
+      const r = alice.latestRoster();
+      return r?.seats[1]?.isBot === false && r.seats[0]?.isBot === true ? r : undefined;
+    }, 'the alice↔bot swap roster');
+    expect(r1.seats[0]).toMatchObject({ isBot: true, difficulty: 'hard' }); // bot swapped back
+
+    // Bob takes seat 2, then swaps onto alice's seat 1 → the two humans trade.
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 2 });
+    await welcomeViewer(bob, 2);
+    bob.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(bob, 1);
+    // Alice's client is re-homed to bob's old seat (2) with a fresh welcome.
+    await welcomeViewer(alice, 2);
+
+    // Carol spectates: she may not bump a seated human…
+    const carol = await Client.connect(room, 'carol', 'Carol');
+    carol.send({ t: 'join' });
+    await carol.next('welcome');
+    carol.send({ t: 'sit', seat: 1 }); // bob is there
+    const err = await carol.next('error');
+    expect(err.code).toBe('SEAT_TAKEN');
+    // …but she may take a bot seat (seat 0), which drops the bot.
+    carol.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(carol, 0);
+    const r2 = await pollUntil(async () => {
+      const r = carol.latestRoster();
+      return r?.seats[0]?.isBot === false ? r : undefined;
+    }, 'carol taking the bot seat');
+    expect(r2.seats[0]).toMatchObject({ isBot: false });
+
+    await endQuiet(room, alice, bob, carol);
   });
 
   it(

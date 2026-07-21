@@ -55,6 +55,8 @@ export const clientMessageSchema = z.union([
     seat: seatSchema,
     difficulty: botDifficultySchema.optional(),
   }),
+  // Pre-game only: empty a bot seat back to vacant.
+  z.object({ t: z.literal('remove_bot'), seat: seatSchema }),
   z.object({ t: z.literal('start') }),
   // Pre-game only: toggle the "Hail-Mary 12 sans atout" house rule for the room.
   z.object({ t: z.literal('set_rules'), hailMary12: z.boolean() }),
