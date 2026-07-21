@@ -1,41 +1,9 @@
-import {
-  type ButtonHTMLAttributes,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ButtonHTMLAttributes, type CSSProperties, type ReactNode, useState } from 'react';
 import { useLang, type Lang } from '../i18n.js';
 
-const T: Record<
-  Lang,
-  {
-    yourName: string;
-    player: string;
-    paintCard: (name: string) => string;
-    brushColour: (c: string) => string;
-    erase: string;
-    clear: string;
-  }
-> = {
-  en: {
-    yourName: 'Your name',
-    player: 'Player',
-    paintCard: (name) => `Paint ${name}'s card`,
-    brushColour: (c) => `Brush colour ${c}`,
-    erase: 'Erase',
-    clear: 'Clear',
-  },
-  fr: {
-    yourName: 'Ton nom',
-    player: 'Joueur',
-    paintCard: (name) => `Colorier la carte de ${name}`,
-    brushColour: (c) => `Pinceau ${c}`,
-    erase: 'Gomme',
-    clear: 'Tout effacer',
-  },
+const T: Record<Lang, { yourName: string; player: string }> = {
+  en: { yourName: 'Your name', player: 'Player' },
+  fr: { yourName: 'Ton nom', player: 'Joueur' },
 };
 
 /**
@@ -376,26 +344,11 @@ export function IconRail({ children, footer, orientation = 'vertical', label }: 
   );
 }
 
-const PALETTE = [
-  '#7a6ff0',
-  '#f2b712',
-  '#e05252',
-  '#58b884',
-  '#82c7dc',
-  '#f2c66d',
-  '#b07a2e',
-  '#ebe6f5',
-] as const;
-
 export interface PlayerCardProps {
   readonly name: string;
-  /** The base fill colour (also the initial brush colour). */
+  /** The base fill colour behind the avatar (the profile colour). */
   readonly color?: string;
-  /** When true, show the paint tools and let the player draw on the card. */
-  readonly editable?: boolean;
-  /** Fired (debounced to pointer-up) with the canvas as a data URL after edits. */
-  readonly onPaint?: (dataUrl: string) => void;
-  /** A previously-saved painting (data URL) to render into the canvas. */
+  /** The saved painting (data URL) to show in the avatar square. */
   readonly paint?: string;
   /** When provided, the centre name renders as an inline editable field so the
    *  player can rename right on the card (fires on each keystroke). */
@@ -405,88 +358,14 @@ export interface PlayerCardProps {
 }
 
 /**
- * The hero player card: ivory face, corner initials, centre avatar + name,
- * foil sweep + idle wobble, and — when editable — a paintable canvas layer
- * (brush = chosen colour, eraser via destination-out, clear).
+ * The hero player card: ivory face, corner initials, and a centre avatar square
+ * showing the player's colour + saved pixel painting (editing happens in the
+ * full-screen Paint Studio, reached from ProfileCard). Foil sweep + idle wobble.
  */
-export function PlayerCard({
-  name,
-  color,
-  editable = false,
-  onPaint,
-  paint,
-  onName,
-  onNameCommit,
-}: PlayerCardProps) {
+export function PlayerCard({ name, color, paint, onName, onNameCommit }: PlayerCardProps) {
   const t = T[useLang()];
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   const hasPaint = paint !== undefined && paint !== '';
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawing = useRef(false);
-  const [brush, setBrush] = useState<string>(color ?? PALETTE[0]);
-  const [erasing, setErasing] = useState(false);
-
-  // Load the saved image into the canvas once it mounts (paint mode) or when
-  // `paint` changes. `editable` is a dep because the canvas only exists in
-  // paint mode — entering it must redraw the saved art onto the fresh element.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas === null) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!hasPaint) return;
-    const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    img.src = paint as string;
-  }, [paint, hasPaint, editable]);
-
-  const pointAt = (e: ReactPointerEvent<HTMLCanvasElement>): [number, number] => {
-    const canvas = canvasRef.current;
-    if (canvas === null) return [0, 0];
-    const rect = canvas.getBoundingClientRect();
-    return [
-      ((e.clientX - rect.left) / rect.width) * canvas.width,
-      ((e.clientY - rect.top) / rect.height) * canvas.height,
-    ];
-  };
-
-  const stroke = (e: ReactPointerEvent<HTMLCanvasElement>): void => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (canvas === null || ctx === null || ctx === undefined) return;
-    const [x, y] = pointAt(e);
-    ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
-    ctx.fillStyle = brush;
-    ctx.beginPath();
-    ctx.arc(x, y, erasing ? 24 : 14, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  const onDown = (e: ReactPointerEvent<HTMLCanvasElement>): void => {
-    if (!editable) return;
-    drawing.current = true;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    stroke(e);
-  };
-  const onMove = (e: ReactPointerEvent<HTMLCanvasElement>): void => {
-    if (!editable || !drawing.current) return;
-    stroke(e);
-  };
-  const onUp = (): void => {
-    if (!editable || !drawing.current) return;
-    drawing.current = false;
-    const canvas = canvasRef.current;
-    if (canvas !== null && onPaint !== undefined) onPaint(canvas.toDataURL('image/png'));
-  };
-
-  const clear = (): void => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (canvas === null || ctx === null || ctx === undefined) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (onPaint !== undefined) onPaint(canvas.toDataURL('image/png'));
-  };
 
   return (
     <div className="flex flex-col items-center gap-[0.9em]">
@@ -506,35 +385,20 @@ export function PlayerCard({
         </span>
         {/* centre block */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-[0.6em] p-[1em]">
-          {/* The ONE identity surface: a paintable avatar square — the very
-              chip that later shows at your seat and on your own 0-cards, so what
-              you paint here is exactly what appears in play (no more "full card"
-              vs "avatar" split). Saved paint fills the square; in paint mode the
-              canvas rides on top of it. */}
+          {/* The ONE identity surface: the avatar square — the very chip that
+              later shows at your seat and on your own 0-cards, so what you paint
+              is exactly what appears in play. Saved paint fills the square. */}
           <span
-            aria-hidden={!editable}
+            aria-hidden
             className="relative grid size-[4em] place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display text-[2em] leading-none text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
             style={{ background: color ?? 'var(--color-ap-violet)' }}
           >
             {!hasPaint && <span>{initial}</span>}
-            {hasPaint && !editable && (
+            {hasPaint && (
               <img
                 src={paint}
                 alt=""
                 className="absolute inset-0 size-full rounded-[inherit] object-cover"
-              />
-            )}
-            {editable && (
-              <canvas
-                ref={canvasRef}
-                width={200}
-                height={200}
-                aria-label={t.paintCard(name)}
-                className="absolute inset-0 size-full cursor-crosshair touch-none rounded-[inherit]"
-                onPointerDown={onDown}
-                onPointerMove={onMove}
-                onPointerUp={onUp}
-                onPointerCancel={onUp}
               />
             )}
           </span>
@@ -555,39 +419,6 @@ export function PlayerCard({
           )}
         </div>
       </div>
-
-      {editable && (
-        <div className="flex flex-wrap items-center justify-center gap-[0.5em]">
-          {PALETTE.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={t.brushColour(c)}
-              aria-pressed={!erasing && brush === c}
-              onClick={() => {
-                setBrush(c);
-                setErasing(false);
-              }}
-              style={{ background: c }}
-              className={`size-[1.6em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) transition ${
-                !erasing && brush === c ? 'ring-2 ring-(--color-ap-text) ring-offset-1' : ''
-              }`}
-            />
-          ))}
-          <Cta
-            type="button"
-            variant="secondary"
-            aria-pressed={erasing}
-            onClick={() => setErasing((v) => !v)}
-            className={erasing ? 'ring-2 ring-(--color-ap-text)' : ''}
-          >
-            {t.erase}
-          </Cta>
-          <Cta type="button" variant="secondary" onClick={clear}>
-            {t.clear}
-          </Cta>
-        </div>
-      )}
     </div>
   );
 }

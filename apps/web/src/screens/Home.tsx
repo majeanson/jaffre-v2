@@ -50,8 +50,6 @@ export function Home({
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
-  // Tap-your-card on the hero fan → ProfileCard opens with the brush out.
-  const [paintSignal, setPaintSignal] = useState(0);
   // Stateful so quitting a table drops its card without a reload.
   const [storedTables, setStoredTables] = useState<readonly TableEntry[]>(listTables);
   const tables = demoTables ?? storedTables;
@@ -74,9 +72,8 @@ export function Home({
     setProfile((p) => ({ ...p, color: hex }));
     void saveProfile({ color: hex });
   };
-  const savePaint = (dataUrl: string) => {
-    setProfile((p) => ({ ...p, paint: dataUrl }));
-    void saveProfile({ paint: dataUrl });
+  const openPaint = () => {
+    location.hash = '#paint';
   };
 
   const shownColor = staged ? identityStage.color : profile.color;
@@ -101,7 +98,7 @@ export function Home({
             name={staged ? identityStage.name : name}
             color={shownColor}
             paint={shownPaint}
-            {...(staged ? {} : { onCardClick: () => setPaintSignal((s) => s + 1) })}
+            {...(staged ? {} : { onCardClick: openPaint })}
           />
 
           <ProfileCard
@@ -110,10 +107,9 @@ export function Home({
             paint={shownPaint}
             editable={!staged}
             onColor={chooseColor}
-            onPaint={savePaint}
+            onPaint={openPaint}
             nameError={staged ? (identityStage.nameError ?? null) : null}
             defaultOpen={staged}
-            paintSignal={paintSignal}
             {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
           >
             {/* Scene viewer still stages the recovery plates; live players reach

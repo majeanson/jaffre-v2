@@ -49,6 +49,10 @@ interface Meta {
   startedAt?: number;
   /** userId → Date.now() of when their last socket closed mid-game. */
   disconnectedSince?: Record<string, number>;
+  /** userId → true while that seated human has voluntary auto-play on. The
+   * server plays their turns at 'hard'; only turning it off returns control.
+   * Persists across disconnect/reconnect; cleared on leave and game_over. */
+  autoPlay?: Record<string, boolean>;
   /** Optional per-room override of BOT_SWAP_MS (used by tests). */
   botSwapMs?: number;
   /** Per-seat readiness for the next round (round_over phase only). */
@@ -201,6 +205,9 @@ export class GameRoom implements DurableObject {
       case 'add_bot':
         await this.onAddBot(ws, att, msg.seat, msg.difficulty);
         return;
+      case 'remove_bot':
+        await this.onRemoveBot(ws, att, msg.seat);
+        return;
       case 'start':
         await this.onStart(ws, att);
         return;
@@ -212,6 +219,9 @@ export class GameRoom implements DurableObject {
         return;
       case 'leave':
         await this.onLeave(ws, att);
+        return;
+      case 'set_autoplay':
+        await this.onSetAutoPlay(ws, att, msg.on);
         return;
       case 'ready':
         await this.onReady(ws, att);
@@ -316,7 +326,8 @@ export class GameRoom implements DurableObject {
     const owner = this.meta.seats[turnSeat];
     const botActs =
       isBotOwner(owner) ||
-      (typeof owner === 'string' && this.disconnectDeadline(owner) <= Date.now());
+      (typeof owner === 'string' &&
+        (this.autoPlayOn(owner) || this.disconnectDeadline(owner) <= Date.now()));
     if (!botActs) {
       // A connected human's turn (or their deadline has not passed yet):
       // re-arm the alarm for whatever the next wake actually is.
@@ -324,8 +335,14 @@ export class GameRoom implements DurableObject {
       return;
     }
     const rng = mulberry32((game.seed ^ this.seq) >>> 0);
-    // Disconnected humans are covered at 'normal' — fair to both teams.
-    const difficulty = isBotOwner(owner) ? botDifficulty(owner) : 'normal';
+    // Bot seats play at their own level; a voluntary-AFK human is covered at
+    // 'hard' (their choice); a disconnected human is covered at 'normal' — fair
+    // to both teams.
+    const difficulty = isBotOwner(owner)
+      ? botDifficulty(owner)
+      : typeof owner === 'string' && this.autoPlayOn(owner)
+        ? 'hard'
+        : 'normal';
     const action = chooseAction(viewFor(game, turnSeat), rng, difficulty);
     if (action !== null) await this.applyEngineAction(action);
   }
@@ -391,26 +408,48 @@ export class GameRoom implements DurableObject {
       this.meta.started &&
       this.game !== null &&
       this.game.phase !== 'game_over';
-    if (!midGameTakeover) {
-      if (occupant !== null) {
-        // A human (or a bot pre-start, where seating changes are handled below
-        // only if the game hasn't started) occupies the seat.
-        this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
-        return;
-      }
-      if (this.meta.started) {
-        this.send(ws, {
-          t: 'error',
-          code: 'ALREADY_STARTED',
-          message: 'Cannot change seats after the game has started',
-        });
-        return;
+    // The sitter's current seat, if any — a seated player who moves onto an
+    // occupied seat swaps with its owner; a spectator has none to swap back.
+    const oldSeat = this.seatOf(att.userId);
+
+    // Once the game is live, the ONLY allowed seat change is a mid-game bot
+    // takeover. Everything else is fixed.
+    if (this.meta.started && !midGameTakeover) {
+      this.send(
+        ws,
+        occupant !== null
+          ? { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` }
+          : {
+              t: 'error',
+              code: 'ALREADY_STARTED',
+              message: 'Cannot change seats after the game has started',
+            },
+      );
+      return;
+    }
+
+    // Decide what goes back into the sitter's old seat. Pre-game, moving onto an
+    // occupied seat is a swap (bot ↔ you, or human ↔ you); a spectator taking a
+    // bot seat just displaces the bot (nothing to swap back), but may never bump
+    // a seated human.
+    let displaced: SeatOwner = null;
+    if (occupant !== null && !midGameTakeover) {
+      if (typeof occupant === 'string') {
+        if (oldSeat === null) {
+          this.send(ws, { t: 'error', code: 'SEAT_TAKEN', message: `Seat ${seat} is taken` });
+          return;
+        }
+        displaced = occupant; // the other human moves to the sitter's old seat
+      } else {
+        displaced = oldSeat !== null ? occupant : null; // swap the bot back, or drop it
       }
     }
+
     for (const s of SEATS) {
       if (this.meta.seats[s] === att.userId) this.meta.seats[s] = null;
     }
     this.meta.seats[seat] = att.userId;
+    if (oldSeat !== null && displaced !== null) this.meta.seats[oldSeat] = displaced;
     this.meta.names[att.userId] = att.name;
     if (this.meta.disconnectedSince?.[att.userId] !== undefined) {
       this.meta.disconnectedSince = Object.fromEntries(
@@ -423,6 +462,39 @@ export class GameRoom implements DurableObject {
     // Fresh welcome so the sitter's client adopts its new viewer identity —
     // the store only learns `viewer` from welcome snapshots.
     this.sendWelcome(ws, att);
+    // A swapped-out human moved seats too — refresh their clients' viewer.
+    if (typeof displaced === 'string' && oldSeat !== null) {
+      for (const socket of this.ctx.getWebSockets()) {
+        const a = this.attachment(socket);
+        if (a.userId !== displaced || typeof a.viewer !== 'number') continue;
+        a.viewer = oldSeat;
+        socket.serializeAttachment(a);
+        if (a.joined) this.sendWelcome(socket, a);
+      }
+    }
+    this.broadcastRoster({});
+  }
+
+  /** Empty a bot seat back to vacant (pre-game only). */
+  private async onRemoveBot(ws: WebSocket, att: Attachment, seat: Seat): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    if (this.meta.started) {
+      this.send(ws, {
+        t: 'error',
+        code: 'ALREADY_STARTED',
+        message: 'Cannot remove bots after the game has started',
+      });
+      return;
+    }
+    if (!isBotOwner(this.meta.seats[seat])) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: `Seat ${seat} has no bot` });
+      return;
+    }
+    this.meta.seats[seat] = null;
+    await this.ctx.storage.put('meta', this.meta);
     this.broadcastRoster({});
   }
 
@@ -478,6 +550,30 @@ export class GameRoom implements DurableObject {
   }
 
   /**
+   * Toggle voluntary auto-play for the sender's own seat. While on, the alarm
+   * loop plays their turns at 'hard' (see alarm()); the seat stays theirs. Only
+   * a spectator can't toggle it. Turning it on during their turn wakes the alarm
+   * so the bot move fires on the normal bot cadence.
+   */
+  private async onSetAutoPlay(ws: WebSocket, att: Attachment, on: boolean): Promise<void> {
+    if (!att.joined || this.seatOf(att.userId) === null) {
+      this.send(ws, { t: 'error', code: 'NOT_SEATED', message: 'Take a seat first' });
+      return;
+    }
+    const current = this.autoPlayOn(att.userId);
+    if (current === on) return; // no-op — don't churn storage or rosters
+    this.meta.autoPlay = on
+      ? { ...this.meta.autoPlay, [att.userId]: true }
+      : Object.fromEntries(
+          Object.entries(this.meta.autoPlay ?? {}).filter(([id]) => id !== att.userId),
+        );
+    await this.ctx.storage.put('meta', this.meta);
+    this.broadcastRoster({});
+    // If it's their turn right now, arm the alarm so the auto-move plays promptly.
+    if (on) await this.scheduleNextWake();
+  }
+
+  /**
    * Vacate a user's seat permanently. Mid-game the seat goes to a bot (the
    * game must stay playable for the other three); otherwise it simply frees
    * up. Their sockets, if any, drop to spectator. False if they had no seat.
@@ -490,6 +586,11 @@ export class GameRoom implements DurableObject {
     if (this.meta.disconnectedSince?.[userId] !== undefined) {
       this.meta.disconnectedSince = Object.fromEntries(
         Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== userId),
+      );
+    }
+    if (this.meta.autoPlay?.[userId] !== undefined) {
+      this.meta.autoPlay = Object.fromEntries(
+        Object.entries(this.meta.autoPlay).filter(([id]) => id !== userId),
       );
     }
     await this.ctx.storage.put('meta', this.meta);
@@ -732,8 +833,13 @@ export class GameRoom implements DurableObject {
         this.meta.seriesWins = wins;
         // Record this game's final scores for the between-games scorepad.
         this.meta.seriesGames = [...this.meta.seriesGames, [game.scores[0], game.scores[1]]];
-        await this.ctx.storage.put('meta', this.meta);
       }
+      // Auto-play is a mid-game convenience; clear it so the next game starts
+      // with everyone in manual control.
+      if (this.meta.autoPlay !== undefined && Object.keys(this.meta.autoPlay).length > 0) {
+        this.meta.autoPlay = {};
+      }
+      await this.ctx.storage.put('meta', this.meta);
       // History write is strictly best-effort: awaited (so tests observe it)
       // but fully guarded — D1 being absent or failing never breaks the room.
       try {
@@ -759,6 +865,7 @@ export class GameRoom implements DurableObject {
     if (game === null || (game.phase !== 'bidding' && game.phase !== 'playing')) return;
     const owner = this.meta.seats[game.turn];
     if (typeof owner !== 'string') return; // bot or empty seat
+    if (this.autoPlayOn(owner)) return; // a bot is covering this turn — no nag
     const connected = this.ctx.getWebSockets().some((s) => {
       if (s === exclude) return false;
       const a = this.attachment(s);
@@ -827,6 +934,11 @@ export class GameRoom implements DurableObject {
     return since + (this.meta.botSwapMs ?? BOT_SWAP_MS);
   }
 
+  /** Whether this user has voluntary auto-play on (server plays their turns). */
+  private autoPlayOn(userId: string): boolean {
+    return this.meta.autoPlay?.[userId] === true;
+  }
+
   /**
    * The single alarm slot is shared by bot turns, round_over auto-continue,
    * and disconnected-human bot-swaps: compute the earliest wake we need and
@@ -854,9 +966,10 @@ export class GameRoom implements DurableObject {
       }
     } else {
       const owner = this.meta.seats[game.turn];
-      if (isBotOwner(owner)) {
-        // A trick just completed: the clients hold + sweep the 4 cards for
-        // ~2.2s, so the next bot must wait out that animation window.
+      if (isBotOwner(owner) || (typeof owner === 'string' && this.autoPlayOn(owner))) {
+        // A bot seat, or a human on voluntary auto-play — either way the server
+        // plays this turn. A trick just completed: the clients hold + sweep the
+        // 4 cards for ~2.2s, so we must wait out that animation window.
         wake = now + (afterTrick ? TRICK_HOLD_MS : BOT_DELAY_MS);
       } else if (typeof owner === 'string') {
         const deadline = this.disconnectDeadline(owner);
@@ -915,6 +1028,7 @@ export class GameRoom implements DurableObject {
         connected,
         ...(ready !== undefined ? { ready } : {}),
         ...(Number.isFinite(botSwapAt) ? { botSwapAt } : {}),
+        ...(this.autoPlayOn(owner) ? { autoPlay: true } : {}),
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;

@@ -11,6 +11,7 @@ const T: Record<
     empty: string;
     away: (countdown: string) => string;
     botTakingOver: string;
+    autoPlay: string;
     peek: (name: string) => string;
   }
 > = {
@@ -18,12 +19,14 @@ const T: Record<
     empty: 'empty',
     away: (countdown) => `Away — bot in ${countdown}`,
     botTakingOver: 'Bot taking over…',
+    autoPlay: 'Auto-play — bot playing',
     peek: (name) => `Show ${name}'s info`,
   },
   fr: {
     empty: 'libre',
     away: (countdown) => `Absent — bot dans ${countdown}`,
     botTakingOver: 'Le bot prend la relève…',
+    autoPlay: 'Jeu auto — le bot joue',
     peek: (name) => `Voir les infos de ${name}`,
   },
 };
@@ -87,9 +90,9 @@ export function SeatChip({
         ? 'right-0'
         : 'left-1/2 -translate-x-1/2';
 
-  // Your own seat wears your painted card (if any) as its avatar; other seats
-  // never receive paint (the roster doesn't carry other players' paint).
-  const paint = info.isYou ? getProfile().paint : null;
+  // Your own seat wears your painted card (if any); bot seats wear their pixel
+  // sprite; other humans never receive paint (the roster doesn't carry it).
+  const paint = info.isYou ? getProfile().paint : info.avatar;
 
   return (
     <span ref={rootRef} className="relative inline-block max-w-full min-w-0">
@@ -125,6 +128,19 @@ export function SeatChip({
           }`}
         >
           {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
+        </span>
+      )}
+      {/* Voluntary auto-play: a bot is covering this connected human's turns.
+          Distinct from the disconnect countdown (which only shows when away). */}
+      {secondsLeft === null && info.autoPlay && (
+        <span
+          data-testid="autoplay-badge"
+          role="status"
+          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-ink) shadow-(--shadow-ap-sm) ${alignX} ${
+            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
+          {t.autoPlay}
         </span>
       )}
       {info.bidText !== null && (

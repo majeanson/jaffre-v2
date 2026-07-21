@@ -98,6 +98,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           viewer={viewer}
           onSit={(seat) => send({ t: 'sit', seat })}
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
+          onRemoveBot={(seat) => send({ t: 'remove_bot', seat })}
         />
 
         {/* One tap instead of three: a solo host fills the table in one go.

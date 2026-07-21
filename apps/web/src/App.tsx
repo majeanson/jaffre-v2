@@ -13,6 +13,7 @@ import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
+import { PaintStudio } from './screens/PaintStudio.js';
 import { Replay } from './screens/Replay.js';
 import { Scenes } from './screens/Scenes.js';
 import { Stats } from './screens/Stats.js';
@@ -28,6 +29,7 @@ type Route =
   | { kind: 'history' }
   | { kind: 'stats' }
   | { kind: 'collection' }
+  | { kind: 'paint' }
   | { kind: 'replay'; gameId: string };
 
 function parseHash(): Route {
@@ -44,6 +46,7 @@ function parseHash(): Route {
   if (h === '#history') return { kind: 'history' };
   if (h === '#stats') return { kind: 'stats' };
   if (h === '#collection') return { kind: 'collection' };
+  if (h === '#paint') return { kind: 'paint' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
   return { kind: 'home' };
@@ -160,6 +163,9 @@ function AppRoutes() {
   if (route.kind === 'collection') {
     return <Collection onLeave={() => (location.hash = collectionReturnHash())} />;
   }
+  if (route.kind === 'paint') {
+    return <PaintStudio onLeave={() => (location.hash = '')} />;
+  }
   if (route.kind === 'replay') {
     return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;
   }
@@ -198,6 +204,7 @@ function AppRoutes() {
           send({ t: 'swap_seats' });
           send({ t: 'start' });
         }}
+        onToggleAutoPlay={(on) => send({ t: 'set_autoplay', on })}
       />
     ) : (
       <Lobby code={route.code} onLeave={() => (location.hash = '')} />

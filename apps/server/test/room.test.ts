@@ -174,6 +174,17 @@ async function driveToQuiescentHumanTurn(
   }
 }
 
+/** Wait for a `welcome` whose viewer matches, draining any stale ones buffered
+ * from earlier sits (each sit emits a welcome the caller may not have read). */
+async function welcomeViewer(client: Client, viewer: number | 'spectator'): Promise<void> {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    const w = await client.next('welcome');
+    if (w.viewer === viewer) return;
+    if (Date.now() > deadline) throw new Error(`no welcome with viewer ${String(viewer)}`);
+  }
+}
+
 /** Poll `read` until it returns non-undefined, with a generous deadline. */
 async function pollUntil<T>(read: () => Promise<T | undefined>, what: string): Promise<T> {
   const deadline = Date.now() + 10_000;
@@ -378,6 +389,79 @@ describe('GameRoom', () => {
     expect(roster.roster.seats[2]).toMatchObject({ isBot: true, difficulty: 'easy' });
 
     await endQuiet('room-difficulty', client);
+  });
+
+  it('removes a bot pre-game and rejects removing a non-bot seat', async () => {
+    const room = 'room-removebot';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    client.send({ t: 'join' });
+    await client.next('welcome');
+    client.send({ t: 'sit', seat: 0 });
+    await client.next('roster');
+    client.send({ t: 'add_bot', seat: 1, difficulty: 'hard' });
+    let roster = await client.next('roster');
+    expect(roster.roster.seats[1]).toMatchObject({ isBot: true });
+
+    // Remove the bot → the seat goes vacant.
+    client.send({ t: 'remove_bot', seat: 1 });
+    roster = await client.next('roster');
+    expect(roster.roster.seats[1]).toBeNull();
+
+    // Removing from a human seat (no bot) is a BAD_MESSAGE.
+    client.send({ t: 'remove_bot', seat: 0 });
+    const err = await client.next('error');
+    expect(err.code).toBe('BAD_MESSAGE');
+
+    await endQuiet(room, client);
+  });
+
+  it('pre-game: a seated player swaps with a bot, swaps with a human, and a spectator cannot bump a human', async () => {
+    const room = 'room-preswap';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await alice.next('roster');
+    alice.send({ t: 'add_bot', seat: 1, difficulty: 'hard' });
+    await alice.next('roster');
+
+    // Alice (seat 0) moves onto the bot at seat 1 → they trade places.
+    alice.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(alice, 1);
+    const r1 = await pollUntil(async () => {
+      const r = alice.latestRoster();
+      return r?.seats[1]?.isBot === false && r.seats[0]?.isBot === true ? r : undefined;
+    }, 'the alice↔bot swap roster');
+    expect(r1.seats[0]).toMatchObject({ isBot: true, difficulty: 'hard' }); // bot swapped back
+
+    // Bob takes seat 2, then swaps onto alice's seat 1 → the two humans trade.
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 2 });
+    await welcomeViewer(bob, 2);
+    bob.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(bob, 1);
+    // Alice's client is re-homed to bob's old seat (2) with a fresh welcome.
+    await welcomeViewer(alice, 2);
+
+    // Carol spectates: she may not bump a seated human…
+    const carol = await Client.connect(room, 'carol', 'Carol');
+    carol.send({ t: 'join' });
+    await carol.next('welcome');
+    carol.send({ t: 'sit', seat: 1 }); // bob is there
+    const err = await carol.next('error');
+    expect(err.code).toBe('SEAT_TAKEN');
+    // …but she may take a bot seat (seat 0), which drops the bot.
+    carol.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(carol, 0);
+    const r2 = await pollUntil(async () => {
+      const r = carol.latestRoster();
+      return r?.seats[0]?.isBot === false ? r : undefined;
+    }, 'carol taking the bot seat');
+    expect(r2.seats[0]).toMatchObject({ isBot: false });
+
+    await endQuiet(room, alice, bob, carol);
   });
 
   it(
@@ -969,6 +1053,82 @@ describe('GameRoom', () => {
       }
       expect(cleared).toBe(true);
       await endQuiet(room, alice, carol, again);
+    },
+  );
+
+  it(
+    'voluntary auto-play plays the seat while on, carries the roster flag, and toggling off returns control',
+    { timeout: 30_000 },
+    async () => {
+      interface StoredMeta {
+        autoPlay?: Record<string, boolean>;
+      }
+      interface StoredLog {
+        action: Action;
+      }
+      const room = 'room-autoplay';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(client); // seat 0 human + 3 bots
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Reach alice's own turn with no pending alarm: from here only the test
+      // (or her auto-play) can move the room.
+      const before = await driveToQuiescentHumanTurn(stub, client);
+      const seqBefore = before.seq;
+
+      // Turn auto-play ON. The seat stays alice's; the roster must advertise it,
+      // and the handler arms the alarm so her held turn is played on bot cadence.
+      client.send({ t: 'set_autoplay', on: true });
+      let onFlag: boolean | undefined;
+      const onDeadline = Date.now() + 5000;
+      while (Date.now() < onDeadline && onFlag !== true) {
+        const r = await client.next('roster');
+        const seat0 = r.roster.seats[0];
+        onFlag = seat0?.autoPlay;
+        expect(seat0?.isBot).toBe(false); // still a human seat, just auto-played
+      }
+      expect(onFlag).toBe(true);
+      const stored = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.autoPlay?.['alice'];
+      });
+      expect(stored).toBe(true);
+
+      // The alarm now plays FOR alice: the next log entry is a seat-0 action.
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const applied = await runInDurableObject(stub, (_instance, state) =>
+        state.storage.get<StoredLog>(`log:${seqBefore + 1}`),
+      );
+      expect(applied).toBeDefined();
+      const action = applied?.action;
+      expect(action?.type === 'place_bid' || action?.type === 'play_card').toBe(true);
+      if (action?.type === 'place_bid' || action?.type === 'play_card') {
+        expect(action.seat).toBe(0);
+      }
+
+      // Turn auto-play OFF: the flag clears and control returns to alice. Reach
+      // her turn again with no alarm armed, then prove an alarm wake does NOT
+      // auto-advance her seat (a connected human's turn is hers to play).
+      client.send({ t: 'set_autoplay', on: false });
+      const offCleared = await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.autoPlay?.['alice'] === undefined ? true : undefined;
+          }),
+        'auto-play cleared',
+      );
+      expect(offCleared).toBe(true);
+
+      const quiet = await driveToQuiescentHumanTurn(stub, client);
+      // No alarm is armed for a connected human whose auto-play is off, and
+      // forcing a wake leaves the sequence untouched — the turn waits for her.
+      await runDurableObjectAlarm(stub);
+      const after = await snapshot(stub);
+      expect(after.seq).toBe(quiet.seq);
+      expect(after.turn).toBe(0);
+
+      await endQuiet(room, client);
     },
   );
 

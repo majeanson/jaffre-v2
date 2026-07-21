@@ -33,6 +33,40 @@ export function IconSignOut() {
   );
 }
 
+/** Auto-play: a friendly bot head — a bot covers your turns while you're away. */
+export function IconRobot() {
+  return (
+    <Svg>
+      <rect x="5" y="8" width="14" height="10" rx="2.5" />
+      <path d="M12 5.5V8" />
+      <circle cx="12" cy="4.2" r="1.2" />
+      <path d="M9.5 12.5h.01M14.5 12.5h.01" />
+      <path d="M3.5 12v3M20.5 12v3" />
+    </Svg>
+  );
+}
+
+/** Swap seats: two arrows trading places. */
+export function IconSwap() {
+  return (
+    <Svg>
+      <path d="M4 8h13" />
+      <path d="M14 5l3 3-3 3" />
+      <path d="M20 16H7" />
+      <path d="M10 13l-3 3 3 3" />
+    </Svg>
+  );
+}
+
+/** Remove / close: an X. */
+export function IconX() {
+  return (
+    <Svg>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </Svg>
+  );
+}
+
 /** Options: gear. */
 export function IconGear() {
   return (

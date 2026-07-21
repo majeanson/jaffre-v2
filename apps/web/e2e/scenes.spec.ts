@@ -20,11 +20,11 @@ for (const scene of SCENE_METAS) {
   });
 }
 
-test('tapping your card in the hero fan opens Customize in paint mode', async ({ page }) => {
+test('tapping your card in the hero fan opens the Paint Studio', async ({ page }) => {
   await page.goto('/#scenes/home');
   await page.getByRole('button', { name: 'Your card — tap to paint it' }).click();
-  // The disclosure opens with the brush already out: paint mode's exit button.
-  await expect(page.getByRole('button', { name: 'Done painting' })).toBeVisible();
+  // The card tap now routes to #paint — the pixel-grid editor is the studio's probe.
+  await expect(page.locator('[data-testid="pixel-grid"]')).toBeVisible();
 });
 
 test('help sheet overlays the viewport (fixed positioning not captured by animations)', async ({
