@@ -446,7 +446,7 @@ export function ScorePad({
 
   return (
     <div
-      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap) ${className}`}
+      className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px] ${className}`}
     >
       <div
         tabIndex={0}

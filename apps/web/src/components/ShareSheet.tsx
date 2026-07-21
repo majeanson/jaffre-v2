@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { QrCode } from './QrCode.js';
+import { useScrollLock } from './useScrollLock.js';
 
 const T: Record<
   Lang,
@@ -68,6 +69,7 @@ export interface ShareSheetProps {
  */
 export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
   const t = T[useLang()];
+  useScrollLock();
   const url = `${location.origin}/#room/${code}`;
   const words = code.split('-');
 

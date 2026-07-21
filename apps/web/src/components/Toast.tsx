@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { SLOT_STATUS, useBottomSlot } from './bottomSlot.js';
 
 export interface ToastProps {
   readonly message: string;
@@ -9,11 +10,16 @@ export interface ToastProps {
 
 /** A small transient status bubble — e.g. "Link copied" after a clipboard share. */
 export function Toast({ message, onDone, durationMs = 2000 }: ToastProps) {
+  const visible = useBottomSlot(SLOT_STATUS, true);
+  // Only tick while actually shown — if a higher-priority toast holds the
+  // slot, this one waits its turn instead of expiring unseen.
   useEffect(() => {
+    if (!visible) return undefined;
     const id = setTimeout(onDone, durationMs);
     return () => clearTimeout(id);
-  }, [onDone, durationMs]);
+  }, [visible, onDone, durationMs]);
 
+  if (!visible) return null;
   return (
     <div
       role="status"

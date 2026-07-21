@@ -2,6 +2,7 @@ import type { EndReason, SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
 import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import { LinkNudge } from '../components/LinkAccount.js';
+import { useScrollLock } from '../components/useScrollLock.js';
 import { Confetti } from './Confetti.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
@@ -254,6 +255,7 @@ export function GameRecap({
   endReason,
 }: GameRecapProps) {
   const t = T[useLang()];
+  useScrollLock();
   // The hail-mary ending: the last round's 12-sans-atout contract decided the
   // game. Swept → the bidding team wins; missed → the defenders take it.
   const lastRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
@@ -271,14 +273,14 @@ export function GameRecap({
       role="dialog"
       aria-modal="true"
       aria-label={t.gameOver}
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
     >
       <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <Confetti />
         {/* Scrollable body: on a short viewport (≈900px desktop) the recap is
             taller than the screen, so the middle scrolls while the action footer
             below stays pinned — the hero Rematch is never pushed off-screen. */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
           {hailMary !== null && (
             <div className="mb-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-gold-deep) bg-(--color-ap-gold)/15 px-3 py-2.5">
               <p className="font-arcade-display text-[1.15em] uppercase leading-tight text-(--color-ap-gold)">
@@ -395,7 +397,7 @@ export function GameRecap({
               tabIndex={0}
               role="region"
               aria-label={t.roundByRound}
-              className="mt-5 max-h-56 overflow-y-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
+              className="mt-5 max-h-56 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
             >
               <table className="w-full tabular-nums">
                 <thead className="text-(--color-ap-muted)">
