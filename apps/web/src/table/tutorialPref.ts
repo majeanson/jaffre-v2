@@ -60,11 +60,22 @@ export function skipTutorial(): void {
   persist(TUTORIAL_STEPS);
 }
 
+/**
+ * Same-tab signal that progress was cleared. An already-mounted TutorialCoach
+ * listens for this so "Replay tutorial" re-arms the intro + marks live, rather
+ * than only on the next practice entry. (The `storage` event never fires in the
+ * tab that wrote it, so we dispatch our own.)
+ */
+export const TUTORIAL_RESET_EVENT = 'jaffre:tutorial-reset';
+
 /** Clear all progress so the tutorial runs again from the intro (replay). */
 export function resetTutorial(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
     // Storage unavailable — nothing to clear.
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(TUTORIAL_RESET_EVENT));
   }
 }

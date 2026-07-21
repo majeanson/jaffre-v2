@@ -11,6 +11,8 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '../components/useScrollLock.js';
 import { TEAMS } from '../teams.js';
+import { loadTutorialSeen, resetTutorial } from '../table/tutorialPref.js';
+import { MARK_ORDER, MARKS } from '../table/tutorialSteps.js';
 
 export interface HelpSheetProps {
   readonly onClose: () => void;
@@ -32,6 +34,9 @@ const T: Record<
     optional: string;
     glossary: string;
     seeAlso: string;
+    learning: string;
+    learningHint: string;
+    replay: string;
   }
 > = {
   en: {
@@ -43,6 +48,9 @@ const T: Record<
     optional: 'optional',
     glossary: 'Glossary',
     seeAlso: 'See also',
+    learning: 'Learning the game',
+    learningHint: 'The practice table flags each of these as it comes up.',
+    replay: 'Replay tutorial',
   },
   fr: {
     title: 'Comment jouer',
@@ -53,6 +61,9 @@ const T: Record<
     optional: 'facultatif',
     glossary: 'Glossaire',
     seeAlso: 'Voir aussi',
+    learning: 'Apprendre le jeu',
+    learningHint: 'La table d’entraînement te signale chacun de ces points quand il arrive.',
+    replay: 'Rejouer le tutoriel',
   },
 };
 
@@ -456,6 +467,94 @@ function Glossary({ lang }: { readonly lang: Lang }) {
         ))}
       </div>
     </details>
+  );
+}
+
+/**
+ * The learning checklist: the seven tutorial concepts, each ticked once the
+ * player has met it on the practice table, plus a "Replay tutorial" control.
+ * Progress is read once on open (Help opens fresh, so live reactivity isn't
+ * needed here) and shares its source of truth — tutorialSteps + tutorialPref —
+ * with the felt's live progress pip. Guards gracefully at 0/7 before anything
+ * has started, since the sheet is also shown from Home and the Lobby.
+ */
+function LearningChecklist({
+  lang,
+  onReplay,
+}: {
+  readonly lang: Lang;
+  readonly onReplay: () => void;
+}) {
+  const t = T[lang];
+  const [seen, setSeen] = useState<Set<string>>(() => loadTutorialSeen());
+  const total = MARK_ORDER.length;
+  const done = MARK_ORDER.filter((s) => seen.has(s)).length;
+
+  const replay = (): void => {
+    resetTutorial();
+    setSeen(new Set());
+    onReplay();
+  };
+
+  return (
+    <section
+      aria-label={`${t.learning} — ${done}/${total}`}
+      className="rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-4 shadow-(--shadow-ap-sm)"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
+          {t.learning}
+        </h3>
+        <span className="font-arcade-ui text-(length:--text-fluid-sm) tabular-nums text-(--color-ap-muted)">
+          {done}/{total}
+        </span>
+      </div>
+      <p className="mt-1 text-(length:--text-fluid-xs) leading-snug text-(--color-ap-muted)">
+        {t.learningHint}
+      </p>
+      <ul role="list" className="mt-2.5 space-y-1.5">
+        {MARK_ORDER.map((id) => {
+          const isDone = seen.has(id);
+          return (
+            <li key={id} className="flex items-center gap-2.5">
+              <span
+                aria-hidden
+                className={`grid size-5 shrink-0 place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-xs) ${
+                  isDone
+                    ? 'border-(--color-ap-gold) bg-(--color-ap-gold) text-(--color-ap-ink)'
+                    : 'border-(--color-ap-ink)/45 text-transparent'
+                }`}
+              >
+                ✓
+              </span>
+              <span
+                className={`text-(length:--text-fluid-sm) ${
+                  isDone ? 'text-(--color-ap-text)' : 'text-(--color-ap-text)/60'
+                }`}
+              >
+                {MARKS[id][lang].title}
+              </span>
+              <span className="sr-only">
+                {isDone
+                  ? lang === 'fr'
+                    ? '(fait)'
+                    : '(done)'
+                  : lang === 'fr'
+                    ? '(à venir)'
+                    : '(not yet)'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={replay}
+        className="mt-3 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+      >
+        ♺ {t.replay}
+      </button>
+    </section>
   );
 }
 
@@ -1259,6 +1358,8 @@ export function HelpSheet({ onClose, jumpTo }: HelpSheetProps) {
             tabIndex={0}
             className="relative space-y-3 overflow-y-auto overscroll-contain px-5 py-4"
           >
+            <LearningChecklist lang={lang} onReplay={onClose} />
+
             {lang === 'fr' ? <RulesFr /> : <RulesEn />}
 
             <div className="flex items-center gap-3 pt-1" aria-hidden>

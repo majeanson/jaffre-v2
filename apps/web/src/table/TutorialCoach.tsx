@@ -10,26 +10,9 @@ import {
   markTutorialStep,
   skipTutorial,
   TUTORIAL_STEPS,
-  type TutorialStep,
+  TUTORIAL_RESET_EVENT,
 } from './tutorialPref.js';
-
-/** Steps that render an in-play coach-mark (everything but the intro overlay). */
-type MarkStep = Exclude<TutorialStep, 'intro'>;
-
-const MARK_ORDER = TUTORIAL_STEPS.filter((s): s is MarkStep => s !== 'intro');
-
-/**
- * Copy for the first-practice tutorial — every number and rule fact-checked
- * against packages/engine (rules.ts / reducer.ts / bidding.ts). Bilingual
- * en / fr-CA, following the T-table pattern used across the app; the locked
- * fr terms (levée, mise, brasseur, ronde, siège, tutoiement) are respected.
- */
-interface Copy {
-  readonly title: string;
-  readonly body: string;
-  /** Glossary entry the "Learn more" link deep-links into. */
-  readonly concept: ConceptId;
-}
+import { MARK_ORDER, MARKS, type MarkCopy, type MarkStep } from './tutorialSteps.js';
 
 const INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
   en: {
@@ -46,96 +29,14 @@ const INTRO: Record<Lang, { title: string; body: string; start: string; skip: st
   },
 };
 
-const MARKS: Record<MarkStep, Record<Lang, Copy>> = {
-  bidding: {
-    en: {
-      title: 'The auction',
-      body: 'One round of bidding — each seat speaks once, the dealer last. Bid 7 to 12 trick points or pass; if all four pass, the dealer is forced to 7.',
-      concept: 'mise',
-    },
-    fr: {
-      title: 'Les mises',
-      body: 'Une seule ronde de mises — chaque siège parle une fois, le brasseur en dernier. Mise de 7 à 12 points de levées, ou passe; si les quatre passent, le brasseur est forcé à 7.',
-      concept: 'mise',
-    },
+const UI: Record<Lang, { learn: string; close: string; learning: string; complete: string }> = {
+  en: { learn: 'Learn more', close: 'Dismiss tip', learning: 'Learning', complete: 'Complete!' },
+  fr: {
+    learn: 'En savoir plus',
+    close: 'Fermer le conseil',
+    learning: 'Apprentissage',
+    complete: 'Terminé !',
   },
-  firstBet: {
-    en: {
-      title: 'First bet is in',
-      body: 'A bet promises that many trick points this round. The highest bet takes the contract — sans atout doubles the stake and outbids an equal plain bet.',
-      concept: 'mise',
-    },
-    fr: {
-      title: 'Première mise',
-      body: 'Une mise promet ce nombre de points de levées pour la ronde. La plus haute mise prend le contrat — le sans atout double la mise et l’emporte sur une mise ordinaire égale.',
-      concept: 'mise',
-    },
-  },
-  trump: {
-    en: {
-      title: 'Trump is set',
-      body: 'The contract winner’s first card names the trump suit. Any trump beats any card of the other suits, and you must follow the led suit whenever you can.',
-      concept: 'atout',
-    },
-    fr: {
-      title: 'L’atout est fixé',
-      body: 'La première carte du gagnant du contrat nomme l’atout. N’importe quel atout bat n’importe quelle carte des autres couleurs, et tu dois fournir la couleur demandée quand tu peux.',
-      concept: 'atout',
-    },
-  },
-  redZero: {
-    en: {
-      title: 'The red 0 (+5)',
-      body: 'The biggest prize of the round. Whoever wins the trick it lands in scores 5 extra points — that trick is worth 6 in total.',
-      concept: 'red0',
-    },
-    fr: {
-      title: 'Le 0 rouge (+5)',
-      body: 'Le plus gros lot de la ronde. L’équipe qui gagne la levée où il tombe marque 5 points de plus — cette levée-là vaut 6 au total.',
-      concept: 'red0',
-    },
-  },
-  brownZero: {
-    en: {
-      title: 'The brown 0 (−2)',
-      body: 'The trick it lands in costs its winner 2 points. Best handed to a trick the other team is already winning.',
-      concept: 'brown0',
-    },
-    fr: {
-      title: 'Le 0 brun (−2)',
-      body: 'La levée où il tombe coûte 2 points à qui la gagne. Le mieux, c’est de le refiler sur une levée que l’autre équipe est déjà en train de gagner.',
-      concept: 'brown0',
-    },
-  },
-  firstTrick: {
-    en: {
-      title: 'First trick (levée)',
-      body: 'One card from each seat; the highest trump takes it, or the highest card of the led suit if no trump was played. Each trick is 1 point — 8 tricks plus the two 0s make 11 a round.',
-      concept: 'levee',
-    },
-    fr: {
-      title: 'Première levée',
-      body: 'Une carte de chaque siège; l’atout le plus haut la remporte, sinon la plus haute carte de la couleur demandée. Chaque levée vaut 1 point — 8 levées plus les deux 0 font 11 par ronde.',
-      concept: 'levee',
-    },
-  },
-  roundOver: {
-    en: {
-      title: 'Round scored',
-      body: 'Make your bet and your team scores +the bet (×2 sans atout); miss it and score −the bet. Defenders always keep the trick points they took. First team to 41 wins.',
-      concept: 'mise',
-    },
-    fr: {
-      title: 'Ronde comptée',
-      body: 'Fais ta mise et ton équipe marque +la mise (×2 sans atout); rate-la et tu marques −la mise. Les défenseurs gardent toujours les points de levées qu’ils ont pris. Première équipe à 41 gagne.',
-      concept: 'mise',
-    },
-  },
-};
-
-const UI: Record<Lang, { got: string; learn: string; close: string }> = {
-  en: { got: 'Got it', learn: 'Learn more', close: 'Dismiss tip' },
-  fr: { got: 'Compris', learn: 'En savoir plus', close: 'Fermer le conseil' },
 };
 
 /** Coach-marks linger, then fade so they never pile up if the player looks away. */
@@ -168,8 +69,14 @@ export function TutorialCoach() {
   const [queue, setQueue] = useState<readonly MarkStep[]>([]);
   const [helpJump, setHelpJump] = useState<ConceptId | null>(null);
   // Steps already handled this mount — guards against re-queuing on the next
-  // store update before the localStorage write is read back.
+  // store update before the localStorage write is read back. Also the live
+  // source for the progress pip (mutated as marks fire; the component always
+  // re-renders alongside via setQueue).
   const seenRef = useRef<Set<string>>(loadTutorialSeen());
+  const seenCount = (): number => MARK_ORDER.filter((s) => seenRef.current.has(s)).length;
+  // Once every step is already seen at mount, the pip has nothing to show —
+  // keep it (and the brief "Complete!" flash) hidden from the start.
+  const [pipDone, setPipDone] = useState(() => seenCount() === MARK_ORDER.length);
 
   // While the intro is up, freeze the bots so the auction waits behind it.
   useEffect(() => {
@@ -235,9 +142,37 @@ export function TutorialCoach() {
     return () => clearTimeout(t);
   }, [current]);
 
+  // "Replay tutorial" (from the HelpSheet) clears progress in this same tab —
+  // re-arm live: wipe what we've seen, re-show the intro, drop any queue.
+  useEffect(() => {
+    const onReset = (): void => {
+      seenRef.current = new Set();
+      setQueue([]);
+      setPipDone(false);
+      if (enabled) setIntroUp(true);
+    };
+    window.addEventListener(TUTORIAL_RESET_EVENT, onReset);
+    return () => window.removeEventListener(TUTORIAL_RESET_EVENT, onReset);
+  }, [enabled]);
+
+  const progress = seenCount();
+  const total = MARK_ORDER.length;
+
+  // At 7/7 the pip flashes "Complete!" once it's actually on screen (i.e. no
+  // mark is covering it), then retires for good.
+  useEffect(() => {
+    if (pipDone || progress < total || current !== null) return undefined;
+    const t = setTimeout(() => setPipDone(true), 2600);
+    return () => clearTimeout(t);
+  }, [pipDone, progress, total, current]);
+
   if (!enabled) return null;
 
   const dismissMark = (): void => setQueue((q) => q.slice(1));
+
+  // The pip steps aside while a mark or the intro is up (on a phone the mark
+  // spans the width), and retires once complete or nothing is left to track.
+  const showPip = !introUp && !pipDone && current === null;
 
   return (
     <>
@@ -256,8 +191,62 @@ export function TutorialCoach() {
           />,
           document.body,
         )}
+      {showPip &&
+        createPortal(
+          <ProgressPip lang={lang} seen={progress} total={total} done={progress >= total} />,
+          document.body,
+        )}
       {helpJump !== null && <HelpSheet jumpTo={helpJump} onClose={() => setHelpJump(null)} />}
     </>
+  );
+}
+
+/**
+ * A compact "Learning · 3/7" chip that fills as the coach-marks fire, tucked
+ * top-left under the status bar and clear of the felt action. Click-through
+ * (it owns no controls); flips to "Complete!" for a beat at 7/7.
+ */
+function ProgressPip({
+  lang,
+  seen,
+  total,
+  done,
+}: {
+  readonly lang: Lang;
+  readonly seen: number;
+  readonly total: number;
+  readonly done: boolean;
+}) {
+  const u = UI[lang];
+  const pct = total === 0 ? 0 : Math.round((seen / total) * 100);
+  return (
+    <div
+      role="status"
+      aria-label={done ? u.complete : `${u.learning} ${seen}/${total}`}
+      className="pointer-events-none fixed right-2 top-[4.75rem] z-30 max-sm:right-1.5 max-sm:top-[4.25rem]"
+    >
+      <div className="pop-in flex items-center gap-2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) py-1.5 pl-2.5 pr-3 shadow-(--shadow-ap)">
+        <span aria-hidden className="text-(--color-ap-gold)">
+          ❖
+        </span>
+        <span className="font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-white/90">
+          {done ? u.complete : u.learning}
+        </span>
+        {!done && (
+          <>
+            <span className="h-1.5 w-12 overflow-hidden rounded-full bg-white/15" aria-hidden>
+              <span
+                className="block h-full rounded-full bg-(--color-ap-gold) transition-[width] duration-(--duration-flick)"
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+            <span className="font-arcade-ui text-(length:--text-fluid-xs) tabular-nums text-white/70">
+              {seen}/{total}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -341,7 +330,7 @@ function Mark({
   onLearn,
   onClose,
 }: {
-  readonly copy: Copy;
+  readonly copy: MarkCopy;
   readonly lang: Lang;
   readonly onLearn: () => void;
   readonly onClose: () => void;
