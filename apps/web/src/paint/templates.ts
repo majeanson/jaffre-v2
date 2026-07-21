@@ -119,16 +119,135 @@ const HEART = spriteToGrid(
   { R: '#e05252' },
 );
 
+const ROBOT = spriteToGrid(
+  [
+    '................',
+    '......X..X......',
+    '......X..X......',
+    '.....GGGGGG.....',
+    '....GGGGGGGG....',
+    '....GWWGGWWG....',
+    '....GWWGGWWG....',
+    '....GGGGGGGG....',
+    '....GGKKKKGG....',
+    '....GGGGGGGG....',
+    '.....GGGGGG.....',
+    '......G..G......',
+    '....GGGGGGGG....',
+    '...G.GGGGGG.G...',
+    '....GGGGGGGG....',
+    '.....G....G.....',
+  ],
+  { X: '#8a7f9c', G: '#82c7dc', W: '#ffffff', K: '#0b0713' },
+);
+
+const GHOST = spriteToGrid(
+  [
+    '................',
+    '................',
+    '.....VVVVVV.....',
+    '...VVVVVVVVVV...',
+    '..VVVVVVVVVVVV..',
+    '..VVWWVVVVWWVV..',
+    '..VVWBVVVVWBVV..',
+    '..VVWWVVVVWWVV..',
+    '..VVVVVVVVVVVV..',
+    '..VVVVVVVVVVVV..',
+    '..VVVVVVVVVVVV..',
+    '..VVVVVVVVVVVV..',
+    '..VVVVVVVVVVVV..',
+    '..VV.VV..VV.VV..',
+    '..V..V....V..V..',
+    '................',
+  ],
+  { V: '#7a6ff0', W: '#ffffff', B: '#0b0713' },
+);
+
+const CAT = spriteToGrid(
+  [
+    '................',
+    '...O........O...',
+    '...OO......OO...',
+    '...OOOOOOOOOO...',
+    '..OOOOOOOOOOOO..',
+    '..OOKKOOOOKKOO..',
+    '..OOKKOOOOKKOO..',
+    '..OOOOOOOOOOOO..',
+    '..OOOOOPPOOOOO..',
+    '..OOOOPPPPOOOO..',
+    '..OKOOOOOOOOKO..',
+    '..OOOOOOOOOOOO..',
+    '...OOOOOOOOOO...',
+    '....OOOOOOOO....',
+    '................',
+    '................',
+  ],
+  { O: '#f2c66d', K: '#0b0713', P: '#ef9494' },
+);
+
+const STAR = spriteToGrid(
+  [
+    '................',
+    '.......YY.......',
+    '.......YY.......',
+    '......YYYY......',
+    '......YYYY......',
+    '.YYYYYYYYYYYYYY.',
+    '..YYYYYYYYYYYY..',
+    '...YYYYYYYYYY...',
+    '....YYYYYYYY....',
+    '....YYYYYYYY....',
+    '...YYYYYYYYYY...',
+    '...YYYY..YYYY...',
+    '..YYY......YYY..',
+    '..YY........YY..',
+    '.YY..........YY.',
+    '................',
+  ],
+  { Y: '#f2b712' },
+);
+
+const INVADER = spriteToGrid(
+  [
+    '................',
+    '................',
+    '....X......X....',
+    '.....X....X.....',
+    '....XXXXXXXX....',
+    '...XX.XXXX.XX...',
+    '..XXXXXXXXXXXX..',
+    '..X.XXXXXXXX.X..',
+    '..X.X......X.X..',
+    '.....XX..XX.....',
+    '....XX....XX....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  { X: '#58b884' },
+);
+
 export interface Template {
   readonly id: string;
   readonly labelEn: string;
   readonly labelFr: string;
   readonly grid: Grid;
+  /** The two OG bonhommes double as the red-0 / brown-0 scoring cards. Players
+   * may pick them, but bots never wear them — a bot avatar that looked like a
+   * bonhomme card would confuse the table (see paint/botAvatars). */
+  readonly bonhomme?: boolean;
 }
 
 export const TEMPLATES: readonly Template[] = [
-  { id: 'joffre', labelEn: 'General', labelFr: 'Général', grid: JOFFRE },
-  { id: 'allemagne', labelEn: 'Top hat', labelFr: 'Chapeau', grid: ALLEMAGNE },
+  { id: 'robot', labelEn: 'Robot', labelFr: 'Robot', grid: ROBOT },
   { id: 'smiley', labelEn: 'Smiley', labelFr: 'Sourire', grid: SMILEY },
+  { id: 'cat', labelEn: 'Cat', labelFr: 'Chat', grid: CAT },
+  { id: 'star', labelEn: 'Star', labelFr: 'Étoile', grid: STAR },
+  { id: 'ghost', labelEn: 'Ghost', labelFr: 'Fantôme', grid: GHOST },
   { id: 'heart', labelEn: 'Heart', labelFr: 'Cœur', grid: HEART },
+  { id: 'invader', labelEn: 'Invader', labelFr: 'Envahisseur', grid: INVADER },
+  { id: 'joffre', labelEn: 'General', labelFr: 'Général', grid: JOFFRE, bonhomme: true },
+  { id: 'allemagne', labelEn: 'Top hat', labelFr: 'Chapeau', grid: ALLEMAGNE, bonhomme: true },
 ];
