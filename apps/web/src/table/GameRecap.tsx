@@ -1,10 +1,11 @@
 import type { EndReason, SeatView } from '@jaffre/engine';
 import type { RosterSeat } from '@jaffre/protocol';
 import { AvatarChip, Cta, StatPanel, useLang, type Lang } from '@jaffre/ui';
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { LinkNudge } from '../components/LinkAccount.js';
 import { useScrollLock } from '../components/useScrollLock.js';
 import { Confetti } from './Confetti.js';
+import { StartingHandsRows } from './StartingHandsPanel.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
 const TEAM_COLOR = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
@@ -28,6 +29,8 @@ const T: Record<
     game: string;
     gamesWon: string;
     roundByRound: string;
+    startingHands: string;
+    tapForHands: string;
     rd: string;
     contract: string;
     deltaSun: string;
@@ -60,6 +63,8 @@ const T: Record<
     game: 'Game',
     gamesWon: 'Games won',
     roundByRound: 'Round-by-round scores',
+    startingHands: 'Starting hands',
+    tapForHands: 'Tap a round to see its starting hands',
     rd: 'Rd',
     contract: 'Contract',
     deltaSun: 'Δ Sun',
@@ -92,6 +97,8 @@ const T: Record<
     game: 'Partie',
     gamesWon: 'Parties gagnées',
     roundByRound: 'Pointage ronde par ronde',
+    startingHands: 'Mains de départ',
+    tapForHands: 'Touchez une ronde pour voir les mains de départ',
     rd: 'R',
     contract: 'Contrat',
     deltaSun: 'Δ Soleil',
@@ -256,6 +263,9 @@ export function GameRecap({
   endReason,
 }: GameRecapProps) {
   const t = T[useLang()];
+  // Which round's starting hands are expanded in the round-by-round table
+  // (one at a time), keyed by roundIndex; null when all are collapsed.
+  const [openRound, setOpenRound] = useState<number | null>(null);
   useScrollLock();
   // Same focus contract as RoundSummaryOverlay: the hand unmounts at game
   // over, so without this a keyboard/SR user is dropped on <body> and must
@@ -413,6 +423,9 @@ export function GameRecap({
               aria-label={t.roundByRound}
               className="mt-5 max-h-56 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
             >
+              {rounds.some((r) => r?.startingHands !== undefined) && (
+                <p className="mb-1 px-1.5 text-[0.85em] text-(--color-ap-muted)">{t.tapForHands}</p>
+              )}
               <table className="w-full tabular-nums">
                 <thead className="text-(--color-ap-muted)">
                   <tr>
@@ -424,11 +437,49 @@ export function GameRecap({
                   </tr>
                 </thead>
                 <tbody className="text-(--color-ap-text)">
-                  {rounds.map(
-                    (r) =>
-                      r !== null && (
-                        <tr key={r.roundIndex} className="odd:bg-(--color-ap-ink)/15">
-                          <td className="px-1.5 py-1">{r.roundIndex + 1}</td>
+                  {rounds.map((r, i) => {
+                    if (r === null) return null;
+                    const hands = r.startingHands;
+                    const canExpand = hands !== undefined;
+                    const open = openRound === r.roundIndex;
+                    const toggle = () => setOpenRound(open ? null : r.roundIndex);
+                    const stripe = i % 2 === 1 ? 'bg-(--color-ap-ink)/15' : '';
+                    return (
+                      <Fragment key={r.roundIndex}>
+                        <tr
+                          className={`${stripe} ${
+                            canExpand
+                              ? 'cursor-pointer hover:bg-(--color-ap-ink)/25 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-(--color-ap-violet)'
+                              : ''
+                          }`}
+                          {...(canExpand
+                            ? {
+                                role: 'button',
+                                tabIndex: 0,
+                                'aria-expanded': open,
+                                onClick: toggle,
+                                onKeyDown: (e: KeyboardEvent) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    toggle();
+                                  }
+                                },
+                              }
+                            : {})}
+                        >
+                          <td className="px-1.5 py-1">
+                            {canExpand && (
+                              <span
+                                aria-hidden
+                                className={`mr-0.5 inline-block text-(--color-ap-muted) transition-transform ${
+                                  open ? 'rotate-90' : ''
+                                }`}
+                              >
+                                ▸
+                              </span>
+                            )}
+                            {r.roundIndex + 1}
+                          </td>
                           <td className="px-1.5 py-1">
                             {names[r.contract.seat]} {r.contract.value}
                             {r.contract.sansAtout ? ' SA' : ''}{' '}
@@ -448,8 +499,18 @@ export function GameRecap({
                             {r.scores[0]}–{r.scores[1]}
                           </td>
                         </tr>
-                      ),
-                  )}
+                        {canExpand && open && (
+                          <tr className={stripe}>
+                            <td colSpan={5} className="px-1.5 pb-2">
+                              <div role="region" aria-label={t.startingHands}>
+                                <StartingHandsRows hands={hands} names={names} />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

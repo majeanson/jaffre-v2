@@ -1,5 +1,5 @@
-import type { Card, SeatView, Suit } from '@jaffre/engine';
-import { legalBidChoices, legalCards } from '@jaffre/engine';
+import type { Card, Phase, SeatView, Suit } from '@jaffre/engine';
+import { legalBidChoices, legalCards, TARGET_SCORE } from '@jaffre/engine';
 import type { BotDifficulty, Roster } from '@jaffre/protocol';
 import type {
   AuctionTurn,
@@ -56,6 +56,40 @@ const T: Record<
   },
 };
 
+/**
+ * The shared "state of the game right now" shown in the peek's game section —
+ * identical for every seat, so one object is attached to all seat chips. Lets
+ * the avatar peek surface the full match context (score, bet, trump, tricks)
+ * next to the player it's about.
+ */
+export interface GamePeekInfo {
+  readonly phase: Phase;
+  /** 1-based round number in progress. */
+  readonly round: number;
+  /** "Marcel to play" / "Round over" — the same headline the score strip shows. */
+  readonly action: string;
+  /** Running game totals [Sun, Moon]. */
+  readonly scores: readonly [number, number];
+  /** Points needed to win the game. */
+  readonly target: number;
+  /** The viewer's own team (seat parity), highlighted; null when spectating. */
+  readonly myTeam: 0 | 1 | null;
+  readonly trump: Suit | null;
+  readonly trumpDecided: boolean;
+  /** Tricks captured this round per team [Sun, Moon]. */
+  readonly trickCounts: readonly [number, number];
+  /** Trick points taken this round per team [Sun, Moon]. */
+  readonly roundPoints: readonly [number, number];
+  /** The winning bet and how it's progressing, once decided. */
+  readonly contract: {
+    readonly bidderName: string;
+    readonly team: 0 | 1;
+    readonly value: number;
+    readonly sansAtout: boolean;
+    readonly progress: number;
+  } | null;
+}
+
 /** Everything a seat chip needs to render, already resolved from game state. */
 export interface SeatChipInfo {
   readonly name: string;
@@ -80,6 +114,9 @@ export interface SeatChipInfo {
   readonly bidText: string | null;
   /** True when this seat holds the contract (highlights the bid bubble). */
   readonly isContract: boolean;
+  /** The shared match context — the peek's "This game" section. Same object
+   * across every seat. */
+  readonly game: GamePeekInfo;
 }
 
 /** Contract line for the score strip. */
@@ -287,6 +324,30 @@ export function useTableDerived(coachOn = false): TableDerived | null {
         }
       : null;
 
+  // One snapshot of the match, shared by every seat's peek game section.
+  const gamePeek: GamePeekInfo = {
+    phase: view.phase,
+    round: view.roundIndex + 1,
+    action: headerAction,
+    scores: view.scores,
+    target: TARGET_SCORE,
+    myTeam: me === null ? null : ((me % 2) as 0 | 1),
+    trump: view.trump,
+    trumpDecided: view.trumpDecided,
+    trickCounts,
+    roundPoints: view.roundPoints,
+    contract:
+      contractDisplay === null
+        ? null
+        : {
+            bidderName: contractDisplay.playerName,
+            team: contractDisplay.team,
+            value: contractDisplay.value,
+            sansAtout: contractDisplay.sansAtout,
+            progress: contractDisplay.progress,
+          },
+  };
+
   const seatInfo = (position: 0 | 1 | 2 | 3): SeatChipInfo | null => {
     const seat = me === null ? position : (((position + me) % 4) as 0 | 1 | 2 | 3);
     const info = roster.seats[seat];
@@ -305,6 +366,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       autoPlay: info.autoPlay ?? false,
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
+      game: gamePeek,
     };
   };
 

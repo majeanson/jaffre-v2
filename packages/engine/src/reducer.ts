@@ -189,6 +189,9 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
     trickPoints: state.roundPoints,
     deltas,
     scores,
+    // Every card has been played by now, so `state.hands` are empty — recover
+    // this round's deal deterministically from (seed, round) for the recap.
+    startingHands: deal(state.seed, state.roundIndex),
   };
   events.push({ type: 'round_scored', summary });
 

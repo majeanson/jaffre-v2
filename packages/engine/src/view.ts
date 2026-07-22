@@ -18,8 +18,10 @@ import type {
 export type Viewer = Seat | 'spectator';
 
 /**
- * What one viewer is allowed to see. Never contains another seat's hand or the
- * seed — this is the anti-cheat boundary and the only shape clients receive.
+ * What one viewer is allowed to see. Never contains another live seat's hand or
+ * the seed — this is the anti-cheat boundary and the only shape clients receive.
+ * (A scored `RoundSummary` may carry every seat's *starting* hand for that
+ * finished round; independent per-round deals mean this leaks nothing in play.)
  */
 export interface SeatView {
   readonly viewer: Viewer;

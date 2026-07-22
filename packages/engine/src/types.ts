@@ -67,6 +67,14 @@ export interface RoundSummary {
   readonly trickPoints: readonly [number, number];
   readonly deltas: readonly [number, number];
   readonly scores: readonly [number, number];
+  /**
+   * All four seats' 8-card starting hands for this round, seat-indexed. Absent
+   * on summaries scored before this field existed (legacy states/history rows).
+   * Safe to carry in a client view even though it names every seat's cards:
+   * each round is an independent seeded deal, so a *finished* round's hands
+   * reveal nothing about the current or any future round.
+   */
+  readonly startingHands?: readonly (readonly Card[])[];
 }
 
 export interface GameState {

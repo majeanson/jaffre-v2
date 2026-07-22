@@ -105,6 +105,34 @@ test('glossary: color-family entries with wiki cross-links', async ({ page }) =>
   await expectNoSeriousViolations(page, 'glossary open');
 });
 
+test('avatar peek opens two sections: the player and the current game', async ({ page }) => {
+  // A mid-trick table has a decided contract and trump, so the game section
+  // shows real values (not the "no bet / undecided" auction placeholders).
+  await page.goto('/#scenes/mid-trick');
+  await page
+    .getByRole('button', { name: /Show .*info/ })
+    .first()
+    .click();
+
+  const peek = page.getByRole('dialog');
+  await expect(peek).toBeVisible();
+
+  // Section 1 — the player: identity, a live-role badge, connection.
+  await expect(peek.getByText('Player', { exact: true })).toBeVisible();
+  await expect(peek.getByText('Connected')).toBeVisible();
+
+  // Section 2 — the current game: round, score race, bet, trump, tricks.
+  await expect(peek.getByText('This game', { exact: true })).toBeVisible();
+  await expect(peek.getByText(/^Round \d+$/)).toBeVisible();
+  await expect(peek.getByText('Score', { exact: true })).toBeVisible();
+  await expect(peek.getByText(/first to \d+/)).toBeVisible();
+  await expect(peek.getByText('Bet', { exact: true })).toBeVisible();
+  await expect(peek.getByText('Trump', { exact: true })).toBeVisible();
+  await expect(peek.getByText('Tricks', { exact: true })).toBeVisible();
+
+  await expectNoSeriousViolations(page, 'avatar peek open');
+});
+
 /**
  * Overflow guard across every media width: phone → large phone → tablet → the
  * `lg` two-column breakpoint → wide desktop. The title screen's `main` clips

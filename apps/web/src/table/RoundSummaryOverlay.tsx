@@ -12,6 +12,7 @@ import {
 } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 import { useScrollLock } from '../components/useScrollLock.js';
+import { StartingHandsPanel } from './StartingHandsPanel.js';
 
 const T: Record<
   Lang,
@@ -177,7 +178,7 @@ export function RoundSummaryOverlay({
       aria-modal="true"
       aria-label={tr.summary}
     >
-      <div className="w-[26rem] max-w-[92vw] rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
+      <div className="max-h-[calc(100dvh-2rem)] w-[26rem] max-w-[92vw] overflow-y-auto overscroll-contain rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-6 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <p className="text-center font-arcade-display text-[11px] tracking-[0.2em] text-(--color-ap-muted) uppercase">
           {tr.round(summary.roundIndex + 1)}
         </p>
@@ -238,6 +239,12 @@ export function RoundSummaryOverlay({
             shadowClass=""
           />
         </div>
+
+        {/* The four starting hands, collapsed by default so they never crowd
+            the score — tap to relive who was dealt what. */}
+        {summary.startingHands !== undefined && (
+          <StartingHandsPanel hands={summary.startingHands} names={names} />
+        )}
 
         <div className="mt-5 flex flex-col items-center gap-2">
           <Cta type="button" onClick={onReady} disabled={youReady} className="w-full">
