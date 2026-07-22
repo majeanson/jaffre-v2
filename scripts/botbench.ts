@@ -184,7 +184,10 @@ async function loadBotsAt(ref: string): Promise<{ choose: Chooser; sha: string }
     mkdirSync(cacheDir, { recursive: true });
     const tarFile = join(cacheDir, 'bots.tar');
     git('archive', '--format=tar', '-o', tarFile, sha, 'packages/bots/src');
-    execFileSync('tar', ['-xf', tarFile, '-C', cacheDir]);
+    // Extract with cwd + a bare relative filename: a Windows absolute path like
+    // `C:\…\bots.tar` makes tar treat `C:` as a remote host ("Cannot connect to
+    // C: resolve failed"). Staying inside cacheDir sidesteps the colon entirely.
+    execFileSync('tar', ['-xf', 'bots.tar'], { cwd: cacheDir });
     rmSync(tarFile, { force: true });
     if (!existsSync(entry)) throw new Error(`no packages/bots/src/index.ts at ${ref} (${sha})`);
   }

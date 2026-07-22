@@ -249,8 +249,8 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     color: BLUE,
     term: { en: 'The bid (mise)', fr: 'La mise' },
     def: {
-      en: 'Your contract: 7 to 12 trick points, one round of bidding, dealer last. Make it and score +bid; miss it and score −bid. Bid the smallest number that wins the auction.',
-      fr: 'Ton contrat : 7 à 12 points de levées, une seule ronde de mises, le brasseur en dernier. Fais-la et tu marques +la mise; rate-la et tu marques −la mise. Mise le plus petit nombre qui remporte les mises.',
+      en: 'Your contract: 7 to 12 trick points, one round of bidding, dealer last. Make it and score +bid; miss it and score −bid — and the defenders keep every point they take either way, so a missed bid is a double gift. Bid the number your hand can really make (a made 9 beats a made 7); when it can’t, pass and bank points on defence.',
+      fr: 'Ton contrat : 7 à 12 points de levées, une seule ronde de mises, le brasseur en dernier. Fais-la et tu marques +la mise; rate-la et tu marques −la mise — et les défenseurs gardent tous leurs points quoi qu’il arrive, alors une mise ratée est un cadeau double. Mise le nombre que ta main peut vraiment faire (une mise de 9 réussie vaut plus qu’un 7); sinon, passe et marque en défense.',
     },
     see: ['sansatout', 'brasseur', 'levee'],
   },

@@ -12,8 +12,27 @@ export function isBotDifficulty(x: unknown): x is BotDifficulty {
 }
 
 const BID_OPTS: Record<Exclude<BotDifficulty, 'easy'>, BidOpts> = {
-  normal: { margin: 1.0, allowSansAtout: false, scoreAware: false, partnerOutbidMargin: Infinity },
-  hard: { margin: 0.5, allowSansAtout: true, scoreAware: true, partnerOutbidMargin: 2 },
+  // `margin` stays conservative on purpose: a missed contract is −value (the
+  // defenders also keep their points), so opening marginal hands is −EV —
+  // measured to LOSE games. `bidHigh` is the win-neutral lever: keep the same
+  // (correct) opening discipline, but bid the hand's ceiling instead of a bare
+  // 7, so a genuine monster bids 8-9 and banks the larger stake. Tuned with
+  // scripts/bidab.ts (head-to-head win rate) + botbench.
+  normal: {
+    margin: 1.0,
+    allowSansAtout: false,
+    scoreAware: false,
+    partnerOutbidMargin: Infinity,
+    bidHigh: true,
+  },
+  // Hard already opens aggressively (margin 0.5) + sans-atout, so bidding to its
+  // stretched ceiling overbids and LOSES (measured); it keeps bid-minimum.
+  hard: {
+    margin: 0.5,
+    allowSansAtout: true,
+    scoreAware: true,
+    partnerOutbidMargin: 2,
+  },
 };
 
 /**

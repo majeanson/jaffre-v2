@@ -154,6 +154,10 @@ export interface BidOpts {
   readonly scoreAware: boolean;
   /** Extra value beyond partner's bid required to override it (Infinity = never). */
   readonly partnerOutbidMargin: number;
+  /** Bid the highest value the hand safely supports (its ceiling) instead of the
+   * minimum that wins the auction. Higher contracts score more when made
+   * (stake = value), but fail harder — off by default; A/B-tuned. */
+  readonly bidHigh?: boolean;
 }
 
 type PlainBid = Extract<BidChoice, { kind: 'bid' }>;
@@ -184,9 +188,14 @@ export function pickBid(view: SeatView, opts: BidOpts): BidChoice {
   if (ceil < 7) return { kind: 'pass' };
 
   const legal = legalBidChoices(view.bids).filter((c): c is PlainBid => c.kind === 'bid');
-  const plain = legal
+  const affordablePlain = legal
     .filter((c) => !c.sansAtout && c.value <= ceil)
-    .sort((a, b) => a.value - b.value)[0];
+    .sort((a, b) => a.value - b.value);
+  // Default: the minimum that wins (overbidding is symmetric-stake risk). With
+  // bidHigh: the ceiling, to bank the larger stake on a hand that supports it.
+  const plain = opts.bidHigh
+    ? affordablePlain[affordablePlain.length - 1]
+    : affordablePlain[0];
 
   if (opts.allowSansAtout) {
     const sa = evalSansAtout(view.hand);

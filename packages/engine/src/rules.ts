@@ -1,3 +1,35 @@
+/**
+ * Jaffre rules & scoring — the canonical reference. Keep this in sync with the
+ * player-facing copy in apps/web/src/help/HelpSheet.tsx and the bot bid
+ * evaluator in packages/bots/src/evaluate.ts.
+ *
+ * DECK: 32 cards — 4 suits (red, brown, green, blue) × values 0-7. 8 cards dealt
+ * to each of 4 seats; partners sit across (teams are seat % 2).
+ *
+ * TRUMP: whatever suit the declarer LEADS FIRST becomes trump (sans-atout = no
+ * trump at all). Highest trump wins a trick, else highest card of the led suit;
+ * you must follow the led suit when you can.
+ *
+ * POINTS (per round, 11 total): each trick is worth 1, +5 if it contains the
+ * red 0 (the prize), −2 if it contains the brown 0 (the trap). 8 + 5 − 2 = 11.
+ *
+ * BIDDING: one round, dealer last. A bid of 7-12 promises the contract team
+ * captures at least that many points; sans-atout doubles the stake. If all four
+ * pass, the dealer is FORCED to a plain 7. Higher value or (at equal value)
+ * sans-atout outbids.
+ *
+ * SETTLEMENT (see reducer.ts scoreRound): the contract team scores +stake if it
+ * makes the contract, −stake if it misses (stake = value, ×2 sans-atout). The
+ * DEFENDERS ALWAYS KEEP THEIR CAPTURED POINTS, win or lose. First team to 41
+ * wins (TARGET_SCORE).
+ *
+ * STRATEGIC CONSEQUENCE (drives bot bidding): because a miss is −value AND the
+ * defenders still bank their points, bidding is a real gamble while passing
+ * quietly collects defensive points. So opening marginal hands is −EV — it's
+ * correct to pass often and let weak auctions fall to the forced dealer-7. When
+ * a hand IS worth bidding, bid the value it can actually make (a made 9 scores
+ * more than a made 7), not a timid minimum.
+ */
 import type { Card, Suit, Team, TrickPlay } from './types.js';
 import { sameCard } from './types.js';
 
