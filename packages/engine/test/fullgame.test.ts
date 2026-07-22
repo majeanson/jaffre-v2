@@ -7,7 +7,7 @@ describe('full games', () => {
   it(
     '1000 seeded games all run to completion with a legitimate winner',
     { timeout: 120_000 },
-    () => {
+    async () => {
       let totalActions = 0;
       for (let seed = 0; seed < 1000; seed++) {
         const { final, actions } = playFullGame(seed);
@@ -15,6 +15,13 @@ describe('full games', () => {
         expect(final.phase).toBe('game_over');
         expect(final.winner === 0 || final.winner === 1).toBe(true);
         expect(final.scores[final.winner as 0 | 1]).toBeGreaterThanOrEqual(TARGET_SCORE);
+        // This loop runs ~70s of uninterrupted synchronous work. Vitest's
+        // worker reports progress to the main process over an RPC that must
+        // resolve within 60s; a sync block that long starves the worker's own
+        // event loop, so the pending `onTaskUpdate` call trips its timeout and
+        // fails the run even though every game passed. Yield each 100 games so
+        // the reporter RPC gets serviced.
+        if (seed % 100 === 99) await new Promise((resolve) => setTimeout(resolve, 0));
       }
       expect(totalActions).toBeGreaterThan(0);
     },
