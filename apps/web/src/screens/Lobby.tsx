@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { ChatPanel, Cta, useLang, type Lang } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
 import { LinkNudge } from '../components/LinkAccount.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
+import { consumeMakePublic } from '../net/rooms.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -32,6 +34,8 @@ const T: Record<
     hailMary: string;
     hailMaryHint: string;
     fillBots: string;
+    publicTable: string;
+    publicHint: string;
   }
 > = {
   en: {
@@ -46,6 +50,8 @@ const T: Record<
     hailMary: 'Hail-Mary 12 sans atout',
     hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
     fillBots: 'Fill empty seats with bots',
+    publicTable: 'List on the public lobby',
+    publicHint: 'Anyone can find and join this table via Quick Play or Browse.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -60,6 +66,8 @@ const T: Record<
     hailMaryHint:
       'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
     fillBots: 'Remplir les sièges vides avec des bots',
+    publicTable: 'Afficher dans le salon public',
+    publicHint: 'Tout le monde peut trouver et rejoindre cette table via Partie rapide ou Parcourir.',
   },
 };
 
@@ -73,6 +81,12 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
   // default matches; unchecking is the deliberate act).
   const hailMary = roster?.rules?.hailMary12 ?? true;
+  const isPublic = roster?.public ?? false;
+
+  // A Quick-Play-created room is hosted public: once we're seated, flip it on.
+  useEffect(() => {
+    if (seated && consumeMakePublic(code)) send({ t: 'set_public', on: true });
+  }, [seated, code]);
 
   return (
     <main className="table-felt grid min-h-full place-items-center p-6">
@@ -137,6 +151,27 @@ export function Lobby({ code, onLeave }: LobbyProps) {
               {t.hailMary}
             </span>
             <span className="text-xs leading-snug text-(--color-ap-muted)">{t.hailMaryHint}</span>
+          </span>
+        </label>
+
+        <label
+          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            role="switch"
+            checked={isPublic}
+            disabled={!seated}
+            onChange={(e) => send({ t: 'set_public', on: e.target.checked })}
+            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+          />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+              {t.publicTable}
+            </span>
+            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.publicHint}</span>
           </span>
         </label>
 

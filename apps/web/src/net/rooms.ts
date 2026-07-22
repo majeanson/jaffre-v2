@@ -103,6 +103,68 @@ export async function leaveTable(code: string): Promise<void> {
   }
 }
 
+/** An open public table in the matchmaking lobby (GET /api/rooms). */
+export interface PublicRoom {
+  readonly code: string;
+  readonly host: string;
+  readonly players: number;
+  readonly capacity: number;
+  readonly phase: 'waiting' | 'playing';
+}
+
+/** The browsable list of open public tables. Empty on error / lobby off. */
+export async function fetchPublicRooms(): Promise<readonly PublicRoom[]> {
+  try {
+    const res = await fetch('/api/rooms');
+    if (!res.ok) return [];
+    return ((await res.json()) as { rooms: readonly PublicRoom[] }).rooms;
+  } catch {
+    return [];
+  }
+}
+
+/** sessionStorage marker: a code the client should make public on join (a
+ * Quick-Play-created room the player is about to host). Consumed by Lobby. */
+const MAKE_PUBLIC_KEY = 'jaffre-make-public';
+
+/** Quick Play: match into an open public table, or get a fresh code to host.
+ * When we're the host of a new room, mark it to be made public on join. */
+export async function quickPlay(): Promise<string> {
+  try {
+    const res = await fetch('/api/quickplay', { method: 'POST' });
+    if (res.ok) {
+      const { code, created } = (await res.json()) as { code: string; created: boolean };
+      if (created) markMakePublic(code);
+      return code;
+    }
+  } catch {
+    // Fall through to a client-only fallback below.
+  }
+  // Lobby unreachable — host a fresh local-style code (still made public on join).
+  const code = `qp-${Math.random().toString(36).slice(2, 8)}`;
+  markMakePublic(code);
+  return code;
+}
+
+function markMakePublic(code: string): void {
+  try {
+    sessionStorage.setItem(MAKE_PUBLIC_KEY, code);
+  } catch {
+    // Session storage unavailable — the host can still toggle public manually.
+  }
+}
+
+/** True (once) if `code` was flagged to be made public on join; clears the flag. */
+export function consumeMakePublic(code: string): boolean {
+  try {
+    if (sessionStorage.getItem(MAKE_PUBLIC_KEY) !== code) return false;
+    sessionStorage.removeItem(MAKE_PUBLIC_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Drop a table from the row (e.g. the user dismisses it). */
 export function forgetTable(code: string): void {
   const next = listTables().filter((t) => t.code !== code);

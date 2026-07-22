@@ -69,6 +69,9 @@ export const clientMessageSchema = z.union([
   // stays yours; turning it off returns control. Seat is inferred from the
   // sender — never from the wire.
   z.object({ t: z.literal('set_autoplay'), on: z.boolean() }),
+  // Host toggles whether this pre-game table is listed in the public lobby /
+  // eligible for Quick Play. Only meaningful before the game starts.
+  z.object({ t: z.literal('set_public'), on: z.boolean() }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
@@ -112,6 +115,8 @@ export interface Roster {
   readonly seriesGames?: readonly (readonly [number, number])[];
   /** House rules chosen in the lobby, echoed so every seat sees the toggle. */
   readonly rules?: { readonly hailMary12: boolean };
+  /** Whether this table is listed for matchmaking (public lobby / Quick Play). */
+  readonly public?: boolean;
 }
 
 export interface ChatEntry {

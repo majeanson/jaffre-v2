@@ -11,7 +11,7 @@ import type { Stats } from './net/history.js';
 
 /** Dev switch: unlocks every cosmetic so all skins can be previewed/tested in
  * prod. Flip to false (or gate behind ?dev) to make unlocks play-earned. */
-export const DEV_UNLOCK_ALL = true;
+export const DEV_UNLOCK_ALL = false;
 
 /** Tiny inline picker for the two requirement strings (the catalog is the only
  * place these live, so a full Record table would be overkill). */
@@ -29,15 +29,24 @@ export interface Cosmetic {
 
 /** The set of owned cosmetic ids for these stats. `devAll` forces everything
  * owned (defaults to the DEV_UNLOCK_ALL flag); the gallery passes `false` to
- * preview the real locked state even while the flag is on. */
+ * preview the real locked state even while the flag is on. `grantedRewards` are
+ * cosmetic ids unlocked by earned awards (see awards.ts) — owned regardless of
+ * stats. */
 export function owned(
   catalog: readonly Cosmetic[],
   stats: Stats | null,
   devAll: boolean = DEV_UNLOCK_ALL,
+  grantedRewards: ReadonlySet<string> = new Set(),
 ): Set<string> {
   return new Set(
     catalog
-      .filter((c) => devAll || c.free || (stats !== null && (c.unlock?.(stats) ?? false)))
+      .filter(
+        (c) =>
+          devAll ||
+          c.free ||
+          grantedRewards.has(c.id) ||
+          (stats !== null && (c.unlock?.(stats) ?? false)),
+      )
       .map((c) => c.id),
   );
 }

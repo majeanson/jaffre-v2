@@ -3,12 +3,16 @@ import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider } from '@jaffre/ui'
 import { useCurrentLang } from './lang.js';
 import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Toast } from './components/Toast.js';
 import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { forgetTable } from './net/rooms.js';
 import { leaveVoice } from './voice/rtc.js';
+import { Awards } from './screens/Awards.js';
+import { Leaderboard } from './screens/Leaderboard.js';
+import { PublicLobby } from './screens/PublicLobby.js';
 import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
@@ -28,6 +32,9 @@ type Route =
   | { kind: 'scenes'; id: string | null }
   | { kind: 'history' }
   | { kind: 'stats' }
+  | { kind: 'awards' }
+  | { kind: 'leaderboard' }
+  | { kind: 'lobby' }
   | { kind: 'collection' }
   | { kind: 'paint' }
   | { kind: 'replay'; gameId: string };
@@ -45,6 +52,9 @@ function parseHash(): Route {
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#history') return { kind: 'history' };
   if (h === '#stats') return { kind: 'stats' };
+  if (h === '#awards') return { kind: 'awards' };
+  if (h === '#leaderboard') return { kind: 'leaderboard' };
+  if (h === '#lobby') return { kind: 'lobby' };
   if (h === '#collection') return { kind: 'collection' };
   if (h === '#paint') return { kind: 'paint' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
@@ -94,7 +104,11 @@ export function App() {
   return (
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
-        <AppRoutes />
+        {/* A render crash lands on a localized fallback (kept inside the
+            providers so it stays themed) instead of a white screen. */}
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
         {/* Registers the SW; skipped under automation so e2e never caches. */}
         {!navigator.webdriver && <UpdateToast />}
         {unlocked !== null && (
@@ -159,6 +173,20 @@ function AppRoutes() {
   }
   if (route.kind === 'stats') {
     return <Stats onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'awards') {
+    return <Awards onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'leaderboard') {
+    return <Leaderboard onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'lobby') {
+    return (
+      <PublicLobby
+        onLeave={() => (location.hash = '')}
+        onJoin={(code) => (location.hash = `#room/${code}`)}
+      />
+    );
   }
   if (route.kind === 'collection') {
     return <Collection onLeave={() => (location.hash = collectionReturnHash())} />;

@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
 import { AvatarChip, Cta, Panel, useLang, type Lang } from '@jaffre/ui';
-import { fetchTableStatus, type TableEntry, type TableStatus } from '../net/rooms.js';
+import { fetchTableStatus, quickPlay, type TableEntry, type TableStatus } from '../net/rooms.js';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -29,6 +29,8 @@ const T: Record<
     playNow: string;
     playFriends: string;
     createRoom: string;
+    quickPlay: string;
+    browseTables: string;
     withCode: string;
     roomCode: string;
     joinRoom: string;
@@ -41,6 +43,8 @@ const T: Record<
     moon: (n: number) => string;
     yourGames: string;
     yourRecord: string;
+    yourAwards: string;
+    leaderboard: string;
     finished: string;
     yourTurn: string;
     inPlay: string;
@@ -60,6 +64,8 @@ const T: Record<
     playNow: 'Play now',
     playFriends: 'Play with friends',
     createRoom: 'Create a room',
+    quickPlay: 'Quick Play',
+    browseTables: 'Browse public tables',
     withCode: 'With code',
     roomCode: 'Room code',
     joinRoom: 'Join room',
@@ -73,6 +79,8 @@ const T: Record<
     moon: (n) => `Moon ${String(n)}`,
     yourGames: 'Your games',
     yourRecord: 'Your record',
+    yourAwards: 'Awards',
+    leaderboard: 'Leaderboard',
     finished: 'Finished · rematch?',
     yourTurn: 'Your turn',
     inPlay: 'In play',
@@ -91,6 +99,8 @@ const T: Record<
     playNow: 'Jouer maintenant',
     playFriends: 'Jouer entre amis',
     createRoom: 'Créer un salon',
+    quickPlay: 'Partie rapide',
+    browseTables: 'Parcourir les tables publiques',
     withCode: 'ou joins avec un code',
     roomCode: 'Code du salon',
     joinRoom: 'Joindre le salon',
@@ -104,6 +114,8 @@ const T: Record<
     moon: (n) => `Lune ${String(n)}`,
     yourGames: 'Tes parties',
     yourRecord: 'Ton record',
+    yourAwards: 'Récompenses',
+    leaderboard: 'Classement',
     finished: 'Terminée · revanche?',
     yourTurn: 'À ton tour',
     inPlay: 'En jeu',
@@ -387,9 +399,23 @@ export function PlayMenu({
               <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
                 {t.friendsSub}
               </span>
+              <Cta
+                type="button"
+                onClick={() => {
+                  void quickPlay().then(onJoinRoom);
+                }}
+              >
+                {t.quickPlay}
+              </Cta>
               <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
                 {t.createRoom}
               </Cta>
+              <a
+                href="#lobby"
+                className="text-center font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-ink) underline underline-offset-2 hover:opacity-80"
+              >
+                {t.browseTables}
+              </a>
               {/* Full-opacity ink: a faded label on the violet ground fails AA. */}
               <div
                 aria-hidden
@@ -509,6 +535,24 @@ export function PlayMenu({
                 ★
               </span>
               {t.yourRecord}
+            </a>
+            <a
+              href="#awards"
+              className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span aria-hidden className="text-(--color-ap-gold)">
+                🏅
+              </span>
+              {t.yourAwards}
+            </a>
+            <a
+              href="#leaderboard"
+              className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span aria-hidden className="text-(--color-ap-gold)">
+                📊
+              </span>
+              {t.leaderboard}
             </a>
           </div>
         </Panel>

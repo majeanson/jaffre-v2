@@ -4,6 +4,13 @@ export interface Env {
   ASSETS: Fetcher;
   GAME_ROOM: DurableObjectNamespace;
   /**
+   * Matchmaking registry (single DO, name 'lobby'). OPTIONAL: may be unset in
+   * older setups — GameRoom's lobby sync and the /api/quickplay and /api/rooms
+   * endpoints all no-op/empty when absent, so join-by-code and the rest of the
+   * app keep working. (Bound in wrangler.toml AND wrangler.test.toml.)
+   */
+  LOBBY?: DurableObjectNamespace;
+  /**
    * D1 (games history). Optional: the vitest env or a fresh local dev setup
    * may run without it — every read/write path must guard
    * `env.DB === undefined` and degrade to "no history".

@@ -1,4 +1,6 @@
 import { fetchStats } from './net/history.js';
+import { fetchAwards } from './net/awards.js';
+import { grantedRewardIds } from './awards.js';
 import {
   CARD_SKINS,
   DEFAULT_CARD_SKIN,
@@ -33,9 +35,10 @@ export async function reconcileCosmetics(): Promise<string[]> {
   let ownedCards: Set<string>;
   let ownedThemes: Set<string>;
   try {
-    const stats = await fetchStats();
-    ownedCards = owned(CARD_SKINS, stats, false);
-    ownedThemes = owned(THEMES, stats, false);
+    const [stats, awards] = await Promise.all([fetchStats(), fetchAwards()]);
+    const rewards = grantedRewardIds(awards.map((a) => a.id));
+    ownedCards = owned(CARD_SKINS, stats, false, rewards);
+    ownedThemes = owned(THEMES, stats, false, rewards);
   } catch {
     return [];
   }

@@ -1,5 +1,7 @@
 import type { RoundSummary } from '@jaffre/engine';
+import { EVENT_AWARD_IDS, earnedStatAwardIds } from './awards.js';
 import { GameRoom } from './GameRoom.js';
+import { Lobby, lobbyStub } from './Lobby.js';
 import { generateRecoveryCode, hashRecoveryCode } from './auth/recovery.js';
 import {
   LOGIN_CODE_MAX_ATTEMPTS,
@@ -18,7 +20,7 @@ import { isUsableSecret, mintToken, verifyToken } from './auth/session.js';
 import type { Env } from './env.js';
 import { pushEnabled } from './push.js';
 
-export { GameRoom };
+export { GameRoom, Lobby };
 export type { Env };
 
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
@@ -747,7 +749,19 @@ interface StatsRow {
   readonly seat: number;
 }
 
-const EMPTY_STATS = {
+interface StatsPayload {
+  readonly games: number;
+  readonly wins: number;
+  readonly winRate: number;
+  readonly netPoints: number;
+  readonly bids: { readonly attempted: number; readonly made: number };
+  readonly sansAtout: { readonly attempted: number; readonly made: number };
+  readonly bestPartner: { readonly name: string; readonly games: number; readonly wins: number } | null;
+  readonly nemesis: { readonly name: string; readonly games: number; readonly losses: number } | null;
+  readonly streak: { readonly current: number; readonly best: number };
+}
+
+const EMPTY_STATS: StatsPayload = {
   games: 0,
   wins: 0,
   winRate: 0,
@@ -771,9 +785,17 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
   if (userId === null || userId === '') {
     return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
   }
+  return Response.json(await computeStats(env, userId));
+}
+
+/** The aggregate-stats computation, factored out of handleStats so /api/awards
+ * can reuse it (evaluate stat-based awards against the same numbers). */
+async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
+  const db = env.DB;
+  if (db === undefined) return EMPTY_STATS;
   // Ascending by finished_at: the streak walk needs oldest-first so the
   // running count at the end of the loop IS the current (trailing) streak.
-  const rows = await env.DB.prepare(
+  const rows = await db.prepare(
     `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, g.score_0, g.score_1, gp.seat
      FROM games g JOIN game_players gp ON gp.game_id = g.id
      WHERE gp.user_id = ?1 AND g.finished_at IS NOT NULL
@@ -782,7 +804,7 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
     .bind(userId)
     .all<StatsRow>();
   const games = rows.results;
-  if (games.length === 0) return Response.json(EMPTY_STATS);
+  if (games.length === 0) return EMPTY_STATS;
 
   const players = await playersByGame(
     env,
@@ -858,7 +880,7 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
     if (nemesis === null || entry.losses > nemesis.losses) nemesis = entry;
   }
 
-  return Response.json({
+  return {
     games: games.length,
     wins,
     winRate: wins / games.length,
@@ -868,7 +890,168 @@ async function handleStats(request: Request, env: Env, url: URL): Promise<Respon
     bestPartner,
     nemesis,
     streak: { current: running, best },
+  };
+}
+
+/**
+ * GET /api/awards → the user's earned awards. Stat-based awards are evaluated
+ * from their live aggregate and self-heal (INSERT OR IGNORE) so they can't be
+ * forged; previously-stored event awards (e.g. tutorial-complete) are returned
+ * as-is. Response: { awards: [{ id, grantedAt }] }.
+ */
+async function handleAwards(request: Request, env: Env, url: URL): Promise<Response> {
+  const db = env.DB;
+  if (db === undefined) return noDb();
+  const userId = await resolveUserId(request, env, url);
+  if (userId === undefined) return Response.json({ error: 'Invalid token' }, { status: 401 });
+  if (userId === null || userId === '') {
+    return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
+  }
+
+  // Auto-grant any freshly-earned stat awards, then read the full set back.
+  const now = Date.now();
+  const earned = earnedStatAwardIds(await computeStats(env, userId));
+  if (earned.length > 0) {
+    await db.batch(
+      earned.map((id) =>
+        db
+          .prepare(
+            'INSERT OR IGNORE INTO user_awards (user_id, award_id, granted_at) VALUES (?1, ?2, ?3)',
+          )
+          .bind(userId, id, now),
+      ),
+    );
+  }
+  const rows = await db
+    .prepare('SELECT award_id, granted_at FROM user_awards WHERE user_id = ?1')
+    .bind(userId)
+    .all<{ award_id: string; granted_at: number }>();
+  return Response.json({
+    awards: rows.results.map((r) => ({ id: r.award_id, grantedAt: r.granted_at })),
   });
+}
+
+/**
+ * POST /api/awards/grant { awardId } → grant a client-attested EVENT award
+ * (allowlisted by EVENT_AWARD_IDS). Idempotent (INSERT OR IGNORE). Low stakes
+ * — the reward is a cosmetic — so the allowlist is the guard, not attestation.
+ */
+async function handleAwardGrant(request: Request, env: Env, url: URL): Promise<Response> {
+  const db = env.DB;
+  if (db === undefined) return noDb();
+  const userId = await resolveUserId(request, env, url);
+  if (userId === undefined) return Response.json({ error: 'Invalid token' }, { status: 401 });
+  if (userId === null || userId === '') {
+    return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
+  }
+  let awardId: unknown;
+  try {
+    awardId = ((await request.json()) as { awardId?: unknown }).awardId;
+  } catch {
+    return Response.json({ error: 'Bad JSON' }, { status: 400 });
+  }
+  if (typeof awardId !== 'string' || !EVENT_AWARD_IDS.has(awardId)) {
+    return Response.json({ error: 'Unknown or non-grantable award' }, { status: 400 });
+  }
+  await db
+    .prepare('INSERT OR IGNORE INTO user_awards (user_id, award_id, granted_at) VALUES (?1, ?2, ?3)')
+    .bind(userId, awardId, Date.now())
+    .run();
+  return Response.json({ ok: true });
+}
+
+const LEADERBOARD_MIN_GAMES = 10;
+const LEADERBOARD_LIMIT = 100;
+
+/**
+ * GET /api/leaderboard → the global skill ladder: the top-rated users with at
+ * least LEADERBOARD_MIN_GAMES rated games. Unauthenticated (it's public), but
+ * if a caller identity is present its own row + rank is included so a player
+ * outside the top can still see where they stand. Response:
+ * { top: [{ id, name, color, rating, ratingGames }], you: {…, rank} | null }.
+ */
+async function handleLeaderboard(request: Request, env: Env, url: URL): Promise<Response> {
+  const db = env.DB;
+  if (db === undefined) return noDb();
+
+  const top = await db
+    .prepare(
+      `SELECT id, name, color, rating, rating_games FROM users
+       WHERE rating_games >= ?1 ORDER BY rating DESC, rating_games DESC LIMIT ?2`,
+    )
+    .bind(LEADERBOARD_MIN_GAMES, LEADERBOARD_LIMIT)
+    .all<{ id: string; name: string; color: string | null; rating: number; rating_games: number }>();
+
+  const rowOut = (r: {
+    id: string;
+    name: string;
+    color: string | null;
+    rating: number;
+    rating_games: number;
+  }) => ({ id: r.id, name: r.name, color: r.color, rating: r.rating, ratingGames: r.rating_games });
+
+  // The caller's own standing (best-effort — never fails the public board).
+  let you: (ReturnType<typeof rowOut> & { rank: number }) | null = null;
+  const userId = await resolveUserId(request, env, url);
+  if (typeof userId === 'string' && userId !== '') {
+    const me = await db
+      .prepare('SELECT id, name, color, rating, rating_games FROM users WHERE id = ?1')
+      .bind(userId)
+      .first<{ id: string; name: string; color: string | null; rating: number; rating_games: number }>();
+    if (me !== null && me.rating_games >= LEADERBOARD_MIN_GAMES) {
+      const ahead = await db
+        .prepare('SELECT COUNT(*) AS n FROM users WHERE rating_games >= ?1 AND rating > ?2')
+        .bind(LEADERBOARD_MIN_GAMES, me.rating)
+        .first<{ n: number }>();
+      you = { ...rowOut(me), rank: (ahead?.n ?? 0) + 1 };
+    }
+  }
+
+  return Response.json({ top: top.results.map(rowOut), you });
+}
+
+/** A friendly, route-safe room code for a freshly-created public table. The
+ * full 32-bit random suffix (~6 base36 chars) keeps collisions negligible —
+ * two hosts colliding would be routed into the same GameRoom DO. */
+function newRoomCode(): string {
+  const adjectives = ['brisk', 'sunny', 'lucky', 'bold', 'calm', 'swift', 'keen', 'wily'];
+  const animals = ['fox', 'lynx', 'otter', 'hawk', 'moose', 'heron', 'stoat', 'marten'];
+  const buf = new Uint32Array(3);
+  crypto.getRandomValues(buf);
+  const pick = <T>(arr: readonly T[], n: number): T => arr[n % arr.length] as T;
+  return `${pick(adjectives, buf[0] ?? 0)}-${pick(animals, buf[1] ?? 0)}-${(buf[2] ?? 0).toString(36)}`;
+}
+
+/**
+ * POST /api/quickplay → { code, created } — match the caller into an open
+ * public room, or mint a fresh code for them to host (the client makes it
+ * public on join). Public: guests can quick-play. No-op-safe when the lobby
+ * binding is absent (always returns a fresh code to host).
+ */
+async function handleQuickplay(env: Env): Promise<Response> {
+  const lobby = lobbyStub(env);
+  if (lobby !== null) {
+    try {
+      const res = await lobby.fetch('https://lobby/claim', { method: 'POST' });
+      const { code } = (await res.json()) as { code: string | null };
+      if (code !== null) return Response.json({ code, created: false });
+    } catch {
+      // Lobby unreachable — fall through to hosting a fresh room.
+    }
+  }
+  return Response.json({ code: newRoomCode(), created: true });
+}
+
+/** GET /api/rooms → { rooms: LobbyEntry[] } — the browsable open-tables list. */
+async function handleRooms(env: Env): Promise<Response> {
+  const lobby = lobbyStub(env);
+  if (lobby === null) return Response.json({ rooms: [] });
+  try {
+    const res = await lobby.fetch('https://lobby/list');
+    return Response.json(await res.json());
+  } catch {
+    return Response.json({ rooms: [] });
+  }
 }
 
 const TELEMETRY_MAX_BYTES = 4 * 1024;
@@ -1063,6 +1246,21 @@ export default {
     }
     if (url.pathname === '/api/stats' && request.method === 'GET') {
       return handleStats(request, env, url);
+    }
+    if (url.pathname === '/api/awards' && request.method === 'GET') {
+      return handleAwards(request, env, url);
+    }
+    if (url.pathname === '/api/awards/grant' && request.method === 'POST') {
+      return handleAwardGrant(request, env, url);
+    }
+    if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
+      return handleLeaderboard(request, env, url);
+    }
+    if (url.pathname === '/api/quickplay' && request.method === 'POST') {
+      return handleQuickplay(env);
+    }
+    if (url.pathname === '/api/rooms' && request.method === 'GET') {
+      return handleRooms(env);
     }
     const replayMatch = /^\/api\/replay\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname);
     if (replayMatch !== null && request.method === 'GET') {

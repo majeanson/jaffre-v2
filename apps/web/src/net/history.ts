@@ -60,15 +60,18 @@ export interface Stats {
  * socket's rule: a signed guest token (Bearer) when the server has a
  * SESSION_SECRET, else the plain jaffre-uid (?u=). Null when neither exists
  * yet — callers treat that as "nothing to show" rather than fetching. */
-async function authedFetch(path: string): Promise<Response | null> {
+export async function authedFetch(path: string, init?: RequestInit): Promise<Response | null> {
   const token = await getGuestToken(playerName());
   if (token !== null) {
-    return fetch(path, { headers: { Authorization: `Bearer ${token.token}` } });
+    return fetch(path, {
+      ...init,
+      headers: { ...init?.headers, Authorization: `Bearer ${token.token}` },
+    });
   }
   const uid = localStorage.getItem('jaffre-uid');
   if (uid === null) return null;
   const sep = path.includes('?') ? '&' : '?';
-  return fetch(`${path}${sep}u=${encodeURIComponent(uid)}`);
+  return fetch(`${path}${sep}u=${encodeURIComponent(uid)}`, init);
 }
 
 export async function fetchHistory(): Promise<readonly HistoryGame[]> {
@@ -102,4 +105,26 @@ export async function fetchStats(): Promise<Stats> {
   if (res === null) return EMPTY_STATS; // no identity established yet → nothing to show
   if (!res.ok) throw new Error(`stats ${String(res.status)}`);
   return (await res.json()) as Stats;
+}
+
+export interface LeaderboardRow {
+  readonly id: string;
+  readonly name: string;
+  readonly color: string | null;
+  readonly rating: number;
+  readonly ratingGames: number;
+}
+
+export interface Leaderboard {
+  readonly top: readonly LeaderboardRow[];
+  /** The caller's own standing when ranked (>= min games), else null. */
+  readonly you: (LeaderboardRow & { readonly rank: number }) | null;
+}
+
+export async function fetchLeaderboard(): Promise<Leaderboard> {
+  // Authed when possible (so the board can mark "you"), but the board is public
+  // — fall back to an anonymous fetch when no identity exists yet.
+  const res = (await authedFetch('/api/leaderboard')) ?? (await fetch('/api/leaderboard'));
+  if (!res.ok) throw new Error(`leaderboard ${String(res.status)}`);
+  return (await res.json()) as Leaderboard;
 }

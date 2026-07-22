@@ -17,10 +17,19 @@ import type { Action, GameState, Seat, Viewer } from '@jaffre/engine';
 import { chooseAction } from '@jaffre/bots';
 import type { BotDifficulty } from '@jaffre/bots';
 import { parseClientMessage } from '@jaffre/protocol';
-import type { ChatEntry, ClientAction, Roster, RosterSeat, ServerMessage } from '@jaffre/protocol';
+import type {
+  ChatEntry,
+  ClientAction,
+  ClientMessage,
+  Roster,
+  RosterSeat,
+  ServerMessage,
+} from '@jaffre/protocol';
 import type { Env } from './env.js';
 import { notifyUser } from './push.js';
 import { gameRecordFrom } from './history.js';
+import { ratingUpdates, type CurrentRating } from './rating.js';
+import { lobbyStub } from './Lobby.js';
 
 const BOT_DELAY_MS = 700;
 /** After a completed trick the client holds the 4 cards on the table
@@ -67,6 +76,15 @@ interface Meta {
   seriesGames: [number, number][];
   /** House rules chosen in the lobby before the game starts. */
   rules?: { hailMary12: boolean };
+  /** Host opted this table into the public lobby / Quick Play. Only matters
+   * while waiting (pre-start); the room is registered when public + a seat is
+   * free, and deregistered otherwise. */
+  public?: boolean;
+  /** Whether this room currently has a live registration in the Lobby DO.
+   * PERSISTED (not an instance field) so the deregister decision survives DO
+   * hibernation — otherwise a woken instance would forget it was listed and
+   * never remove a started/full/private room from matchmaking. */
+  lobbyListed?: boolean;
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -152,6 +170,7 @@ export class GameRoom implements DurableObject {
       const uid = request.headers.get('X-User-Id');
       if (uid === null || uid === '') return new Response('Missing identity', { status: 400 });
       const left = await this.unseatUser(uid);
+      await this.syncLobby(); // a freed seat may re-open the table for matchmaking
       return Response.json({ left });
     }
     if (request.headers.get('Upgrade') !== 'websocket') {
@@ -194,44 +213,42 @@ export class GameRoom implements DurableObject {
       this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Unrecognized message' });
       return;
     }
-    const att = this.attachment(ws);
+    await this.dispatch(ws, this.attachment(ws), msg);
+    // Reconcile the matchmaking registry once, after the message settled — any
+    // seat/started/public change is now reflected. Awaited (not fire-and-forget)
+    // so the cross-DO call finishes within this request; dirty-checked, so it's
+    // a no-op when the advertised state is unchanged.
+    await this.syncLobby();
+  }
+
+  private async dispatch(ws: WebSocket, att: Attachment, msg: ClientMessage): Promise<void> {
     switch (msg.t) {
       case 'join':
-        await this.onJoin(ws, att);
-        return;
+        return this.onJoin(ws, att);
       case 'sit':
-        await this.onSit(ws, att, msg.seat);
-        return;
+        return this.onSit(ws, att, msg.seat);
       case 'add_bot':
-        await this.onAddBot(ws, att, msg.seat, msg.difficulty);
-        return;
+        return this.onAddBot(ws, att, msg.seat, msg.difficulty);
       case 'remove_bot':
-        await this.onRemoveBot(ws, att, msg.seat);
-        return;
+        return this.onRemoveBot(ws, att, msg.seat);
       case 'start':
-        await this.onStart(ws, att);
-        return;
+        return this.onStart(ws, att);
       case 'set_rules':
-        await this.onSetRules(ws, att, msg.hailMary12);
-        return;
+        return this.onSetRules(ws, att, msg.hailMary12);
       case 'swap_seats':
-        await this.onSwapSeats(ws, att);
-        return;
+        return this.onSwapSeats(ws, att);
       case 'leave':
-        await this.onLeave(ws, att);
-        return;
+        return this.onLeave(ws, att);
       case 'set_autoplay':
-        await this.onSetAutoPlay(ws, att, msg.on);
-        return;
+        return this.onSetAutoPlay(ws, att, msg.on);
+      case 'set_public':
+        return this.onSetPublic(ws, att, msg.on);
       case 'ready':
-        await this.onReady(ws, att);
-        return;
+        return this.onReady(ws, att);
       case 'action':
-        await this.onAction(ws, att, msg.action);
-        return;
+        return this.onAction(ws, att, msg.action);
       case 'chat':
-        await this.onChat(ws, att, msg.text);
-        return;
+        return this.onChat(ws, att, msg.text);
       case 'rtc':
         this.onRtc(ws, att, msg.to, msg.payload);
         return;
@@ -275,6 +292,8 @@ export class GameRoom implements DurableObject {
     // Recompute roster with this socket excluded so its seat shows
     // connected=false (plus botSwapAt when the clock was just started).
     this.broadcastRoster({ exclude: ws });
+    // A disconnect can empty the room or free a seat — reconcile the lobby.
+    await this.syncLobby();
   }
 
   webSocketError(ws: WebSocket): void {
@@ -571,6 +590,86 @@ export class GameRoom implements DurableObject {
     this.broadcastRoster({});
     // If it's their turn right now, arm the alarm so the auto-move plays promptly.
     if (on) await this.scheduleNextWake();
+  }
+
+  /** Host toggles whether this table is listed for matchmaking. Any seated
+   * player may flip it (small, friendly tables); broadcastRoster then syncs the
+   * lobby registry. */
+  private async onSetPublic(ws: WebSocket, att: Attachment, on: boolean): Promise<void> {
+    if (!att.joined || this.seatOf(att.userId) === null) {
+      this.send(ws, { t: 'error', code: 'NOT_SEATED', message: 'Take a seat first' });
+      return;
+    }
+    if ((this.meta.public ?? false) === on) return; // no-op
+    this.meta.public = on;
+    await this.ctx.storage.put('meta', this.meta);
+    this.broadcastRoster({});
+  }
+
+  /** The lobby entry this room should advertise, or null when it shouldn't be
+   * listed (private, started, empty, or full of humans). */
+  private lobbyEntry(): { code: string; host: string; players: number; capacity: number; phase: 'waiting' } | null {
+    const code = this.meta.roomCode;
+    if (code === undefined) return null;
+    const humans = this.meta.seats.filter((o): o is string => typeof o === 'string');
+    const open = this.meta.public === true && !this.meta.started && humans.length >= 1 && humans.length < 4;
+    if (!open) return null;
+    return {
+      code,
+      host: this.meta.names[humans[0] as string] ?? 'Player',
+      players: humans.length,
+      capacity: 4,
+      phase: 'waiting',
+    };
+  }
+
+  /** Push this room's open/closed state to the matchmaking Lobby DO. Best-effort.
+   * A room that was never listed (the common private/join-by-code case) makes NO
+   * cross-DO call — the persisted `meta.lobbyListed` gates the deregister — so
+   * only genuinely public tables ever touch the Lobby. For an open public room
+   * this re-registers on every call; since syncLobby runs after each message
+   * (incl. the client's 30s keepalive ping), that doubles as the heartbeat that
+   * keeps the entry fresh against the Lobby's TTL. No-op when the LOBBY binding
+   * is absent (tests / no-binding envs). */
+  private async syncLobby(): Promise<void> {
+    const code = this.meta.roomCode;
+    if (code === undefined) return;
+    const entry = this.lobbyEntry();
+    const wasListed = this.meta.lobbyListed === true;
+    // Nothing to advertise and nothing was ever advertised → no call needed.
+    if (entry === null && !wasListed) return;
+    const lobby = lobbyStub(this.env);
+    if (lobby === null) {
+      // No binding — just track intent so the state stays consistent.
+      if (wasListed !== (entry !== null)) {
+        this.meta.lobbyListed = entry !== null;
+        await this.ctx.storage.put('meta', this.meta);
+      }
+      return;
+    }
+    try {
+      if (entry === null) {
+        await lobby.fetch('https://lobby/deregister', {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        });
+        this.meta.lobbyListed = false;
+        await this.ctx.storage.put('meta', this.meta);
+      } else {
+        // Always re-register (refreshes updatedAt = heartbeat); persist the
+        // listed flag only on the false→true transition to limit meta writes.
+        await lobby.fetch('https://lobby/register', {
+          method: 'POST',
+          body: JSON.stringify(entry),
+        });
+        if (!wasListed) {
+          this.meta.lobbyListed = true;
+          await this.ctx.storage.put('meta', this.meta);
+        }
+      }
+    } catch {
+      // Leave the persisted flag as-is so the next message retries the sync.
+    }
   }
 
   /**
@@ -899,6 +998,17 @@ export class GameRoom implements DurableObject {
       [...stored.values()],
       { id: crypto.randomUUID(), finishedAt: Date.now() },
     );
+    // Elo-like rating: bump each human's rating from this game's outcome. Read
+    // their current ratings first, then fold the writes into the same batch so
+    // history + rating land atomically. A rating-read failure must NOT lose the
+    // history row, so it degrades to "history without rating".
+    let ratingWrites: D1PreparedStatement[] = [];
+    try {
+      ratingWrites = await this.ratingWrites(db, record.players, record.winner_team);
+    } catch {
+      ratingWrites = [];
+    }
+
     await db.batch([
       db
         .prepare(
@@ -924,7 +1034,57 @@ export class GameRoom implements DurableObject {
           )
           .bind(record.id, p.seat, p.user_id, p.is_bot, p.name),
       ),
+      ...ratingWrites,
     ]);
+  }
+
+  /** Build the rating-write statements for a finished game — reads the human
+   * players' current ratings, then applies the Elo delta. Returns [] when the
+   * game isn't rated (undecided, or a bot on either team).
+   *
+   * Uses an UPSERT, not a bare UPDATE: a seated, token-verified human can lack a
+   * `users` row (D1 was down at guest signup, or the no-secret `?u=` mode never
+   * hits an auth handler). A plain UPDATE would silently match 0 rows and drop
+   * their rating forever; ON CONFLICT materializes the row on their first rated
+   * game instead. */
+  private async ratingWrites(
+    db: D1Database,
+    players: readonly {
+      readonly seat: number;
+      readonly user_id: string | null;
+      readonly is_bot: 0 | 1;
+      readonly name: string;
+    }[],
+    winnerTeam: number | null,
+  ): Promise<D1PreparedStatement[]> {
+    const humans = players.filter((p) => p.is_bot === 0 && p.user_id !== null);
+    if (humans.length === 0) return [];
+    const humanIds = humans.map((p) => p.user_id as string);
+    const nameOf = new Map(humans.map((p) => [p.user_id as string, p.name]));
+
+    const placeholders = humanIds.map((_, i) => `?${String(i + 1)}`).join(', ');
+    const rows = await db
+      .prepare(`SELECT id, rating, rating_games FROM users WHERE id IN (${placeholders})`)
+      .bind(...humanIds)
+      .all<{ id: string; rating: number; rating_games: number }>();
+    const current: Record<string, CurrentRating> = {};
+    for (const r of rows.results) current[r.id] = { rating: r.rating, ratingGames: r.rating_games };
+
+    const updates = ratingUpdates(
+      players.map((p) => ({ seat: p.seat, userId: p.user_id, isBot: p.is_bot })),
+      winnerTeam,
+      current,
+    );
+    const now = Date.now();
+    return updates.map((u) =>
+      db
+        .prepare(
+          `INSERT INTO users (id, name, created_at, rating, rating_games)
+           VALUES (?1, ?2, ?3, ?4, ?5)
+           ON CONFLICT(id) DO UPDATE SET rating = ?4, rating_games = ?5`,
+        )
+        .bind(u.userId, nameOf.get(u.userId) ?? 'Player', now, u.rating, u.ratingGames),
+    );
   }
 
   /** When `userId`'s bot-swap kicks in; +Infinity while they are connected. */
@@ -1039,6 +1199,7 @@ export class GameRoom implements DurableObject {
       seriesWins: this.meta.seriesWins,
       seriesGames: this.meta.seriesGames,
       rules: this.meta.rules ?? { hailMary12: true },
+      public: this.meta.public ?? false,
     };
   }
 

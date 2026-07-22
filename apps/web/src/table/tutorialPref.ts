@@ -60,6 +60,28 @@ export function skipTutorial(): void {
   persist(TUTORIAL_STEPS);
 }
 
+const REWARD_KEY = 'jaffre:tutorialReward';
+
+/** Whether the tutorial-completion reward has already been granted on this
+ * device — latches the one-shot grant so it fires once even before the server
+ * round-trip (the server grant is itself idempotent). */
+export function tutorialRewardGranted(): boolean {
+  try {
+    return localStorage.getItem(REWARD_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Record that the completion reward has been granted. */
+export function markTutorialRewardGranted(): void {
+  try {
+    localStorage.setItem(REWARD_KEY, '1');
+  } catch {
+    // Storage unavailable — worst case the grant re-fires (idempotent server-side).
+  }
+}
+
 /**
  * Same-tab signal that progress was cleared. An already-mounted TutorialCoach
  * listens for this so "Replay tutorial" re-arms the intro + marks live, rather

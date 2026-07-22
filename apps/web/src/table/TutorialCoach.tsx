@@ -7,12 +7,15 @@ import { useGameStore } from '../state/gameStore.js';
 import {
   hasSeenTutorial,
   loadTutorialSeen,
+  markTutorialRewardGranted,
   markTutorialStep,
   skipTutorial,
+  tutorialRewardGranted,
   TUTORIAL_STEPS,
   TUTORIAL_RESET_EVENT,
 } from './tutorialPref.js';
 import { MARK_ORDER, MARKS, type MarkCopy, type MarkStep } from './tutorialSteps.js';
+import { grantAward } from '../net/awards.js';
 
 const INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
   en: {
@@ -165,6 +168,18 @@ export function TutorialCoach() {
     const t = setTimeout(() => setPipDone(true), 2600);
     return () => clearTimeout(t);
   }, [pipDone, progress, total, current]);
+
+  // Completing every coach-mark earns the tutorial award (which unlocks the OG
+  // Deck). Latch only AFTER the server confirms the grant, so a brand-new user
+  // who finishes offline / before any identity exists retries on the next
+  // practice visit instead of silently losing the award (the grant is
+  // idempotent server-side, so a retry never double-grants).
+  useEffect(() => {
+    if (progress < total || tutorialRewardGranted()) return;
+    void grantAward('tutorial-complete').then((ok) => {
+      if (ok) markTutorialRewardGranted();
+    });
+  }, [progress, total]);
 
   if (!enabled) return null;
 

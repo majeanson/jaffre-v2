@@ -23,6 +23,8 @@ import {
 import { DEFAULT_THEME, THEMES, applyTheme, currentTheme } from '../theme.js';
 import { getProfile, saveProfile } from '../net/auth.js';
 import { fetchStats, type Stats } from '../net/history.js';
+import { fetchAwards } from '../net/awards.js';
+import { grantedRewardIds } from '../awards.js';
 import { feedback } from '../audio/clicks.js';
 import { Toast } from '../components/Toast.js';
 
@@ -231,6 +233,7 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   const lang = useLang();
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
+  const [rewards, setRewards] = useState<ReadonlySet<string>>(new Set());
   const [showAll, setShowAll] = useState(DEV_UNLOCK_ALL);
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
   const [theme, setTheme] = useState(currentTheme());
@@ -244,13 +247,20 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
       .catch(() => {
         /* offline: everything stays free/locked, no progress bars */
       });
+    // Award-granted cosmetics (e.g. the tutorial's OG Deck) are owned even
+    // without the matching stats — fold them into the owned set.
+    fetchAwards()
+      .then((a) => live && setRewards(grantedRewardIds(a.map((x) => x.id))))
+      .catch(() => {
+        /* offline: no award-granted cosmetics shown */
+      });
     return () => {
       live = false;
     };
   }, [demoStats]);
 
-  const ownedCards = owned(CARD_SKINS, stats, showAll);
-  const ownedThemes = owned(THEMES, stats, showAll);
+  const ownedCards = owned(CARD_SKINS, stats, showAll, rewards);
+  const ownedThemes = owned(THEMES, stats, showAll, rewards);
 
   const chooseCardSkin = (id: string) => {
     applyCardSkin(id);
