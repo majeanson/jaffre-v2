@@ -5,7 +5,10 @@ import { fetchStats } from '../net/history.js';
 
 const SEEN_XP_KEY = 'jaffre-xp-seen';
 
-const T: Record<Lang, { level: (n: number) => string; gained: (n: number) => string; levelUp: string }> = {
+const T: Record<
+  Lang,
+  { level: (n: number) => string; gained: (n: number) => string; levelUp: string }
+> = {
   en: {
     level: (n) => `Level ${String(n)}`,
     gained: (n) => `+${String(n)} XP`,

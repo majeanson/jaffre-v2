@@ -43,9 +43,15 @@ export function LevelBadge() {
         {t.level(progress.level)}
       </span>
       <span className="h-[0.55em] min-w-0 flex-1 overflow-hidden rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/20">
-        <span className="block h-full bg-(--color-ap-violet)" style={{ width: `${String(pct)}%` }} />
+        <span
+          className="block h-full bg-(--color-ap-violet)"
+          style={{ width: `${String(pct)}%` }}
+        />
       </span>
-      <span aria-hidden className="shrink-0 font-arcade-display text-[0.8em] text-(--color-ap-muted)">
+      <span
+        aria-hidden
+        className="shrink-0 font-arcade-display text-[0.8em] text-(--color-ap-muted)"
+      >
         🧭
       </span>
     </a>

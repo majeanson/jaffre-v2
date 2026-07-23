@@ -97,7 +97,11 @@ export const CARD_SKINS: readonly Cosmetic[] = [
   { id: 'newsprint', label: 'Newsprint', ...atLevel(5) },
   { id: 'blueprint', label: 'Blueprint', ...atLevel(7) },
   { id: 'og-deck', label: 'OG Deck', ...atLevel(8, (s) => s.games >= 15) },
-  { id: 'lamplight-foil', label: 'Lamplight Foil', ...atLevel(10, (s) => s.games >= 25 || s.streak.best >= 5) },
+  {
+    id: 'lamplight-foil',
+    label: 'Lamplight Foil',
+    ...atLevel(10, (s) => s.games >= 25 || s.streak.best >= 5),
+  },
   { id: 'stained-glass', label: 'Stained Glass', ...atLevel(12, (s) => s.games >= 30) },
   { id: 'vaporwave', label: 'Vaporwave', ...atLevel(13, (s) => s.games >= 40) },
   { id: 'circuit', label: 'Circuit', ...atLevel(15) },

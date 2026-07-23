@@ -10,6 +10,8 @@ import { expect, test } from '@playwright/test';
 
 test('home links to the Journey and the track renders every rung', async ({ page }) => {
   await page.goto('/');
+  // A fresh visitor's nav links sit behind the "Your corner" door.
+  await page.getByRole('button', { name: 'Your corner' }).click();
   await page.getByRole('link', { name: 'Journey' }).click();
   await expect(page.getByRole('heading', { name: 'Journey' })).toBeVisible();
   expect(new URL(page.url()).hash).toBe('#journey');

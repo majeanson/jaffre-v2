@@ -10,9 +10,7 @@ import { playerName } from '../net/socket.js';
 
 /** Display label of an award's cosmetic reward, across both catalogs. */
 function rewardLabel(id: string): string {
-  return (
-    CARD_SKINS.find((c) => c.id === id)?.label ?? THEMES.find((c) => c.id === id)?.label ?? id
-  );
+  return CARD_SKINS.find((c) => c.id === id)?.label ?? THEMES.find((c) => c.id === id)?.label ?? id;
 }
 
 export interface AwardsProps {

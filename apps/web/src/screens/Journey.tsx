@@ -106,7 +106,8 @@ const T: Record<
     nextReward: (label, level) => `Prochaine récompense : ${label} au niveau ${String(level)}`,
     trackDone: 'Parcours terminé — toutes les récompenses de niveau sont à toi.',
     howTitle: 'Comment gagner des XP',
-    howBlurb: 'Chaque partie terminée te fait avancer. Les victoires et les mises réussies, encore plus.',
+    howBlurb:
+      'Chaque partie terminée te fait avancer. Les victoires et les mises réussies, encore plus.',
     perGame: 'par partie jouée',
     perWin: 'par victoire',
     perBid: 'par mise réussie',
