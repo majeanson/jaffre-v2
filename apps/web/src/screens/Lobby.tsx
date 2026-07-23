@@ -127,6 +127,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onSit={(seat) => send({ t: 'sit', seat })}
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
           onRemoveBot={(seat) => send({ t: 'remove_bot', seat })}
+          onKick={(seat) => send({ t: 'kick', seat })}
+          {...(roster?.hostSeat !== undefined ? { hostSeat: roster.hostSeat } : {})}
         />
 
         {/* Quiet invite nudge: seated, not started, and at least one seat is

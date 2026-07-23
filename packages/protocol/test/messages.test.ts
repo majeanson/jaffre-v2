@@ -40,6 +40,20 @@ describe('remove_bot', () => {
   });
 });
 
+describe('kick', () => {
+  it('accepts a seat', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'kick', seat: 2 }))).toEqual({
+      t: 'kick',
+      seat: 2,
+    });
+  });
+
+  it('rejects a missing or out-of-range seat', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'kick' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'kick', seat: 4 }))).toBeNull();
+  });
+});
+
 describe('set_autoplay', () => {
   it('accepts on and off', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: true }))).toEqual({

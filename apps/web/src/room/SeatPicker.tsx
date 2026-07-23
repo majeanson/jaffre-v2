@@ -19,6 +19,9 @@ export interface SeatPickerProps {
   readonly onSit: (seat: 0 | 1 | 2 | 3) => void;
   readonly onAddBot: (seat: 0 | 1 | 2 | 3, difficulty: BotDifficulty) => void;
   readonly onRemoveBot: (seat: 0 | 1 | 2 | 3) => void;
+  /** Seat of the table's host — only they may kick. From roster.hostSeat. */
+  readonly hostSeat?: number;
+  readonly onKick?: (seat: 0 | 1 | 2 | 3) => void;
 }
 
 const DIFFICULTY_ORDER: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
@@ -41,6 +44,7 @@ const T: Record<
     joinHere: string;
     addBot: string;
     removeBot: string;
+    kickPlayer: string;
   }
 > = {
   en: {
@@ -55,6 +59,7 @@ const T: Record<
     joinHere: 'Join',
     addBot: 'Add bot',
     removeBot: 'Remove bot',
+    kickPlayer: 'Remove player from table',
   },
   fr: {
     seatLabel: (n) => `Siège ${String(n)}`,
@@ -68,6 +73,7 @@ const T: Record<
     joinHere: 'Joindre',
     addBot: 'Ajouter un bot',
     removeBot: 'Retirer le bot',
+    kickPlayer: 'Retirer ce joueur de la table',
   },
 };
 
@@ -78,12 +84,21 @@ function nextDifficulty(current: BotDifficulty): BotDifficulty {
 
 /** Owns the lobby seat rows: who sits where, with sit-here / add-bot actions
  * and a per-bot difficulty toggle (Easy → Normal → Hard) before the game starts. */
-export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: SeatPickerProps) {
+export function SeatPicker({
+  roster,
+  viewer,
+  onSit,
+  onAddBot,
+  onRemoveBot,
+  hostSeat,
+  onKick,
+}: SeatPickerProps) {
   const lang = useLang();
   const t = T[lang];
   const difficultyLabel = DIFFICULTY_LABEL[lang];
   const seated = viewer !== null && viewer !== 'spectator';
   const started = roster?.started ?? false;
+  const isHost = !started && hostSeat !== undefined && hostSeat === viewer;
   return (
     <div className="flex flex-col gap-2.5">
       {([0, 1, 2, 3] as const).map((seat) => {
@@ -151,6 +166,16 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: Sea
                     label={t.removeBot}
                     data-testid={`remove-bot-${seat}`}
                     onClick={() => onRemoveBot(seat)}
+                  >
+                    <IconX />
+                  </IconButton>
+                )}
+                {!info.isBot && !isSelf && isHost && onKick !== undefined && (
+                  <IconButton
+                    danger
+                    label={t.kickPlayer}
+                    data-testid={`kick-${seat}`}
+                    onClick={() => onKick(seat)}
                   >
                     <IconX />
                   </IconButton>

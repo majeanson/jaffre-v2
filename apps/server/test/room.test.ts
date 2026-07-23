@@ -1472,4 +1472,75 @@ describe('GameRoom', () => {
 
     await endQuiet(room, alice, bob);
   });
+
+  it('rate-limits chat to 5 per 10s, broadcasting the first 5 and erroring the 6th', async () => {
+    const room = 'room-chatrate';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+
+    for (let i = 0; i < 6; i++) {
+      alice.send({ t: 'chat', text: `msg ${i}` });
+    }
+    const chats: string[] = [];
+    let errorCode: string | null = null;
+    for (let i = 0; i < 6; i++) {
+      const msg = await alice.nextAny(['chat', 'error']);
+      if (msg.t === 'chat') chats.push(msg.entry.text);
+      else errorCode = msg.code;
+    }
+    expect(chats).toHaveLength(5);
+    expect(errorCode).toBe('CHAT_RATE');
+
+    await endQuiet(room, alice);
+  });
+
+  it(
+    'host kicks a seated human pre-game; the kicked user cannot re-sit, ' +
+      'another may take the seat, and a non-host kick attempt is rejected',
+    async () => {
+      const room = 'room-kick';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      alice.send({ t: 'join' });
+      await alice.next('welcome');
+      alice.send({ t: 'sit', seat: 0 });
+      const hostRoster = await alice.next('roster');
+      expect(hostRoster.roster.hostSeat).toBe(0); // first sitter is the host
+
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      await bob.next('welcome');
+      bob.send({ t: 'sit', seat: 1 });
+      await welcomeViewer(bob, 1);
+
+      // Bob (not the host) tries to kick alice — rejected, and (proven below)
+      // nothing changes: alice still succeeds at kicking bob's still-occupied
+      // seat right after.
+      bob.send({ t: 'kick', seat: 0 });
+      const notHost = await bob.next('error');
+      expect(notHost.code).toBe('NOT_HOST');
+
+      // Alice (the host) kicks bob's seat.
+      alice.send({ t: 'kick', seat: 1 });
+      const afterKick = await pollUntil(async () => {
+        const r = alice.latestRoster();
+        return r !== null && r.seats[1] === null ? r : undefined;
+      }, "bob's seat to free after the kick");
+      expect(afterKick.seats[1]).toBeNull();
+
+      // Bob's attempt to re-sit anywhere is rejected — he's banned from this room.
+      bob.send({ t: 'sit', seat: 1 });
+      const kicked = await bob.next('error');
+      expect(kicked.code).toBe('KICKED');
+
+      // Carol can still take the freed seat.
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+      carol.send({ t: 'sit', seat: 1 });
+      await welcomeViewer(carol, 1);
+
+      await endQuiet(room, alice, bob, carol);
+    },
+  );
 });

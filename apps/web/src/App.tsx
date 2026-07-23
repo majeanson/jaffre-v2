@@ -4,6 +4,7 @@ import { useCurrentLang } from './lang.js';
 import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { NoticeToast } from './components/NoticeToast.js';
 import { Toast } from './components/Toast.js';
 import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
@@ -104,6 +105,12 @@ export function App() {
   return (
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
+        {/* Mounted first (renders/commits before AppRoutes) so it wins the
+            NoticeToast module-level ownership claim over Table's/Lobby's own
+            local mounts — see NoticeToast.tsx. This is the app-wide toast
+            surface: award grants (and any other net-layer notice) show here
+            regardless of which screen is active. */}
+        <NoticeToast />
         {/* A render crash lands on a localized fallback (kept inside the
             providers so it stays themed) instead of a white screen. */}
         <ErrorBoundary>

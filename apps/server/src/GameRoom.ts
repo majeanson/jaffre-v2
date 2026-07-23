@@ -55,6 +55,10 @@ export const BOT_SWAP_MS = 45_000;
  * enough that a closed tab doesn't squat a lobby seat as a ghost forever. */
 export const PREGAME_VACATE_MS = 60_000;
 const CHAT_CAP = 100;
+/** Sliding-window chat rate limit: at most this many messages per uid within
+ * CHAT_RATE_WINDOW_MS. */
+const CHAT_RATE_LIMIT = 5;
+const CHAT_RATE_WINDOW_MS = 10_000;
 const SEATS: readonly Seat[] = [0, 1, 2, 3];
 
 /** A seat is owned by a user (userId), a bot (at a difficulty), or nobody.
@@ -108,6 +112,15 @@ interface Meta {
    * survives reconnects/refresh. Absent for unrated games; cleared as soon
    * as a rematch starts. */
   lastRatings?: { seat: number; rating: number; delta: number }[];
+  /** uid of the table's host: the first human to sit, or whoever inherits the
+   * role when the previous host's seat opens up (leaves/is kicked) — set in
+   * onSit, passed in unseatUser. Only the host may kick. */
+  hostId?: string;
+  /** userIds ever kicked from this room — a lightweight per-room ban list. Set
+   * in onKick, checked in onSit. PERSISTED and never cleared: a kicked player
+   * reaching this exact table again requires a fresh room, which is fine for a
+   * moderation tool aimed at one bad actor on one public table. */
+  kickedIds?: string[];
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -149,6 +162,11 @@ export class GameRoom implements DurableObject {
   private seq = 0;
   private chat: ChatEntry[] = [];
   private loaded = false;
+  /** uid → recent chat send timestamps, for the sliding-window rate limit.
+   * Deliberately IN-MEMORY, not persisted: hibernation resetting a spammer's
+   * window is a non-issue (worst case they get a few extra messages right
+   * after a wake), and it's far cheaper than a storage write per chat. */
+  private readonly chatTimestamps = new Map<string, number[]>();
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -254,6 +272,8 @@ export class GameRoom implements DurableObject {
         return this.onAddBot(ws, att, msg.seat, msg.difficulty);
       case 'remove_bot':
         return this.onRemoveBot(ws, att, msg.seat);
+      case 'kick':
+        return this.onKick(ws, att, msg.seat);
       case 'start':
         return this.onStart(ws, att);
       case 'set_rules':
@@ -502,6 +522,14 @@ export class GameRoom implements DurableObject {
       this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
       return;
     }
+    if (this.meta.kickedIds?.includes(att.userId) === true) {
+      this.send(ws, {
+        t: 'error',
+        code: 'KICKED',
+        message: 'The host removed you from this table.',
+      });
+      return;
+    }
     const occupant = this.meta.seats[seat];
     if (occupant === att.userId) {
       // Already own this seat — idempotent.
@@ -567,6 +595,11 @@ export class GameRoom implements DurableObject {
         Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== att.userId),
       );
     }
+    // Claim the host role if nobody holds it, or the current host's seat has
+    // opened up (left/kicked) — the role passes naturally to whoever sits next.
+    if (this.meta.hostId === undefined || this.seatOf(this.meta.hostId) === null) {
+      this.meta.hostId = att.userId;
+    }
     att.viewer = seat;
     ws.serializeAttachment(att);
     await this.ctx.storage.put('meta', this.meta);
@@ -606,6 +639,57 @@ export class GameRoom implements DurableObject {
     }
     this.meta.seats[seat] = null;
     await this.ctx.storage.put('meta', this.meta);
+    this.broadcastRoster({});
+  }
+
+  /**
+   * Host-only, pre-game: vacate another human's seat and ban them from this
+   * table for its life (kickedIds — checked in onSit). The freed seat and the
+   * webSocketMessage-wrapping syncLobby() reopen matchmaking on that seat, same
+   * as any other seat freeing up.
+   */
+  private async onKick(ws: WebSocket, att: Attachment, seat: Seat): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    if (this.meta.started) {
+      this.send(ws, {
+        t: 'error',
+        code: 'ALREADY_STARTED',
+        message: 'Cannot remove a player after the game has started',
+      });
+      return;
+    }
+    const senderSeat = this.seatOf(att.userId);
+    if (senderSeat === null || att.userId !== this.meta.hostId) {
+      this.send(ws, {
+        t: 'error',
+        code: 'NOT_HOST',
+        message: 'Only the host can remove a player',
+      });
+      return;
+    }
+    const target = this.meta.seats[seat];
+    if (typeof target !== 'string' || target === att.userId) {
+      this.send(ws, {
+        t: 'error',
+        code: 'BAD_MESSAGE',
+        message: `Seat ${seat} has no other player to remove`,
+      });
+      return;
+    }
+    this.meta.seats[seat] = null;
+    this.meta.kickedIds = [...(this.meta.kickedIds ?? []), target];
+    this.clearUserState(target);
+    await this.ctx.storage.put('meta', this.meta);
+    for (const socket of this.ctx.getWebSockets()) {
+      const a = this.attachment(socket);
+      if (a.userId !== target || typeof a.viewer !== 'number') continue;
+      a.viewer = 'spectator';
+      socket.serializeAttachment(a);
+      if (a.joined) this.sendWelcome(socket, a);
+    }
     this.broadcastRoster({});
   }
 
@@ -787,6 +871,22 @@ export class GameRoom implements DurableObject {
     }
   }
 
+  /** Drop a user's disconnect-clock and auto-play bookkeeping — shared by a
+   * voluntary leave (unseatUser) and a host's kick (onKick), both of which
+   * vacate a seat that may carry either. Mutates meta in place; caller persists. */
+  private clearUserState(userId: string): void {
+    if (this.meta.disconnectedSince?.[userId] !== undefined) {
+      this.meta.disconnectedSince = Object.fromEntries(
+        Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== userId),
+      );
+    }
+    if (this.meta.autoPlay?.[userId] !== undefined) {
+      this.meta.autoPlay = Object.fromEntries(
+        Object.entries(this.meta.autoPlay).filter(([id]) => id !== userId),
+      );
+    }
+  }
+
   /**
    * Vacate a user's seat permanently. Mid-game the seat goes to a bot (the
    * game must stay playable for the other three); otherwise it simply frees
@@ -797,15 +897,13 @@ export class GameRoom implements DurableObject {
     if (seat === null) return false;
     const midGame = this.meta.started && this.game !== null && this.game.phase !== 'game_over';
     this.meta.seats[seat] = midGame ? { bot: true, difficulty: 'normal' } : null;
-    if (this.meta.disconnectedSince?.[userId] !== undefined) {
-      this.meta.disconnectedSince = Object.fromEntries(
-        Object.entries(this.meta.disconnectedSince).filter(([id]) => id !== userId),
-      );
-    }
-    if (this.meta.autoPlay?.[userId] !== undefined) {
-      this.meta.autoPlay = Object.fromEntries(
-        Object.entries(this.meta.autoPlay).filter(([id]) => id !== userId),
-      );
+    this.clearUserState(userId);
+    // The host's seat just opened up — pass the role to the first remaining
+    // seated human, or drop it if nobody's left to inherit it.
+    if (this.meta.hostId === userId) {
+      const nextHost = this.meta.seats.find((s): s is string => typeof s === 'string');
+      if (nextHost !== undefined) this.meta.hostId = nextHost;
+      else delete this.meta.hostId;
     }
     await this.ctx.storage.put('meta', this.meta);
     for (const socket of this.ctx.getWebSockets()) {
@@ -986,6 +1084,25 @@ export class GameRoom implements DurableObject {
       this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
       return;
     }
+    // Sliding-window rate limit: drop timestamps older than the window, then
+    // check the cap. IN-MEMORY (see chatTimestamps) — a spammer surviving a
+    // hibernation wake with a clean slate is cheap insurance, not a hole worth
+    // a storage write per message to close.
+    const now = Date.now();
+    const recent = (this.chatTimestamps.get(att.userId) ?? []).filter(
+      (t) => now - t < CHAT_RATE_WINDOW_MS,
+    );
+    if (recent.length >= CHAT_RATE_LIMIT) {
+      this.chatTimestamps.set(att.userId, recent);
+      this.send(ws, {
+        t: 'error',
+        code: 'CHAT_RATE',
+        message: 'Easy — a few messages per moment.',
+      });
+      return;
+    }
+    recent.push(now);
+    this.chatTimestamps.set(att.userId, recent);
     // Chat timestamps are presentation, not game logic — Date.now() is fine here.
     const seat = this.seatOf(att.userId);
     const entry: ChatEntry = {
@@ -1390,6 +1507,7 @@ export class GameRoom implements DurableObject {
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;
+    const hostSeat = this.meta.hostId !== undefined ? this.seatOf(this.meta.hostId) : null;
     return {
       seats,
       spectators,
@@ -1398,6 +1516,7 @@ export class GameRoom implements DurableObject {
       seriesGames: this.meta.seriesGames,
       rules: this.meta.rules ?? { hailMary12: true },
       public: this.meta.public ?? false,
+      ...(hostSeat !== null ? { hostSeat } : {}),
       ...(this.meta.lastRatings !== undefined ? { ratings: this.meta.lastRatings } : {}),
     };
   }

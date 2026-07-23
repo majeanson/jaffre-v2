@@ -28,8 +28,10 @@ interface GameStore {
   log: readonly LogLine[];
   /** A transient, server-sent (or net-layer) notice to surface as a toast —
    * e.g. a rejected action ("Seat 2 is taken"). `at` lets the toast re-arm
-   * its auto-dismiss timer even when the same text repeats. */
-  notice: { text: string; at: number } | null;
+   * its auto-dismiss timer even when the same text repeats. `kind` is
+   * 'error' | 'award'-style styling hint (undefined defaults to the neutral/
+   * danger look for backward compatibility with net-layer rejections). */
+  notice: { text: string; at: number; kind?: 'error' | 'award' } | null;
   /** Seat position (table-relative) the current trick should sweep toward. */
   sweepTo: 0 | 1 | 2 | 3 | null;
   /**
@@ -58,7 +60,7 @@ interface GameStore {
   applyEvents: (events: readonly GameEvent[], seq: number, view?: SeatView) => void;
   setRoster: (roster: Roster) => void;
   addChat: (entry: ChatEntry) => void;
-  setNotice: (text: string) => void;
+  setNotice: (text: string, kind?: 'error' | 'award') => void;
   clearNotice: () => void;
   reset: () => void;
 }
@@ -126,7 +128,8 @@ export const useGameStore = create<GameStore>((set) => ({
       }
       return { chat: [...s.chat.slice(-99), entry] };
     }),
-  setNotice: (text) => set({ notice: { text, at: Date.now() } }),
+  setNotice: (text, kind) =>
+    set({ notice: kind === undefined ? { text, at: Date.now() } : { text, at: Date.now(), kind } }),
   clearNotice: () => set({ notice: null }),
   reset: () =>
     set({

@@ -72,6 +72,10 @@ export const clientMessageSchema = z.union([
   // Host toggles whether this pre-game table is listed in the public lobby /
   // eligible for Quick Play. Only meaningful before the game starts.
   z.object({ t: z.literal('set_public'), on: z.boolean() }),
+  // Host-only, pre-game: vacate another human's seat and ban them from the
+  // table for the room's life (kickedIds). Seat is validated shape-wise here;
+  // the room enforces who may send it and against whom.
+  z.object({ t: z.literal('kick'), seat: seatSchema }),
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
@@ -107,6 +111,12 @@ export interface Roster {
   readonly seats: readonly (RosterSeat | null)[];
   readonly spectators: number;
   readonly started: boolean;
+  /** Seat of the table's host (first to sit, or whoever inherited it after
+   * the previous host left), when that seat is occupied. Only the host may
+   * kick. Absent when nobody has ever sat (or the host's seat somehow isn't
+   * currently seated — shouldn't happen, but keeps this optional rather than
+   * lying). */
+  readonly hostSeat?: number;
   /** Standing-table tally across games at this room: [Sun wins, Moon wins],
    * reset only when the room empties for good. */
   readonly seriesWins?: readonly [number, number];
@@ -164,7 +174,10 @@ export type ServerMessage =
         | 'NOT_YOUR_TURN'
         | 'ILLEGAL_BID'
         | 'CARD_NOT_IN_HAND'
-        | 'MUST_FOLLOW_SUIT';
+        | 'MUST_FOLLOW_SUIT'
+        | 'CHAT_RATE'
+        | 'NOT_HOST'
+        | 'KICKED';
       readonly message: string;
     };
 

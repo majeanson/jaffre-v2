@@ -1,9 +1,20 @@
 import { authedFetch } from './history.js';
+import { AWARDS } from '../awards.js';
+import { currentLang } from '../lang.js';
+import { useGameStore } from '../state/gameStore.js';
 
 /**
  * Awards REST: the earned-awards read and the event-award grant. Identity
  * mirrors the stats/history fetches (Bearer token, else ?u=<uid>) via the
  * shared authedFetch. Best-effort — returns [] when no identity exists yet.
+ *
+ * GET /api/awards auto-grants any freshly-earned stat awards server-side (see
+ * apps/server/src/index.ts handleAwards) but its response is just the full
+ * earned set — { awards: [{id, grantedAt}] } — with no marker distinguishing
+ * "just granted this call" from "already had it". So only the explicit
+ * grantAward() path below can know a grant just happened, and only it fires
+ * the toast; a stat award earned mid-game surfaces silently until the next
+ * visit to the Awards screen.
  */
 
 export interface EarnedAward {
@@ -31,8 +42,22 @@ export async function grantAward(awardId: string): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ awardId }),
     });
-    return res !== null && res.ok;
+    const ok = res !== null && res.ok;
+    if (ok) announceGrant(awardId);
+    return ok;
   } catch {
     return false;
   }
+}
+
+/** Pop the app-wide toast (see NoticeToast.tsx) for a just-confirmed grant,
+ * in the viewer's current language. Silently does nothing for an unknown id
+ * — display copy living out of lockstep with the server allowlist shouldn't
+ * crash the grant flow. */
+function announceGrant(awardId: string): void {
+  const award = AWARDS.find((a) => a.id === awardId);
+  if (award === undefined) return;
+  const lang = currentLang();
+  const prefix = lang === 'fr' ? 'Récompense obtenue' : 'Award earned';
+  useGameStore.getState().setNotice(`${prefix} — ${award.name(lang)}`, 'award');
 }
