@@ -136,9 +136,11 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
                       {playing ? t.playing(r.players, r.capacity) : t.seats(r.players, r.capacity)}
                     </span>
                   </span>
+                  {/* aria-label must START with the visible text (WCAG 2.5.3
+                      Label in Name) — the hint rides after it, never replaces it. */}
                   <Cta
                     onClick={() => onJoin(r.code)}
-                    aria-label={playing ? t.watchHint : undefined}
+                    aria-label={playing ? `${t.watch} — ${t.watchHint}` : undefined}
                   >
                     {playing ? t.watch : t.join}
                   </Cta>

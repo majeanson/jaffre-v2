@@ -58,8 +58,15 @@ export const clientMessageSchema = z.union([
   // Pre-game only: empty a bot seat back to vacant.
   z.object({ t: z.literal('remove_bot'), seat: seatSchema }),
   z.object({ t: z.literal('start') }),
-  // Pre-game only: toggle the "Hail-Mary 12 sans atout" house rule for the room.
-  z.object({ t: z.literal('set_rules'), hailMary12: z.boolean() }),
+  // Pre-game only: toggle house rules for the room. `turnTimer` is optional so
+  // older clients that only ever sent hailMary12 keep parsing; the server
+  // echoes back whatever was last set (see Roster.rules) so a client toggling
+  // one rule should send its own current value for the other alongside it.
+  z.object({
+    t: z.literal('set_rules'),
+    hailMary12: z.boolean(),
+    turnTimer: z.boolean().optional(),
+  }),
   // Between games only: re-pair the table (swap seats 1 & 2) before a rematch.
   z.object({ t: z.literal('swap_seats') }),
   // Give up your seat for good: mid-game a bot takes over, otherwise the seat
@@ -97,9 +104,11 @@ export interface RosterSeat {
   /** Present only for bot seats — the difficulty this bot plays at. */
   readonly difficulty?: BotDifficulty;
   /**
-   * Epoch ms when this disconnected human's seat gets handed to a bot.
-   * Present only while a seated human is disconnected mid-game; absolute
-   * (not remaining) so the client can tick it down locally between rosters.
+   * Epoch ms when this seat's human turn gets handed to a bot. Present while a
+   * seated human is disconnected mid-game (the bot-swap clock), OR — when the
+   * table's `turnTimer` house rule is on — while it's this CONNECTED human's
+   * turn to bid/play and their per-turn clock is running. Absolute (not
+   * remaining) so the client can tick it down locally between rosters.
    */
   readonly botSwapAt?: number;
   /** True when this seated human has voluntary auto-play on — the server is
@@ -124,7 +133,12 @@ export interface Roster {
    * first — powers the between-games scorepad. Reset with the room. */
   readonly seriesGames?: readonly (readonly [number, number])[];
   /** House rules chosen in the lobby, echoed so every seat sees the toggle. */
-  readonly rules?: { readonly hailMary12: boolean };
+  readonly rules?: {
+    readonly hailMary12: boolean;
+    /** Idle-player turn timer (off unless a table opts in) — see
+     * RosterSeat.botSwapAt for the per-seat countdown it drives. */
+    readonly turnTimer?: boolean;
+  };
   /** Whether this table is listed for matchmaking (public lobby / Quick Play). */
   readonly public?: boolean;
   /** Last finished game's rating movement, one entry per SEATED human who was

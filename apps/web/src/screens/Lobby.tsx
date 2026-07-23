@@ -34,6 +34,8 @@ const T: Record<
     howToPlay: string;
     hailMary: string;
     hailMaryHint: string;
+    turnTimer: string;
+    turnTimerHint: string;
     fillBots: string;
     publicTable: string;
     publicHint: string;
@@ -52,6 +54,9 @@ const T: Record<
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
     hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
+    turnTimer: 'Turn timer',
+    turnTimerHint:
+      'Idle players get 60 seconds per turn — then a bot plays for that turn. Good for public tables.',
     fillBots: 'Fill empty seats with bots',
     publicTable: 'List on the public lobby',
     publicHint:
@@ -71,6 +76,9 @@ const T: Record<
     hailMary: '12 sans atout — tout ou rien',
     hailMaryHint:
       'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
+    turnTimer: 'Minuterie de tour',
+    turnTimerHint:
+      'Les joueurs inactifs ont 60 secondes par tour — ensuite un bot joue ce tour. Idéal pour les tables publiques.',
     fillBots: 'Remplir les sièges vides avec des bots',
     publicTable: 'Afficher dans le salon public',
     publicHint:
@@ -92,6 +100,8 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
   // default matches; unchecking is the deliberate act).
   const hailMary = roster?.rules?.hailMary12 ?? true;
+  // Turn timer ships OFF — cozy home games stay untimed unless a host opts in.
+  const turnTimer = roster?.rules?.turnTimer ?? false;
   const isPublic = roster?.public ?? false;
 
   // Any room this browser created (Quick Play or Create a room) is public by
@@ -176,7 +186,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
             role="switch"
             checked={hailMary}
             disabled={!seated}
-            onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked })}
+            onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })}
             className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
           />
           <span className="flex min-w-0 flex-col gap-1">
@@ -184,6 +194,30 @@ export function Lobby({ code, onLeave }: LobbyProps) {
               {t.hailMary}
             </span>
             <span className="text-xs leading-snug text-(--color-ap-muted)">{t.hailMaryHint}</span>
+          </span>
+        </label>
+
+        <label
+          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            role="switch"
+            data-testid="turn-timer-toggle"
+            checked={turnTimer}
+            disabled={!seated}
+            onChange={(e) =>
+              send({ t: 'set_rules', hailMary12: hailMary, turnTimer: e.target.checked })
+            }
+            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+          />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+              {t.turnTimer}
+            </span>
+            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.turnTimerHint}</span>
           </span>
         </label>
 

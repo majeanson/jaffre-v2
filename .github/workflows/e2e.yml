@@ -27,3 +27,14 @@ jobs:
           name: playwright-traces
           path: apps/web/test-results/
           retention-days: 7
+      # Telemetry beacons otherwise vanish into Workers Logs that nobody reads;
+      # print the last-7-days digest into this nightly job's log where a human
+      # will see it. The custom domain sits behind the zone's bot protection,
+      # which 403s plain curl from runner IPs (see verify-deploy.ts), so this
+      # tries the same worker's WAF-free workers.dev host first. Never fails
+      # the job — purely informational.
+      - name: Telemetry digest
+        if: always()
+        run: |
+          curl -s --max-time 20 https://jaffre.marc-jeanson.workers.dev/api/telemetry/summary || true
+          curl -s --max-time 20 https://jaffre.marcportal.com/api/telemetry/summary || true

@@ -1128,6 +1128,18 @@ async function handleRooms(env: Env): Promise<Response> {
 }
 
 const TELEMETRY_MAX_BYTES = 4 * 1024;
+const TELEMETRY_KIND_MAX_LEN = 32;
+const TELEMETRY_SUMMARY_DAYS = 7;
+const TELEMETRY_SUMMARY_LIMIT = 200;
+
+/** Sanitizes a telemetry kind for use as a counter bucket: a short string, or
+ * 'unknown' for anything else (missing, non-string, or oversized). */
+function telemetryKindBucket(kind: unknown): string {
+  if (typeof kind !== 'string' || kind.length === 0 || kind.length > TELEMETRY_KIND_MAX_LEN) {
+    return 'unknown';
+  }
+  return kind;
+}
 
 /**
  * POST /api/telemetry {kind, message, stack?, url?, ua?} → 204. First-party,
@@ -1135,7 +1147,7 @@ const TELEMETRY_MAX_BYTES = 4 * 1024;
  * it. Body is size-capped and loosely shape-checked — this must never throw
  * on malformed input from a misbehaving client.
  */
-async function handleTelemetry(request: Request): Promise<Response> {
+async function handleTelemetry(request: Request, env: Env): Promise<Response> {
   const lengthHeader = request.headers.get('Content-Length');
   if (lengthHeader !== null && Number(lengthHeader) > TELEMETRY_MAX_BYTES) {
     return new Response('Payload too large', { status: 413 });
@@ -1164,7 +1176,60 @@ async function handleTelemetry(request: Request): Promise<Response> {
     url: typeof b.url === 'string' ? b.url : undefined,
     ua: typeof b.ua === 'string' ? b.ua : undefined,
   });
+  // Best-effort daily counter — a missing DB or a failed write must never
+  // change this endpoint's behavior; it still always answers 204.
+  if (env.DB !== undefined) {
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      const kind = telemetryKindBucket(b.kind);
+      await env.DB.prepare(
+        `INSERT INTO telemetry_counts (day, kind, count) VALUES (?1, ?2, 1)
+         ON CONFLICT(day, kind) DO UPDATE SET count = count + 1`,
+      )
+        .bind(day, kind)
+        .run();
+    } catch {
+      // Swallow — telemetry counting is best-effort, never load-bearing.
+    }
+  }
   return new Response(null, { status: 204 });
+}
+
+/**
+ * GET /api/telemetry/summary → { days: [{ day, kinds: { kind: count } }] }
+ * for the last TELEMETRY_SUMMARY_DAYS days, newest first. No auth (counts
+ * are harmless aggregates, not payloads). Returns { days: [] } when the DB
+ * is absent — this must never throw.
+ */
+async function handleTelemetrySummary(env: Env): Promise<Response> {
+  if (env.DB === undefined) return Response.json({ days: [] });
+  try {
+    const since = new Date(Date.now() - TELEMETRY_SUMMARY_DAYS * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const rows = await env.DB.prepare(
+      `SELECT day, kind, count FROM telemetry_counts
+       WHERE day >= ?1 ORDER BY day DESC, kind ASC LIMIT ?2`,
+    )
+      .bind(since, TELEMETRY_SUMMARY_LIMIT)
+      .all<{ day: string; kind: string; count: number }>();
+
+    const byDay = new Map<string, Record<string, number>>();
+    for (const r of rows.results) {
+      let kinds = byDay.get(r.day);
+      if (kinds === undefined) {
+        kinds = {};
+        byDay.set(r.day, kinds);
+      }
+      kinds[r.kind] = r.count;
+    }
+    const days = [...byDay.entries()]
+      .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+      .map(([day, kinds]) => ({ day, kinds }));
+    return Response.json({ days });
+  } catch {
+    return Response.json({ days: [] });
+  }
 }
 
 /**
@@ -1349,7 +1414,10 @@ export default {
       return handleReplay(env, replayMatch[1] as string);
     }
     if (url.pathname === '/api/telemetry' && request.method === 'POST') {
-      return handleTelemetry(request);
+      return handleTelemetry(request, env);
+    }
+    if (url.pathname === '/api/telemetry/summary' && request.method === 'GET') {
+      return handleTelemetrySummary(env);
     }
     // Web Push: the client needs the public key to subscribe; null = feature off.
     if (url.pathname === '/api/push/vapid' && request.method === 'GET') {

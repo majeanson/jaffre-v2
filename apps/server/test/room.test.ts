@@ -4,7 +4,7 @@ import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
-import { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS } from '../src/GameRoom.js';
+import { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS, TURN_TIMER_MS } from '../src/GameRoom.js';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
@@ -175,6 +175,34 @@ async function driveToQuiescentHumanTurn(
   }
 }
 
+/**
+ * Like driveToQuiescentHumanTurn, but for a room with the `turnTimer` house
+ * rule ON: a connected human's turn now always carries an armed alarm (their
+ * ~60s turn-timer deadline), so "alarm === null" can never hold — this only
+ * waits for phase bidding/playing at turn 0. Safe: the armed deadline is far
+ * enough out (TURN_TIMER_MS) that it cannot fire during the rest of the test.
+ */
+async function driveToHumanTurnWithTimer(
+  stub: DurableObjectStub,
+  client: Client,
+  ms = 20_000,
+): Promise<RoomSnap> {
+  const deadline = Date.now() + ms;
+  for (;;) {
+    const snap = await snapshot(stub);
+    if ((snap.phase === 'bidding' || snap.phase === 'playing') && snap.turn === 0) return snap;
+    if (snap.phase === 'game_over') throw new Error('game ended before the human turn');
+    if (Date.now() > deadline) throw new Error('never reached the human turn');
+    if (snap.phase === 'round_over') {
+      client.send({ t: 'ready' });
+      await sleep(25);
+      continue;
+    }
+    const ran = await runDurableObjectAlarm(stub);
+    if (!ran) await sleep(25);
+  }
+}
+
 /** Wait for a `welcome` whose viewer matches, draining any stale ones buffered
  * from earlier sits (each sit emits a welcome the caller may not have read). */
 async function welcomeViewer(client: Client, viewer: number | 'spectator'): Promise<void> {
@@ -227,6 +255,25 @@ async function setupStartedGame(client: Client): Promise<SeatView> {
   client.send({ t: 'join' });
   await client.next('welcome');
   client.send({ t: 'sit', seat: 0 });
+  await client.next('roster');
+  for (const seat of [1, 2, 3] as const) {
+    client.send({ t: 'add_bot', seat });
+    await client.next('roster');
+  }
+  client.send({ t: 'start' });
+  const view = await client.next('view');
+  return view.view;
+}
+
+/** join → sit seat 0 → opt into the `turnTimer` house rule (must be set
+ * pre-game, like hailMary12) → add 3 bots → start; returns the initial
+ * seat-0 view. Mirrors setupStartedGame. */
+async function setupStartedGameWithTurnTimer(client: Client): Promise<SeatView> {
+  client.send({ t: 'join' });
+  await client.next('welcome');
+  client.send({ t: 'sit', seat: 0 });
+  await client.next('roster');
+  client.send({ t: 'set_rules', hailMary12: true, turnTimer: true });
   await client.next('roster');
   for (const seat of [1, 2, 3] as const) {
     client.send({ t: 'add_bot', seat });
@@ -957,6 +1004,86 @@ describe('GameRoom', () => {
       });
       expect(cleared).toBeUndefined();
       await endQuiet(room, client, carol, again);
+    },
+  );
+
+  it(
+    'plays a connected but idle human turn after the turn-timer deadline (rule ON)',
+    { timeout: 45_000 },
+    async () => {
+      interface StoredMeta {
+        turnStartedAt?: number;
+      }
+      interface StoredLog {
+        action: Action;
+      }
+      const room = 'room-turntimer-on';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGameWithTurnTimer(client);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Reach the human's turn. Alice stays CONNECTED throughout this test —
+      // the whole point is idle-but-present, unlike the disconnect bot-swap
+      // test above (and unlike that case, the alarm here is ALWAYS armed,
+      // for the far-future turn-timer deadline — see the helper's doc).
+      const before = await driveToHumanTurnWithTimer(stub, client);
+      const seqBefore = before.seq;
+
+      // The single alarm slot is armed for the ~60s turn-timer deadline — far
+      // enough out that it cannot fire on its own mid-test.
+      const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+      expect(armed).not.toBeNull();
+      expect((armed ?? 0) - Date.now()).toBeGreaterThan(TRICK_HOLD_MS);
+
+      // Rewind the stored turn-start timestamp past the deadline — the alarm
+      // re-reads storage on every wake, so this is all a test needs.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.turnStartedAt = Date.now() - TURN_TIMER_MS - 1000;
+        await state.storage.put('meta', meta);
+      });
+
+      // Force the deadline alarm: the bot policy plays FOR the still-connected,
+      // idle human. The very next log entry must be a seat-0 action.
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const applied = await runInDurableObject(stub, (_instance, state) =>
+        state.storage.get<StoredLog>(`log:${seqBefore + 1}`),
+      );
+      expect(applied).toBeDefined();
+      const action = applied?.action;
+      expect(action?.type === 'place_bid' || action?.type === 'play_card').toBe(true);
+      if (action?.type === 'place_bid' || action?.type === 'play_card') {
+        expect(action.seat).toBe(0);
+      }
+
+      await endQuiet(room, client);
+    },
+  );
+
+  it(
+    'leaves a connected, idle human turn alone with the turn-timer rule OFF',
+    { timeout: 20_000 },
+    async () => {
+      const room = 'room-turntimer-off';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(client); // rule ships off by default — never toggled here
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Quiescent at the human's turn implies NO alarm is armed for it — with
+      // the rule off, an idle-but-connected human never gets a deadline.
+      const before = await driveToQuiescentHumanTurn(stub, client);
+      const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+      expect(armed).toBeNull();
+
+      // Forcing a wake anyway finds nothing due and must not act for them —
+      // the existing pause-for-a-connected-human behavior stays intact.
+      expect(await runDurableObjectAlarm(stub)).toBe(false);
+      const after = await snapshot(stub);
+      expect(after.seq).toBe(before.seq);
+      expect(after.turn).toBe(0);
+
+      await endQuiet(room, client);
     },
   );
 

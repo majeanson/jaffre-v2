@@ -54,6 +54,11 @@ export const BOT_SWAP_MS = 45_000;
  * Long enough for a refresh or a dropped connection to come back; short
  * enough that a closed tab doesn't squat a lobby seat as a ghost forever. */
 export const PREGAME_VACATE_MS = 60_000;
+/** Optional house rule (meta.rules.turnTimer): how long a CONNECTED human may
+ * sit idle on their own bid/play before a bot covers that one turn for them.
+ * Off by default — see meta.rules. Tests can override per-room via
+ * `meta.turnTimerMs`, same pattern as BOT_SWAP_MS/botSwapMs. */
+export const TURN_TIMER_MS = 60_000;
 const CHAT_CAP = 100;
 /** Sliding-window chat rate limit: at most this many messages per uid within
  * CHAT_RATE_WINDOW_MS. */
@@ -86,6 +91,8 @@ interface Meta {
   botSwapMs?: number;
   /** Optional per-room override of PREGAME_VACATE_MS (used by tests). */
   preGameVacateMs?: number;
+  /** Optional per-room override of TURN_TIMER_MS (used by tests). */
+  turnTimerMs?: number;
   /** Per-seat readiness for the next round (round_over phase only). */
   readyNextRound?: [boolean, boolean, boolean, boolean];
   /** Standing-table tally across games at this room: [Sun wins, Moon wins],
@@ -97,7 +104,12 @@ interface Meta {
    * alongside seriesWins; reset only with the DO. */
   seriesGames: [number, number][];
   /** House rules chosen in the lobby before the game starts. */
-  rules?: { hailMary12: boolean };
+  rules?: { hailMary12: boolean; turnTimer?: boolean };
+  /** Epoch ms when the seat currently on turn (game.turn) became active —
+   * i.e. when it became THEIR bid/play to make. Set at game start and
+   * refreshed in applyEngineAction every time the acting turn advances; only
+   * consulted when `rules.turnTimer` is on. Absent outside bidding/playing. */
+  turnStartedAt?: number;
   /** Host opted this table into the public lobby / Quick Play. Only matters
    * while waiting (pre-start); the room is registered when public + a seat is
    * free, and deregistered otherwise. */
@@ -277,7 +289,7 @@ export class GameRoom implements DurableObject {
       case 'start':
         return this.onStart(ws, att);
       case 'set_rules':
-        return this.onSetRules(ws, att, msg.hailMary12);
+        return this.onSetRules(ws, att, msg.hailMary12, msg.turnTimer);
       case 'swap_seats':
         return this.onSwapSeats(ws, att);
       case 'leave':
@@ -418,10 +430,13 @@ export class GameRoom implements DurableObject {
     }
     const turnSeat = game.turn;
     const owner = this.meta.seats[turnSeat];
+    const now = Date.now();
     const botActs =
       isBotOwner(owner) ||
       (typeof owner === 'string' &&
-        (this.autoPlayOn(owner) || this.disconnectDeadline(owner) <= Date.now()));
+        (this.autoPlayOn(owner) ||
+          this.disconnectDeadline(owner) <= now ||
+          this.turnTimerDeadline() <= now));
     if (!botActs) {
       // A connected human's turn (or their deadline has not passed yet):
       // re-arm the alarm for whatever the next wake actually is.
@@ -950,7 +965,12 @@ export class GameRoom implements DurableObject {
     this.broadcastRoster({});
   }
 
-  private async onSetRules(ws: WebSocket, att: Attachment, hailMary12: boolean): Promise<void> {
+  private async onSetRules(
+    ws: WebSocket,
+    att: Attachment,
+    hailMary12: boolean,
+    turnTimer?: boolean,
+  ): Promise<void> {
     // Only seated players may set house rules, and only before a live game —
     // the rule is fixed for the game the moment it starts.
     const gameInProgress = this.meta.started && this.game?.phase !== 'game_over';
@@ -966,7 +986,7 @@ export class GameRoom implements DurableObject {
       });
       return;
     }
-    this.meta.rules = { hailMary12 };
+    this.meta.rules = { hailMary12, ...(turnTimer !== undefined ? { turnTimer } : {}) };
     await this.ctx.storage.put('meta', this.meta);
     this.broadcastRoster({});
   }
@@ -1003,6 +1023,9 @@ export class GameRoom implements DurableObject {
     this.game = game;
     this.meta.started = true;
     this.meta.startedAt = Date.now();
+    // The freshly-dealt hand's bidding starts right now — the first turn's
+    // turn-timer clock (if the rule is on) begins here too.
+    this.meta.turnStartedAt = this.meta.startedAt;
     // Rematch: the previous game's rating movement no longer applies to the
     // recap that hasn't happened yet.
     delete this.meta.lastRatings;
@@ -1151,7 +1174,17 @@ export class GameRoom implements DurableObject {
     this.game = game;
     this.seq += 1;
     const log: LogEntry = { seq: this.seq, action };
+    // Every successful action hands control to whoever is next to act (or
+    // ends the round/game) — that's a fresh decision point, so restart the
+    // turn-timer clock for it. Only meaningful in bidding/playing; cleared
+    // otherwise so a stale timestamp can't leak into round_over/game_over.
+    if (game.phase === 'bidding' || game.phase === 'playing') {
+      this.meta.turnStartedAt = Date.now();
+    } else {
+      delete this.meta.turnStartedAt;
+    }
     await this.ctx.storage.put({
+      meta: this.meta,
       game: serialize(game),
       seq: this.seq,
       [`log:${this.seq}`]: log,
@@ -1414,6 +1447,35 @@ export class GameRoom implements DurableObject {
     return this.meta.autoPlay?.[userId] === true;
   }
 
+  /** Is this user joined on any currently-open socket? */
+  private isConnected(userId: string): boolean {
+    return this.ctx.getWebSockets().some((s) => {
+      const a = this.attachment(s);
+      return a.joined && a.userId === userId;
+    });
+  }
+
+  /**
+   * When the optional `turnTimer` house rule kicks in for the seat currently
+   * on turn; +Infinity unless ALL of: the rule is on, the phase is
+   * bidding/playing, the seat is a CONNECTED human, and they're not on
+   * voluntary auto-play or the (separate) disconnect clock — those already
+   * have their own bot-covering machinery.
+   */
+  private turnTimerDeadline(): number {
+    if (this.meta.rules?.turnTimer !== true) return Number.POSITIVE_INFINITY;
+    const game = this.game;
+    if (game === null || (game.phase !== 'bidding' && game.phase !== 'playing')) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const owner = this.meta.seats[game.turn];
+    if (typeof owner !== 'string' || this.autoPlayOn(owner) || !this.isConnected(owner)) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const startedAt = this.meta.turnStartedAt ?? Date.now();
+    return startedAt + (this.meta.turnTimerMs ?? TURN_TIMER_MS);
+  }
+
   /**
    * The single alarm slot is shared by bot turns, round_over auto-continue,
    * and disconnected-human bot-swaps: compute the earliest wake we need and
@@ -1447,7 +1509,10 @@ export class GameRoom implements DurableObject {
         // 4 cards for ~2.2s, so we must wait out that animation window.
         wake = now + (afterTrick ? TRICK_HOLD_MS : BOT_DELAY_MS);
       } else if (typeof owner === 'string') {
-        const deadline = this.disconnectDeadline(owner);
+        // A connected human can only be covered by ONE of these at a time
+        // (turnTimerDeadline requires connected, disconnectDeadline requires
+        // not) — take whichever is finite, or the earlier if somehow both are.
+        const deadline = Math.min(this.disconnectDeadline(owner), this.turnTimerDeadline());
         if (Number.isFinite(deadline)) wake = Math.max(now + 1, deadline);
       }
     }
@@ -1493,10 +1558,19 @@ export class GameRoom implements DurableObject {
         };
       }
       const connected = attachments.some((a) => a.joined && a.viewer === i);
-      // A disconnected human mid-game is on the bot-swap clock — expose the
-      // absolute deadline so the client can show a countdown.
+      // A disconnected human mid-game is on the bot-swap clock; a connected
+      // human on turn, with the turnTimer house rule on, is on their per-turn
+      // clock instead — both expose the same absolute-deadline field so the
+      // client's existing countdown renders either with zero extra client
+      // code. Only one can ever apply to a given seat at a time (the second
+      // requires connected, the first requires the opposite), but take the
+      // earlier of the two regardless, to stay correct if that ever changes.
       const swapActive = !connected && this.game !== null && this.game.phase !== 'game_over';
-      const botSwapAt = swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY;
+      const turnActive = this.game !== null && this.game.turn === i;
+      const botSwapAt = Math.min(
+        swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY,
+        turnActive ? this.turnTimerDeadline() : Number.POSITIVE_INFINITY,
+      );
       return {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,

@@ -21,7 +21,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test -c apps/web/playwright.config.ts e2e/lobby.spec.ts e2e/two-players.spec.ts
+      - run: npx playwright test -c apps/web/playwright.config.ts e2e/lobby.spec.ts e2e/two-players.spec.ts e2e/spectate.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

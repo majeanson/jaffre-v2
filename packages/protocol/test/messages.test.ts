@@ -54,6 +54,29 @@ describe('kick', () => {
   });
 });
 
+describe('set_rules', () => {
+  it('accepts hailMary12 alone (turnTimer omitted for old clients)', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'set_rules', hailMary12: true }))).toEqual({
+      t: 'set_rules',
+      hailMary12: true,
+    });
+  });
+
+  it('accepts hailMary12 with turnTimer', () => {
+    expect(
+      parseClientMessage(JSON.stringify({ t: 'set_rules', hailMary12: false, turnTimer: true })),
+    ).toEqual({ t: 'set_rules', hailMary12: false, turnTimer: true });
+  });
+
+  it('rejects a missing or non-boolean hailMary12', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'set_rules' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'set_rules', hailMary12: 'yes' }))).toBeNull();
+    expect(
+      parseClientMessage(JSON.stringify({ t: 'set_rules', hailMary12: true, turnTimer: 'yes' })),
+    ).toBeNull();
+  });
+});
+
 describe('set_autoplay', () => {
   it('accepts on and off', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: true }))).toEqual({
