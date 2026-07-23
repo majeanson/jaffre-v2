@@ -64,14 +64,20 @@ test('two sessions rename via the UI, share a table with 2 bots, and stay themse
   await expect(a.getByTestId('seat-row-0')).toContainText(/\(you\)/i);
   await expect(a.getByTestId('seat-row-0')).not.toContainText('Player');
 
-  // ── B joins from the live lobby and sits ─────────────────────────────────
+  // A fills the table with bots right away — the common host move, and the
+  // exact shape a newcomer meets: three bot seats, no empty ones.
+  await a.getByTestId('fill-bots').click();
+
+  // ── B joins from the live lobby and takes a BOT's place ──────────────────
   await b.getByRole('button', { name: 'Play', exact: true }).click();
   await b.getByRole('button', { name: 'Join a public game' }).click();
   const card = b.getByRole('listitem').filter({ hasText: code });
   await expect(card).toContainText('Broski-A'); // host name on the card
   await card.getByRole('button', { name: 'Join' }).click();
   await expect.poll(() => b.evaluate(() => location.hash)).toBe(`#room/${code}`);
-  await b.getByRole('button', { name: 'Sit here' }).first().click();
+  // A bot-filled table offers a full-on JOIN over each bot seat (not a
+  // cryptic swap glyph) — B takes seat 2's bot's place.
+  await b.getByTestId('join-1').click();
 
   // Both browsers agree on who sits where — and on who "you" is.
   await expect(b.getByTestId('seat-row-1')).toContainText('Ginette-B');
@@ -103,8 +109,7 @@ test('two sessions rename via the UI, share a table with 2 bots, and stay themse
   await expect(a.getByTestId('chat-messages')).not.toContainText('Player');
   await expect(b.getByTestId('chat-messages')).not.toContainText('Player');
 
-  // ── Fill with 2 bots and start ───────────────────────────────────────────
-  await a.getByTestId('fill-bots').click();
+  // ── Start: two humans + the two remaining bots ───────────────────────────
   await a.getByRole('button', { name: 'Start the game' }).click();
   await expect(a.getByTestId('score-strip')).toBeVisible();
   await expect(b.getByTestId('score-strip')).toBeVisible();

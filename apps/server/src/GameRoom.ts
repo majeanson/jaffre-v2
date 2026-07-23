@@ -38,6 +38,10 @@ export const TRICK_HOLD_MS = 2600;
 /** How long a seated human may be fully disconnected mid-game before a bot
  * plays their turns. Tests can override per-room via `meta.botSwapMs`. */
 export const BOT_SWAP_MS = 45_000;
+/** How long a PRE-GAME seat survives its human's disconnect before it frees.
+ * Long enough for a refresh or a dropped connection to come back; short
+ * enough that a closed tab doesn't squat a lobby seat as a ghost forever. */
+export const PREGAME_VACATE_MS = 60_000;
 const CHAT_CAP = 100;
 const SEATS: readonly Seat[] = [0, 1, 2, 3];
 
@@ -64,6 +68,8 @@ interface Meta {
   autoPlay?: Record<string, boolean>;
   /** Optional per-room override of BOT_SWAP_MS (used by tests). */
   botSwapMs?: number;
+  /** Optional per-room override of PREGAME_VACATE_MS (used by tests). */
+  preGameVacateMs?: number;
   /** Per-seat readiness for the next round (round_over phase only). */
   readyNextRound?: [boolean, boolean, boolean, boolean];
   /** Standing-table tally across games at this room: [Sun wins, Moon wins],
@@ -289,6 +295,28 @@ export class GameRoom implements DurableObject {
         this.notifyTurnIfAbsent(ws);
       }
     }
+    // PRE-game, a vanished human must not squat their seat forever (ghost
+    // "Player" rows in the lobby): start the same clock and arm the vacate.
+    const preGameSeated = typeof att.viewer === 'number' && !this.meta.started;
+    if (preGameSeated) {
+      const stillConnected = this.ctx.getWebSockets().some((s) => {
+        if (s === ws) return false;
+        const a = this.attachment(s);
+        return a.joined && a.userId === att.userId;
+      });
+      if (!stillConnected) {
+        const now = Date.now();
+        this.meta.disconnectedSince = { ...this.meta.disconnectedSince, [att.userId]: now };
+        await this.ctx.storage.put('meta', this.meta);
+        // Wake at the EARLIEST pending vacate — a plain now+grace would push
+        // an earlier disconnector's deadline back every time someone drops.
+        const grace = this.meta.preGameVacateMs ?? PREGAME_VACATE_MS;
+        const soonest = Math.min(
+          ...Object.values(this.meta.disconnectedSince).map((at) => at + grace),
+        );
+        await this.ctx.storage.setAlarm(soonest);
+      }
+    }
     // Recompute roster with this socket excluded so its seat shows
     // connected=false (plus botSwapAt when the clock was just started).
     this.broadcastRoster({ exclude: ws });
@@ -309,6 +337,12 @@ export class GameRoom implements DurableObject {
   async alarm(): Promise<void> {
     this.loaded = false; // always re-read after a wake — memory is not trusted
     await this.load();
+    // Pre-game the alarm has exactly one job: free the seats of humans whose
+    // disconnect grace ran out, so the table never carries ghosts.
+    if (!this.meta.started) {
+      await this.vacateAbsentPreGame();
+      return;
+    }
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
     // Freeze the table while no human is present: bots don't play into an empty
@@ -364,6 +398,39 @@ export class GameRoom implements DurableObject {
         : 'normal';
     const action = chooseAction(viewFor(game, turnSeat), rng, difficulty);
     if (action !== null) await this.applyEngineAction(action);
+  }
+
+  /** Free every pre-game seat whose human has been gone past the grace; keep
+   * the alarm armed while anyone's clock is still running. Rejoining clears
+   * the clock in onJoin, so a refresh never loses its seat. */
+  private async vacateAbsentPreGame(): Promise<void> {
+    const now = Date.now();
+    const grace = this.meta.preGameVacateMs ?? PREGAME_VACATE_MS;
+    const since = this.meta.disconnectedSince ?? {};
+    const kept: Record<string, number> = {};
+    let changed = false;
+    let nextWake: number | null = null;
+    for (const [uid, at] of Object.entries(since)) {
+      const seat = this.seatOf(uid);
+      if (seat === null) {
+        changed = true; // stale entry (already left/stood up) — just drop it
+        continue;
+      }
+      if (at + grace <= now) {
+        this.meta.seats[seat] = null;
+        changed = true;
+      } else {
+        kept[uid] = at;
+        nextWake = nextWake === null ? at + grace : Math.min(nextWake, at + grace);
+      }
+    }
+    if (changed) {
+      this.meta.disconnectedSince = kept;
+      await this.ctx.storage.put('meta', this.meta);
+      this.broadcastRoster({});
+      await this.syncLobby(); // a freed seat re-opens the table for matchmaking
+    }
+    if (nextWake !== null) await this.ctx.storage.setAlarm(nextWake);
   }
 
   /* ── Message handlers ──────────────────────────────────────────────── */

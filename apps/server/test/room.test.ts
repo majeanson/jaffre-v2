@@ -4,7 +4,7 @@ import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
-import { BOT_SWAP_MS, TRICK_HOLD_MS } from '../src/GameRoom.js';
+import { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS } from '../src/GameRoom.js';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
@@ -946,6 +946,72 @@ describe('GameRoom', () => {
       });
       expect(cleared).toBeUndefined();
       await endQuiet(room, client, carol, again);
+    },
+  );
+
+  it(
+    'frees a PRE-game seat whose human vanished past the grace — no ghost seats',
+    { timeout: 20_000 },
+    async () => {
+      interface StoredMeta {
+        seats?: unknown[];
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-pregame-vacate';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      alice.send({ t: 'join' });
+      await alice.next('welcome');
+      alice.send({ t: 'sit', seat: 0 });
+      await alice.next('roster');
+      // Bob spectates so the freed seat's roster broadcast has a witness.
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      await bob.next('welcome');
+
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      alice.ws.close(1000, 'tab closed');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the pre-game disconnect clock',
+      );
+
+      // Inside the grace: the alarm keeps the seat and re-arms for later.
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const kept = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return { seat: meta?.seats?.[0], alarm: await state.storage.getAlarm() };
+      });
+      expect(kept.seat).toBe('alice');
+      expect(kept.alarm).not.toBeNull();
+
+      // Past the grace: the seat frees and the clock entry clears.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - PREGAME_VACATE_MS - 1000 };
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const after = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return { seat: meta?.seats?.[0], since: meta?.disconnectedSince?.['alice'] };
+      });
+      expect(after.seat).toBeNull();
+      expect(after.since).toBeUndefined();
+
+      // The room told everyone: bob's roster now shows the open seat.
+      const deadline = Date.now() + 5000;
+      let freed = false;
+      while (!freed && Date.now() < deadline) {
+        const r = await bob.next('roster');
+        if (r.roster.seats[0] === null) freed = true;
+      }
+      expect(freed).toBe(true);
+      await endQuiet(room, alice, bob);
     },
   );
 

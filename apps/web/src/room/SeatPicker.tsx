@@ -38,6 +38,7 @@ const T: Record<
     moveHere: string;
     sitHere: string;
     swapHere: string;
+    joinHere: string;
     addBot: string;
     removeBot: string;
   }
@@ -51,6 +52,7 @@ const T: Record<
     moveHere: 'Move here',
     sitHere: 'Sit here',
     swapHere: 'Swap here',
+    joinHere: 'Join',
     addBot: 'Add bot',
     removeBot: 'Remove bot',
   },
@@ -63,6 +65,7 @@ const T: Record<
     moveHere: 'Déplace-toi ici',
     sitHere: 'Assis-toi ici',
     swapHere: 'Échanger ici',
+    joinHere: 'Joindre',
     addBot: 'Ajouter un bot',
     removeBot: 'Retirer le bot',
   },
@@ -92,6 +95,9 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: Sea
         // human, so a human seat only offers the swap to someone already seated.
         const canSwapHere =
           !started && !isSelf && info !== null && (info.isBot || (!info.isBot && seated));
+        // A newcomer looking at a bot-filled table gets a full-on JOIN, not a
+        // cryptic swap glyph — taking a bot's place is the expected move.
+        const joinOverBot = canSwapHere && !seated && info !== null && info.isBot;
         return (
           <div key={seat} data-testid={`seat-row-${seat}`} className="flex items-center gap-3">
             {/* The glyph (with an sr-only team name) replaces the team word. */}
@@ -124,14 +130,20 @@ export function SeatPicker({ roster, viewer, onSit, onAddBot, onRemoveBot }: Sea
                     {difficultyLabel[difficulty]}
                   </button>
                 )}
-                {canSwapHere && (
-                  <IconButton
-                    label={t.swapHere}
-                    data-testid={`swap-${seat}`}
-                    onClick={() => onSit(seat)}
-                  >
-                    <IconSwap />
-                  </IconButton>
+                {joinOverBot ? (
+                  <Cta data-testid={`join-${seat}`} onClick={() => onSit(seat)}>
+                    {t.joinHere}
+                  </Cta>
+                ) : (
+                  canSwapHere && (
+                    <IconButton
+                      label={t.swapHere}
+                      data-testid={`swap-${seat}`}
+                      onClick={() => onSit(seat)}
+                    >
+                      <IconSwap />
+                    </IconButton>
+                  )
                 )}
                 {info.isBot && !started && (
                   <IconButton
