@@ -515,20 +515,27 @@ describe('GameRoom', () => {
       expect(view.winner === 0 || view.winner === 1).toBe(true);
 
       // M8: game_over persisted the game to D1 (games + game_players rows).
-      const game = await env.DB.prepare(
-        'SELECT id, room_code, seed, finished_at, winner_team, score_0, score_1, action_log FROM games WHERE room_code = ?1',
-      )
-        .bind(room)
-        .first<{
-          id: string;
-          room_code: string;
-          seed: number;
-          finished_at: number;
-          winner_team: number;
-          score_0: number;
-          score_1: number;
-          action_log: string;
-        }>();
+      // The broadcast races the async persist — poll briefly instead of
+      // reading once (this was a rare CI flake, not a product bug).
+      type GameRow = {
+        id: string;
+        room_code: string;
+        seed: number;
+        finished_at: number;
+        winner_team: number;
+        score_0: number;
+        score_1: number;
+        action_log: string;
+      };
+      let game: GameRow | null = null;
+      for (let i = 0; i < 50 && game === null; i++) {
+        game = await env.DB.prepare(
+          'SELECT id, room_code, seed, finished_at, winner_team, score_0, score_1, action_log FROM games WHERE room_code = ?1',
+        )
+          .bind(room)
+          .first<GameRow>();
+        if (game === null) await new Promise((resolve) => setTimeout(resolve, 50));
+      }
       expect(game).not.toBeNull();
       if (game === null) throw new Error('unreachable');
       expect(game.winner_team).toBe(view.winner);
