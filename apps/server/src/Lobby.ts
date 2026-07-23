@@ -5,9 +5,11 @@
  * offer on their own (they're isolated and addressed only by code).
  *
  * GameRoom pushes register/deregister as its public+waiting state changes;
- * this DO answers /list (browse) and /claim (Quick Play). Entries carry an
- * updatedAt and are pruned after LOBBY_TTL_MS so a room that died without
- * deregistering (crash, close) eventually drops off.
+ * this DO answers /list (browse), /claim (Quick Play) and /ws (live browse:
+ * hibernatable WebSockets that get the open list on connect and again whenever
+ * it changes — the lobby screen never polls). Entries carry an updatedAt and
+ * are pruned after LOBBY_TTL_MS so a room that died without deregistering
+ * (crash, close) eventually drops off.
  */
 import type { Env } from './env.js';
 
@@ -54,11 +56,45 @@ export function pruneExpired(
   return { rooms: kept, changed };
 }
 
+/** The list as published to clients — updatedAt is registry bookkeeping, and
+ * stripping it here is what lets broadcast() detect REAL changes (the 30s
+ * heartbeat re-register only bumps updatedAt; watchers shouldn't hear it). */
+function publicList(
+  rooms: Record<string, LobbyEntry>,
+  now: number,
+): Omit<LobbyEntry, 'updatedAt'>[] {
+  return openRooms(rooms, now)
+    .slice(0, LIST_LIMIT)
+    .map(({ code, host, players, capacity, phase }) => ({ code, host, players, capacity, phase }));
+}
+
 export class Lobby implements DurableObject {
-  constructor(private readonly ctx: DurableObjectState) {}
+  /** JSON of the last list sent to watchers. In-memory on purpose: it resets
+   * to null when the DO hibernates, costing at worst one redundant broadcast
+   * on the next change instead of a storage write per heartbeat. */
+  private lastList: string | null = null;
+
+  constructor(private readonly ctx: DurableObjectState) {
+    // Keep hibernated watcher sockets alive without waking the DO.
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
 
   private async rooms(): Promise<Record<string, LobbyEntry>> {
     return (await this.ctx.storage.get<Record<string, LobbyEntry>>('rooms')) ?? {};
+  }
+
+  /** Push the open list to every watcher iff it materially changed. */
+  private broadcast(rooms: Record<string, LobbyEntry>, now: number): void {
+    const json = JSON.stringify({ rooms: publicList(rooms, now) });
+    if (json === this.lastList) return;
+    this.lastList = json;
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(json);
+      } catch {
+        // A closing socket mid-send — it'll be reaped by the runtime.
+      }
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -66,11 +102,22 @@ export class Lobby implements DurableObject {
     const now = Date.now();
     const rooms = await this.rooms();
 
+    // Live browse: hand the socket the current list, then only real changes.
+    if (url.pathname === '/ws' && request.headers.get('Upgrade') === 'websocket') {
+      const pair = new WebSocketPair();
+      const client = pair[0];
+      const server = pair[1];
+      this.ctx.acceptWebSocket(server);
+      server.send(JSON.stringify({ rooms: publicList(rooms, now) }));
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
     if (url.pathname === '/register' && request.method === 'POST') {
       const entry = (await request.json()) as Omit<LobbyEntry, 'updatedAt'>;
       rooms[entry.code] = { ...entry, updatedAt: now };
       await this.ctx.storage.put('rooms', rooms);
       await this.ctx.storage.setAlarm(now + LOBBY_TTL_MS);
+      this.broadcast(rooms, now);
       return Response.json({ ok: true });
     }
 
@@ -79,12 +126,13 @@ export class Lobby implements DurableObject {
       if (code in rooms) {
         const rest = Object.fromEntries(Object.entries(rooms).filter(([k]) => k !== code));
         await this.ctx.storage.put('rooms', rest);
+        this.broadcast(rest, now);
       }
       return Response.json({ ok: true });
     }
 
     if (url.pathname === '/list' && request.method === 'GET') {
-      return Response.json({ rooms: openRooms(rooms, now).slice(0, LIST_LIMIT) });
+      return Response.json({ rooms: publicList(rooms, now) });
     }
 
     if (url.pathname === '/claim' && request.method === 'POST') {
@@ -99,9 +147,17 @@ export class Lobby implements DurableObject {
   async alarm(): Promise<void> {
     const now = Date.now();
     const { rooms, changed } = pruneExpired(await this.rooms(), now);
-    if (changed) await this.ctx.storage.put('rooms', rooms);
+    if (changed) {
+      await this.ctx.storage.put('rooms', rooms);
+      this.broadcast(rooms, now);
+    }
     if (Object.keys(rooms).length > 0) await this.ctx.storage.setAlarm(now + LOBBY_TTL_MS);
   }
+
+  /** Watchers never speak (ping/pong is auto-answered) — nothing to do. */
+  webSocketMessage(): void {}
+  webSocketClose(): void {}
+  webSocketError(): void {}
 }
 
 /** Resolve the singleton Lobby DO stub, or null when the binding is absent

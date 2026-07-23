@@ -51,7 +51,8 @@ const T: Record<
     hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
     fillBots: 'Fill empty seats with bots',
     publicTable: 'List on the public lobby',
-    publicHint: 'Anyone can find and join this table via Quick Play or Browse.',
+    publicHint:
+      'On by default — anyone can find and join via Quick Play or Browse. Untick for invite-only.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -68,7 +69,7 @@ const T: Record<
     fillBots: 'Remplir les sièges vides avec des bots',
     publicTable: 'Afficher dans le salon public',
     publicHint:
-      'Tout le monde peut trouver et rejoindre cette table via Partie rapide ou Parcourir.',
+      'Activé par défaut — tout le monde peut trouver et rejoindre via Partie rapide ou Parcourir. Décoche pour jouer sur invitation.',
   },
 };
 
@@ -84,7 +85,9 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   const hailMary = roster?.rules?.hailMary12 ?? true;
   const isPublic = roster?.public ?? false;
 
-  // A Quick-Play-created room is hosted public: once we're seated, flip it on.
+  // Any room this browser created (Quick Play or Create a room) is public by
+  // default: once we're seated, flip it on. Unticking the toggle below is the
+  // deliberate opt-down to invite-only.
   useEffect(() => {
     if (seated && consumeMakePublic(code)) send({ t: 'set_public', on: true });
   }, [seated, code]);

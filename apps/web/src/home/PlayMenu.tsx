@@ -1,7 +1,13 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { BotDifficulty } from '@jaffre/protocol';
 import { AvatarChip, Cta, Panel, useLang, type Lang } from '@jaffre/ui';
-import { fetchTableStatus, quickPlay, type TableEntry, type TableStatus } from '../net/rooms.js';
+import {
+  fetchTableStatus,
+  markMakePublic,
+  quickPlay,
+  type TableEntry,
+  type TableStatus,
+} from '../net/rooms.js';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -407,7 +413,17 @@ export function PlayMenu({
               >
                 {t.quickPlay}
               </Cta>
-              <Cta type="button" variant="secondary" onClick={() => onJoinRoom(generateRoomCode())}>
+              <Cta
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  // New tables are public by default — the pre-game toggle is
+                  // how a host opts DOWN to invite-only.
+                  const code = generateRoomCode();
+                  markMakePublic(code);
+                  onJoinRoom(code);
+                }}
+              >
                 {t.createRoom}
               </Cta>
               <a

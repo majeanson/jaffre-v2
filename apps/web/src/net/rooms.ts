@@ -123,8 +123,73 @@ export async function fetchPublicRooms(): Promise<readonly PublicRoom[]> {
   }
 }
 
-/** sessionStorage marker: a code the client should make public on join (a
- * Quick-Play-created room the player is about to host). Consumed by Lobby. */
+/** Keepalive cadence for the lobby watcher — matches the DO's ping/pong
+ * auto-response so hibernated sockets aren't reaped as idle. */
+const WATCH_PING_MS = 30_000;
+const WATCH_RETRY_MS = 3_000;
+
+/**
+ * Watch the open-tables list live over a WebSocket — the server pushes the
+ * full list on connect and again whenever it actually changes, so the lobby
+ * screen never polls. Reconnects quietly while mounted; if the socket can't
+ * be had at all (lobby off, old server), it falls back to one plain fetch so
+ * the screen still settles. Returns an unsubscribe.
+ */
+export function watchPublicRooms(onRooms: (rooms: readonly PublicRoom[]) => void): () => void {
+  let disposed = false;
+  let ws: WebSocket | null = null;
+  let pingTimer: ReturnType<typeof setInterval> | undefined;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  let everConnected = false;
+
+  const connect = () => {
+    if (disposed) return;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    try {
+      ws = new WebSocket(`${proto}//${location.host}/api/rooms/ws`);
+    } catch {
+      void fetchPublicRooms().then((r) => !disposed && onRooms(r));
+      return;
+    }
+    ws.onmessage = (e) => {
+      everConnected = true;
+      try {
+        const { rooms } = JSON.parse(e.data as string) as { rooms: readonly PublicRoom[] };
+        if (!disposed) onRooms(rooms);
+      } catch {
+        // 'pong' or malformed — ignore.
+      }
+    };
+    ws.onopen = () => {
+      clearInterval(pingTimer);
+      pingTimer = setInterval(
+        () => ws?.readyState === WebSocket.OPEN && ws.send('ping'),
+        WATCH_PING_MS,
+      );
+    };
+    ws.onclose = () => {
+      clearInterval(pingTimer);
+      if (disposed) return;
+      // Never got a list over the socket → the feed may not exist here; give
+      // the screen a settled answer, then still retry (the server may return).
+      if (!everConnected) void fetchPublicRooms().then((r) => !disposed && onRooms(r));
+      retryTimer = setTimeout(connect, WATCH_RETRY_MS);
+    };
+  };
+  connect();
+
+  return () => {
+    disposed = true;
+    clearInterval(pingTimer);
+    clearTimeout(retryTimer);
+    ws?.close();
+  };
+}
+
+/** sessionStorage marker: a code the client should make public on join — any
+ * room this browser just created (Quick Play or Create a room). Rooms are
+ * public by default; the pre-game toggle opts DOWN to private. Consumed by
+ * Lobby. */
 const MAKE_PUBLIC_KEY = 'jaffre-make-public';
 
 /** Quick Play: match into an open public table, or get a fresh code to host.
@@ -146,7 +211,8 @@ export async function quickPlay(): Promise<string> {
   return code;
 }
 
-function markMakePublic(code: string): void {
+/** Flag `code` to be made public once its creator takes a seat. */
+export function markMakePublic(code: string): void {
   try {
     sessionStorage.setItem(MAKE_PUBLIC_KEY, code);
   } catch {

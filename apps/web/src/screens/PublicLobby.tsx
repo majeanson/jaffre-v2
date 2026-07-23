@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
-import { fetchPublicRooms, quickPlay, type PublicRoom } from '../net/rooms.js';
+import { quickPlay, watchPublicRooms, type PublicRoom } from '../net/rooms.js';
 
 export interface PublicLobbyProps {
   readonly onLeave: () => void;
@@ -18,7 +18,7 @@ const T: Record<
     loading: string;
     empty: string;
     quickPlay: string;
-    refresh: string;
+    live: string;
     join: string;
     seats: (n: number, cap: number) => string;
   }
@@ -29,7 +29,7 @@ const T: Record<
     loading: 'Finding tables…',
     empty: 'No open tables right now. Quick Play starts one for you.',
     quickPlay: 'Quick Play',
-    refresh: 'Refresh',
+    live: 'Live — updates as tables open and fill',
     join: 'Join',
     seats: (n, cap) => `${String(n)}/${String(cap)} seated`,
   },
@@ -39,7 +39,7 @@ const T: Record<
     loading: 'Recherche de tables…',
     empty: 'Aucune table ouverte. Partie rapide en crée une pour toi.',
     quickPlay: 'Partie rapide',
-    refresh: 'Rafraîchir',
+    live: 'En direct — mis à jour quand les tables ouvrent et se remplissent',
     join: 'Rejoindre',
     seats: (n, cap) => `${String(n)}/${String(cap)} assis`,
   },
@@ -48,25 +48,19 @@ const T: Record<
 const SHELL_NOTE =
   'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
 
-/** Browse open public tables (or Quick Play into one). Join sets the room hash;
- * the connect + seat flow is the same as a code join. */
+/** Browse open public tables (or Quick Play into one). The list is LIVE — a
+ * WebSocket to the Lobby DO pushes it on connect and on every change, so
+ * seats fill and tables appear/vanish in front of you with no polling and no
+ * refresh button. Join sets the room hash; the connect + seat flow is the
+ * same as a code join. */
 export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
   const t = T[useLang()];
   const [rooms, setRooms] = useState<readonly PublicRoom[] | null>(demoRooms ?? null);
 
-  const refresh = useCallback(() => {
+  useEffect(() => {
     if (demoRooms !== undefined) return;
-    let live = true;
-    setRooms(null);
-    fetchPublicRooms()
-      .then((r) => live && setRooms(r))
-      .catch(() => live && setRooms([]));
-    return () => {
-      live = false;
-    };
+    return watchPublicRooms(setRooms);
   }, [demoRooms]);
-
-  useEffect(() => refresh(), [refresh]);
 
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
@@ -80,19 +74,22 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           </Cta>
         </header>
 
-        <div className="flex flex-wrap gap-2">
-          <Cta
-            className="flex-1"
-            onClick={() => {
-              void quickPlay().then(onJoin);
-            }}
-          >
-            {t.quickPlay}
-          </Cta>
-          <Cta variant="secondary" onClick={refresh}>
-            {t.refresh}
-          </Cta>
-        </div>
+        <Cta
+          onClick={() => {
+            void quickPlay().then(onJoin);
+          }}
+        >
+          {t.quickPlay}
+        </Cta>
+
+        {/* Live badge — the list updates itself; there's nothing to refresh. */}
+        <p className="flex items-center gap-2 font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+          <span
+            aria-hidden
+            className="inline-block size-2 shrink-0 animate-pulse rounded-full bg-(--color-suit-green)"
+          />
+          {t.live}
+        </p>
 
         {rooms === null ? (
           <div className={SHELL_NOTE}>

@@ -1285,6 +1285,15 @@ export default {
     if (url.pathname === '/api/rooms' && request.method === 'GET') {
       return handleRooms(env);
     }
+    // /api/rooms/ws — live open-tables feed, upgraded straight to the Lobby DO.
+    if (url.pathname === '/api/rooms/ws') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Expected WebSocket upgrade', { status: 426 });
+      }
+      const lobby = lobbyStub(env);
+      if (lobby === null) return new Response('Lobby unavailable', { status: 503 });
+      return lobby.fetch(new Request('https://lobby/ws', request));
+    }
     const replayMatch = /^\/api\/replay\/([A-Za-z0-9-]{1,64})$/.exec(url.pathname);
     if (replayMatch !== null && request.method === 'GET') {
       return handleReplay(env, replayMatch[1] as string);
