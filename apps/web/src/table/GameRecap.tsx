@@ -39,6 +39,7 @@ const T: Record<
     rematch: string;
     swapSeats: string;
     leave: string;
+    rating: string;
     teamLabel: (t: 0 | 1) => string;
     hailMaryWonTitle: string;
     hailMaryLostTitle: string;
@@ -73,6 +74,7 @@ const T: Record<
     rematch: 'Rematch',
     swapSeats: 'Swap seats',
     leave: 'Leave',
+    rating: 'Rating',
     teamLabel: (t) => (t === 0 ? 'Team Sun' : 'Team Moon'),
     hailMaryWonTitle: 'Hail Mary!',
     hailMaryLostTitle: '12 sans atout — missed',
@@ -107,6 +109,7 @@ const T: Record<
     rematch: 'Revanche',
     swapSeats: 'Échanger les sièges',
     leave: 'Quitter',
+    rating: 'Classement',
     teamLabel: (t) => (t === 0 ? "l'Équipe Soleil" : "l'Équipe Lune"),
     hailMaryWonTitle: 'Coup de grâce!',
     hailMaryLostTitle: '12 sans atout — raté',
@@ -133,6 +136,9 @@ export interface GameRecapProps {
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
+  /** The viewer's own rating movement from this game — absent for spectators
+   * and unrated games (a bot on either team). */
+  readonly myRating?: { readonly rating: number; readonly delta: number } | undefined;
   /** How the game ended — drives the "Hail-Mary 12 sans atout" special banner. */
   readonly endReason?: EndReason | undefined;
 }
@@ -261,6 +267,7 @@ export function GameRecap({
   onSwapSeats,
   onLeave,
   endReason,
+  myRating,
 }: GameRecapProps) {
   const t = T[useLang()];
   // Which round's starting hands are expanded in the round-by-round table
@@ -333,6 +340,17 @@ export function GameRecap({
           <p className="mt-[0.2em] font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-text)">
             {scores[0]} — {scores[1]}
           </p>
+          {myRating !== undefined && (
+            <p className="mt-[0.3em] font-arcade-ui text-[0.8em] tabular-nums text-(--color-ap-text)">
+              {t.rating}: {myRating.rating}{' '}
+              <span
+                className={myRating.delta >= 0 ? 'text-(--color-ap-ok)' : 'text-(--color-suit-red)'}
+              >
+                ({myRating.delta >= 0 ? '+' : ''}
+                {myRating.delta})
+              </span>
+            </p>
+          )}
 
           {seriesWins !== undefined && (
             <div className="mt-5 text-left">

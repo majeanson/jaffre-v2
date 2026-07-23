@@ -55,6 +55,7 @@ export function Overlays({
           seats={roster.seats}
           seriesWins={roster.seriesWins}
           seriesGames={roster.seriesGames}
+          myRating={roster.ratings?.find((r) => r.seat === me)}
           endReason={view.endReason}
           onRematch={onRematch}
           onSwapSeats={onSwapSeats}

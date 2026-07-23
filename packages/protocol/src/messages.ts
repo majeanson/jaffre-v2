@@ -117,6 +117,14 @@ export interface Roster {
   readonly rules?: { readonly hailMary12: boolean };
   /** Whether this table is listed for matchmaking (public lobby / Quick Play). */
   readonly public?: boolean;
+  /** Last finished game's rating movement, one entry per SEATED human who was
+   * rated (a bot on either team makes the whole game unrated, so this is
+   * absent then). Cleared as soon as a rematch starts. */
+  readonly ratings?: readonly {
+    readonly seat: number;
+    readonly rating: number;
+    readonly delta: number;
+  }[];
 }
 
 export interface ChatEntry {

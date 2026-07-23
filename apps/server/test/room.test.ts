@@ -9,6 +9,7 @@ import { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS } from '../src/GameRoom.j
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
     GAME_ROOM: DurableObjectNamespace;
+    LOBBY: DurableObjectNamespace;
   }
 }
 
@@ -597,6 +598,16 @@ describe('GameRoom', () => {
       expect(replay.seed).toBe(game.seed);
       expect(replay.actions).toEqual(actions);
       expect(replay.players).toEqual(entry?.players);
+
+      // Unrated game (1 human + 3 bots — rated games need a human on both
+      // teams): no lastRatings in meta, and roster.ratings absent.
+      const metaAfter = await runInDurableObject(stub, async (_instance, state) => {
+        return state.storage.get('meta');
+      });
+      expect((metaAfter as { lastRatings?: unknown }).lastRatings).toBeUndefined();
+      const rosterAfter = client.latestRoster();
+      expect(rosterAfter?.ratings).toBeUndefined();
+
       await endQuiet(room, client);
     },
   );
@@ -1012,6 +1023,104 @@ describe('GameRoom', () => {
       }
       expect(freed).toBe(true);
       await endQuiet(room, alice, bob);
+    },
+  );
+
+  it(
+    "stops advertising a public room once the pre-game vacate frees the last human's seat",
+    { timeout: 20_000 },
+    async () => {
+      interface StoredMeta {
+        seats?: unknown[];
+        disconnectedSince?: Record<string, number>;
+        lobbyListed?: boolean;
+      }
+      interface StoredLobbyEntry {
+        readonly code: string;
+      }
+      const room = 'room-pregame-vacate-delists';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      alice.send({ t: 'join' });
+      await alice.next('welcome');
+      alice.send({ t: 'sit', seat: 0 });
+      await alice.next('roster');
+      alice.send({ t: 'set_public', on: true });
+      const publicRoster = await pollUntil(async () => {
+        const r = alice.latestRoster();
+        return r?.public === true ? r : undefined;
+      }, 'the public roster echo');
+      expect(publicRoster.public).toBe(true);
+
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      const lobbyStub = env.LOBBY.get(env.LOBBY.idFromName('lobby'));
+
+      // Registration landed: the room persisted lobbyListed and the Lobby DO's
+      // own storage now carries this room's code.
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.lobbyListed === true ? true : undefined;
+          }),
+        'the room to record itself as lobby-listed',
+      );
+      const registered = await runInDurableObject(lobbyStub, async (_instance, state) => {
+        const rooms = await state.storage.get<Record<string, StoredLobbyEntry>>('rooms');
+        return rooms?.[room];
+      });
+      expect(registered).toBeDefined();
+
+      // Alice — the room's only human — vanishes past the pre-game grace,
+      // same as the ghost-seat test above.
+      alice.ws.close(1000, 'tab closed');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the pre-game disconnect clock',
+      );
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - PREGAME_VACATE_MS - 1000 };
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+      // The freed seat drops humans to zero — lobbyEntry() now returns null,
+      // and the alarm's trailing syncLobby deregisters the table.
+      const after = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return { seat: meta?.seats?.[0], lobbyListed: meta?.lobbyListed };
+      });
+      expect(after.seat).toBeNull();
+      expect(after.lobbyListed).not.toBe(true);
+
+      const deregistered = await pollUntil(
+        () =>
+          runInDurableObject(lobbyStub, async (_instance, state) => {
+            const rooms = await state.storage.get<Record<string, StoredLobbyEntry>>('rooms');
+            return rooms === undefined || !(room in rooms) ? true : undefined;
+          }),
+        'the Lobby DO to drop the deregistered room',
+      );
+      expect(deregistered).toBe(true);
+
+      await endQuiet(room, alice);
+      // Guard the Lobby DO's own pending TTL alarm the same way endQuiet()
+      // guards the room's, so it doesn't trip vitest's isolated-storage
+      // teardown.
+      const lobbyDeadline = Date.now() + 5000;
+      for (;;) {
+        await runInDurableObject(lobbyStub, (_instance, state) => state.storage.deleteAlarm());
+        await sleep(30);
+        const alarm = await runInDurableObject(lobbyStub, (_instance, state) =>
+          state.storage.getAlarm(),
+        );
+        if (alarm === null || Date.now() > lobbyDeadline) break;
+      }
     },
   );
 

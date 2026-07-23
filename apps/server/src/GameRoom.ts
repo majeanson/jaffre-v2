@@ -103,6 +103,11 @@ interface Meta {
    * hibernation — otherwise a woken instance would forget it was listed and
    * never remove a started/full/private room from matchmaking. */
   lobbyListed?: boolean;
+  /** Rating movement from the game that just ended, one entry per SEATED
+   * human who was rated — powers the "1043 (+12)" line on the recap so it
+   * survives reconnects/refresh. Absent for unrated games; cleared as soon
+   * as a rematch starts. */
+  lastRatings?: { seat: number; rating: number; delta: number }[];
 }
 
 /** Per-socket identity, survives hibernation via serializeAttachment. */
@@ -900,6 +905,9 @@ export class GameRoom implements DurableObject {
     this.game = game;
     this.meta.started = true;
     this.meta.startedAt = Date.now();
+    // Rematch: the previous game's rating movement no longer applies to the
+    // recap that hasn't happened yet.
+    delete this.meta.lastRatings;
     this.seq = 0;
     await this.ctx.storage.put({ meta: this.meta, game: serialize(game), seq: this.seq });
     for (const socket of this.ctx.getWebSockets()) {
@@ -1123,6 +1131,20 @@ export class GameRoom implements DurableObject {
       ratingInfo = await this.ratingWriteInfo(db, record.players, record.winner_team);
     } catch {
       ratingInfo = [];
+    }
+
+    // Stash for the recap: map each rated human's userId back to their seat
+    // (via meta.seats, still the just-finished game's seating) so the roster
+    // can carry rating movement without a client-side round-trip.
+    if (ratingInfo.length > 0) {
+      const lastRatings: { seat: number; rating: number; delta: number }[] = [];
+      for (const info of ratingInfo) {
+        const seat = this.meta.seats.findIndex((s) => s === info.userId);
+        if (seat === -1) continue;
+        lastRatings.push({ seat, rating: info.newRating, delta: info.delta });
+      }
+      this.meta.lastRatings = lastRatings;
+      await this.ctx.storage.put('meta', this.meta);
     }
 
     const results = await db.batch([
@@ -1376,6 +1398,7 @@ export class GameRoom implements DurableObject {
       seriesGames: this.meta.seriesGames,
       rules: this.meta.rules ?? { hailMary12: true },
       public: this.meta.public ?? false,
+      ...(this.meta.lastRatings !== undefined ? { ratings: this.meta.lastRatings } : {}),
     };
   }
 
