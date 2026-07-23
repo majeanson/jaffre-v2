@@ -22,6 +22,10 @@ let room: string | null = null;
 let attempts = 0;
 let closedByUs = false;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
+/** Messages sent while the socket wasn't open yet — flushed on open. The room
+ * screen renders before the connection settles, and a click landing in that
+ * gap (e.g. "Sit here" during "Connecting…") must not silently vanish. */
+let pending: ClientMessage[] = [];
 
 /** Keepalive: nudge the server every 30s so idle proxies don't cull the
  * socket and a dead connection surfaces as a close sooner. */
@@ -58,6 +62,7 @@ export function lastRoom(): string | null {
 export function connect(roomCode: string): void {
   disconnect();
   closedByUs = false;
+  pending = [];
   room = roomCode;
   localStorage.setItem('jaffre-last-room', roomCode);
   void open();
@@ -79,6 +84,10 @@ async function open(): Promise<void> {
     attempts = 0;
     startPing();
     send({ t: 'join' });
+    // Replay anything the player did while we were still connecting.
+    const queued = pending;
+    pending = [];
+    for (const msg of queued) send(msg);
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data as string) as ServerMessage;
@@ -101,10 +110,16 @@ export function disconnect(): void {
   ws = null;
   room = null;
   attempts = 0;
+  pending = [];
 }
 
 export function send(msg: ClientMessage): void {
-  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+    return;
+  }
+  // Queue real intents for the flush-on-open; keepalive pings just drop.
+  if (room !== null && msg.t !== 'ping') pending.push(msg);
 }
 
 function handle(msg: ServerMessage): void {

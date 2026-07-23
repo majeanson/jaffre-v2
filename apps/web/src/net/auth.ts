@@ -67,24 +67,30 @@ function storeProfile(p: Profile): Profile {
   return p;
 }
 
-// Concurrent callers that both need a mint (fresh identity or a rename) must
-// share ONE request — two parallel POSTs to /api/auth/guest create two separate
-// identities and the second clobbers the first's cached token, breaking identity
-// continuity (e.g. a room socket connect racing a background stats fetch would
-// then reconnect as a different uid and lose the seat). Keyed by name so a
-// concurrent rename still gets its own mint.
-const mintInFlight = new Map<string, Promise<StoredToken | null>>();
+// Mints are SERIALIZED on one chain. Two parallel POSTs to /api/auth/guest
+// mint two separate identities and the loser clobbers the winner's cached
+// token — and the common real case is exactly parallel-with-DIFFERENT-names:
+// the home-mount mint ('Player', fresh browser) racing a rename-then-join.
+// Each queued attempt re-reads the cache first, so a rename that waited on
+// the initial mint carries ITS token as the Bearer and renames the SAME uid
+// instead of forking a stranger.
+let mintChain: Promise<StoredToken | null> = Promise.resolve(null);
+
+/** Valid for 7+ days and already carrying this name — reusable as-is.
+ * (Deliberately NOT a type predicate: a false doesn't mean null, the name may
+ * simply mismatch, and the mint below still wants that token as its Bearer.) */
+function reusable(cached: StoredToken | null, name: string): boolean {
+  return cached !== null && cached.exp - Date.now() / 1000 > 7 * 86400 && cached.name === name;
+}
 
 export function getGuestToken(name: string): Promise<StoredToken | null> {
   const cached = read();
-  // Reuse while valid for 7+ days and the name still matches.
-  if (cached !== null && cached.exp - Date.now() / 1000 > 7 * 86400 && cached.name === name) {
-    return Promise.resolve(cached);
-  }
-  const pending = mintInFlight.get(name);
-  if (pending !== undefined) return pending;
+  if (cached !== null && reusable(cached, name)) return Promise.resolve(cached);
 
-  const mint = (async (): Promise<StoredToken | null> => {
+  const attempt = async (): Promise<StoredToken | null> => {
+    // Re-read: an earlier queued mint may have just landed what we need.
+    const current = read();
+    if (current !== null && reusable(current, name)) return current;
     try {
       const res = await fetch('/api/auth/guest', {
         method: 'POST',
@@ -92,7 +98,7 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
           'Content-Type': 'application/json',
           // Send the existing token, if any, so a rename mints a NEW token for
           // the SAME uid instead of a brand-new identity.
-          ...(cached !== null ? { Authorization: `Bearer ${cached.token}` } : {}),
+          ...(current !== null ? { Authorization: `Bearer ${current.token}` } : {}),
         },
         body: JSON.stringify({ name }),
       });
@@ -109,12 +115,11 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
       return stored;
     } catch {
       return null;
-    } finally {
-      mintInFlight.delete(name);
     }
-  })();
-  mintInFlight.set(name, mint);
-  return mint;
+  };
+  const next = mintChain.then(attempt, attempt);
+  mintChain = next;
+  return next;
 }
 
 /** The current session token, if this browser holds a valid one. */
