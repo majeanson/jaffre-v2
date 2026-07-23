@@ -143,6 +143,18 @@ test('two players racing one bot seat: the loser sees the seat-taken toast', asy
     c.$eval('[data-testid="join-1"]', (el) => (el as HTMLElement).click()),
   ]);
 
+  // Start watching BOTH pages for the rejection toast RIGHT NOW, before any
+  // other polling: the toast auto-dismisses after ~5s, and on a slow CI
+  // runner the winner-determination poll below can outlive it (observed
+  // nightly flake — the toast had come and gone by the time it was asserted).
+  const toastOn = (page: Page, tag: 'b' | 'c') =>
+    page
+      .getByRole('status')
+      .filter({ hasText: /taken/i })
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => tag);
+  const toastSeen = Promise.any([toastOn(b, 'b'), toastOn(c, 'c')]).catch(() => null);
+
   // Exactly one of B/C ends up seated in row 1 as "(you)"; the other gets a
   // server rejection toast ("Seat 1 is taken"). Poll for the outcome rather
   // than assuming which page wins the race.
@@ -166,10 +178,11 @@ test('two players racing one bot seat: the loser sees the seat-taken toast', asy
       .filter({ hasText: /\(you\)/i })
       .count()) > 0;
   const winner = bWon ? b : c;
-  const loser = bWon ? c : b;
 
   await expect(winner.getByTestId('seat-row-1')).toContainText(/\(you\)/i);
-  await expect(loser.getByRole('status').filter({ hasText: /taken/i })).toBeVisible();
+  // The toast watcher armed right after the clicks must have caught it on
+  // the LOSER's page (null = neither page ever showed it).
+  expect(await toastSeen).toBe(bWon ? 'c' : 'b');
 
   await contextA.close();
   await contextB.close();
