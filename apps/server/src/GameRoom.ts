@@ -64,6 +64,9 @@ const CHAT_CAP = 100;
  * CHAT_RATE_WINDOW_MS. */
 const CHAT_RATE_LIMIT = 5;
 const CHAT_RATE_WINDOW_MS = 10_000;
+/** "Someone joined your public table" push to an absent host: at most one per
+ * sitter uid per room within this window. */
+const JOIN_PUSH_THROTTLE_MS = 5 * 60_000;
 const SEATS: readonly Seat[] = [0, 1, 2, 3];
 
 /** A seat is owned by a user (userId), a bot (at a difficulty), or nobody.
@@ -179,6 +182,12 @@ export class GameRoom implements DurableObject {
    * window is a non-issue (worst case they get a few extra messages right
    * after a wake), and it's far cheaper than a storage write per chat. */
   private readonly chatTimestamps = new Map<string, number[]>();
+  /** uid (the sitter who joined) → Date.now() of their last "joined your
+   * table" push to the host, for the JOIN_PUSH_THROTTLE_MS throttle. Same
+   * IN-MEMORY tradeoff as chatTimestamps: a hibernation wake resetting this
+   * just risks one extra ping right after a wake, far cheaper than a storage
+   * write on every seat change. */
+  private readonly joinPushTimestamps = new Map<string, number>();
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -632,6 +641,56 @@ export class GameRoom implements DurableObject {
       }
     }
     this.broadcastRoster({});
+    // Table-filled push: bring an absent host back when a stranger joins their
+    // public, not-yet-started table. Mid-game the only seat change possible is
+    // a spectator taking over a bot seat (midGameTakeover, above) — that path
+    // never reaches here with `started` true and a real host mismatch, but the
+    // `!started` check is kept explicit to match the spec this mirrors.
+    if (
+      this.meta.public === true &&
+      !this.meta.started &&
+      att.userId !== this.meta.hostId &&
+      this.meta.hostId !== undefined &&
+      !this.isConnected(this.meta.hostId)
+    ) {
+      this.notifyHostOfJoin(att.userId, att.name);
+    }
+  }
+
+  /**
+   * Web Push "someone joined your table" to the host when they're not
+   * connected — mirrors notifyTurnIfAbsent's fire-and-forget shape
+   * (ctx.waitUntil, single-language body: this codebase's one existing push
+   * payload IS bilingual in its body, but title/body content here is
+   * spec'd verbatim, so kept single-language). Throttled per sitter uid.
+   */
+  private notifyHostOfJoin(sitterUid: string, sitterName: string): void {
+    const hostId = this.meta.hostId;
+    if (hostId === undefined) return;
+    const now = Date.now();
+    const last = this.joinPushTimestamps.get(sitterUid);
+    if (last !== undefined && now - last < JOIN_PUSH_THROTTLE_MS) return;
+    this.joinPushTimestamps.set(sitterUid, now);
+    const code = this.meta.roomCode;
+    const humans = this.meta.seats.filter((o): o is string => typeof o === 'string').length;
+    const full = this.meta.seats.every((s) => s !== null) && humans >= 2;
+    const { title, body } = full
+      ? {
+          title: 'Your table is full',
+          body: `${sitterName} joined — come start the game`,
+        }
+      : {
+          title: `${sitterName} joined your table`,
+          body: code === undefined ? `${humans}/4 seated` : `Room ${code} — ${humans}/4 seated`,
+        };
+    this.ctx.waitUntil(
+      notifyUser(this.env, hostId, {
+        title,
+        body,
+        url: code === undefined ? '/' : `/#room/${code}`,
+        ...(code !== undefined ? { tag: `join-${code}` } : {}),
+      }),
+    );
   }
 
   /** Empty a bot seat back to vacant (pre-game only). */
@@ -798,12 +857,19 @@ export class GameRoom implements DurableObject {
   }
 
   /** The lobby entry this room should advertise, or null when it shouldn't be
-   * listed. Pre-game: public, waiting, at least one (but not all four) human
-   * seated. Mid-game: public, started, the game not yet over, and at least one
-   * human still seated — a game that's run entirely down to bots (every human
-   * left for good) has nobody to watch play, so it drops off too. A finished
-   * game (game_over) always returns null so syncLobby deregisters the table
-   * and it falls off the "watch live" list. */
+   * listed. Pre-game OR between games: public, waiting, at least one (but not
+   * all four) human seated. Mid-game: public, started, the game not yet over,
+   * and at least one human still seated — a game that's run entirely down to
+   * bots (every human left for good) has nobody to watch play, so it drops off
+   * too. A finished game (game_over) with a full human table returns null so
+   * syncLobby deregisters the table and it falls off the "watch live" list —
+   * but a finished game with room for a joiner is treated the same as
+   * pre-game: `meta.started` is a one-way flag (flips true at the first
+   * `start` and never resets, even across a rematch's `isRematch` restart), so
+   * "waiting" cannot be gated on `!started` alone or a public table with open
+   * seats would never re-list between games. Bots never block a joiner — one
+   * can always displace a bot seat before the next `start` — so seats held
+   * only by bots still count as open here, same as pre-game. */
   private lobbyEntry(): {
     code: string;
     host: string;
@@ -815,7 +881,8 @@ export class GameRoom implements DurableObject {
     if (code === undefined) return null;
     if (this.meta.public !== true) return null;
     const humans = this.meta.seats.filter((o): o is string => typeof o === 'string');
-    if (!this.meta.started) {
+    const betweenGames = this.meta.started && this.game?.phase === 'game_over';
+    if (!this.meta.started || betweenGames) {
       const open = humans.length >= 1 && humans.length < 4;
       if (!open) return null;
       return {

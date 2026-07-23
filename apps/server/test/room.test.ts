@@ -655,7 +655,49 @@ describe('GameRoom', () => {
       const rosterAfter = client.latestRoster();
       expect(rosterAfter?.ratings).toBeUndefined();
 
+      // BETWEEN GAMES (game_over reached, no rematch yet): a public room with
+      // room for a joiner must re-list in the lobby as 'waiting' — meta.started
+      // stays true (it only flips true→false never), so the fix has to treat
+      // game_over as "open" too, same as pre-game. onSetPublic has no
+      // started-gate, so flipping public here (post game_over) is itself a
+      // legitimate between-games action.
+      interface StoredLobbyEntry {
+        readonly code: string;
+        readonly phase: string;
+        readonly players: number;
+      }
+      client.send({ t: 'set_public', on: true });
+      const publicRoster = await pollUntil(async () => {
+        const r = client.latestRoster();
+        return r?.public === true ? r : undefined;
+      }, 'the public roster echo (post game_over)');
+      expect(publicRoster.public).toBe(true);
+
+      const lobbyStub = env.LOBBY.get(env.LOBBY.idFromName('lobby'));
+      const listed = await pollUntil(
+        () =>
+          runInDurableObject(lobbyStub, async (_instance, state) => {
+            const rooms = await state.storage.get<Record<string, StoredLobbyEntry>>('rooms');
+            return rooms?.[room];
+          }),
+        'the between-games room to re-list as waiting',
+      );
+      expect(listed.phase).toBe('waiting');
+      expect(listed.players).toBe(1); // Alice only — the 3 bot seats don't count
+
       await endQuiet(room, client);
+      // Guard the Lobby DO's own pending TTL alarm the same way the
+      // pre-game-vacate test does, so it doesn't trip vitest's
+      // isolated-storage teardown.
+      const lobbyDeadline = Date.now() + 5000;
+      for (;;) {
+        await runInDurableObject(lobbyStub, (_instance, state) => state.storage.deleteAlarm());
+        await sleep(30);
+        const alarm = await runInDurableObject(lobbyStub, (_instance, state) =>
+          state.storage.getAlarm(),
+        );
+        if (alarm === null || Date.now() > lobbyDeadline) break;
+      }
     },
   );
 

@@ -131,16 +131,16 @@ test('two players racing one bot seat: the loser sees the seat-taken toast', asy
   await expect(b.getByTestId('join-1')).toBeVisible();
   await expect(c.getByTestId('join-1')).toBeVisible();
 
-  // Fire both clicks without awaiting between them — as close to
-  // simultaneous as Playwright allows. Whichever click loses the race can see
-  // its own `join-1` button vanish out from under it mid-click (the seat
-  // flips from "bot, joinable" to "human, not joinable" the instant the
-  // winner lands) — Playwright then throws on the detached element. That is
-  // itself evidence of a loser, not a test bug, so both clicks are allowed to
-  // reject; the actual winner/loser is determined below from room state.
-  await Promise.allSettled([
-    b.getByTestId('join-1').click({ timeout: 5000 }),
-    c.getByTestId('join-1').click({ timeout: 5000 }),
+  // Fire both clicks via in-page el.click() — NOT Playwright's actionability
+  // pipeline. The loser's button detaches the instant the winner's roster
+  // lands; a Playwright click caught mid-retry then aborts WITHOUT ever
+  // dispatching, so no `sit` reaches the server and no toast can appear
+  // (observed flake). $eval dispatches synchronously on the element it
+  // resolved, so BOTH sit messages always go out and the loser is guaranteed
+  // its SEAT_TAKEN rejection.
+  await Promise.all([
+    b.$eval('[data-testid="join-1"]', (el) => (el as HTMLElement).click()),
+    c.$eval('[data-testid="join-1"]', (el) => (el as HTMLElement).click()),
   ]);
 
   // Exactly one of B/C ends up seated in row 1 as "(you)"; the other gets a
