@@ -33,6 +33,7 @@ interface StatAward {
 
 /** Stat-based awards, auto-granted from the player's real aggregate. */
 export const STAT_AWARDS: readonly StatAward[] = [
+  { id: 'first-game', earned: (s) => s.games >= 1 },
   { id: 'first-win', earned: (s) => s.wins >= 1 },
   { id: 'ten-wins', earned: (s) => s.wins >= 10 },
   { id: 'win-streak-5', earned: (s) => s.streak.best >= 5 },

@@ -106,15 +106,34 @@ test('a started public game is watchable from the lobby, and a spectator can tak
   await contextB.close();
 });
 
-test('two players racing one bot seat: the loser sees the seat-taken toast', async ({
-  browser,
-}) => {
+test('a stale Join on an already-taken seat surfaces the seat-taken toast', async ({ browser }) => {
+  // A true three-page click race proved unpinnable on CI (welcome/roster
+  // ordering differs run to run — the "loser" could connect late enough to
+  // never even see the button). This stages the SAME product moment
+  // deterministically: C's page goes offline holding a stale "Join", B takes
+  // the seat meanwhile, and C's queued click flushes on reconnect into the
+  // server's SEAT_TAKEN rejection — exactly the phone-with-a-stale-screen
+  // case the toast exists for. It also pins the offline intent queue.
   const contextA = await browser.newContext();
   const contextB = await browser.newContext();
   const contextC = await browser.newContext();
   await contextA.addInitScript(() => localStorage.setItem('jaffre-name', 'Alice'));
   await contextB.addInitScript(() => localStorage.setItem('jaffre-name', 'Bruno'));
-  await contextC.addInitScript(() => localStorage.setItem('jaffre-name', 'Carla'));
+  await contextC.addInitScript(() => {
+    localStorage.setItem('jaffre-name', 'Carla');
+    // Track live sockets so the test can sever them: setOffline() blocks NEW
+    // connections but does NOT terminate an established localhost WebSocket,
+    // so a "network drop" needs both the block and an explicit close.
+    const sockets: WebSocket[] = [];
+    (window as unknown as { __sockets: WebSocket[] }).__sockets = sockets;
+    const Original = window.WebSocket;
+    window.WebSocket = class extends Original {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        sockets.push(this);
+      }
+    } as typeof WebSocket;
+  });
   const a = await newPage(contextA);
   const b = await newPage(contextB);
   const c = await newPage(contextC);
@@ -124,65 +143,39 @@ test('two players racing one bot seat: the loser sees the seat-taken toast', asy
   await a.getByTestId('fill-bots').click();
   await expect(a.getByTestId('seat-row-1')).toBeVisible();
 
-  // B and C both land straight on the (still-waiting) room and both see the
-  // JOIN action over the bot in seat 1.
+  // B and C both land on the (still-waiting) room; both see the bot's JOIN.
   await b.goto(`/#room/${code}`);
   await c.goto(`/#room/${code}`);
   await expect(b.getByTestId('join-1')).toBeVisible();
   await expect(c.getByTestId('join-1')).toBeVisible();
 
-  // Fire both clicks via in-page el.click() — NOT Playwright's actionability
-  // pipeline. The loser's button detaches the instant the winner's roster
-  // lands; a Playwright click caught mid-retry then aborts WITHOUT ever
-  // dispatching, so no `sit` reaches the server and no toast can appear
-  // (observed flake). $eval dispatches synchronously on the element it
-  // resolved, so BOTH sit messages always go out and the loser is guaranteed
-  // its SEAT_TAKEN rejection.
-  await Promise.all([
-    b.$eval('[data-testid="join-1"]', (el) => (el as HTMLElement).click()),
-    c.$eval('[data-testid="join-1"]', (el) => (el as HTMLElement).click()),
-  ]);
+  // C's network drops: block new connections FIRST (reconnects must fail
+  // while she's dark), then sever the live socket. The store keeps the last
+  // roster, so her screen still shows the bot's JOIN — a stale button. The
+  // connection line acknowledging the drop proves the click lands in the gap.
+  await contextC.setOffline(true);
+  await c.evaluate(() =>
+    (window as unknown as { __sockets: WebSocket[] }).__sockets.forEach((s) => s.close()),
+  );
+  await expect(c.getByText(/Reconnecting|Reconnexion/)).toBeVisible();
 
-  // Start watching BOTH pages for the rejection toast RIGHT NOW, before any
-  // other polling: the toast auto-dismisses after ~5s, and on a slow CI
-  // runner the winner-determination poll below can outlive it (observed
-  // nightly flake — the toast had come and gone by the time it was asserted).
-  const toastOn = (page: Page, tag: 'b' | 'c') =>
-    page
-      .getByRole('status')
-      .filter({ hasText: /taken/i })
-      .waitFor({ state: 'visible', timeout: 15_000 })
-      .then(() => tag);
-  const toastSeen = Promise.any([toastOn(b, 'b'), toastOn(c, 'c')]).catch(() => null);
+  // B takes the seat while C is dark.
+  await b.getByTestId('join-1').click();
+  await expect(b.getByTestId('seat-row-1')).toContainText(/\(you\)/i);
+  await expect(b.getByTestId('seat-row-1')).toContainText('Bruno');
 
-  // Exactly one of B/C ends up seated in row 1 as "(you)"; the other gets a
-  // server rejection toast ("Seat 1 is taken"). Poll for the outcome rather
-  // than assuming which page wins the race.
-  await expect
-    .poll(async () => {
-      const bYou = await b
-        .getByTestId('seat-row-1')
-        .filter({ hasText: /\(you\)/i })
-        .count();
-      const cYou = await c
-        .getByTestId('seat-row-1')
-        .filter({ hasText: /\(you\)/i })
-        .count();
-      return bYou + cYou;
-    })
-    .toBeGreaterThan(0);
+  // C clicks her stale JOIN — the intent queues (socket is down, not open).
+  await c.getByTestId('join-1').click();
 
-  const bWon =
-    (await b
-      .getByTestId('seat-row-1')
-      .filter({ hasText: /\(you\)/i })
-      .count()) > 0;
-  const winner = bWon ? b : c;
-
-  await expect(winner.getByTestId('seat-row-1')).toContainText(/\(you\)/i);
-  // The toast watcher armed right after the clicks must have caught it on
-  // the LOSER's page (null = neither page ever showed it).
-  expect(await toastSeen).toBe(bWon ? 'c' : 'b');
+  // Back online: the queued sit flushes on reconnect, the server answers
+  // SEAT_TAKEN, and the toast tells C what happened.
+  await contextC.setOffline(false);
+  await expect(c.getByRole('status').filter({ hasText: /taken/i })).toBeVisible({
+    timeout: 20_000,
+  });
+  // And her roster caught up: the seat belongs to Bruno, not her.
+  await expect(c.getByTestId('seat-row-1')).toContainText('Bruno');
+  await expect(c.getByTestId('seat-row-1')).not.toContainText(/\(you\)/i);
 
   await contextA.close();
   await contextB.close();

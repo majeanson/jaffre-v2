@@ -24,6 +24,10 @@ describe('earnedStatAwardIds', () => {
     expect(earnedStatAwardIds(ZERO_STATS)).toEqual([]);
   });
 
+  it('earns first-game after a single finished game', () => {
+    expect(earnedStatAwardIds({ ...ZERO_STATS, games: 1 })).toContain('first-game');
+  });
+
   it('earns first-win and ten-wins at the right thresholds', () => {
     expect(earnedStatAwardIds({ ...ZERO_STATS, wins: 1 })).toContain('first-win');
     expect(earnedStatAwardIds({ ...ZERO_STATS, wins: 1 })).not.toContain('ten-wins');

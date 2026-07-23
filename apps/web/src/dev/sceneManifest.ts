@@ -14,6 +14,7 @@ export type SceneScreen =
   | 'visitor'
   | 'share'
   | 'collection'
+  | 'journey'
   | 'paint'
   | 'public-lobby';
 
@@ -308,6 +309,12 @@ export const SCENE_METAS = [
     label: 'Collection — cosmetics gallery',
     screen: 'collection',
     probe: 'role=heading[name="Collection"]',
+  },
+  {
+    id: 'journey',
+    label: 'Journey — level track',
+    screen: 'journey',
+    probe: 'role=heading[name="Journey"]',
   },
   {
     id: 'classic-og-deck',

@@ -6,6 +6,7 @@ import { LinkNudge } from '../components/LinkAccount.js';
 import { useScrollLock } from '../components/useScrollLock.js';
 import { Confetti } from './Confetti.js';
 import { StartingHandsRows } from './StartingHandsPanel.js';
+import { XpStrip } from './XpStrip.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
 const TEAM_COLOR = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
@@ -141,6 +142,8 @@ export interface GameRecapProps {
   readonly myRating?: { readonly rating: number; readonly delta: number } | undefined;
   /** How the game ended — drives the "Hail-Mary 12 sans atout" special banner. */
   readonly endReason?: EndReason | undefined;
+  /** Show the viewer's XP/level strip (players only — not spectators). */
+  readonly showXp?: boolean | undefined;
 }
 
 /** Two small chips for a team pair, shown under a scorepad tally. */
@@ -268,6 +271,7 @@ export function GameRecap({
   onLeave,
   endReason,
   myRating,
+  showXp = false,
 }: GameRecapProps) {
   const t = T[useLang()];
   // Which round's starting hands are expanded in the round-by-round table
@@ -351,6 +355,7 @@ export function GameRecap({
               </span>
             </p>
           )}
+          {showXp && <XpStrip />}
 
           {seriesWins !== undefined && (
             <div className="mt-5 text-left">

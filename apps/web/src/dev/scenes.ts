@@ -452,8 +452,9 @@ const LOADERS: Record<SceneId, () => void> = {
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.
   'share-sheet': () => undefined,
-  // Collection renders its own screen from demo props (like stats) — no-op.
+  // Collection/Journey render their own screens from demo props — no-op.
   collection: () => undefined,
+  journey: () => undefined,
   // A real playing state, shown under the Classic OG card skin (applied by the
   // Scenes shell from meta.cardSkin) — proves deck coverage of a card skin.
   'classic-og-deck': gameScene(

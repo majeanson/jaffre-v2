@@ -15,6 +15,7 @@ import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
 import { Collection } from './Collection.js';
+import { Journey } from './Journey.js';
 import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
@@ -199,6 +200,9 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       {current.screen === 'collection' && (
         <Collection key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
+      )}
+      {current.screen === 'journey' && (
+        <Journey key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
       )}
       {current.screen === 'paint' && <PaintStudio key={current.id} onLeave={onLeave} />}
       {current.screen === 'public-lobby' && (

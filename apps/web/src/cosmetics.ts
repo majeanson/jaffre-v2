@@ -1,5 +1,6 @@
 import type { Lang } from '@jaffre/ui';
 import type { Stats } from './net/history.js';
+import { levelFromStats, levelRequirement } from './progression.js';
 
 /**
  * Cosmetics progression — one model shared by both axes (themes + card skins).
@@ -7,6 +8,13 @@ import type { Stats } from './net/history.js';
  * state; the games table is the single source). The chosen ids persist in the
  * profile so they follow the account; a `[data-theme]` / `[data-card-skin]`
  * attribute on <html> applies the token layer.
+ *
+ * Unlocks come in two flavours, mirroring progression.ts:
+ *  - TRACK — "Reach level N" (XP is derived from the same stats). Cosmetics
+ *    that used to be raw "play N games" gates live here now; each keeps its old
+ *    stat gate as an OR-fallback so nobody who had it ever loses it.
+ *  - CHALLENGE — skill/style gates (streaks, win rate, sans-atout, nemesis),
+ *    unchanged, most of them paired with a matching award.
  */
 
 /** Dev switch: unlocks every cosmetic so all skins can be previewed/tested in
@@ -25,6 +33,20 @@ export interface Cosmetic {
   readonly unlock?: (s: Stats) => boolean;
   /** Progress toward the unlock, for the gallery's locked tiles. */
   readonly requirement?: (s: Stats, lang: Lang) => { text: string; have: number; need: number };
+}
+
+/** A track cosmetic: owned at level `n` — or via `legacy`, the pre-track stat
+ * gate it shipped with, kept as an OR so an already-earned skin never re-locks
+ * for a player whose stats gave less XP than the new level asks. */
+export function atLevel(
+  n: number,
+  legacy?: (s: Stats) => boolean,
+): Pick<Cosmetic, 'free' | 'unlock' | 'requirement'> {
+  return {
+    free: false,
+    unlock: (s) => levelFromStats(s) >= n || (legacy?.(s) ?? false),
+    requirement: (s, lang) => levelRequirement(n, s, lang),
+  };
 }
 
 /** The set of owned cosmetic ids for these stats. `devAll` forces everything
@@ -62,42 +84,47 @@ export function resolve(id: string | null, ownedIds: Set<string>, fallback: stri
 // data-card-skin attribute" state), so the active theme's own card tokens show
 // through until the player picks a real skin. The others are `[data-card-skin]`
 // token blocks in tokens.css, some paired with a CARD_SKIN_RENDERERS entry.
+// Catalog order IS the ladder the gallery shows: the free starters, then the
+// level track in level order, then the challenge skins roughly easiest-first.
 export const CARD_SKINS: readonly Cosmetic[] = [
+  // ── Starters ──
   { id: 'arcade', label: 'Arcade', free: true },
   // The old 2022 deck as a progression: Classic OG (free) puts the real OG
-  // figure art on the two 0-cards; OG Deck unlocks the FULL painted deck.
+  // figure art on the two 0-cards; OG Deck (level track) is the FULL deck.
   { id: 'classic-og', label: 'Classic OG', free: true },
+  // ── Level track (see LEVEL_TRACK in progression.ts) ──
+  { id: 'noir', label: 'Noir', ...atLevel(3) },
+  { id: 'newsprint', label: 'Newsprint', ...atLevel(5) },
+  { id: 'blueprint', label: 'Blueprint', ...atLevel(7) },
+  { id: 'og-deck', label: 'OG Deck', ...atLevel(8, (s) => s.games >= 15) },
+  { id: 'lamplight-foil', label: 'Lamplight Foil', ...atLevel(10, (s) => s.games >= 25 || s.streak.best >= 5) },
+  { id: 'stained-glass', label: 'Stained Glass', ...atLevel(12, (s) => s.games >= 30) },
+  { id: 'vaporwave', label: 'Vaporwave', ...atLevel(13, (s) => s.games >= 40) },
+  { id: 'circuit', label: 'Circuit', ...atLevel(15) },
+  { id: 'starfield', label: 'Starfield', ...atLevel(17) },
+  { id: 'royal', label: 'Royal', ...atLevel(20) },
+  // ── Challenges (skill & style; most pair with an award) ──
   {
-    id: 'og-deck',
-    label: 'OG Deck',
+    id: 'pixel-parlor',
+    label: 'Pixel Parlor',
     free: false,
-    unlock: (s) => s.games >= 15,
+    unlock: (s) => s.streak.best >= 3,
     requirement: (s, lang) => ({
-      text: t(lang, 'Play 15 games', 'Jouez 15 parties'),
-      have: s.games,
-      need: 15,
+      text: t(lang, 'Win 3 in a row', 'Gagnez 3 fois de suite'),
+      have: s.streak.best,
+      need: 3,
     }),
   },
-  { id: 'noir', label: 'Noir', free: true },
   {
-    id: 'lamplight-foil',
-    label: 'Lamplight Foil',
+    id: 'woodcut',
+    label: 'Woodcut',
     free: false,
-    unlock: (s) => s.games >= 25 || s.streak.best >= 5,
-    requirement: (s, lang) => {
-      const byGames = {
-        text: t(lang, 'Play 25 games', 'Jouez 25 parties'),
-        have: s.games,
-        need: 25,
-      };
-      const byStreak = {
-        text: t(lang, 'Win 5 in a row', 'Gagnez 5 fois de suite'),
-        have: s.streak.best,
-        need: 5,
-      };
-      // Show whichever path the player is closest to completing.
-      return byGames.have / byGames.need >= byStreak.have / byStreak.need ? byGames : byStreak;
-    },
+    unlock: (s) => s.wins >= 10,
+    requirement: (s, lang) => ({
+      text: t(lang, 'Win 10 games', 'Gagnez 10 parties'),
+      have: s.wins,
+      need: 10,
+    }),
   },
   {
     id: 'neon',
@@ -112,53 +139,6 @@ export const CARD_SKINS: readonly Cosmetic[] = [
             have: Math.round(s.winRate * 100),
             need: 60,
           },
-  },
-  // ── Wave 2 — classic-deck, Balatro and Slay-the-Spire inspired skins. ────
-  { id: 'newsprint', label: 'Newsprint', free: true },
-  { id: 'blueprint', label: 'Blueprint', free: true },
-  {
-    id: 'woodcut',
-    label: 'Woodcut',
-    free: false,
-    unlock: (s) => s.wins >= 10,
-    requirement: (s, lang) => ({
-      text: t(lang, 'Win 10 games', 'Gagnez 10 parties'),
-      have: s.wins,
-      need: 10,
-    }),
-  },
-  {
-    id: 'pixel-parlor',
-    label: 'Pixel Parlor',
-    free: false,
-    unlock: (s) => s.streak.best >= 3,
-    requirement: (s, lang) => ({
-      text: t(lang, 'Win 3 in a row', 'Gagnez 3 fois de suite'),
-      have: s.streak.best,
-      need: 3,
-    }),
-  },
-  {
-    id: 'stained-glass',
-    label: 'Stained Glass',
-    free: false,
-    unlock: (s) => s.games >= 30,
-    requirement: (s, lang) => ({
-      text: t(lang, 'Play 30 games', 'Jouez 30 parties'),
-      have: s.games,
-      need: 30,
-    }),
-  },
-  {
-    id: 'vaporwave',
-    label: 'Vaporwave',
-    free: false,
-    unlock: (s) => s.games >= 40,
-    requirement: (s, lang) => ({
-      text: t(lang, 'Play 40 games', 'Jouez 40 parties'),
-      have: s.games,
-      need: 40,
-    }),
   },
   {
     id: 'gilded',

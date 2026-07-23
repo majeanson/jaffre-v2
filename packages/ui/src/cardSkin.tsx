@@ -116,8 +116,22 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
       />
     ),
   },
+  // Noir: an art-deco double frame on charcoal — quiet, like the deck.
+  noir: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          boxShadow:
+            'inset 0 0 0 0.18em var(--color-card-back), inset 0 0 0 0.26em var(--color-card-back-line), inset 0 0 0 0.42em var(--color-card-back), inset 0 0 0 0.5em var(--color-card-back-line)',
+        }}
+      />
+    ),
+  },
   // Lamplight foil: a slow diagonal sheen sweeps across the mark (decorative,
-  // auto-disabled under reduced motion by the .ap-foil rule).
+  // auto-disabled under reduced motion by the .ap-foil rule). The back is the
+  // same foil over a warm lamplit gold pool.
   'lamplight-foil': {
     centerMark: (card, size) => (
       <span
@@ -127,8 +141,18 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
         {defaultCenter(card, size)}
       </span>
     ),
+    back: () => (
+      <div
+        className="ap-foil size-full"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 42%, var(--color-card-back-line) 0 0.9em, transparent 1.6em), var(--color-card-back)',
+        }}
+      />
+    ),
   },
-  // Neon: the mark glows in its own suit colour.
+  // Neon: the mark glows in its own suit colour; the back is a glowing grid on
+  // the dark face — the arcade cabinet floor.
   neon: {
     centerMark: (card, size) => (
       <span
@@ -137,6 +161,91 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
       >
         {defaultCenter(card, size)}
       </span>
+    ),
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: '#16102c',
+          backgroundImage: [
+            'radial-gradient(circle at 50% 50%, rgb(255 45 142 / 0.5) 0 0.5em, transparent 1.4em)',
+            'repeating-linear-gradient(0deg, rgb(255 45 142 / 0.4) 0 0.06em, transparent 0.06em 0.55em)',
+            'repeating-linear-gradient(90deg, rgb(70 180 255 / 0.35) 0 0.06em, transparent 0.06em 0.55em)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Woodcut: the back is end-grain — heavy ink bands over parchment-dark wood.
+  woodcut: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'repeating-linear-gradient(0deg, var(--color-card-back-line) 0 0.12em, transparent 0.12em 0.55em)',
+            'repeating-linear-gradient(90deg, rgb(0 0 0 / 0.18) 0 0.9em, transparent 0.9em 1.8em)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Gilded: a gold diamond lattice on black lacquer.
+  gilded: {
+    centerMark: (card, size) => (
+      <span
+        className="grid place-items-center"
+        style={{ filter: 'drop-shadow(0 0 0.28em rgb(242 183 18 / 0.6))' }}
+      >
+        {defaultCenter(card, size)}
+      </span>
+    ),
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'repeating-linear-gradient(45deg, var(--color-card-back-line) 0 0.07em, transparent 0.07em 0.7em)',
+            'repeating-linear-gradient(-45deg, var(--color-card-back-line) 0 0.07em, transparent 0.07em 0.7em)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Blood Moon: a red moon rising over a black field — the rival's colours.
+  bloodmoon: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          background: [
+            'radial-gradient(circle at 62% 34%, transparent 0 0.62em, var(--color-card-back) 0.62em)',
+            'radial-gradient(circle at 50% 40%, var(--color-card-back-line) 0 0.85em, transparent 0.9em)',
+            'var(--color-card-back)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Sans Atout: all four suits, none of them trump — the no-trump crest.
+  'sans-atout': {
+    back: () => (
+      <div
+        className="grid size-full place-items-center"
+        style={{ backgroundColor: 'var(--color-card-back)' }}
+      >
+        <span
+          className="grid grid-cols-2 place-items-center gap-[0.28em] rounded-full border-[0.09em] p-[0.3em]"
+          style={{ borderColor: 'var(--color-card-back-line)', opacity: 0.85 }}
+        >
+          <SuitShape suit="red" size="0.55em" />
+          <SuitShape suit="brown" size="0.55em" />
+          <SuitShape suit="green" size="0.55em" />
+          <SuitShape suit="blue" size="0.55em" />
+        </span>
+      </div>
     ),
   },
   // Newsprint: the back is a halftone-dot press plate over the ink colour.
@@ -210,6 +319,19 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
         {defaultCenter(card, size)}
       </span>
     ),
+    // The back is a leaded rose window — coloured panes around a ring.
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          background: [
+            'radial-gradient(circle at 50% 50%, transparent 0 0.55em, var(--color-card-back) 0.55em 0.65em, transparent 0.65em 1.1em, var(--color-card-back) 1.1em 1.2em, transparent 1.2em)',
+            'conic-gradient(from 22deg, #b8443f, #b58b2a, #3f7a52, #3f5d94, #7a4a8c, #b8443f)',
+          ].join(', '),
+          opacity: 0.9,
+        }}
+      />
+    ),
   },
   // Vaporwave: the back is a neon sunset — banded sun over a horizon grid.
   vaporwave: {
@@ -224,17 +346,6 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
           ].join(', '),
         }}
       />
-    ),
-  },
-  // Gilded: every mark carries a soft gold-leaf aura on the black lacquer.
-  gilded: {
-    centerMark: (card, size) => (
-      <span
-        className="grid place-items-center"
-        style={{ filter: 'drop-shadow(0 0 0.28em rgb(242 183 18 / 0.6))' }}
-      >
-        {defaultCenter(card, size)}
-      </span>
     ),
   },
   // Prismatic: a slowly hue-cycling holo halo BEHIND the mark (the mark itself
@@ -266,6 +377,71 @@ export const CARD_SKIN_RENDERERS: Record<string, CardSkinRenderers> = {
             'linear-gradient(135deg, #ff9ecf 0%, #ffd47d 25%, #9dffc9 50%, #8fc2ff 75%, #d29bff 100%)',
         }}
       />
+    ),
+  },
+  // ── Level-track exclusives (Journey levels 15/17/20) ──────────────────────
+  // Circuit: copper traces + solder pads on a dark PCB.
+  circuit: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'radial-gradient(var(--color-card-back-line) 0.07em, transparent 0.1em)',
+            'repeating-linear-gradient(0deg, rgb(47 214 122 / 0.4) 0 0.06em, transparent 0.06em 0.85em)',
+            'repeating-linear-gradient(90deg, rgb(47 214 122 / 0.28) 0 0.06em, transparent 0.06em 1.15em)',
+          ].join(', '),
+          backgroundSize: '0.85em 0.85em, auto, auto',
+        }}
+      />
+    ),
+  },
+  // Starfield: a deep-space back — big and small stars on near-black blue.
+  starfield: {
+    back: () => (
+      <div
+        className="size-full"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'radial-gradient(circle at 24% 22%, var(--color-card-back-line) 0.09em, transparent 0.14em)',
+            'radial-gradient(circle at 68% 38%, #fff 0.06em, transparent 0.1em)',
+            'radial-gradient(circle at 42% 62%, var(--color-card-back-line) 0.07em, transparent 0.11em)',
+            'radial-gradient(circle at 82% 76%, #fff 0.05em, transparent 0.09em)',
+            'radial-gradient(circle at 16% 84%, #fff 0.06em, transparent 0.1em)',
+            'radial-gradient(circle at 55% 12%, #fff 0.04em, transparent 0.08em)',
+            'radial-gradient(circle at 50% 46%, rgb(143 168 255 / 0.25) 0 1.2em, transparent 1.8em)',
+          ].join(', '),
+        }}
+      />
+    ),
+  },
+  // Royal: the capstone — gold quatrefoil lattice on deep purple velvet.
+  royal: {
+    back: () => (
+      <div
+        className="grid size-full place-items-center"
+        style={{
+          backgroundColor: 'var(--color-card-back)',
+          backgroundImage: [
+            'repeating-linear-gradient(45deg, rgb(201 162 39 / 0.5) 0 0.06em, transparent 0.06em 0.85em)',
+            'repeating-linear-gradient(-45deg, rgb(201 162 39 / 0.5) 0 0.06em, transparent 0.06em 0.85em)',
+          ].join(', '),
+        }}
+      >
+        <span
+          className="grid place-items-center rounded-full border-[0.09em] px-[0.32em] py-[0.28em] leading-none"
+          style={{
+            borderColor: 'var(--color-card-back-line)',
+            backgroundColor: 'var(--color-card-back)',
+            color: 'var(--color-card-back-line)',
+            fontSize: '1.15em',
+          }}
+        >
+          ♛
+        </span>
+      </div>
     ),
   },
 };

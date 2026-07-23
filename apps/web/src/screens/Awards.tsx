@@ -3,8 +3,17 @@ import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
 import { AWARDS } from '../awards.js';
+import { CARD_SKINS } from '../cosmetics.js';
+import { THEMES } from '../theme.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+
+/** Display label of an award's cosmetic reward, across both catalogs. */
+function rewardLabel(id: string): string {
+  return (
+    CARD_SKINS.find((c) => c.id === id)?.label ?? THEMES.find((c) => c.id === id)?.label ?? id
+  );
+}
 
 export interface AwardsProps {
   readonly onLeave: () => void;
@@ -13,9 +22,26 @@ export interface AwardsProps {
   readonly demoEarned?: readonly string[];
 }
 
-const T: Record<Lang, { title: string; home: string; dealing: string; done: string }> = {
-  en: { title: 'Awards', home: 'Home', dealing: 'Loading…', done: 'Earned' },
-  fr: { title: 'Récompenses', home: 'Accueil', dealing: 'Chargement…', done: 'Obtenu' },
+const T: Record<
+  Lang,
+  { title: string; home: string; dealing: string; done: string; unlocks: string; journey: string }
+> = {
+  en: {
+    title: 'Awards',
+    home: 'Home',
+    dealing: 'Loading…',
+    done: 'Earned',
+    unlocks: 'Unlocks',
+    journey: 'Journey',
+  },
+  fr: {
+    title: 'Récompenses',
+    home: 'Accueil',
+    dealing: 'Chargement…',
+    done: 'Obtenu',
+    unlocks: 'Débloque',
+    journey: 'Parcours',
+  },
 };
 
 const SHELL_NOTE =
@@ -58,9 +84,14 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
               {t.title}
             </h1>
           </div>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
+          <div className="flex items-center gap-2">
+            <Cta variant="secondary" onClick={() => (location.hash = '#journey')}>
+              {t.journey}
+            </Cta>
+            <Cta variant="secondary" onClick={onLeave}>
+              {t.home}
+            </Cta>
+          </div>
         </header>
 
         {earned === null ? (
@@ -97,6 +128,18 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
                     <span className="font-arcade-ui text-[0.72em] leading-tight text-(--color-ap-muted)">
                       {a.desc(lang)}
                     </span>
+                    {a.reward !== undefined && (
+                      <span
+                        className={`mt-[0.15em] inline-flex items-center gap-[0.3em] rounded-full border-2 border-(--color-ap-ink) px-[0.55em] py-[0.1em] font-arcade-ui text-[0.62em] font-semibold uppercase tracking-wide ${
+                          has
+                            ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+                            : 'bg-(--color-ap-ground) text-(--color-ap-muted)'
+                        }`}
+                      >
+                        <span aria-hidden>🎁</span>
+                        {t.unlocks}: {rewardLabel(a.reward)}
+                      </span>
+                    )}
                     {!has && req !== undefined && (
                       <>
                         <div className="mt-[0.2em] h-[0.4em] w-full overflow-hidden rounded-full bg-(--color-ap-ink)/20">

@@ -17,6 +17,7 @@ import { PublicLobby } from './screens/PublicLobby.js';
 import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
+import { Journey } from './screens/Journey.js';
 import { Lobby } from './screens/Lobby.js';
 import { PaintStudio } from './screens/PaintStudio.js';
 import { Replay } from './screens/Replay.js';
@@ -34,6 +35,7 @@ type Route =
   | { kind: 'history' }
   | { kind: 'stats' }
   | { kind: 'awards' }
+  | { kind: 'journey' }
   | { kind: 'leaderboard' }
   | { kind: 'lobby' }
   | { kind: 'collection' }
@@ -54,6 +56,7 @@ function parseHash(): Route {
   if (h === '#history') return { kind: 'history' };
   if (h === '#stats') return { kind: 'stats' };
   if (h === '#awards') return { kind: 'awards' };
+  if (h === '#journey') return { kind: 'journey' };
   if (h === '#leaderboard') return { kind: 'leaderboard' };
   if (h === '#lobby') return { kind: 'lobby' };
   if (h === '#collection') return { kind: 'collection' };
@@ -183,6 +186,9 @@ function AppRoutes() {
   }
   if (route.kind === 'awards') {
     return <Awards onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'journey') {
+    return <Journey onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'leaderboard') {
     return <Leaderboard onLeave={() => (location.hash = '')} />;

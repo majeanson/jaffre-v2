@@ -114,6 +114,9 @@ export interface SeatChipInfo {
   readonly bidText: string | null;
   /** True when this seat holds the contract (highlights the bid bubble). */
   readonly isContract: boolean;
+  /** Cards left in this seat's hand — the table draws them as a face-down fan
+   * (the one place another player's card BACK is seen all game). */
+  readonly cards: number;
   /** The shared match context — the peek's "This game" section. Same object
    * across every seat. */
   readonly game: GamePeekInfo;
@@ -366,6 +369,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       autoPlay: info.autoPlay ?? false,
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
+      cards: view.handCounts[seat] ?? 0,
       game: gamePeek,
     };
   };

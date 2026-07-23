@@ -25,7 +25,21 @@ export interface AwardDef {
   readonly requirement?: (s: Stats, lang: Lang) => { text: string; have: number; need: number };
 }
 
+// Catalog order is the showcase's ladder — roughly the order a new player will
+// earn them. An award whose criteria exactly match a challenge cosmetic carries
+// it as `reward`, so every badge that CAN pay out shows what it pays.
 export const AWARDS: readonly AwardDef[] = [
+  {
+    id: 'first-game',
+    icon: '🃏',
+    name: (l) => t(l, 'Deal Me In', 'Première brasse'),
+    desc: (l) => t(l, 'Finish your first game.', 'Terminez votre première partie.'),
+    requirement: (s, l) => ({
+      text: t(l, 'Play 1 game', 'Jouez 1 partie'),
+      have: s.games,
+      need: 1,
+    }),
+  },
   {
     id: 'first-win',
     icon: '🎉',
@@ -38,6 +52,7 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '🏆',
     name: (l) => t(l, 'Ten Wins', 'Dix victoires'),
     desc: (l) => t(l, 'Win ten games.', 'Gagnez dix parties.'),
+    reward: 'woodcut',
     requirement: (s, l) => ({
       text: t(l, 'Win 10 games', 'Gagnez 10 parties'),
       have: s.wins,
@@ -49,6 +64,7 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '🔥',
     name: (l) => t(l, 'On Fire', 'En feu'),
     desc: (l) => t(l, 'Win five games in a row.', 'Gagnez cinq parties de suite.'),
+    reward: 'lamplight-foil',
     requirement: (s, l) => ({
       text: t(l, 'Win 5 in a row', 'Gagnez 5 fois de suite'),
       have: s.streak.best,
@@ -60,6 +76,7 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '💯',
     name: (l) => t(l, 'Century', 'Centurion'),
     desc: (l) => t(l, 'Reach +100 net points.', 'Atteignez +100 points nets.'),
+    reward: 'gilded',
     requirement: (s, l) => ({
       text: t(l, 'Reach +100 net points', 'Atteignez +100 points nets'),
       have: Math.max(0, s.netPoints),
@@ -71,6 +88,7 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '🎯',
     name: (l) => t(l, 'Sans-Atout Master', 'Maître sans atout'),
     desc: (l) => t(l, 'Make three sans-atout bids.', 'Réussissez trois mises sans atout.'),
+    reward: 'sans-atout',
     requirement: (s, l) => ({
       text: t(l, 'Make 3 sans-atout bids', 'Réussissez 3 mises sans atout'),
       have: s.sansAtout.made,
@@ -93,6 +111,7 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '😈',
     name: (l) => t(l, 'Rivalry', 'Rivalité'),
     desc: (l) => t(l, 'Earn a nemesis.', 'Faites-vous une némésis.'),
+    reward: 'bloodmoon',
     requirement: (s, l) => ({
       text: t(l, 'Earn a nemesis', 'Faites-vous une némésis'),
       have: s.nemesis === null ? 0 : 1,

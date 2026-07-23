@@ -48,6 +48,7 @@ const T: Record<
     yourGames: string;
     yourRecord: string;
     yourAwards: string;
+    journey: string;
     leaderboard: string;
     finished: string;
     yourTurn: string;
@@ -83,6 +84,7 @@ const T: Record<
     yourGames: 'Your games',
     yourRecord: 'Your record',
     yourAwards: 'Awards',
+    journey: 'Journey',
     leaderboard: 'Leaderboard',
     finished: 'Finished · rematch?',
     yourTurn: 'Your turn',
@@ -117,6 +119,7 @@ const T: Record<
     yourGames: 'Tes parties',
     yourRecord: 'Ton record',
     yourAwards: 'Récompenses',
+    journey: 'Parcours',
     leaderboard: 'Classement',
     finished: 'Terminée · revanche?',
     yourTurn: 'À ton tour',
@@ -554,6 +557,15 @@ export function PlayMenu({
                 🏅
               </span>
               {t.yourAwards}
+            </a>
+            <a
+              href="#journey"
+              className="inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span aria-hidden className="text-(--color-ap-gold)">
+                🧭
+              </span>
+              {t.journey}
             </a>
             <a
               href="#leaderboard"

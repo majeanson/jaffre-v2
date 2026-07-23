@@ -11,6 +11,7 @@ import { AttractMode } from '../home/AttractMode.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { PracticeNudge } from '../home/PracticeNudge.js';
+import { LevelBadge } from '../home/LevelBadge.js';
 import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
@@ -117,6 +118,9 @@ export function Home({
                 the one "Log in" button in the chrome bar below. */}
             {staged && <RecoveryCard stage={identityStage.recovery} />}
           </ProfileCard>
+
+          {/* Your level + XP bar → the Journey. Live screen only. */}
+          {!staged && <LevelBadge />}
         </div>
 
         {/* RIGHT — play actions, then quiet chrome, all one column width */}

@@ -849,6 +849,45 @@
   --color-suit-blue: #6478a8;
 }
 
+/* Circuit: a dark PCB — phosphor suits on near-black green, copper-trace back
+ * (renderer). Journey level 15 exclusive. */
+[data-card-skin='circuit']:is(:root, :root *) {
+  --color-card-face: #0c1a12;
+  --color-card-face-shade: #142820;
+  --color-card-back: #08120c;
+  --color-card-back-line: #2fd67a;
+  --color-suit-red: #ff5c5c;
+  --color-suit-brown: #ffb340;
+  --color-suit-green: #3ce68a;
+  --color-suit-blue: #4fc3ff;
+}
+
+/* Starfield: deep space — midnight-navy face, nebula-pastel suits, a starry
+ * back (renderer). Journey level 17 exclusive. */
+[data-card-skin='starfield']:is(:root, :root *) {
+  --color-card-face: #0c1230;
+  --color-card-face-shade: #161e46;
+  --color-card-back: #060a1c;
+  --color-card-back-line: #8fa8ff;
+  --color-suit-red: #ff7a9c;
+  --color-suit-brown: #ffce7a;
+  --color-suit-green: #7affc4;
+  --color-suit-blue: #8fb8ff;
+}
+
+/* Royal: the Journey capstone — ivory vellum face, heraldic-ink suits, a gold
+ * quatrefoil lattice on purple velvet for the back (renderer). Level 20. */
+[data-card-skin='royal']:is(:root, :root *) {
+  --color-card-face: #f3ead7;
+  --color-card-face-shade: #e6d8b8;
+  --color-card-back: #341a54;
+  --color-card-back-line: #c9a227;
+  --color-suit-red: #a1122e;
+  --color-suit-brown: #7a4a12;
+  --color-suit-green: #14603e;
+  --color-suit-blue: #1d2f7a;
+}
+
 @layer base {
   /* Game-like page: no pinch/double-tap zoom, no text selection or long-press
    * callouts — the table is a board, not a document. Inputs stay selectable. */

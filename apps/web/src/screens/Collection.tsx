@@ -61,6 +61,7 @@ const T: Record<
     themes: string;
     showAll: string;
     blurb: string;
+    journey: string;
     equipped: (name: string) => string;
   }
 > = {
@@ -72,7 +73,9 @@ const T: Record<
     cardSkins: 'Card skins',
     themes: 'Themes',
     showAll: 'Show all (dev)',
-    blurb: 'Unlock skins and themes as you play. Equip any you own — it follows your account.',
+    blurb:
+      'Level up on the Journey for the track skins and themes; the rest are challenge unlocks. Equip any you own — it follows your account.',
+    journey: 'Journey',
     equipped: (name) => `Equipped ${name}`,
   },
   fr: {
@@ -84,7 +87,8 @@ const T: Record<
     themes: 'Thèmes',
     showAll: 'Tout afficher (dev)',
     blurb:
-      'Débloque des habillages et des thèmes en jouant. Équipe ceux que tu possèdes — ils suivent ton compte.',
+      'Monte de niveau sur le Parcours pour les habillages et thèmes du tracé; le reste, ce sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
+    journey: 'Parcours',
     equipped: (name) => `Équipé : ${name}`,
   },
 };
@@ -192,6 +196,11 @@ function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly 
                 <PlayingCard card={card} size="md" tilt={(i - 1) * 8} paint={getProfile().paint} />
               </div>
             ))}
+            {/* The skin's BACK rides at the fan's end at full size — it's what
+                the rest of the table sees of your deck all game (OpponentFan). */}
+            <div style={{ marginLeft: '-1.1em', zIndex: SAMPLE.length }}>
+              <PlayingCard card={{ suit: 'red', value: 5 }} size="md" tilt={16} faceDown />
+            </div>
           </div>
         </CardSkinProvider>
       </div>
@@ -293,9 +302,18 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
           <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
             {t.title}
           </h1>
-          <Cta variant="secondary" onClick={onLeave}>
-            {leaveLabel ?? t.home}
-          </Cta>
+          <div className="flex items-center gap-2">
+            {/* Not in the in-game modal (leaveLabel set): navigating to the
+                Journey would tear the table route down mid-game. */}
+            {leaveLabel === undefined && (
+              <Cta variant="secondary" onClick={() => (location.hash = '#journey')}>
+                {t.journey}
+              </Cta>
+            )}
+            <Cta variant="secondary" onClick={onLeave}>
+              {leaveLabel ?? t.home}
+            </Cta>
+          </div>
         </header>
 
         <div className="flex items-center justify-between gap-4">

@@ -1,6 +1,7 @@
 import { TrickArea } from '@jaffre/ui';
 import type { ReactNode } from 'react';
 import { CoachHint } from './CoachHint.js';
+import { OpponentFan } from './OpponentFan.js';
 import { SeatChip } from './SeatChip.js';
 import { TrickBanner } from './TrickBanner.js';
 import type { HeldBanner, TableDerived } from './useTableDerived.js';
@@ -52,8 +53,11 @@ export function Stage({
           would trap those popovers under the trick no matter their own z.
           The seat positions are chosen to stay clear of the card slots.
           top-4 keeps the top chip (and its bid bubble) below the top bar. */}
-      <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2 max-sm:top-[3%] max-sm:left-[30%]">
+      {/* Each opponent chip carries its hidden hand as a face-down fan (the
+          viewer's card-skin BACK on show), angled toward the felt center. */}
+      <div className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 max-sm:top-[3%] max-sm:left-[30%]">
         <SeatChip info={seatInfo(2)} compact />
+        <OpponentFan count={seatInfo(2)?.cards ?? 0} />
       </div>
       {/* Position 1 sits low on the left (not mid-rim) — the table reads as an
           anti-clockwise turn of the classic N/S/E/W diamond. Its peek opens
@@ -61,11 +65,13 @@ export function Stage({
       {/* Phone: your own chip lives right of the utility bar (UtilityRow), so
           the felt's bottom rim is free — this seat hugs the bottom-left corner
           instead of floating mid-rim, keeping the middle clear for cards. */}
-      <div className="absolute bottom-[4%] left-0 z-20 max-sm:bottom-[4%] max-sm:left-[2%]">
+      <div className="absolute bottom-[4%] left-0 z-20 flex flex-col items-center gap-1 max-sm:bottom-[4%] max-sm:left-[2%]">
+        <OpponentFan count={seatInfo(1)?.cards ?? 0} />
         <SeatChip info={seatInfo(1)} compact peekAlign="start" peekPlacement="up" />
       </div>
-      <div className="absolute right-0 top-1/2 z-20 -translate-y-1/2 max-sm:right-[2%] max-sm:top-[34%]">
+      <div className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 max-sm:right-[2%] max-sm:top-[34%]">
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />
+        <OpponentFan count={seatInfo(3)?.cards ?? 0} />
       </div>
       {bidOverlay}
     </div>
