@@ -52,4 +52,20 @@ describe('ratingUpdates', () => {
     expect(aGain).toBeGreaterThan(12); // more than an even-odds win
     expect(upset.find((u) => u.userId === 'a')?.ratingGames).toBe(6);
   });
+
+  it("exposes delta as the exact move applied to each player's old rating", () => {
+    // The delta lets a caller re-apply the same move on top of a freshly re-read
+    // rating (cross-room race retry) instead of re-deriving it from `rating`.
+    const current = {
+      a: { rating: 1000, ratingGames: 5 },
+      c: { rating: 1000, ratingGames: 5 },
+      b: { rating: 1400, ratingGames: 5 },
+      d: { rating: 1400, ratingGames: 5 },
+    };
+    const updates = ratingUpdates(FOUR_HUMANS, 0, current);
+    for (const u of updates) {
+      const oldRating = current[u.userId as keyof typeof current].rating;
+      expect(u.rating - oldRating).toBeCloseTo(u.delta);
+    }
+  });
 });

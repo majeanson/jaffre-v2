@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { claimBest, openRooms, pruneExpired, type LobbyEntry } from '../src/Lobby.js';
+import { claimBest, claimRoom, openRooms, pruneExpired, type LobbyEntry } from '../src/Lobby.js';
 
 /**
  * The Lobby registry's decision logic is pure (open-room filtering, Quick-Play
@@ -43,6 +43,25 @@ describe('claimBest', () => {
     expect(claimBest(rooms, NOW)).toBe('b');
     expect(claimBest(map(entry({ code: 'full', players: 4 })), NOW)).toBeNull();
     expect(claimBest({}, NOW)).toBeNull();
+  });
+});
+
+describe('claimRoom', () => {
+  it('reserves a seat so two consecutive claims land on different rooms', () => {
+    const rooms = map(entry({ code: 'a', players: 3 }), entry({ code: 'b', players: 1 }));
+    const first = claimRoom(rooms, NOW);
+    expect(first.code).toBe('a'); // fullest joinable room first
+    expect(first.rooms.a?.players).toBe(4); // reserved — now full, drops out of openRooms
+
+    const second = claimRoom(first.rooms, NOW);
+    expect(second.code).toBe('b'); // falls through to the only room left open
+    expect(second.rooms.b?.players).toBe(2);
+  });
+
+  it('claiming an empty map returns null and leaves it untouched', () => {
+    const result = claimRoom({}, NOW);
+    expect(result.code).toBeNull();
+    expect(result.rooms).toEqual({});
   });
 });
 

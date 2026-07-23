@@ -4,6 +4,8 @@
  * uses the legacy plain ?u=&n= mode.
  */
 
+import { reportError } from './telemetry.js';
+
 interface StoredToken {
   readonly token: string;
   readonly userId: string;
@@ -102,7 +104,12 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
         },
         body: JSON.stringify({ name }),
       });
-      if (!res.ok) return null; // 503 = no-secret dev mode
+      if (!res.ok) {
+        // 503 = no-secret dev mode — expected, not a failure worth reporting.
+        if (res.status !== 503)
+          reportError(new Error(`guest mint ${res.status}`), undefined, 'mint-failed');
+        return null;
+      }
       const data = (await res.json()) as {
         userId: string;
         name: string;
@@ -113,7 +120,8 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
       if (data.recoveryCode !== undefined) localStorage.setItem(RECOVERY_KEY, data.recoveryCode);
       storeProfile(profileFrom(data));
       return stored;
-    } catch {
+    } catch (err) {
+      reportError(err, undefined, 'mint-failed');
       return null;
     }
   };

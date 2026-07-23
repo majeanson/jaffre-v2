@@ -42,6 +42,26 @@ export function claimBest(rooms: Record<string, LobbyEntry>, now: number): strin
   return openRooms(rooms, now).sort((a, b) => b.players - a.players)[0]?.code ?? null;
 }
 
+/**
+ * Claim the best room AND reserve the seat in the same pure step, so two
+ * concurrent Quick Plays landing before either GameRoom heartbeat re-registers
+ * don't both walk away with the same code (the 5th player bouncing off a full
+ * table). The bump is optimistic — the next GameRoom message overwrites it
+ * with the true count, and the TTL bounds any leak if the claimant never
+ * shows. If the bump fills the room it naturally drops out of openRooms for
+ * the next claimer, which is the whole point.
+ */
+export function claimRoom(
+  rooms: Record<string, LobbyEntry>,
+  now: number,
+): { code: string | null; rooms: Record<string, LobbyEntry> } {
+  const code = claimBest(rooms, now);
+  const room = code === null ? undefined : rooms[code];
+  if (code === null || room === undefined) return { code: null, rooms };
+  const reserved: LobbyEntry = { ...room, players: room.players + 1 };
+  return { code, rooms: { ...rooms, [code]: reserved } };
+}
+
 /** Drop expired entries; returns the pruned map + whether anything changed. */
 export function pruneExpired(
   rooms: Record<string, LobbyEntry>,
@@ -136,8 +156,15 @@ export class Lobby implements DurableObject {
     }
 
     if (url.pathname === '/claim' && request.method === 'POST') {
-      // Consolidate into the fullest joinable room so games fill faster.
-      return Response.json({ code: claimBest(rooms, now) });
+      // Consolidate into the fullest joinable room so games fill faster. This
+      // is a WRITE: reserve the seat now so a second concurrent Quick Play
+      // can't also claim it before the real GameRoom heartbeat lands.
+      const claimed = claimRoom(rooms, now);
+      if (claimed.code !== null) {
+        await this.ctx.storage.put('rooms', claimed.rooms);
+        this.broadcast(claimed.rooms, now);
+      }
+      return Response.json({ code: claimed.code });
     }
 
     return new Response('Not found', { status: 404 });

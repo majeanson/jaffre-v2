@@ -28,8 +28,20 @@ import type {
 import type { Env } from './env.js';
 import { notifyUser } from './push.js';
 import { gameRecordFrom } from './history.js';
-import { ratingUpdates, type CurrentRating } from './rating.js';
+import { DEFAULT_RATING, ratingUpdates, type CurrentRating } from './rating.js';
 import { lobbyStub } from './Lobby.js';
+
+/** Everything needed to (re)apply one user's rating move: the guarded UPDATE's
+ * bound values plus `delta`, kept separately so a cross-room-race retry can
+ * re-apply the same move on top of a freshly re-read `oldRating`. */
+interface RatingWriteInfo {
+  readonly userId: string;
+  readonly name: string;
+  readonly oldRating: number;
+  readonly newRating: number;
+  readonly newRatingGames: number;
+  readonly delta: number;
+}
 
 const BOT_DELAY_MS = 700;
 /** After a completed trick the client holds the 4 cards on the table
@@ -1076,14 +1088,14 @@ export class GameRoom implements DurableObject {
     // their current ratings first, then fold the writes into the same batch so
     // history + rating land atomically. A rating-read failure must NOT lose the
     // history row, so it degrades to "history without rating".
-    let ratingWrites: D1PreparedStatement[] = [];
+    let ratingInfo: RatingWriteInfo[] = [];
     try {
-      ratingWrites = await this.ratingWrites(db, record.players, record.winner_team);
+      ratingInfo = await this.ratingWriteInfo(db, record.players, record.winner_team);
     } catch {
-      ratingWrites = [];
+      ratingInfo = [];
     }
 
-    await db.batch([
+    const results = await db.batch([
       db
         .prepare(
           `INSERT INTO games (id, room_code, seed, started_at, finished_at, winner_team, score_0, score_1, action_log, round_summaries)
@@ -1108,20 +1120,82 @@ export class GameRoom implements DurableObject {
           )
           .bind(record.id, p.seat, p.user_id, p.is_bot, p.name),
       ),
-      ...ratingWrites,
+      ...ratingInfo.map((info) => this.ratingStatement(db, info)),
     ]);
+
+    // The rating writes are optimistically guarded (WHERE rating = <old value read
+    // above>) to close a cross-room race: two rooms finishing simultaneously with
+    // a shared player can both read the same starting rating, and without a guard
+    // whichever write lands second would silently clobber the first. A guard miss
+    // means another room won that race first — re-read the now-current rating and
+    // re-apply this game's delta on top of it (one retry; ratings are best-effort,
+    // never worth failing history over).
+    const ratingResults = results.slice(1 + record.players.length);
+    for (const [i, info] of ratingInfo.entries()) {
+      if ((ratingResults[i]?.meta.changes ?? 0) > 0) continue;
+      try {
+        await this.retryRatingWrite(db, info);
+      } catch (err) {
+        console.error('[rating] retry failed, leaving rating unchanged', err);
+      }
+    }
   }
 
-  /** Build the rating-write statements for a finished game — reads the human
+  /** Re-reads one user's now-current rating and re-applies this game's delta on
+   * top of it, with the same optimistic guard. Logs and gives up (does not throw)
+   * if the guarded write misses a second time — a rating that briefly lags one
+   * game behind is fine; failing history is not. */
+  private async retryRatingWrite(db: D1Database, info: RatingWriteInfo): Promise<void> {
+    const fresh = await db
+      .prepare('SELECT rating, rating_games FROM users WHERE id = ?1')
+      .bind(info.userId)
+      .first<{ rating: number; rating_games: number }>();
+    if (fresh === null) {
+      console.error('[rating] retry found no user row', info.userId);
+      return;
+    }
+    const retryInfo: RatingWriteInfo = {
+      ...info,
+      oldRating: fresh.rating,
+      newRating: fresh.rating + info.delta,
+      newRatingGames: fresh.rating_games + 1,
+    };
+    const result = await this.ratingStatement(db, retryInfo).run();
+    if (result.meta.changes === 0) {
+      console.error('[rating] retry lost the race a second time', info.userId);
+    }
+  }
+
+  /** The single optimistically-guarded rating UPDATE, shared by the initial
+   * batch attempt and the one-shot retry. */
+  private ratingStatement(db: D1Database, info: RatingWriteInfo): D1PreparedStatement {
+    // Uses an UPSERT, not a bare UPDATE: a seated, token-verified human can lack a
+    // `users` row (D1 was down at guest signup, or the no-secret `?u=` mode never
+    // hits an auth handler). A plain UPDATE would silently match 0 rows and drop
+    // their rating forever; ON CONFLICT materializes the row on their first rated
+    // game instead. The `WHERE rating = ?6` on the conflict path is the optimistic
+    // guard: it only takes effect (and only updates) when the row still has the
+    // rating this write was computed against.
+    return db
+      .prepare(
+        `INSERT INTO users (id, name, created_at, rating, rating_games)
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET rating = ?4, rating_games = ?5 WHERE rating = ?6`,
+      )
+      .bind(
+        info.userId,
+        info.name,
+        Date.now(),
+        info.newRating,
+        info.newRatingGames,
+        info.oldRating,
+      );
+  }
+
+  /** Build the rating-write inputs for a finished game — reads the human
    * players' current ratings, then applies the Elo delta. Returns [] when the
-   * game isn't rated (undecided, or a bot on either team).
-   *
-   * Uses an UPSERT, not a bare UPDATE: a seated, token-verified human can lack a
-   * `users` row (D1 was down at guest signup, or the no-secret `?u=` mode never
-   * hits an auth handler). A plain UPDATE would silently match 0 rows and drop
-   * their rating forever; ON CONFLICT materializes the row on their first rated
-   * game instead. */
-  private async ratingWrites(
+   * game isn't rated (undecided, or a bot on either team). */
+  private async ratingWriteInfo(
     db: D1Database,
     players: readonly {
       readonly seat: number;
@@ -1130,7 +1204,7 @@ export class GameRoom implements DurableObject {
       readonly name: string;
     }[],
     winnerTeam: number | null,
-  ): Promise<D1PreparedStatement[]> {
+  ): Promise<RatingWriteInfo[]> {
     const humans = players.filter((p) => p.is_bot === 0 && p.user_id !== null);
     if (humans.length === 0) return [];
     const humanIds = humans.map((p) => p.user_id as string);
@@ -1149,16 +1223,14 @@ export class GameRoom implements DurableObject {
       winnerTeam,
       current,
     );
-    const now = Date.now();
-    return updates.map((u) =>
-      db
-        .prepare(
-          `INSERT INTO users (id, name, created_at, rating, rating_games)
-           VALUES (?1, ?2, ?3, ?4, ?5)
-           ON CONFLICT(id) DO UPDATE SET rating = ?4, rating_games = ?5`,
-        )
-        .bind(u.userId, nameOf.get(u.userId) ?? 'Player', now, u.rating, u.ratingGames),
-    );
+    return updates.map((u) => ({
+      userId: u.userId,
+      name: nameOf.get(u.userId) ?? 'Player',
+      oldRating: current[u.userId]?.rating ?? DEFAULT_RATING,
+      newRating: u.rating,
+      newRatingGames: u.ratingGames,
+      delta: u.delta,
+    }));
   }
 
   /** When `userId`'s bot-swap kicks in; +Infinity while they are connected. */

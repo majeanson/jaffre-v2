@@ -60,12 +60,14 @@ function send(kind: string, message: string, stack?: string): void {
   }
 }
 
-/** Beacon a caught React render error (from an ErrorBoundary). Same capped,
- * fire-and-forget path as the window listeners — never throws. */
-export function reportError(error: unknown, componentStack?: string): void {
+/** Beacon a caught error — a React render error (from an ErrorBoundary) by
+ * default, or another `kind` (e.g. 'ws-error', 'mint-failed',
+ * 'ws-reconnect-loop') for net-layer failures. Same capped, fire-and-forget
+ * path as the window listeners — never throws. */
+export function reportError(error: unknown, componentStack?: string, kind = 'react-error'): void {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
-  send('react-error', message, stack ?? componentStack);
+  send(kind, message, stack ?? componentStack);
 }
 
 /** Installs window-level error and unhandled-rejection listeners. Call once

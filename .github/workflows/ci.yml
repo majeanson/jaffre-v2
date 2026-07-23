@@ -20,10 +20,19 @@ jobs:
       - run: npm run audit:contrast
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test -c apps/web/playwright.config.ts e2e/lobby.spec.ts e2e/two-players.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces-ci
+          path: apps/web/test-results/
+          retention-days: 7
 
-  # Deploy is gated on the FAST `ci` job only (lint/typecheck/unit/build) so a
-  # merge reaches prod in ~1 min. The browser e2e suite (~5 min) runs on its own
-  # cadence in e2e.yml (nightly + manual) instead of blocking every deploy.
+  # Deploy is gated on the FAST `ci` job only (lint/typecheck/unit/build/social
+  # e2e smoke) so a merge reaches prod in a couple minutes. The full browser e2e
+  # suite (~5 min) runs on its own cadence in e2e.yml (nightly + manual) instead
+  # of blocking every deploy.
   deploy:
     needs: [ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'

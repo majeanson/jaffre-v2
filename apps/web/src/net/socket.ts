@@ -2,6 +2,12 @@ import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getGuestToken } from './auth.js';
 import { rememberTable } from './rooms.js';
+import { reportError } from './telemetry.js';
+
+/** Server error codes that are routine / expected — shown to the player as a
+ * toast but not worth a telemetry beacon (e.g. a stale click racing a turn
+ * change). Anything else is an unexpected rejection worth knowing about. */
+const SILENT_ERROR_CODES = new Set(['NOT_YOUR_TURN', 'BAD_MESSAGE']);
 
 /**
  * Online transport: one WebSocket to the room's Durable Object. Feeds the
@@ -98,6 +104,10 @@ async function open(): Promise<void> {
     stopPing();
     if (closedByUs) return;
     attempts += 1;
+    // Beacon once per reconnect streak — at 5 failed attempts this is no
+    // longer a blip, it's a loop worth knowing about (not on every retry).
+    if (attempts === 5)
+      reportError(new Error('socket reconnect loop'), undefined, 'ws-reconnect-loop');
     useGameStore.getState().setConnection('reconnecting');
     setTimeout(() => void open(), Math.min(8000, 400 * 2 ** attempts));
   };
@@ -147,7 +157,11 @@ function handle(msg: ServerMessage): void {
       rtcHandler?.(msg.from, msg.payload);
       break;
     case 'pong':
+      break;
     case 'error':
+      store.setNotice(msg.message);
+      if (!SILENT_ERROR_CODES.has(msg.code))
+        reportError(new Error(`${msg.code}: ${msg.message}`), undefined, 'ws-error');
       break;
   }
 }

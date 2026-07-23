@@ -2,6 +2,7 @@ import { sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
+import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
 import {
@@ -96,6 +97,7 @@ export function Table({
       }`}
     >
       {online && <ConnectionBanner />}
+      <NoticeToast />
       <TopBar
         view={view}
         contract={derived.contractDisplay}

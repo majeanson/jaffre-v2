@@ -28,6 +28,11 @@ export interface RatingUpdate {
   readonly userId: string;
   readonly rating: number;
   readonly ratingGames: number;
+  // The signed move (new - old rating read at compute time). GameRoom needs this
+  // separately from `rating` so a cross-room-race retry can re-apply the same
+  // delta on top of a freshly re-read rating, instead of clobbering with a value
+  // computed against a rating another room already wrote over.
+  readonly delta: number;
 }
 
 /** Expected score of A vs B under the logistic Elo curve. */
@@ -68,10 +73,12 @@ export function ratingUpdates(
     const actual = winnerTeam === team ? 1 : 0;
     for (const userId of humans[team]) {
       const cur = current[userId] ?? { rating: DEFAULT_RATING, ratingGames: 0 };
+      const delta = K * (actual - expectedByTeam[team]);
       updates.push({
         userId,
-        rating: cur.rating + K * (actual - expectedByTeam[team]),
+        rating: cur.rating + delta,
         ratingGames: cur.ratingGames + 1,
+        delta,
       });
     }
   }

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { ChatPanel, Cta, useLang, type Lang } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
 import { LinkNudge } from '../components/LinkAccount.js';
+import { NoticeToast } from '../components/NoticeToast.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { consumeMakePublic } from '../net/rooms.js';
@@ -36,6 +37,8 @@ const T: Record<
     fillBots: string;
     publicTable: string;
     publicHint: string;
+    inviteNudge: string;
+    reclaimHint: string;
   }
 > = {
   en: {
@@ -53,6 +56,8 @@ const T: Record<
     publicTable: 'List on the public lobby',
     publicHint:
       'On by default — anyone can find and join via Quick Play or Browse. Untick for invite-only.',
+    inviteNudge: 'Waiting for players — share the code, or fill the empty seats with bots.',
+    reclaimHint: 'One of these seats yours? Log in on the home screen to reclaim it.',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -70,6 +75,10 @@ const T: Record<
     publicTable: 'Afficher dans le salon public',
     publicHint:
       'Activé par défaut — tout le monde peut trouver et rejoindre via Partie rapide ou Parcourir. Décoche pour jouer sur invitation.',
+    inviteNudge:
+      'En attente de joueurs — partage le code, ou remplis les sièges vides avec des bots.',
+    reclaimHint:
+      "Un de ces sièges est à toi ? Connecte-toi sur l'écran d'accueil pour le reprendre.",
   },
 };
 
@@ -94,6 +103,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
 
   return (
     <main className="table-felt grid min-h-full place-items-center p-6">
+      <NoticeToast />
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">
@@ -118,6 +128,23 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           onAddBot={(seat, difficulty) => send({ t: 'add_bot', seat, difficulty })}
           onRemoveBot={(seat) => send({ t: 'remove_bot', seat })}
         />
+
+        {/* Quiet invite nudge: seated, not started, and at least one seat is
+            still empty (null — bots don't count). */}
+        {roster !== null && !roster.started && seated && !full && (
+          <p className="flex flex-wrap items-center justify-center gap-2 font-arcade-ui text-xs text-(--color-ap-muted)">
+            {t.inviteNudge}
+            <ShareButton code={code} />
+          </p>
+        )}
+
+        {/* Quiet reclaim hint: spectating a full, not-yet-started table — a
+            browser that lost its token can log in on Home to get its seat back. */}
+        {roster !== null && !roster.started && !seated && full && (
+          <p className="text-center font-arcade-ui text-xs text-(--color-ap-muted)">
+            {t.reclaimHint}
+          </p>
+        )}
 
         {/* One tap instead of three: a solo host fills the table in one go.
             Per-seat Add bot stays for mixed tables (two humans + two bots). */}

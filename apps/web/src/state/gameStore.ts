@@ -26,6 +26,10 @@ interface GameStore {
   roster: Roster | null;
   chat: readonly ChatEntry[];
   log: readonly LogLine[];
+  /** A transient, server-sent (or net-layer) notice to surface as a toast —
+   * e.g. a rejected action ("Seat 2 is taken"). `at` lets the toast re-arm
+   * its auto-dismiss timer even when the same text repeats. */
+  notice: { text: string; at: number } | null;
   /** Seat position (table-relative) the current trick should sweep toward. */
   sweepTo: 0 | 1 | 2 | 3 | null;
   /**
@@ -54,6 +58,8 @@ interface GameStore {
   applyEvents: (events: readonly GameEvent[], seq: number, view?: SeatView) => void;
   setRoster: (roster: Roster) => void;
   addChat: (entry: ChatEntry) => void;
+  setNotice: (text: string) => void;
+  clearNotice: () => void;
   reset: () => void;
 }
 
@@ -70,6 +76,7 @@ export const useGameStore = create<GameStore>((set) => ({
   roster: null,
   chat: [],
   log: [],
+  notice: null,
   sweepTo: null,
   heldTrick: null,
   queued: null,
@@ -119,6 +126,8 @@ export const useGameStore = create<GameStore>((set) => ({
       }
       return { chat: [...s.chat.slice(-99), entry] };
     }),
+  setNotice: (text) => set({ notice: { text, at: Date.now() } }),
+  clearNotice: () => set({ notice: null }),
   reset: () =>
     set({
       connection: 'idle',
@@ -128,6 +137,7 @@ export const useGameStore = create<GameStore>((set) => ({
       roster: null,
       chat: [],
       log: [],
+      notice: null,
       sweepTo: null,
       heldTrick: null,
       queued: null,
