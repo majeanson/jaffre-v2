@@ -135,6 +135,31 @@ describe('email code sign-in', () => {
     expect(linked.body.links.email).toBe(email);
   });
 
+  it('an untouched "Player" adopts the email local-part on link; a chosen name is kept', async () => {
+    // A guest still on the placeholder name links an address: the account
+    // takes the local-part so four linked browsers aren't all "Player".
+    const guest = await fetchAs(post('/api/auth/guest', { name: 'Player' }), loginEnv());
+    const g = (await guest.json()) as MintResponse;
+    const email = `marc-${crypto.randomUUID().slice(0, 8)}@example.com`;
+    const linked = await startAndVerify(email, g.token);
+    expect(linked.status).toBe(200);
+    expect(linked.body.userId).toBe(g.userId);
+    expect(linked.body.name).toBe(email.split('@')[0]);
+
+    // Signing in again later keeps the adopted name.
+    const again = await startAndVerify(email);
+    expect(again.body.name).toBe(email.split('@')[0]);
+
+    // A deliberately chosen name is never overwritten by a link.
+    const named = await fetchAs(post('/api/auth/guest', { name: 'Ginette' }), loginEnv());
+    const n = (await named.json()) as MintResponse;
+    const namedLink = await startAndVerify(
+      `gigi-${crypto.randomUUID().slice(0, 8)}@example.com`,
+      n.token,
+    );
+    expect(namedLink.body.name).toBe('Ginette');
+  });
+
   it('rejects wrong codes and kills the code after the attempt cap', async () => {
     const email = `cap-${crypto.randomUUID()}@example.com`;
     const cap = captureCode();

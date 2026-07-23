@@ -275,6 +275,35 @@ function readName(value: unknown): string | null {
     : null;
 }
 
+/** The placeholder name every guest starts with. */
+const DEFAULT_NAME = 'Player';
+
+/**
+ * A login landing on an account still named the placeholder adopts the
+ * provider's name (Google display name, email local-part). A guest who linked
+ * without ever renaming stayed "Player" forever — and a table of Players is
+ * exactly the who's-who confusion two linked browsers produce. Deliberate
+ * renames are respected: only the untouched default is upgraded. Returns the
+ * name to mint the session with. Best-effort: on DB failure keep the old name.
+ */
+async function adoptLoginName(
+  env: Env,
+  uid: string,
+  current: string,
+  candidate: string | null,
+): Promise<string> {
+  if (current !== DEFAULT_NAME || candidate === null || candidate === DEFAULT_NAME) return current;
+  if (env.DB === undefined) return current;
+  try {
+    await env.DB.prepare('UPDATE users SET name = ?1 WHERE id = ?2 AND name = ?3')
+      .bind(candidate, uid, DEFAULT_NAME)
+      .run();
+    return candidate;
+  } catch {
+    return current;
+  }
+}
+
 /**
  * POST /api/auth/email/start {email} → {sent:true}. Mints a 6-digit one-time
  * code (hash-at-rest, 10 min TTL) and emails it via Resend. Always answers
@@ -397,10 +426,19 @@ async function handleEmailVerify(request: Request, env: Env): Promise<Response> 
 
     // Resolve the account. Existing link wins; else link the current guest;
     // else mint a brand-new user for this address.
+    // The address's local part is the fallback display name for accounts that
+    // never left the "Player" placeholder (see adoptLoginName).
+    const localPart = rawEmail.split('@')[0]?.slice(0, 20) ?? null;
     const existing = await env.DB.prepare('SELECT id, name FROM users WHERE email = ?1')
       .bind(rawEmail)
       .first<{ id: string; name: string }>();
-    if (existing !== null) return loginResponse(env, existing.id, existing.name);
+    if (existing !== null) {
+      return loginResponse(
+        env,
+        existing.id,
+        await adoptLoginName(env, existing.id, existing.name, localPart),
+      );
+    }
 
     const token = bearerToken(request);
     const identity = token !== null ? await verifyToken(token, env.SESSION_SECRET) : null;
@@ -408,7 +446,11 @@ async function handleEmailVerify(request: Request, env: Env): Promise<Response> 
       await env.DB.prepare('UPDATE users SET email = ?1 WHERE id = ?2 AND email IS NULL')
         .bind(rawEmail, identity.uid)
         .run();
-      return loginResponse(env, identity.uid, identity.name);
+      return loginResponse(
+        env,
+        identity.uid,
+        await adoptLoginName(env, identity.uid, identity.name, localPart),
+      );
     }
 
     const userId = crypto.randomUUID();
@@ -500,6 +542,14 @@ async function handleGoogleCallback(request: Request, env: Env): Promise<Respons
         .bind(uid, name, gUser.sub, gUser.email, Date.now())
         .run();
     }
+    // Sign-in or link that lands on an untouched "Player" adopts the Google
+    // display name — otherwise a linked account keeps the placeholder forever.
+    name = await adoptLoginName(
+      env,
+      uid,
+      name,
+      readName(gUser.name) ?? gUser.email?.split('@')[0]?.slice(0, 20) ?? null,
+    );
     const exp = Date.now() + SESSION_TTL_MS;
     const token = await mintToken({ uid, name, exp }, env.SESSION_SECRET);
     // Fragment, not query: never reaches server logs or Referer headers.

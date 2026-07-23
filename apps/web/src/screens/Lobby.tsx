@@ -166,6 +166,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           <input
             type="checkbox"
             role="switch"
+            data-testid="public-toggle"
             checked={isPublic}
             disabled={!seated}
             onChange={(e) => send({ t: 'set_public', on: e.target.checked })}
