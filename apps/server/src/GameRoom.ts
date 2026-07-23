@@ -608,11 +608,18 @@ export class GameRoom implements DurableObject {
 
   /** The lobby entry this room should advertise, or null when it shouldn't be
    * listed (private, started, empty, or full of humans). */
-  private lobbyEntry(): { code: string; host: string; players: number; capacity: number; phase: 'waiting' } | null {
+  private lobbyEntry(): {
+    code: string;
+    host: string;
+    players: number;
+    capacity: number;
+    phase: 'waiting';
+  } | null {
     const code = this.meta.roomCode;
     if (code === undefined) return null;
     const humans = this.meta.seats.filter((o): o is string => typeof o === 'string');
-    const open = this.meta.public === true && !this.meta.started && humans.length >= 1 && humans.length < 4;
+    const open =
+      this.meta.public === true && !this.meta.started && humans.length >= 1 && humans.length < 4;
     if (!open) return null;
     return {
       code,

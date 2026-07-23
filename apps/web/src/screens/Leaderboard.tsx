@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
-import { fetchLeaderboard, type Leaderboard as LeaderboardData, type LeaderboardRow } from '../net/history.js';
+import {
+  fetchLeaderboard,
+  type Leaderboard as LeaderboardData,
+  type LeaderboardRow,
+} from '../net/history.js';
 
 export interface LeaderboardProps {
   readonly onLeave: () => void;
@@ -98,8 +102,16 @@ export function Leaderboard({ onLeave, demo }: LeaderboardProps) {
             ))}
             {board.you != null && !topHasYou && (
               <>
-                <li className="py-1 text-center font-arcade-display text-(--color-ap-muted)">···</li>
-                <Row rank={board.you.rank} row={board.you} mine youLabel={t.you} gamesLabel={t.games} />
+                <li className="py-1 text-center font-arcade-display text-(--color-ap-muted)">
+                  ···
+                </li>
+                <Row
+                  rank={board.you.rank}
+                  row={board.you}
+                  mine
+                  youLabel={t.you}
+                  gamesLabel={t.games}
+                />
               </>
             )}
           </ol>

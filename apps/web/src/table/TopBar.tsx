@@ -13,12 +13,11 @@ import { TEAMS } from '../teams.js';
 import { applyLang, LANGS } from '../lang.js';
 import { IconButton, ICON_BTN_LABELED } from '../components/IconButton.js';
 import {
-  IconCards,
   IconGear,
   IconGlobe,
   IconList,
+  IconPalette,
   IconQuestion,
-  IconRobot,
   IconSignOut,
   IconSparkle,
 } from '../components/icons.js';
@@ -38,8 +37,6 @@ const T: Record<
     coachTitle: string;
     gameLog: string;
     log: string;
-    autoPlay: string;
-    autoPlayTitle: string;
   }
 > = {
   en: {
@@ -53,8 +50,6 @@ const T: Record<
     coachTitle: 'Coach',
     gameLog: 'Game log',
     log: 'Log',
-    autoPlay: 'Auto-play — let a hard bot take your turns while you step away',
-    autoPlayTitle: 'Auto-play',
   },
   fr: {
     leave: 'Quitter la table',
@@ -67,8 +62,6 @@ const T: Record<
     coachTitle: 'Coach',
     gameLog: 'Journal de partie',
     log: 'Journal',
-    autoPlay: 'Jeu auto — un bot fort joue tes tours pendant que tu t’absentes',
-    autoPlayTitle: 'Jeu auto',
   },
 };
 
@@ -87,8 +80,6 @@ export interface TopBarProps {
   readonly onToggleLog: () => void;
   readonly coachOn: boolean;
   readonly onToggleCoach: () => void;
-  /** Voluntary auto-play toggle (online rooms only) — omitted in practice. */
-  readonly autoPlay?: { readonly on: boolean; readonly onToggle: () => void } | undefined;
   /** Share-this-table button (online rooms) — lives inside the Options drawer. */
   readonly share?: ReactNode;
   /** Dev console trigger (practice + dev builds) — sits next to Options. */
@@ -115,7 +106,6 @@ export function TopBar({
   onToggleLog,
   coachOn,
   onToggleCoach,
-  autoPlay,
   share,
   devConsole,
   defaultDetailsOpen = false,
@@ -163,7 +153,7 @@ export function TopBar({
                 className="flex w-full flex-wrap items-center justify-center gap-2 pt-1"
               >
                 <IconButton label={t.skins} text={t.skins} onClick={() => setSkinsOpen(true)}>
-                  <IconCards />
+                  <IconPalette />
                 </IconButton>
                 <IconButton
                   label={`${t.language} · ${otherLang?.label ?? ''}`}
@@ -185,17 +175,6 @@ export function TopBar({
                 >
                   <IconSparkle />
                 </IconButton>
-                {autoPlay && (
-                  <IconButton
-                    label={t.autoPlay}
-                    text={t.autoPlayTitle}
-                    aria-pressed={autoPlay.on}
-                    active={autoPlay.on}
-                    onClick={autoPlay.onToggle}
-                  >
-                    <IconRobot />
-                  </IconButton>
-                )}
                 <IconButton
                   label={t.gameLog}
                   text={t.log}

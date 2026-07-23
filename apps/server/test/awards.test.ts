@@ -35,9 +35,9 @@ describe('earnedStatAwardIds', () => {
       'win-streak-5',
     );
     expect(earnedStatAwardIds({ ...ZERO_STATS, netPoints: 100 })).toContain('century');
-    expect(
-      earnedStatAwardIds({ ...ZERO_STATS, sansAtout: { attempted: 5, made: 3 } }),
-    ).toContain('sans-atout-master');
+    expect(earnedStatAwardIds({ ...ZERO_STATS, sansAtout: { attempted: 5, made: 3 } })).toContain(
+      'sans-atout-master',
+    );
     expect(earnedStatAwardIds({ ...ZERO_STATS, games: 50 })).toContain('veteran');
     expect(
       earnedStatAwardIds({ ...ZERO_STATS, nemesis: { name: 'X', games: 2, losses: 2 } }),
@@ -71,7 +71,9 @@ describe('GET /api/awards', () => {
 
   it('auto-grants a stat award once a game is won and is idempotent', async () => {
     await seedWin('aw-alice');
-    const first = (await (await SELF.fetch('https://example.com/api/awards?u=aw-alice')).json()) as {
+    const first = (await (
+      await SELF.fetch('https://example.com/api/awards?u=aw-alice')
+    ).json()) as {
       awards: { id: string }[];
     };
     expect(first.awards.map((a) => a.id)).toContain('first-win');

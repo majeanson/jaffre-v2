@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { suitName, useLang, type Lang } from '../i18n.js';
 import { ARCADE } from './arcade.js';
 import type { SuitId } from '../types.js';
@@ -428,6 +428,15 @@ export function ScorePad({
       ? currentRound
       : null;
 
+  // A long game overflows the pad's 13rem window, and the rows that matter —
+  // the round just played and the live one — are the last ones. Open scrolled
+  // to the bottom instead of at R1, and follow along as rounds land.
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (el !== null) el.scrollTop = el.scrollHeight;
+  }, [rounds.length, liveRound, highlightRound]);
+
   const cols = (
     <colgroup>
       <col className="w-16" />
@@ -453,6 +462,7 @@ export function ScorePad({
       className={`w-full max-w-md overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) ${shadowClass} [&_:focus-visible]:outline-offset-[-2px] ${className}`}
     >
       <div
+        ref={scroller}
         tabIndex={0}
         role="region"
         aria-label={t.scoreboard}

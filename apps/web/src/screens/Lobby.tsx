@@ -67,7 +67,8 @@ const T: Record<
       'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
     fillBots: 'Remplir les sièges vides avec des bots',
     publicTable: 'Afficher dans le salon public',
-    publicHint: 'Tout le monde peut trouver et rejoindre cette table via Partie rapide ou Parcourir.',
+    publicHint:
+      'Tout le monde peut trouver et rejoindre cette table via Partie rapide ou Parcourir.',
   },
 };
 

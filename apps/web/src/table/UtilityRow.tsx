@@ -1,8 +1,26 @@
-import { ARCADE } from '@jaffre/ui';
+import { ARCADE, useLang, type Lang } from '@jaffre/ui';
 import type { ReactNode } from 'react';
+import { IconButton } from '../components/IconButton.js';
+import { IconRobot } from '../components/icons.js';
 import { LastTrickPeek } from './LastTrickPeek.js';
 import { SeatChip } from './SeatChip.js';
 import type { LastTrickInfo, SeatChipInfo } from './useTableDerived.js';
+
+const T: Record<Lang, { autoPlay: string }> = {
+  en: { autoPlay: 'Auto-play — let a hard bot take your turns while you step away' },
+  fr: { autoPlay: 'Jeu auto — un bot fort joue tes tours pendant que tu t’absentes' },
+};
+
+/** Voluntary auto-play toggle, as a cell of the utility bar — it belongs next
+ * to the hand you're handing over, not buried in the Options drawer. */
+function AutoPlayCell({ on, onToggle }: { readonly on: boolean; readonly onToggle: () => void }) {
+  const t = T[useLang()];
+  return (
+    <IconButton plain label={t.autoPlay} aria-pressed={on} active={on} onClick={onToggle}>
+      <IconRobot />
+    </IconButton>
+  );
+}
 
 export interface UtilityRowProps {
   /** Your own seat chip (table-relative position 0). */
@@ -13,6 +31,8 @@ export interface UtilityRowProps {
   readonly defaultLastTrickOpen?: boolean;
   /** Voice + chat controls slot (online rooms only). */
   readonly comms?: ReactNode;
+  /** Voluntary auto-play toggle (online rooms only) — omitted in practice. */
+  readonly autoPlay?: { readonly on: boolean; readonly onToggle: () => void } | undefined;
   /** Sort-hand button — grouped with chat at the row's end. */
   readonly sort?: ReactNode;
 }
@@ -30,6 +50,7 @@ export function UtilityRow({
   lastTrick,
   defaultLastTrickOpen = false,
   comms,
+  autoPlay,
   sort,
 }: UtilityRowProps) {
   const hasComms = comms !== undefined && comms !== null && comms !== false;
@@ -50,6 +71,8 @@ export function UtilityRow({
         <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
         {hasComms && <Divider />}
         {comms}
+        {autoPlay && <Divider />}
+        {autoPlay && <AutoPlayCell on={autoPlay.on} onToggle={autoPlay.onToggle} />}
         {hasSort && <Divider />}
         {sort}
       </span>

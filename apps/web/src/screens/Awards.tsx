@@ -85,7 +85,10 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
                       has ? 'bg-(--color-ap-panel)' : 'bg-(--color-ap-panel) opacity-60'
                     }`}
                   >
-                    <span className={`text-[2em] leading-none ${has ? '' : 'grayscale'}`} aria-hidden>
+                    <span
+                      className={`text-[2em] leading-none ${has ? '' : 'grayscale'}`}
+                      aria-hidden
+                    >
                       {a.icon}
                     </span>
                     <span className="font-arcade-display text-[0.85em] uppercase leading-tight text-(--color-ap-text)">

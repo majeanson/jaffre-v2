@@ -104,7 +104,11 @@ export const AWARDS: readonly AwardDef[] = [
     icon: '🎓',
     name: (l) => t(l, 'Graduate', 'Diplômé'),
     desc: (l) =>
-      t(l, 'Finish the practice tutorial. Unlocks the OG Deck.', 'Terminez le tutoriel. Débloque le paquet OG.'),
+      t(
+        l,
+        'Finish the practice tutorial. Unlocks the OG Deck.',
+        'Terminez le tutoriel. Débloque le paquet OG.',
+      ),
     reward: 'og-deck',
   },
 ];

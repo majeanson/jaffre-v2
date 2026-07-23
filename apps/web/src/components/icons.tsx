@@ -67,12 +67,13 @@ export function IconX() {
   );
 }
 
-/** Options: gear. */
+/** Options: a cogwheel — teeth cut into the rim, not detached rays (that read
+ * as a sun next to the felt's sun/moon team glyphs). */
 export function IconGear() {
   return (
     <Svg>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7" />
+      <path d="M10.4 2.9 L13.6 2.9 L13.7 5.3 L15.6 6.1 L17.3 4.5 L19.5 6.7 L17.9 8.4 L18.7 10.3 L21.1 10.4 L21.1 13.6 L18.7 13.7 L17.9 15.6 L19.5 17.3 L17.3 19.5 L15.6 17.9 L13.7 18.7 L13.6 21.1 L10.4 21.1 L10.3 18.7 L8.4 17.9 L6.7 19.5 L4.5 17.3 L6.1 15.6 L5.3 13.7 L2.9 13.6 L2.9 10.4 L5.3 10.3 L6.1 8.4 L4.5 6.7 L6.7 4.5 L8.4 6.1 L10.3 5.3 Z" />
+      <circle cx="12" cy="12" r="3.1" />
     </Svg>
   );
 }
@@ -175,12 +176,16 @@ export function IconSpeaker({ muted = false }: { muted?: boolean }) {
   );
 }
 
-/** Card skins / cosmetics: two overlapping cards. */
-export function IconCards() {
+/** Card skins / cosmetics: a painter's palette with dabs of paint — cosmetics
+ * are a creative choice, and two stacked rectangles just read as "copy". */
+export function IconPalette() {
   return (
     <Svg>
-      <rect x="8" y="6" width="11" height="14" rx="2" />
-      <path d="M15 6V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1" />
+      <path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.9-.8 1.9-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.1 0-.9.7-1.7 1.7-1.7h1.6A5.3 5.3 0 0 0 21.5 10c0-3.9-4.2-7-9.5-7Z" />
+      <circle cx="8" cy="12.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="9.6" cy="8.4" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="17.4" cy="10.2" r="0.9" fill="currentColor" stroke="none" />
     </Svg>
   );
 }

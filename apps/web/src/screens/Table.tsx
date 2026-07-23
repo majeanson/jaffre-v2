@@ -114,14 +114,6 @@ export function Table({
             return !on;
           })
         }
-        autoPlay={
-          online && onToggleAutoPlay !== undefined && me !== null
-            ? {
-                on: seatInfo(0)?.autoPlay ?? false,
-                onToggle: () => onToggleAutoPlay(!(seatInfo(0)?.autoPlay ?? false)),
-              }
-            : undefined
-        }
         share={
           online && roomCode !== undefined ? <ShareButton code={roomCode} labeled /> : undefined
         }
@@ -169,6 +161,14 @@ export function Table({
               voice={me !== null ? <VoiceControls me={me} /> : undefined}
             />
           )
+        }
+        autoPlay={
+          online && onToggleAutoPlay !== undefined && me !== null
+            ? {
+                on: seatInfo(0)?.autoPlay ?? false,
+                onToggle: () => onToggleAutoPlay(!(seatInfo(0)?.autoPlay ?? false)),
+              }
+            : undefined
         }
         sort={me !== null && <HandSortButton sort={handSort} disabled={view.hand.length < 2} />}
       />

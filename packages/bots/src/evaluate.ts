@@ -193,9 +193,7 @@ export function pickBid(view: SeatView, opts: BidOpts): BidChoice {
     .sort((a, b) => a.value - b.value);
   // Default: the minimum that wins (overbidding is symmetric-stake risk). With
   // bidHigh: the ceiling, to bank the larger stake on a hand that supports it.
-  const plain = opts.bidHigh
-    ? affordablePlain[affordablePlain.length - 1]
-    : affordablePlain[0];
+  const plain = opts.bidHigh ? affordablePlain[affordablePlain.length - 1] : affordablePlain[0];
 
   if (opts.allowSansAtout) {
     const sa = evalSansAtout(view.hand);

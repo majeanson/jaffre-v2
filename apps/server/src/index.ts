@@ -756,8 +756,16 @@ interface StatsPayload {
   readonly netPoints: number;
   readonly bids: { readonly attempted: number; readonly made: number };
   readonly sansAtout: { readonly attempted: number; readonly made: number };
-  readonly bestPartner: { readonly name: string; readonly games: number; readonly wins: number } | null;
-  readonly nemesis: { readonly name: string; readonly games: number; readonly losses: number } | null;
+  readonly bestPartner: {
+    readonly name: string;
+    readonly games: number;
+    readonly wins: number;
+  } | null;
+  readonly nemesis: {
+    readonly name: string;
+    readonly games: number;
+    readonly losses: number;
+  } | null;
   readonly streak: { readonly current: number; readonly best: number };
 }
 
@@ -795,12 +803,13 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
   if (db === undefined) return EMPTY_STATS;
   // Ascending by finished_at: the streak walk needs oldest-first so the
   // running count at the end of the loop IS the current (trailing) streak.
-  const rows = await db.prepare(
-    `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, g.score_0, g.score_1, gp.seat
+  const rows = await db
+    .prepare(
+      `SELECT g.id, g.finished_at, g.winner_team, g.round_summaries, g.score_0, g.score_1, gp.seat
      FROM games g JOIN game_players gp ON gp.game_id = g.id
      WHERE gp.user_id = ?1 AND g.finished_at IS NOT NULL
      ORDER BY g.finished_at ASC`,
-  )
+    )
     .bind(userId)
     .all<StatsRow>();
   const games = rows.results;
@@ -954,7 +963,9 @@ async function handleAwardGrant(request: Request, env: Env, url: URL): Promise<R
     return Response.json({ error: 'Unknown or non-grantable award' }, { status: 400 });
   }
   await db
-    .prepare('INSERT OR IGNORE INTO user_awards (user_id, award_id, granted_at) VALUES (?1, ?2, ?3)')
+    .prepare(
+      'INSERT OR IGNORE INTO user_awards (user_id, award_id, granted_at) VALUES (?1, ?2, ?3)',
+    )
     .bind(userId, awardId, Date.now())
     .run();
   return Response.json({ ok: true });
@@ -980,7 +991,13 @@ async function handleLeaderboard(request: Request, env: Env, url: URL): Promise<
        WHERE rating_games >= ?1 ORDER BY rating DESC, rating_games DESC LIMIT ?2`,
     )
     .bind(LEADERBOARD_MIN_GAMES, LEADERBOARD_LIMIT)
-    .all<{ id: string; name: string; color: string | null; rating: number; rating_games: number }>();
+    .all<{
+      id: string;
+      name: string;
+      color: string | null;
+      rating: number;
+      rating_games: number;
+    }>();
 
   const rowOut = (r: {
     id: string;
@@ -997,7 +1014,13 @@ async function handleLeaderboard(request: Request, env: Env, url: URL): Promise<
     const me = await db
       .prepare('SELECT id, name, color, rating, rating_games FROM users WHERE id = ?1')
       .bind(userId)
-      .first<{ id: string; name: string; color: string | null; rating: number; rating_games: number }>();
+      .first<{
+        id: string;
+        name: string;
+        color: string | null;
+        rating: number;
+        rating_games: number;
+      }>();
     if (me !== null && me.rating_games >= LEADERBOARD_MIN_GAMES) {
       const ahead = await db
         .prepare('SELECT COUNT(*) AS n FROM users WHERE rating_games >= ?1 AND rating > ?2')
