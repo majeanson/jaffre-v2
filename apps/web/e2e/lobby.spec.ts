@@ -52,10 +52,16 @@ test('a created room is public by default, appears in #lobby live, and a second 
   const a = await newPage(contextA);
   const b = await newPage(contextB);
 
-  // B parks on the lobby FIRST, while no table is open — the card must arrive
-  // by server push, not because the page loaded after the fact.
-  await b.goto('/#lobby');
-  await expect(b.getByText('No open tables right now', { exact: false })).toBeVisible();
+  // B walks the real path — Play → "Join a public game" — and parks on the
+  // lobby FIRST, while no table is open: the card must arrive by server push,
+  // not because the page loaded after the fact.
+  await b.goto('/');
+  await b.getByRole('button', { name: 'Play', exact: true }).click();
+  await b.getByRole('button', { name: 'Join a public game' }).click();
+  // The lobby is up BEFORE Alice's table exists (that's the push proof: her
+  // card can only get here over the watcher socket). No emptiness assertion —
+  // rooms from earlier local runs may linger in wrangler's persisted DO state.
+  await expect(b.getByRole('heading', { name: 'Public tables' })).toBeVisible();
 
   // A creates a room and sits. Sitting is the moment the default-public flag
   // applies and the room registers with the lobby.
@@ -63,11 +69,15 @@ test('a created room is public by default, appears in #lobby live, and a second 
   await expect(a.getByTestId('public-toggle')).toBeChecked();
 
   // ...and B's OPEN lobby page grows the card, unprompted: host Alice, 1/4.
-  await expect(b.getByText('Alice')).toBeVisible();
-  await expect(b.getByText('1/4 seated')).toBeVisible();
+  // Scoped by THIS run's room code — stale rooms from earlier local runs
+  // (killed before deregistering) may share the list, even as other Alices.
+  const aliceCard = b.getByRole('listitem').filter({ hasText: code });
+  await expect(aliceCard).toBeVisible();
+  await expect(aliceCard).toContainText('Alice');
+  await expect(aliceCard).toContainText('1/4 seated');
 
   // B joins from the card and takes a seat — as Bruno, not as a second Alice.
-  await b.getByRole('button', { name: 'Join' }).click();
+  await aliceCard.getByRole('button', { name: 'Join' }).click();
   await expect.poll(() => b.evaluate(() => location.hash)).toBe(`#room/${code}`);
   await b.getByRole('button', { name: 'Sit here' }).first().click();
 

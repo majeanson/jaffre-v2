@@ -4,7 +4,6 @@ import { AvatarChip, Cta, Panel, useLang, type Lang } from '@jaffre/ui';
 import {
   fetchTableStatus,
   markMakePublic,
-  quickPlay,
   type TableEntry,
   type TableStatus,
 } from '../net/rooms.js';
@@ -35,8 +34,7 @@ const T: Record<
     playNow: string;
     playFriends: string;
     createRoom: string;
-    quickPlay: string;
-    browseTables: string;
+    joinPublic: string;
     withCode: string;
     roomCode: string;
     joinRoom: string;
@@ -70,8 +68,7 @@ const T: Record<
     playNow: 'Play now',
     playFriends: 'Play with friends',
     createRoom: 'Create a room',
-    quickPlay: 'Quick Play',
-    browseTables: 'Browse public tables',
+    joinPublic: 'Join a public game',
     withCode: 'With code',
     roomCode: 'Room code',
     joinRoom: 'Join room',
@@ -105,8 +102,7 @@ const T: Record<
     playNow: 'Jouer maintenant',
     playFriends: 'Jouer entre amis',
     createRoom: 'Créer un salon',
-    quickPlay: 'Partie rapide',
-    browseTables: 'Parcourir les tables publiques',
+    joinPublic: 'Joindre une partie publique',
     withCode: 'ou joins avec un code',
     roomCode: 'Code du salon',
     joinRoom: 'Joindre le salon',
@@ -405,13 +401,17 @@ export function PlayMenu({
               <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
                 {t.friendsSub}
               </span>
+              {/* The public path leads to the LIVE lobby list — you see who's
+                  open and pick, instead of being teleported blind; the lobby's
+                  own Quick Play still one-taps into the fullest table (or
+                  hosts a fresh public one when the list is empty). */}
               <Cta
                 type="button"
                 onClick={() => {
-                  void quickPlay().then(onJoinRoom);
+                  location.hash = '#lobby';
                 }}
               >
-                {t.quickPlay}
+                {t.joinPublic}
               </Cta>
               <Cta
                 type="button"
@@ -426,12 +426,6 @@ export function PlayMenu({
               >
                 {t.createRoom}
               </Cta>
-              <a
-                href="#lobby"
-                className="text-center font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-ink) underline underline-offset-2 hover:opacity-80"
-              >
-                {t.browseTables}
-              </a>
               {/* Full-opacity ink: a faded label on the violet ground fails AA. */}
               <div
                 aria-hidden
