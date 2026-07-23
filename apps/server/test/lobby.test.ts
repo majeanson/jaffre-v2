@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { claimBest, claimRoom, openRooms, pruneExpired, type LobbyEntry } from '../src/Lobby.js';
+import {
+  claimBest,
+  claimRoom,
+  openRooms,
+  publicList,
+  pruneExpired,
+  watchableRooms,
+  type LobbyEntry,
+} from '../src/Lobby.js';
 
 /**
  * The Lobby registry's decision logic is pure (open-room filtering, Quick-Play
@@ -37,12 +45,29 @@ describe('openRooms', () => {
   });
 });
 
+describe('watchableRooms', () => {
+  it('keeps only live in-progress rooms, freshest first', () => {
+    const rooms = map(
+      entry({ code: 'live-a', phase: 'playing', updatedAt: NOW - 100 }),
+      entry({ code: 'live-b', phase: 'playing', updatedAt: NOW - 10 }),
+      entry({ code: 'waiting', phase: 'waiting' }),
+      entry({ code: 'stale', phase: 'playing', updatedAt: NOW - 999_999 }),
+    );
+    expect(watchableRooms(rooms, NOW).map((r) => r.code)).toEqual(['live-b', 'live-a']);
+  });
+});
+
 describe('claimBest', () => {
   it('picks the fullest joinable room, or null when none', () => {
     const rooms = map(entry({ code: 'a', players: 1 }), entry({ code: 'b', players: 3 }));
     expect(claimBest(rooms, NOW)).toBe('b');
     expect(claimBest(map(entry({ code: 'full', players: 4 })), NOW)).toBeNull();
     expect(claimBest({}, NOW)).toBeNull();
+  });
+
+  it('never claims a playing (in-progress) room, even if it were the only one', () => {
+    const rooms = map(entry({ code: 'live', phase: 'playing', players: 2 }));
+    expect(claimBest(rooms, NOW)).toBeNull();
   });
 });
 
@@ -62,6 +87,27 @@ describe('claimRoom', () => {
     const result = claimRoom({}, NOW);
     expect(result.code).toBeNull();
     expect(result.rooms).toEqual({});
+  });
+
+  it('never claims a playing room even alongside waiting ones', () => {
+    const rooms = map(
+      entry({ code: 'live', phase: 'playing', players: 4 }),
+      entry({ code: 'waiting', phase: 'waiting', players: 1 }),
+    );
+    const result = claimRoom(rooms, NOW);
+    expect(result.code).toBe('waiting');
+    expect(result.rooms.live?.players).toBe(4); // untouched — never reserved into
+  });
+});
+
+describe('publicList', () => {
+  it('lists waiting rooms first, then playing rooms, both TTL-filtered', () => {
+    const rooms = map(
+      entry({ code: 'live', phase: 'playing', players: 2 }),
+      entry({ code: 'waiting', phase: 'waiting', players: 1 }),
+      entry({ code: 'stale-live', phase: 'playing', updatedAt: NOW - 999_999 }),
+    );
+    expect(publicList(rooms, NOW).map((r) => r.code)).toEqual(['waiting', 'live']);
   });
 });
 

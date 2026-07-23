@@ -14,7 +14,8 @@ export type SceneScreen =
   | 'visitor'
   | 'share'
   | 'collection'
-  | 'paint';
+  | 'paint'
+  | 'public-lobby';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -337,6 +338,12 @@ export const SCENE_METAS = [
     label: 'Paint Studio — pixel editor',
     screen: 'paint',
     probe: '[data-testid="pixel-grid"]',
+  },
+  {
+    id: 'public-lobby',
+    label: 'Public lobby — open tables',
+    screen: 'public-lobby',
+    probe: 'role=heading[name="Public tables"]',
   },
 ] as const satisfies readonly SceneMeta[];
 

@@ -41,6 +41,9 @@ export interface ChatMessage {
   readonly from: string;
   readonly text: string;
   readonly at: number;
+  /** Sender's seat (0-3), so the name can be coloured like the felt does.
+   * Absent for spectators and for entries persisted before this field existed. */
+  readonly seat?: number;
 }
 
 export interface ChatPanelProps {
@@ -157,7 +160,16 @@ export function ChatPanel({
         {entries.map((e, i) => (
           <p key={i} className="break-words">
             <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at)}</span>{' '}
-            <span className="font-bold text-(--color-ap-violet-soft)">{e.from}</span>{' '}
+            <span
+              className="font-bold text-(--color-ap-violet-soft)"
+              style={
+                typeof e.seat === 'number'
+                  ? { color: e.seat % 2 === 0 ? 'var(--color-team-a)' : 'var(--color-team-b)' }
+                  : undefined
+              }
+            >
+              {e.from}
+            </span>{' '}
             <span>{e.text}</span>
           </p>
         ))}

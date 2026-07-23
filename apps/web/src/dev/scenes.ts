@@ -3,7 +3,7 @@ import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, Roster } from '@jaffre/protocol';
 import type { HistoryGame, ReplayData, Stats } from '../net/history.js';
-import type { TableEntry } from '../net/rooms.js';
+import type { PublicRoom, TableEntry } from '../net/rooms.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
 import type { SceneId, SceneMeta } from './sceneManifest.js';
@@ -219,6 +219,14 @@ export const DEMO_TABLES: readonly TableEntry[] = [
       { name: 'Bot 3', isBot: true },
     ],
   },
+];
+
+/** Staged "Public tables" rows for the public-lobby scene — a mix of waiting
+ * rooms, from barely-started to nearly full. */
+export const DEMO_PUBLIC_ROOMS: readonly PublicRoom[] = [
+  { code: 'amber-fox-3k', host: 'Ginette', players: 1, capacity: 4, phase: 'waiting' },
+  { code: 'salon', host: 'Marcel', players: 3, capacity: 4, phase: 'waiting' },
+  { code: 'chalet', host: 'Réal', players: 2, capacity: 4, phase: 'waiting' },
 ];
 
 /** Staged "Your record" data for the stats scene. */
@@ -463,6 +471,8 @@ const LOADERS: Record<SceneId, () => void> = {
   'painted-card': () => inject({ state: createGame(2), lastEvents: [], summaries: [] }),
   // The Paint Studio renders from the cached profile (no engine state) — no-op.
   'paint-studio': () => undefined,
+  // Public lobby renders from its own demoRooms prop (like history/stats) — no-op.
+  'public-lobby': () => undefined,
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({

@@ -28,12 +28,22 @@ export interface LobbyEntry {
 
 // ── Pure registry logic (DB/DO-free, unit-tested in lobby.test.ts) ──────────
 
-/** Live (un-expired) open rooms with a free seat, freshest first. */
+/** Live (un-expired) open rooms with a free seat, freshest first. Used by
+ * Quick Play (claimBest/claimRoom) — a room that's already started must NEVER
+ * be claimed, so this stays scoped to phase 'waiting' only. */
 export function openRooms(rooms: Record<string, LobbyEntry>, now: number): LobbyEntry[] {
   return Object.values(rooms)
     .filter(
       (e) => now - e.updatedAt < LOBBY_TTL_MS && e.phase === 'waiting' && e.players < e.capacity,
     )
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Live (un-expired) rooms with a game in progress — browsable to watch (join
+ * as a spectator) but never claimable by Quick Play, freshest first. */
+export function watchableRooms(rooms: Record<string, LobbyEntry>, now: number): LobbyEntry[] {
+  return Object.values(rooms)
+    .filter((e) => now - e.updatedAt < LOBBY_TTL_MS && e.phase === 'playing')
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
@@ -78,12 +88,15 @@ export function pruneExpired(
 
 /** The list as published to clients — updatedAt is registry bookkeeping, and
  * stripping it here is what lets broadcast() detect REAL changes (the 30s
- * heartbeat re-register only bumps updatedAt; watchers shouldn't hear it). */
-function publicList(
+ * heartbeat re-register only bumps updatedAt; watchers shouldn't hear it).
+ * Waiting (joinable) rooms sort first, then in-progress (watch-only) rooms —
+ * both TTL-filtered — capped at LIST_LIMIT total so a busy lobby doesn't push
+ * an unbounded list to every watcher. */
+export function publicList(
   rooms: Record<string, LobbyEntry>,
   now: number,
 ): Omit<LobbyEntry, 'updatedAt'>[] {
-  return openRooms(rooms, now)
+  return [...openRooms(rooms, now), ...watchableRooms(rooms, now)]
     .slice(0, LIST_LIMIT)
     .map(({ code, host, players, capacity, phase }) => ({ code, host, players, capacity, phase }));
 }

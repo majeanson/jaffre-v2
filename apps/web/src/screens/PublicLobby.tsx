@@ -20,7 +20,10 @@ const T: Record<
     quickPlay: string;
     live: string;
     join: string;
+    watch: string;
+    watchHint: string;
     seats: (n: number, cap: number) => string;
+    playing: (n: number, cap: number) => string;
   }
 > = {
   en: {
@@ -31,7 +34,10 @@ const T: Record<
     quickPlay: 'Quick Play',
     live: 'Live — updates as tables open and fill',
     join: 'Join',
+    watch: 'Watch',
+    watchHint: 'Game in progress — join as a spectator',
     seats: (n, cap) => `${String(n)}/${String(cap)} seated`,
+    playing: (n, cap) => `${String(n)}/${String(cap)} playing`,
   },
   fr: {
     title: 'Tables publiques',
@@ -41,7 +47,10 @@ const T: Record<
     quickPlay: 'Partie rapide',
     live: 'En direct — mis à jour quand les tables ouvrent et se remplissent',
     join: 'Rejoindre',
+    watch: 'Regarder',
+    watchHint: 'Partie en cours — regarde en spectateur',
     seats: (n, cap) => `${String(n)}/${String(cap)} assis`,
+    playing: (n, cap) => `${String(n)}/${String(cap)} en jeu`,
   },
 };
 
@@ -99,22 +108,43 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           <p className={SHELL_NOTE}>{t.empty}</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {rooms.map((r) => (
-              <li
-                key={r.code}
-                className="flex items-center gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.9em] py-[0.6em] shadow-(--shadow-ap-sm)"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
-                    {r.host}
+            {rooms.map((r) => {
+              const playing = r.phase === 'playing';
+              return (
+                <li
+                  key={r.code}
+                  title={playing ? t.watchHint : undefined}
+                  className="flex items-center gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.9em] py-[0.6em] shadow-(--shadow-ap-sm)"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="block truncate font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
+                        {r.host}
+                      </span>
+                      {playing && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full border border-(--color-suit-red) bg-(--color-ap-ground) px-[0.5em] py-[0.1em] font-arcade-ui text-[0.6em] uppercase text-(--color-suit-red)">
+                          <span
+                            aria-hidden
+                            className="inline-block size-1.5 shrink-0 animate-pulse rounded-full bg-(--color-suit-red)"
+                          />
+                          LIVE
+                        </span>
+                      )}
+                    </span>
+                    <span className="block font-arcade-ui text-[0.75em] text-(--color-ap-muted)">
+                      {r.code} ·{' '}
+                      {playing ? t.playing(r.players, r.capacity) : t.seats(r.players, r.capacity)}
+                    </span>
                   </span>
-                  <span className="block font-arcade-ui text-[0.75em] text-(--color-ap-muted)">
-                    {r.code} · {t.seats(r.players, r.capacity)}
-                  </span>
-                </span>
-                <Cta onClick={() => onJoin(r.code)}>{t.join}</Cta>
-              </li>
-            ))}
+                  <Cta
+                    onClick={() => onJoin(r.code)}
+                    aria-label={playing ? t.watchHint : undefined}
+                  >
+                    {playing ? t.watch : t.join}
+                  </Cta>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

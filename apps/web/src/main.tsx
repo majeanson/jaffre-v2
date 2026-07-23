@@ -11,6 +11,7 @@ import { JaffreMotionConfig } from '@jaffre/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { consumeLoginFragment } from './net/auth.js';
 import { setPlayerName } from './net/socket.js';
 import { installTelemetry } from './net/telemetry.js';
@@ -38,8 +39,17 @@ void consumeLoginFragment().then((identity) => {
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>
-    <JaffreMotionConfig>
-      <App />
-    </JaffreMotionConfig>
+    {/* Outer boundary: catches a throw from App's own body/providers (lang,
+        card-skin, cosmetics-reconcile effects) — the inner one in App.tsx only
+        ever saw crashes inside AppRoutes. It sits outside LangProvider, but
+        useLang() defaults to 'en' with no provider, so the fallback still
+        renders (in English) instead of white-screening. Kept additive
+        alongside the themed inner boundary rather than replacing it, so
+        route-level crashes keep their localized recovery UI. */}
+    <ErrorBoundary>
+      <JaffreMotionConfig>
+        <App />
+      </JaffreMotionConfig>
+    </ErrorBoundary>
   </StrictMode>,
 );

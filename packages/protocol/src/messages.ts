@@ -123,6 +123,9 @@ export interface ChatEntry {
   readonly from: string;
   readonly text: string;
   readonly at: number;
+  /** Sender's seat (0-3), so the UI can colour the name like the felt does.
+   * Absent for spectators and for entries persisted before this field existed. */
+  readonly seat?: number;
 }
 
 export type ServerMessage =

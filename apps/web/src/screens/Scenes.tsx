@@ -3,6 +3,7 @@ import {
   DEMO_HISTORY,
   DEMO_HISTORY_NEW,
   DEMO_HISTORY_VETERAN,
+  DEMO_PUBLIC_ROOMS,
   DEMO_REPLAY,
   DEMO_STATS,
   DEMO_STATS_NEW,
@@ -18,6 +19,7 @@ import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { PaintStudio } from './PaintStudio.js';
+import { PublicLobby } from './PublicLobby.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
 import { Table } from './Table.js';
@@ -199,6 +201,14 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <Collection key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
       )}
       {current.screen === 'paint' && <PaintStudio key={current.id} onLeave={onLeave} />}
+      {current.screen === 'public-lobby' && (
+        <PublicLobby
+          key={current.id}
+          onLeave={onLeave}
+          onJoin={noop}
+          demoRooms={DEMO_PUBLIC_ROOMS}
+        />
+      )}
       {current.screen === 'share' && (
         <>
           <main className="min-h-full bg-(--color-ap-ground)" />

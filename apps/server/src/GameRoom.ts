@@ -383,6 +383,10 @@ export class GameRoom implements DurableObject {
         await this.ctx.storage.put('meta', this.meta);
         this.broadcastRoster({});
         await this.continueIfAllReady();
+        // continueIfAllReady can deal the final round of the game — unlike the
+        // webSocketMessage path, alarm() has no trailing syncLobby of its own,
+        // so a bots-driven game_over would otherwise linger listed forever.
+        await this.syncLobby();
       }
       if (this.game?.phase === 'round_over') await this.scheduleNextWake();
       return;
@@ -410,6 +414,10 @@ export class GameRoom implements DurableObject {
         : 'normal';
     const action = chooseAction(viewFor(game, turnSeat), rng, difficulty);
     if (action !== null) await this.applyEngineAction(action);
+    // A bot's move can be the one that ends the game (game_over) or starts one
+    // being watched — alarm() isn't followed by webSocketMessage's syncLobby,
+    // so without this a bot-finished public game would never deregister.
+    await this.syncLobby();
   }
 
   /** Free every pre-game seat whose human has been gone past the grace; keep
@@ -686,26 +694,42 @@ export class GameRoom implements DurableObject {
   }
 
   /** The lobby entry this room should advertise, or null when it shouldn't be
-   * listed (private, started, empty, or full of humans). */
+   * listed. Pre-game: public, waiting, at least one (but not all four) human
+   * seated. Mid-game: public, started, the game not yet over, and at least one
+   * human still seated — a game that's run entirely down to bots (every human
+   * left for good) has nobody to watch play, so it drops off too. A finished
+   * game (game_over) always returns null so syncLobby deregisters the table
+   * and it falls off the "watch live" list. */
   private lobbyEntry(): {
     code: string;
     host: string;
     players: number;
     capacity: number;
-    phase: 'waiting';
+    phase: 'waiting' | 'playing';
   } | null {
     const code = this.meta.roomCode;
     if (code === undefined) return null;
+    if (this.meta.public !== true) return null;
     const humans = this.meta.seats.filter((o): o is string => typeof o === 'string');
-    const open =
-      this.meta.public === true && !this.meta.started && humans.length >= 1 && humans.length < 4;
-    if (!open) return null;
+    if (!this.meta.started) {
+      const open = humans.length >= 1 && humans.length < 4;
+      if (!open) return null;
+      return {
+        code,
+        host: this.meta.names[humans[0] as string] ?? 'Player',
+        players: humans.length,
+        capacity: 4,
+        phase: 'waiting',
+      };
+    }
+    const gameLive = this.game !== null && this.game.phase !== 'game_over';
+    if (!gameLive || humans.length === 0) return null;
     return {
       code,
       host: this.meta.names[humans[0] as string] ?? 'Player',
       players: humans.length,
       capacity: 4,
-      phase: 'waiting',
+      phase: 'playing',
     };
   }
 
@@ -955,7 +979,13 @@ export class GameRoom implements DurableObject {
       return;
     }
     // Chat timestamps are presentation, not game logic — Date.now() is fine here.
-    const entry: ChatEntry = { from: att.name, text, at: Date.now() };
+    const seat = this.seatOf(att.userId);
+    const entry: ChatEntry = {
+      from: att.name,
+      text,
+      at: Date.now(),
+      ...(seat !== null ? { seat } : {}),
+    };
     this.chat.push(entry);
     if (this.chat.length > CHAT_CAP) this.chat = this.chat.slice(-CHAT_CAP);
     await this.ctx.storage.put('chat', this.chat);

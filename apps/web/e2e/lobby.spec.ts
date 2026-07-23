@@ -86,7 +86,8 @@ test('a created room is public by default, appears in #lobby live, and a second 
   expect(await uidOf(a)).not.toBe(await uidOf(b));
 
   // A fills the empty seats with bots and starts. Both players land on the
-  // felt, and the started room drops off the public lobby.
+  // felt, and the started room flips from a joinable 'waiting' entry to a
+  // watchable 'playing' one on the public lobby (spectators welcome).
   await a.getByTestId('fill-bots').click();
   await a.getByRole('button', { name: 'Start the game' }).click();
   await expect(a.getByTestId('score-strip')).toBeVisible();
@@ -94,10 +95,10 @@ test('a created room is public by default, appears in #lobby live, and a second 
   await expect
     .poll(async () => {
       const res = await b.request.get('/api/rooms');
-      const { rooms } = (await res.json()) as { rooms: { code: string }[] };
-      return rooms.some((r) => r.code === code);
+      const { rooms } = (await res.json()) as { rooms: { code: string; phase: string }[] };
+      return rooms.find((r) => r.code === code)?.phase ?? 'gone';
     })
-    .toBe(false);
+    .toBe('playing');
 
   await contextA.close();
   await contextB.close();
