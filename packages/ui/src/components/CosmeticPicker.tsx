@@ -72,10 +72,13 @@ export function CosmeticPicker({ tiles, onSelect, label }: CosmeticPickerProps) 
             {/* Preview — dimmed + lock glyph when not owned. */}
             <div className="relative grid place-items-center overflow-hidden rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-[0.6em]">
               <div className={tile.locked ? 'opacity-35 saturate-[0.6]' : ''}>{tile.preview}</div>
+              {/* Both corner badges ride ABOVE the preview (z-10): the mini
+                  decks stack their cards with own z-indexes, which otherwise
+                  paint over an unlayered absolute sibling. */}
               {tile.locked && (
                 <span
                   aria-hidden
-                  className="absolute right-[0.35em] top-[0.3em] font-arcade-display text-[1.1em] text-(--color-ap-violet-soft)"
+                  className="absolute right-[0.35em] top-[0.3em] z-10 font-arcade-display text-[1.1em] text-(--color-ap-violet-soft)"
                 >
                   🔒
                 </span>
@@ -85,7 +88,7 @@ export function CosmeticPicker({ tiles, onSelect, label }: CosmeticPickerProps) 
                   — on a narrow phone tile, name + inline badge used to collide
                   and truncate ("ARCA…"). */}
               {tile.selected && (
-                <span className="absolute right-[0.3em] top-[0.3em] rounded-full border-2 border-(--color-ap-violet) bg-(--color-ap-panel) px-[0.5em] py-[0.05em] font-arcade-ui text-[0.55em] font-bold uppercase tracking-[0.1em] text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)">
+                <span className="absolute right-[0.3em] top-[0.3em] z-10 rounded-full border-2 border-(--color-ap-violet) bg-(--color-ap-panel) px-[0.5em] py-[0.05em] font-arcade-ui text-[0.55em] font-bold uppercase tracking-[0.1em] text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)">
                   {t.selected}
                 </span>
               )}
@@ -116,6 +119,17 @@ export function CosmeticPicker({ tiles, onSelect, label }: CosmeticPickerProps) 
                   </span>
                 </div>
               </div>
+            )}
+            {/* Owned: the requirement stays as the skin's STORY — a quiet
+                ✓ line instead of a bar, so an earned skin never turns into an
+                unexplained possession. */}
+            {!tile.locked && tile.requirement !== undefined && (
+              <span className="font-arcade-ui text-[0.68em] leading-tight text-(--color-ap-muted)">
+                <span aria-hidden className="text-(--color-ap-ok)">
+                  ✓{' '}
+                </span>
+                {tile.requirement.text}
+              </span>
             )}
           </button>
         );

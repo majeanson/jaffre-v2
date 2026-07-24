@@ -28,9 +28,20 @@ export interface CardSkinRenderers {
 export interface CardSkinValue {
   readonly id: string;
   readonly renderers: CardSkinRenderers;
+  /**
+   * Which figure art wins on the two scoring 0-card specials — a THIRD axis,
+   * independent of the card skin (see Collection's "Bonhommes" section):
+   *  - 'pixel'   — the pixel-art Bonhomme sprite, always, on every 0-card.
+   *  - 'painted' — the viewer's OWN painting on their OWN 0-specials (today's
+   *    behaviour); everyone else's 0s fall through to the skin/default. DEFAULT.
+   *  - 'og'      — the photographed OG portrait, always, on every 0-card.
+   * Optional so callers that don't care (skin previews scoped to non-zero
+   * cards, etc.) can omit it and get the default.
+   */
+  readonly bonhommes?: 'pixel' | 'painted' | 'og';
 }
 
-const DEFAULT: CardSkinValue = { id: 'arcade', renderers: {} };
+const DEFAULT: CardSkinValue = { id: 'arcade', renderers: {}, bonhommes: 'painted' };
 
 const CardSkinContext = createContext<CardSkinValue>(DEFAULT);
 
@@ -70,20 +81,39 @@ function defaultCenter(card: CardData, size: string): ReactNode {
  * The rank numerals + bonus chip are still drawn by PlayingCard, so the card
  * stays legible. (These are the ONLY raster assets in the app.)
  */
-function ogArt(card: CardData): ReactNode {
-  const bon = card.value === 0;
-  // Emblems (1–7) and the blue/green bonhommes sit at the same footprint as any
-  // other card; only the two scoring specials (red = Joffre +5, brown = −2) get
-  // a slightly larger portrait to stand out.
-  const bigBon = bon && (card.suit === 'red' || card.suit === 'brown');
+/**
+ * Just the 0-card portrait piece of ogArt — exported so callers that want the
+ * OG bonhomme specifically (not the full emblem-or-portrait dispatch) can
+ * reuse it, e.g. the 'og' bonhomme-skin mode in PlayingCard, which forces
+ * this art on every 0-card regardless of the active card skin. Emblems (1–7)
+ * and the blue/green bonhommes sit at the same footprint as any other card;
+ * only the two scoring specials (red = Joffre +5, brown = −2) get a slightly
+ * larger portrait to stand out.
+ */
+export function ogBonhomme(card: CardData): ReactNode {
+  const big = card.suit === 'red' || card.suit === 'brown';
   return (
     <img
-      src={`/og-cards/${card.suit}_${bon ? 'bon' : 'emblem'}.jpg`}
+      src={`/og-cards/${card.suit}_bon.jpg`}
       alt=""
       aria-hidden
       draggable={false}
       className="pointer-events-none select-none object-contain"
-      style={{ width: bigBon ? '74%' : '66%', mixBlendMode: 'darken' }}
+      style={{ width: big ? '74%' : '66%', mixBlendMode: 'darken' }}
+    />
+  );
+}
+
+function ogArt(card: CardData): ReactNode {
+  if (card.value === 0) return ogBonhomme(card);
+  return (
+    <img
+      src={`/og-cards/${card.suit}_emblem.jpg`}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className="pointer-events-none select-none object-contain"
+      style={{ width: '66%', mixBlendMode: 'darken' }}
     />
   );
 }

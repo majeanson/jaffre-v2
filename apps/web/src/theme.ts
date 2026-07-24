@@ -4,22 +4,25 @@ import { atLevel, type Cosmetic } from './cosmetics.js';
 /** Skin system: a theme is a [data-theme] token block in packages/ui tokens.css.
  * Themes are cosmetics too — free, on the level track (see progression.ts), or
  * challenge-gated from stats. `dark` is the default (no `data-theme` attribute).
- * Catalog order is the ladder the gallery shows: starters → track → challenges. */
+ * Catalog order IS the ladder the gallery shows and is a SINGLE effort-sorted
+ * list, easiest→hardest: the free starters first, then every unlockable
+ * (level-track AND challenge) merged and sorted by effective difficulty — a
+ * challenge slots in wherever its skill/grind roughly matches a level
+ * (judged the same way as cosmetics.ts's CARD_SKINS ladder: attempting one
+ * sans-atout bid ≈ level 1, "win N games"/"make N bids"/"net +N" scaled
+ * against the nearest track level of comparable grind). */
 export const THEMES: readonly Cosmetic[] = [
-  // ── Starters ──
+  // ── Starters (free) ──
   { id: 'dark', label: 'Classic dark', free: true },
   { id: 'light', label: 'Classic light', free: true },
   { id: 'crimson', label: 'Crimson Lounge', free: true },
   { id: 'boreal', label: 'Boreal', free: true },
   { id: 'sakura', label: 'Sakura', free: true },
-  // ── Level track (see LEVEL_TRACK in progression.ts) ──
-  { id: 'juicy', label: 'Juicy', ...atLevel(2) },
-  { id: 'sepia', label: 'Sepia', ...atLevel(4) },
-  { id: 'midnight', label: 'Midnight', ...atLevel(6, (s) => s.games >= 10) },
-  { id: 'abyss', label: 'Abyss', ...atLevel(9, (s) => s.games >= 20) },
-  { id: 'synthwave', label: 'Synthwave', ...atLevel(11, (s) => s.games >= 30) },
-  // ── Challenges ──
+  // ── One ladder from here: level track + challenges, interleaved by
+  //    effective difficulty (see LEVEL_TRACK in progression.ts for the track
+  //    entries) ──
   {
+    // ≈ level 1 — a single attempted bid, the lightest gate in the game.
     id: 'arcane',
     label: 'Arcane',
     free: false,
@@ -30,18 +33,10 @@ export const THEMES: readonly Cosmetic[] = [
       need: 1,
     }),
   },
+  { id: 'juicy', label: 'Juicy', ...atLevel(2) },
+  { id: 'sepia', label: 'Sepia', ...atLevel(4) },
   {
-    id: 'ember',
-    label: 'Ember',
-    free: false,
-    unlock: (s) => s.streak.best >= 4,
-    requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Gagnez 4 fois de suite' : 'Win 4 in a row',
-      have: s.streak.best,
-      need: 4,
-    }),
-  },
-  {
+    // ≈ level 5
     id: 'glacier',
     label: 'Glacier',
     free: false,
@@ -53,17 +48,19 @@ export const THEMES: readonly Cosmetic[] = [
     }),
   },
   {
-    id: 'terminal',
-    label: 'Terminal',
+    // ≈ level 5-6
+    id: 'ember',
+    label: 'Ember',
     free: false,
-    unlock: (s) => s.bids.made >= 15,
+    unlock: (s) => s.streak.best >= 4,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Réussissez 15 mises' : 'Make 15 bids',
-      have: s.bids.made,
-      need: 15,
+      text: lang === 'fr' ? 'Gagnez 4 fois de suite' : 'Win 4 in a row',
+      have: s.streak.best,
+      need: 4,
     }),
   },
   {
+    // ≈ level 6 — half of Gilded's +100 net-points gate (level 11).
     id: 'goldleaf',
     label: 'Gold Leaf',
     free: false,
@@ -74,6 +71,21 @@ export const THEMES: readonly Cosmetic[] = [
       need: 50,
     }),
   },
+  { id: 'midnight', label: 'Midnight', ...atLevel(6, (s) => s.games >= 10) },
+  {
+    // ≈ level 7 — 15/25ths of Prismatic's 25-bids gate (level 12).
+    id: 'terminal',
+    label: 'Terminal',
+    free: false,
+    unlock: (s) => s.bids.made >= 15,
+    requirement: (s, lang: Lang) => ({
+      text: lang === 'fr' ? 'Réussissez 15 mises' : 'Make 15 bids',
+      have: s.bids.made,
+      need: 15,
+    }),
+  },
+  { id: 'abyss', label: 'Abyss', ...atLevel(9, (s) => s.games >= 20) },
+  { id: 'synthwave', label: 'Synthwave', ...atLevel(11, (s) => s.games >= 30) },
 ];
 
 /** Ids are open now (the catalog grows) — validated against THEMES at runtime. */

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Bonhomme,
   CardSkinProvider,
   CARD_SKIN_RENDERERS,
   CosmeticPicker,
@@ -12,10 +13,15 @@ import {
   type Lang,
 } from '@jaffre/ui';
 import {
+  BONHOMME_SKINS,
   CARD_SKINS,
+  DEFAULT_BONHOMME_SKIN,
   DEFAULT_CARD_SKIN,
   DEV_UNLOCK_ALL,
+  applyBonhommeSkin,
   applyCardSkin,
+  bonhommeLabel,
+  currentBonhommeSkin,
   currentCardSkin,
   owned,
   type Cosmetic,
@@ -58,10 +64,12 @@ const T: Record<
     preview: string;
     previewHint: string;
     cardSkins: string;
+    bonhommes: string;
     themes: string;
     showAll: string;
     blurb: string;
     journey: string;
+    paintFirst: string;
     equipped: (name: string) => string;
   }
 > = {
@@ -71,11 +79,13 @@ const T: Record<
     preview: 'How it looks',
     previewHint: 'Your equipped skin + theme, together.',
     cardSkins: 'Card skins',
+    bonhommes: 'Bonhommes',
     themes: 'Themes',
     showAll: 'Show all (dev)',
     blurb:
       'Level up on the Journey for the track skins and themes; the rest are challenge unlocks. Equip any you own — it follows your account.',
     journey: 'Journey',
+    paintFirst: 'Paint your card first',
     equipped: (name) => `Equipped ${name}`,
   },
   fr: {
@@ -84,11 +94,13 @@ const T: Record<
     preview: 'Aperçu',
     previewHint: 'Ton habillage + thème équipés, ensemble.',
     cardSkins: 'Habillages de cartes',
+    bonhommes: 'Bonhommes',
     themes: 'Thèmes',
     showAll: 'Tout afficher (dev)',
     blurb:
       'Monte de niveau sur le Parcours pour les habillages et thèmes du tracé; le reste, ce sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
     journey: 'Parcours',
+    paintFirst: "Peins ta carte d'abord",
     equipped: (name) => `Équipé : ${name}`,
   },
 };
@@ -163,6 +175,56 @@ function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin
   );
 }
 
+/** Bonhomme-skin preview: shows what that mode puts on the 0-card figure —
+ * the pixel sprite, the player's own painting (or a muted placeholder + hint
+ * when they haven't painted one yet), or the photographed OG portrait (same
+ * mix-blend "melt into the paper" trick as ogArt in cardSkin.tsx). */
+function BonhommePreview({ id, paintHint }: { readonly id: string; readonly paintHint: string }) {
+  if (id === 'pixel') {
+    return (
+      <div className="flex items-center justify-center p-[0.5em]">
+        <Bonhomme kind="joffre" size="2.6em" />
+      </div>
+    );
+  }
+  if (id === 'og') {
+    return (
+      <div className="flex items-center justify-center bg-(--color-card-face) p-[0.5em]">
+        <img
+          src="/og-cards/red_bon.jpg"
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="pointer-events-none w-[2.9em] select-none object-contain"
+          style={{ mixBlendMode: 'darken' }}
+        />
+      </div>
+    );
+  }
+  // 'painted'
+  const paint = getProfile().paint;
+  return (
+    <div className="flex flex-col items-center justify-center gap-[0.35em] p-[0.5em]">
+      {paint !== null ? (
+        <img
+          src={paint}
+          alt=""
+          className="size-[2.6em] rounded-[0.2em] border-[0.1em] border-(--color-ap-ink) object-cover"
+        />
+      ) : (
+        <>
+          <span className="grid size-[2.6em] place-items-center rounded-[0.2em] border-[0.12em] border-dashed border-(--color-ap-muted) font-arcade-display text-[1.2em] text-(--color-ap-muted)">
+            ?
+          </span>
+          <span className="text-center font-arcade-ui text-[0.55em] leading-tight text-(--color-ap-muted)">
+            {paintHint}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
 /**
  * The "How it looks" preview — the ONE place the equipped combination is shown
  * together. Scopes BOTH the current theme (`data-theme`) and the current card
@@ -225,7 +287,10 @@ function buildTiles(
       preview: preview(c.id),
       locked,
       selected: selected === c.id,
-      ...(locked && stats !== null && c.requirement !== undefined
+      // The "why" stays visible AFTER the unlock too — an earned skin keeps
+      // its story ("Win 3 in a row") instead of turning into an unexplained
+      // possession. The picker renders it without the progress bar once owned.
+      ...(stats !== null && c.requirement !== undefined
         ? { requirement: c.requirement(stats, lang) }
         : {}),
     };
@@ -246,6 +311,7 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   const [showAll, setShowAll] = useState(DEV_UNLOCK_ALL);
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
   const [theme, setTheme] = useState(currentTheme());
+  const [bonhomme, setBonhomme] = useState(currentBonhommeSkin());
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -270,6 +336,16 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
 
   const ownedCards = owned(CARD_SKINS, stats, showAll, rewards);
   const ownedThemes = owned(THEMES, stats, showAll, rewards);
+  // Localized labels live alongside (not inside) the catalog — see
+  // bonhommeLabel's doc comment in cosmetics.ts — so build a per-render
+  // catalog with `label` filled in for the tile grid + toast/equipped copy.
+  const bonhommeCatalog: readonly Cosmetic[] = BONHOMME_SKINS.map((c) => ({
+    ...c,
+    label: bonhommeLabel(c.id, lang),
+  }));
+  // All three are free, so this is always every id — kept via owned() anyway
+  // to reuse buildTiles' locked/requirement plumbing unmodified.
+  const ownedBonhommes = owned(bonhommeCatalog, stats, showAll, rewards);
 
   const chooseCardSkin = (id: string) => {
     applyCardSkin(id);
@@ -285,6 +361,14 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
     feedback('select');
     setToast(t.equipped(labelOf(THEMES, id)));
   };
+  const chooseBonhomme = (id: string) => {
+    const mode = id === 'pixel' || id === 'og' ? id : DEFAULT_BONHOMME_SKIN;
+    applyBonhommeSkin(mode);
+    setBonhomme(mode);
+    void saveProfile({ bonhommeSkin: mode });
+    feedback('select');
+    setToast(t.equipped(labelOf(bonhommeCatalog, mode)));
+  };
 
   const cardTiles = buildTiles(CARD_SKINS, ownedCards, cardSkin, stats, lang, (id) => (
     <CardSkinPreview id={id} />
@@ -293,6 +377,9 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   // a card skin never re-renders every theme tile — each grid shows one axis.
   const themeTiles = buildTiles(THEMES, ownedThemes, theme, stats, lang, (id) => (
     <ThemePreview id={id} cardSkin={DEFAULT_CARD_SKIN} />
+  ));
+  const bonhommeTiles = buildTiles(bonhommeCatalog, ownedBonhommes, bonhomme, stats, lang, (id) => (
+    <BonhommePreview id={id} paintHint={t.paintFirst} />
   ));
 
   return (
@@ -347,6 +434,13 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
             {t.cardSkins}
           </h2>
           <CosmeticPicker tiles={cardTiles} onSelect={chooseCardSkin} label={t.cardSkins} />
+        </Panel>
+
+        <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">
+          <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">
+            {t.bonhommes}
+          </h2>
+          <CosmeticPicker tiles={bonhommeTiles} onSelect={chooseBonhomme} label={t.bonhommes} />
         </Panel>
 
         <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">

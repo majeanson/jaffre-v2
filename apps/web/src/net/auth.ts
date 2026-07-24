@@ -26,9 +26,16 @@ export interface Profile {
   readonly paint: string | null;
   readonly cardSkin: string | null;
   readonly theme: string | null;
+  readonly bonhommeSkin: string | null;
 }
 
-const EMPTY_PROFILE: Profile = { color: null, paint: null, cardSkin: null, theme: null };
+const EMPTY_PROFILE: Profile = {
+  color: null,
+  paint: null,
+  cardSkin: null,
+  theme: null,
+  bonhommeSkin: null,
+};
 
 /** The cosmetic fields as they arrive on auth/profile responses (all optional). */
 type ProfileFields = {
@@ -36,6 +43,7 @@ type ProfileFields = {
   paint?: string | null;
   cardSkin?: string | null;
   theme?: string | null;
+  bonhommeSkin?: string | null;
 };
 
 function profileFrom(d: ProfileFields): Profile {
@@ -44,6 +52,7 @@ function profileFrom(d: ProfileFields): Profile {
     paint: d.paint ?? null,
     cardSkin: d.cardSkin ?? null,
     theme: d.theme ?? null,
+    bonhommeSkin: d.bonhommeSkin ?? null,
   };
 }
 
@@ -58,6 +67,7 @@ export function getProfile(): Profile {
       paint: p.paint ?? null,
       cardSkin: p.cardSkin ?? null,
       theme: p.theme ?? null,
+      bonhommeSkin: p.bonhommeSkin ?? null,
     };
   } catch {
     return EMPTY_PROFILE;
@@ -179,6 +189,7 @@ export async function saveProfile(patch: ProfileFields): Promise<Profile> {
     paint: patch.paint !== undefined ? patch.paint : current.paint,
     cardSkin: patch.cardSkin !== undefined ? patch.cardSkin : current.cardSkin,
     theme: patch.theme !== undefined ? patch.theme : current.theme,
+    bonhommeSkin: patch.bonhommeSkin !== undefined ? patch.bonhommeSkin : current.bonhommeSkin,
   };
   storeProfile(optimistic);
   const token = read()?.token;

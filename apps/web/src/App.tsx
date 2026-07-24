@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
-import { CARD_SKIN_EVENT, currentCardSkin } from './cosmetics.js';
+import {
+  BONHOMME_SKIN_EVENT,
+  CARD_SKIN_EVENT,
+  currentBonhommeSkin,
+  currentCardSkin,
+} from './cosmetics.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { NoticeToast } from './components/NoticeToast.js';
@@ -81,9 +86,18 @@ export function App() {
     onChange();
     return () => window.removeEventListener(CARD_SKIN_EVENT, onChange);
   }, []);
+  // The bonhomme-art preference — a third, independent axis. Mirrors the card
+  // skin's own subscribe/re-sync pattern above (same reasoning applies).
+  const [bonhommes, setBonhommes] = useState(currentBonhommeSkin());
+  useEffect(() => {
+    const onChange = () => setBonhommes(currentBonhommeSkin());
+    window.addEventListener(BONHOMME_SKIN_EVENT, onChange);
+    onChange();
+    return () => window.removeEventListener(BONHOMME_SKIN_EVENT, onChange);
+  }, []);
   const skin = useMemo(
-    () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }),
-    [cardSkin],
+    () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {}, bonhommes }),
+    [cardSkin, bonhommes],
   );
 
   // Once per load: reconcile cosmetics with real stats — degrade a now-locked

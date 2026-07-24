@@ -1,5 +1,5 @@
 import { useLang } from '../i18n.js';
-import { useCardSkin } from '../cardSkin.js';
+import { useCardSkin, ogBonhomme } from '../cardSkin.js';
 import type { CardData } from '../types.js';
 import { cardLabel, SUIT_STYLES } from '../types.js';
 import { SuitShape } from './SuitShape.js';
@@ -49,7 +49,7 @@ export function PlayingCard({
   paint = null,
 }: PlayingCardProps) {
   const lang = useLang();
-  const { renderers } = useCardSkin();
+  const { renderers, bonhommes = 'painted' } = useCardSkin();
   if (faceDown) {
     // A skin may print its own back art (e.g. the OG emblem) over the card-face
     // colour; otherwise the default is the striped card-back.
@@ -110,9 +110,27 @@ export function PlayingCard({
       {/* Centre mark: a card skin may override it; the default gives the two
           specials their OG bonhomme and everyone else the geometric suit shape.
           The bonhomme cards also carry a small suit shape beneath the figure so
-          the suit stays identifiable even in a low-colour skin (e.g. noir). */}
+          the suit stays identifiable even in a low-colour skin (e.g. noir).
+
+          The player's `bonhommes` preference (see cardSkin.tsx) is a THIRD,
+          independent axis and is decided FIRST, ahead of skin/paint: 'og' and
+          'pixel' are a blanket "always this art on every 0-card" choice, so
+          they simply take the slot and skip the paint/skin precedence chain
+          below entirely. A skin that WRAPS defaultCenter (foil/neon/prismatic
+          halos) keeps wrapping its own default in that case — composing the
+          wrap around a forced mode is a v2 concern, not attempted here. Only
+          'painted' (the default) runs the original precedence: your own
+          painting on your own specials, else the skin's centerMark, else the
+          pixel Bonhomme. */}
       <span className="absolute inset-0 grid place-items-center">
-        {(isRedZero || isBrownZero) && paint !== null ? (
+        {(isRedZero || isBrownZero) && bonhommes === 'og' ? (
+          ogBonhomme(card)
+        ) : (isRedZero || isBrownZero) && bonhommes === 'pixel' ? (
+          <span className="flex flex-col items-center gap-[0.34em]">
+            <Bonhomme kind={isRedZero ? 'joffre' : 'allemagne'} size="2.6em" />
+            <SuitShape suit={card.suit} size="0.62em" />
+          </span>
+        ) : (isRedZero || isBrownZero) && paint !== null ? (
           // Your own special, personalised: the painting takes the bonhomme's
           // place; the small suit shape stays so the card is still readable.
           <span className="flex flex-col items-center gap-[0.34em]">
