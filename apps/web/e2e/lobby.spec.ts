@@ -94,6 +94,11 @@ test('a created room is public by default, appears in #lobby live, and a second 
   // B joins from the card and takes a seat — as Bruno, not as a second Alice.
   await aliceCard.getByRole('button', { name: 'Join' }).click();
   await expect.poll(() => b.evaluate(() => location.hash)).toBe(`#room/${code}`);
+  // Wait for the roster before sitting: until it lands, every seat renders a
+  // "Sit here" and the first one is ALICE's — a fast click gets SEAT_TAKEN on
+  // slow CI. Alice's nameplate proves the roster arrived and .first() now
+  // targets a genuinely empty seat.
+  await expect(b.getByText('Alice')).toBeVisible();
   await b.getByRole('button', { name: 'Sit here' }).first().click();
 
   // Who's-who: A sees Bruno arrive; the two browsers are distinct identities.
