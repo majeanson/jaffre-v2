@@ -259,7 +259,8 @@ function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly 
               </div>
             ))}
             {/* The skin's BACK rides at the fan's end at full size — it's what
-                the rest of the table sees of your deck all game (OpponentFan). */}
+                other players see for the brief instant your deck "deals"
+                each round (DealIntro). */}
             <div style={{ marginLeft: '-1.1em', zIndex: SAMPLE.length }}>
               <PlayingCard card={{ suit: 'red', value: 5 }} size="md" tilt={16} faceDown />
             </div>

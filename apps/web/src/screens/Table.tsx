@@ -128,6 +128,7 @@ export function Table({
         banner={derived.heldBanner}
         winnerPosition={derived.winnerPosition}
         seatInfo={seatInfo}
+        roundIndex={view.roundIndex}
         coachTip={derived.coach?.tip ?? null}
         bidOverlay={
           view.phase === 'bidding' &&
