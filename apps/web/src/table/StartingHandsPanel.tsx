@@ -3,12 +3,21 @@ import { cardId } from '@jaffre/engine';
 import { PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useState } from 'react';
 
-const T: Record<Lang, { show: string; hide: string; region: string }> = {
-  en: { show: 'Show starting hands', hide: 'Hide starting hands', region: 'Starting hands' },
+const T: Record<
+  Lang,
+  { show: string; hide: string; region: string; roundRegion: (round: number) => string }
+> = {
+  en: {
+    show: 'Show starting hands',
+    hide: 'Hide starting hands',
+    region: 'Starting hands',
+    roundRegion: (round) => `Round ${String(round)} starting hands`,
+  },
   fr: {
     show: 'Voir les mains de départ',
     hide: 'Cacher les mains de départ',
     region: 'Mains de départ',
+    roundRegion: (round) => `Mains de départ de la ronde ${String(round)}`,
   },
 };
 
@@ -57,6 +66,33 @@ export function StartingHandsRows({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * {@link StartingHandsRows} boxed for the ivory scorepad: team colors need the
+ * dark panel, not the pad's paper, so the rows sit in their own inset. This is
+ * what a scoresheet's `renderRoundDetail` unfolds under an R-row — the same
+ * reveal wherever a `ScorePad` appears (top bar, round summary).
+ */
+export function StartingHandsInset({
+  round,
+  hands,
+  names,
+}: {
+  readonly round: number;
+  readonly hands: readonly (readonly Card[])[];
+  readonly names: readonly string[];
+}) {
+  const t = T[useLang()];
+  return (
+    <div
+      role="region"
+      aria-label={t.roundRegion(round)}
+      className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-2"
+    >
+      <StartingHandsRows hands={hands} names={names} />
+    </div>
   );
 }
 

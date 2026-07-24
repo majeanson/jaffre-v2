@@ -43,6 +43,7 @@ export function Overlays({
           youReady={me !== null ? (readySeats[me] ?? false) : true}
           onReady={onReady}
           rounds={rounds}
+          summaries={view.roundSummaries}
           myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         />
       )}

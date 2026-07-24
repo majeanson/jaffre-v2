@@ -136,8 +136,11 @@ export const SCENE_METAS = [
     id: 'auction-wait',
     label: 'Auction — waiting',
     screen: 'table',
-    probe: 'role=listbox[name="Your hand"]',
-    absent: 'role=button[name="Pass"]',
+    // Off-turn the auction panel STAYS up (everyone follows the bidding) with
+    // every card locked — so the probe is the disabled Pass card, and no
+    // enabled one may exist.
+    probe: 'role=button[name="Pass"][disabled=true]',
+    absent: 'role=button[name="Pass"][disabled=false]',
   },
   {
     id: 'your-lead',
@@ -212,6 +215,12 @@ export const SCENE_METAS = [
     label: 'Opponent away — bot-swap countdown',
     screen: 'table',
     probe: '[data-testid="botswap-countdown"]',
+  },
+  {
+    id: 'seat-turntimer-nudge',
+    label: 'Opponent idle on turn — turn-timer nudge',
+    screen: 'table',
+    probe: '[data-testid="turntimer-countdown"]',
   },
   {
     id: 'seat-autoplay-badge',

@@ -42,8 +42,10 @@ test('practice table is playable on a 390px phone', async ({ page }) => {
 
   const hand = page.getByRole('listbox', { name: 'Your hand' });
   await expect(hand).toBeVisible();
+  // The bid panel stays up for the whole auction; wait for OUR turn (Pass
+  // enabled) so the tap below actually commits a pass.
   const pass = page.getByRole('button', { name: 'Pass' });
-  await expect(pass).toBeVisible({ timeout: 45_000 });
+  await expect(pass).toBeEnabled({ timeout: 45_000 });
 
   // (a) No horizontal page scroll mid-bidding.
   await expectNoHorizontalScroll(page);
@@ -86,14 +88,16 @@ test('practice table is playable on a 390px phone', async ({ page }) => {
   const passBox = await boxOf(pass);
   expect(passBox.height).toBeGreaterThanOrEqual(40);
   await pass.tap();
-  await expect(pass).toBeHidden();
+  // Our pass registered: the panel either locks (bots still bidding) or
+  // unmounts (auction done) — either way Pass is no longer enabled.
+  await expect.poll(async () => (await pass.isVisible()) && (await pass.isEnabled())).toBe(false);
 
   // (b, continued) When it's our turn to play, a card can be played by tap.
   // The auction may come back to us; keep tapping Pass until play begins.
   const playable = hand.locator('[role="option"][data-playable="true"]');
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline && (await playable.count()) === 0) {
-    if (await pass.isVisible()) {
+    if ((await pass.isVisible()) && (await pass.isEnabled())) {
       await pass.tap({ timeout: 2000 }).catch(() => {});
     }
     await page.waitForTimeout(250);

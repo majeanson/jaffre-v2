@@ -9,9 +9,10 @@ import { expectNoSeriousViolations } from './axe.js';
 
 /** Advance a practice game when it's the human's turn: pass bids, play cards. */
 async function actIfMyTurn(page: Page): Promise<void> {
+  // The bid panel stays up for the whole auction — Pass is enabled on our turn.
   const pass = page.getByRole('button', { name: 'Pass' });
   if (await pass.isVisible()) {
-    await pass.click({ timeout: 2000 }).catch(() => {});
+    if (await pass.isEnabled()) await pass.click({ timeout: 2000 }).catch(() => {});
     return;
   }
   const legal = page.locator('[role="option"][data-playable="true"]');
@@ -40,8 +41,9 @@ test('practice table mid-bidding has no serious axe violations', async ({ page }
   test.setTimeout(90_000);
   await page.goto('/#practice');
 
-  // Wait until it is the human's turn in the auction — the bid panel is up.
-  await expect(page.getByRole('button', { name: 'Pass' })).toBeVisible({ timeout: 45_000 });
+  // Wait until it is the human's turn in the auction — the panel is up for the
+  // whole auction, but Pass only enables on our turn.
+  await expect(page.getByRole('button', { name: 'Pass' })).toBeEnabled({ timeout: 45_000 });
   await expectNoSeriousViolations(page, 'practice mid-bidding');
 });
 

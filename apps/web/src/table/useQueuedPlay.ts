@@ -19,10 +19,13 @@ const QUEUE_FIRE_DELAY_MS = 400;
  * it with a normal tap.
  */
 export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
-  const { view, viewer, heldTrick, queued, setQueued } = useGameStore();
+  const { view, viewer, roster, heldTrick, queued, setQueued } = useGameStore();
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
   const myTurn = view !== null && me !== null && view.turn === me && view.phase !== 'game_over';
+  // Your seat on voluntary auto-play: the server plays your turns, so a queued
+  // card would only race its alarm — drop it and never fire.
+  const autoPiloted = me !== null && (roster?.seats[me]?.autoPlay ?? false);
 
   // The action callback changes identity per render; keep the latest without
   // re-arming the fire timer.
@@ -39,13 +42,13 @@ export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
     const roundChanged = lastRound.current !== null && lastRound.current !== view.roundIndex;
     lastRound.current = view.roundIndex;
     if (queued === null) return;
-    if (me === null || roundChanged || !queueStillValid(queued, view, me, myTurn)) {
+    if (me === null || roundChanged || autoPiloted || !queueStillValid(queued, view, me, myTurn)) {
       setQueued(null);
     }
-  }, [view, me, myTurn, queued, setQueued]);
+  }, [view, me, myTurn, queued, setQueued, autoPiloted]);
 
   useEffect(() => {
-    if (queued === null || view === null || me === null) return;
+    if (queued === null || view === null || me === null || autoPiloted) return;
     if (!myTurn || view.phase !== 'playing' || heldTrick !== null) return;
     if (!view.trumpDecided) return;
     const ledSuit = view.currentTrick[0]?.card.suit ?? null;
@@ -58,5 +61,5 @@ export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
       onActionRef.current({ type: 'play_card', card: queued });
     }, QUEUE_FIRE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [queued, view, me, myTurn, heldTrick, setQueued]);
+  }, [queued, view, me, myTurn, heldTrick, setQueued, autoPiloted]);
 }

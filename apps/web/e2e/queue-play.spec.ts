@@ -34,9 +34,10 @@ test('queues a card while waiting and it auto-plays on your turn', async ({ page
 
   const deadline = Date.now() + 100_000;
   while (Date.now() < deadline) {
-    // Auction: pass on our turns until play starts.
+    // Auction: pass on our turns until play starts. The panel stays visible
+    // for the whole auction — Pass is only enabled on our turn.
     if (await pass.isVisible()) {
-      await pass.click();
+      if (await pass.isEnabled()) await pass.click();
       await page.waitForTimeout(150);
       continue;
     }

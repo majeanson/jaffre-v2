@@ -32,11 +32,14 @@ test('plays a full practice round with the keyboard only', async ({ page }) => {
   while (Date.now() < deadline) {
     if ((await roundScored.count()) > 0) break;
 
-    // Bidding and it's our turn: the bid panel is up — Pass via keyboard.
+    // Bidding: the panel is up for the whole auction; Pass is only enabled
+    // on our turn — Pass via keyboard then.
     const pass = page.getByRole('button', { name: 'Pass' });
     if (await pass.isVisible()) {
-      await pass.focus();
-      await page.keyboard.press('Enter');
+      if (await pass.isEnabled()) {
+        await pass.focus();
+        await page.keyboard.press('Enter');
+      }
       await page.waitForTimeout(150);
       continue;
     }

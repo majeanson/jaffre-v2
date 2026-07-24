@@ -14,8 +14,10 @@ import type { Page } from '@playwright/test';
  * (contract winner may be a human, who must lead the first trick).
  */
 async function actIfMyTurn(page: Page): Promise<void> {
+  // The bid panel now stays up for the whole auction — an ENABLED Pass (not a
+  // merely visible one) is what marks this human's turn.
   const pass = page.getByRole('button', { name: 'Pass' });
-  if (await pass.isVisible()) {
+  if ((await pass.isVisible()) && (await pass.isEnabled())) {
     const seven = page.getByRole('button', { name: 'Bid 7', exact: true });
     if (await seven.isEnabled().catch(() => false)) {
       await seven.click();

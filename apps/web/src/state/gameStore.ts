@@ -35,6 +35,13 @@ interface GameStore {
   /** Seat position (table-relative) the current trick should sweep toward. */
   sweepTo: 0 | 1 | 2 | 3 | null;
   /**
+   * Server clock minus this device's clock (ms), from the latest roster's
+   * `now` stamp. Countdowns compare server-epoch deadlines against
+   * Date.now() + clockSkew so a device clock minutes off never fires (or
+   * hides) a countdown early. 0 until a stamped roster arrives.
+   */
+  clockSkew: number;
+  /**
    * A just-completed trick, held on the table so players can see all four
    * cards and the points before it sweeps to the winner.
    */
@@ -67,6 +74,11 @@ interface GameStore {
 
 let logId = 0;
 
+/** Clock-skew patch from a roster's server `now` stamp (empty when absent,
+ * so older servers simply leave the previous skew in place). */
+const skewFrom = (roster: Roster): { clockSkew: number } | Record<string, never> =>
+  roster.now === undefined ? {} : { clockSkew: roster.now - Date.now() };
+
 const seatNames = (roster: Roster | null): string[] =>
   [0, 1, 2, 3].map((i) => roster?.seats[i]?.name ?? `Seat ${i + 1}`);
 
@@ -82,10 +94,11 @@ export const useGameStore = create<GameStore>((set) => ({
   sweepTo: null,
   heldTrick: null,
   queued: null,
+  clockSkew: 0,
 
   setConnection: (connection) => set({ connection }),
   welcome: (viewer, view, seq, roster, chat) =>
-    set({ viewer, view, seq, roster, chat, connection: 'open' }),
+    set({ viewer, view, seq, roster, chat, connection: 'open', ...skewFrom(roster) }),
   setView: (view, seq) => set({ view, seq }),
   applyEvents: (events, seq, view) =>
     set((s) => {
@@ -115,7 +128,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setSweep: (position) => set({ sweepTo: position }),
   clearHeldTrick: () => set({ heldTrick: null, sweepTo: null }),
   setQueued: (card) => set({ queued: card }),
-  setRoster: (roster) => set({ roster }),
+  setRoster: (roster) => set({ roster, ...skewFrom(roster) }),
   addChat: (entry) =>
     set((s) => {
       // Idempotent: the same entry can be delivered more than once (relayed to
@@ -144,6 +157,7 @@ export const useGameStore = create<GameStore>((set) => ({
       sweepTo: null,
       heldTrick: null,
       queued: null,
+      clockSkew: 0,
     }),
 }));
 

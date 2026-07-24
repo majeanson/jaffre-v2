@@ -22,6 +22,7 @@ import {
   IconSparkle,
 } from '../components/icons.js';
 import { CollectionSheet } from '../components/CollectionSheet.js';
+import { StartingHandsInset } from './StartingHandsPanel.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
 const T: Record<
@@ -70,6 +71,8 @@ export interface TopBarProps {
   readonly contract: ContractDisplay | null;
   /** Finished rounds for the written scoreboard, oldest first. */
   readonly rounds: readonly ScoreboardRound[];
+  /** Player names by absolute seat — labels the per-round starting hands. */
+  readonly names: readonly string[];
   readonly trickCounts: readonly [number, number];
   readonly specials: readonly [TeamSpecials, TeamSpecials];
   readonly action: string;
@@ -97,6 +100,7 @@ export function TopBar({
   view,
   contract,
   rounds,
+  names,
   trickCounts,
   specials,
   action,
@@ -115,6 +119,16 @@ export function TopBar({
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
   const [skinsOpen, setSkinsOpen] = useState(false);
   const otherLang = LANGS.find((l) => l.id !== lang) ?? LANGS[0];
+
+  // Tapping a finished round's R-row on the scorepad unfolds that round's
+  // starting hands — the same reveal the round summary offers, available for
+  // any past round mid-game.
+  const renderRoundDetail = (round: number): ReactNode => {
+    const hands = view.roundSummaries.find((s) => s.roundIndex === round - 1)?.startingHands;
+    if (hands === undefined) return null;
+    return <StartingHandsInset round={round} hands={hands} names={names} />;
+  };
+
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
       {skinsOpen && <CollectionSheet onClose={() => setSkinsOpen(false)} />}
@@ -130,6 +144,7 @@ export function TopBar({
         trickCounts={trickCounts}
         specials={specials}
         rounds={rounds}
+        renderRoundDetail={renderRoundDetail}
         currentRound={view.phase === 'game_over' ? undefined : view.roundIndex + 1}
         action={action}
         myTeam={myTeam}

@@ -10,9 +10,9 @@ import {
   type ScoreboardRound,
   type TeamSpecials,
 } from '@jaffre/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useScrollLock } from '../components/useScrollLock.js';
-import { StartingHandsPanel } from './StartingHandsPanel.js';
+import { StartingHandsInset, StartingHandsPanel } from './StartingHandsPanel.js';
 
 const T: Record<
   Lang,
@@ -86,6 +86,9 @@ export interface RoundSummaryOverlayProps {
   readonly onReady: () => void;
   /** Finished rounds, oldest first — the same written scoresheet as the top bar. */
   readonly rounds: readonly ScoreboardRound[];
+  /** Every scored round so far — lets any R-row on the sheet unfold its
+   * starting hands, not just the round being summarized. */
+  readonly summaries: SeatView['roundSummaries'];
   /** The viewer's team (highlighted on the sheet + band), null when spectating. */
   readonly myTeam: 0 | 1 | null;
 }
@@ -133,6 +136,7 @@ export function RoundSummaryOverlay({
   youReady,
   onReady,
   rounds,
+  summaries,
   myTeam,
 }: RoundSummaryOverlayProps) {
   const tr = T[useLang()];
@@ -148,6 +152,15 @@ export function RoundSummaryOverlay({
 
   const contractTeam = (summary.contract.seat % 2) as 0 | 1;
   const made = summary.contractMade;
+
+  // Any past R-row on the sheet unfolds that round's starting hands — the
+  // current round keeps its dedicated panel below, so its row stays inert.
+  const renderRoundDetail = (round: number): ReactNode => {
+    if (round === summary.roundIndex + 1) return null;
+    const hands = summaries.find((s) => s.roundIndex === round - 1)?.startingHands;
+    if (hands === undefined) return null;
+    return <StartingHandsInset round={round} hands={hands} names={names} />;
+  };
 
   /** One team's big round delta with any specials it captured this round. */
   const teamDelta = (t: 0 | 1) => {
@@ -233,6 +246,7 @@ export function RoundSummaryOverlay({
             scores={summary.scores}
             target={41}
             rounds={rounds}
+            renderRoundDetail={renderRoundDetail}
             myTeam={myTeam}
             highlightRound={summary.roundIndex + 1}
             className="max-w-none rounded-t-none"

@@ -13,6 +13,8 @@ const T: Record<
     stillToBid: string;
     betCards: string;
     tapToBid: string;
+    bidding: string;
+    waitYourTurn: string;
     hailMaryWarn: string;
   }
 > = {
@@ -25,6 +27,8 @@ const T: Record<
     stillToBid: 'still to bid',
     betCards: 'Bet cards',
     tapToBid: 'Tap a card to bid',
+    bidding: 'Bidding',
+    waitYourTurn: 'Wait for your turn to bid',
     hailMaryWarn: 'All or nothing — make 12 sans atout to win the game, miss it and you lose.',
   },
   fr: {
@@ -36,6 +40,8 @@ const T: Record<
     stillToBid: 'à miser',
     betCards: 'Cartes de mise',
     tapToBid: 'Touche une carte pour miser',
+    bidding: 'Les mises',
+    waitYourTurn: 'Attends ton tour pour miser',
     hailMaryWarn: 'Tout ou rien — réussis 12 sans atout pour gagner, rate-le et tu perds.',
   },
 };
@@ -61,6 +67,11 @@ export interface BetCardsProps {
   readonly onPass: () => void;
   readonly onBid: (option: BidOption) => void;
   readonly disabled?: boolean;
+  /**
+   * Another seat is bidding: the panel stays up so everyone follows the
+   * auction, but every card is disabled and the copy says whose turn it is.
+   */
+  readonly waiting?: boolean;
   /** The Coach's suggested bid — null means it recommends passing. */
   readonly recommended?: BidOption | null;
   /** True when the Coach is on (drives the recommend styling). */
@@ -141,6 +152,7 @@ export function BetCards({
   onPass,
   onBid,
   disabled = false,
+  waiting = false,
   recommended = null,
   coaching = false,
   hailMary12 = false,
@@ -148,22 +160,24 @@ export function BetCards({
   const tt = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
   const values = [7, 8, 9, 10, 11, 12] as const;
+  const locked = disabled || waiting;
   const recommendPass = coaching && recommended === null;
-  // The hail-mary is armed when the rule is on and the sans-atout toggle is up.
-  const hailMaryArmed = hailMary12 && sansAtout;
+  // The hail-mary is armed when the rule is on and the sans-atout toggle is up
+  // (only on your turn — the warning is about a bid you could commit now).
+  const hailMaryArmed = hailMary12 && sansAtout && !waiting;
 
   return (
     <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg)">
       <div className="flex w-full items-center justify-between gap-4">
         <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
-          {tt.playABet}
+          {waiting ? tt.bidding : tt.playABet}
         </span>
         <button
           type="button"
           aria-pressed={sansAtout}
-          disabled={disabled}
+          disabled={locked}
           onClick={() => setSansAtout((v) => !v)}
-          className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.9em] py-[0.45em] font-arcade-display text-(length:--text-fluid-xs) uppercase shadow-(--shadow-ap-sm) ${
+          className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.9em] py-[0.45em] font-arcade-display text-(length:--text-fluid-xs) uppercase shadow-(--shadow-ap-sm) disabled:cursor-not-allowed disabled:opacity-45 ${
             sansAtout
               ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
               : 'bg-(--color-ap-panel) text-(--color-ap-violet-soft) hover:bg-(--color-ap-panel-hover)'
@@ -250,7 +264,7 @@ export function BetCards({
               key={value}
               label={String(value)}
               sansAtout={sansAtout}
-              enabled={legal && !disabled}
+              enabled={legal && !locked}
               recommended={isRecommended}
               hot={hailMaryArmed && value === 12}
               onCommit={() => onBid({ value, sansAtout })}
@@ -261,13 +275,15 @@ export function BetCards({
           key="pass"
           label={tt.pass}
           pass
-          enabled={!disabled}
+          enabled={!locked}
           recommended={recommendPass}
           onCommit={onPass}
         />
       </div>
 
-      <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">{tt.tapToBid}</span>
+      <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+        {waiting ? tt.waitYourTurn : tt.tapToBid}
+      </span>
     </div>
   );
 }

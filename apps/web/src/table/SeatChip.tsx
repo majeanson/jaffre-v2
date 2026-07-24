@@ -1,15 +1,22 @@
 import { Seat, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { getProfile } from '../net/auth.js';
+import { useGameStore } from '../state/gameStore.js';
 import { PlayerPeek } from './PlayerPeek.js';
 import { formatCountdown, useCountdown } from './useCountdown.js';
 import type { SeatChipInfo } from './useTableDerived.js';
+
+/** The turn-timer nudge stays hidden until this many seconds remain — a
+ * present player quietly thinking must not be badged the moment their turn
+ * starts, only when the bot is genuinely about to play for them. */
+const TURN_TIMER_WARN_S = 20;
 
 const T: Record<
   Lang,
   {
     empty: string;
     away: (countdown: string) => string;
+    turnTimer: (countdown: string) => string;
     botTakingOver: string;
     autoPlay: string;
     peek: (name: string) => string;
@@ -18,6 +25,7 @@ const T: Record<
   en: {
     empty: 'empty',
     away: (countdown) => `Away — bot in ${countdown}`,
+    turnTimer: (countdown) => `Bot plays in ${countdown}`,
     botTakingOver: 'Bot taking over…',
     autoPlay: 'Auto-play — bot playing',
     peek: (name) => `Show ${name}'s info`,
@@ -25,6 +33,7 @@ const T: Record<
   fr: {
     empty: 'libre',
     away: (countdown) => `Absent — bot dans ${countdown}`,
+    turnTimer: (countdown) => `Le bot joue dans ${countdown}`,
     botTakingOver: 'Le bot prend la relève…',
     autoPlay: 'Jeu auto — le bot joue',
     peek: (name) => `Voir les infos de ${name}`,
@@ -55,7 +64,9 @@ export function SeatChip({
   defaultPeekOpen = false,
 }: SeatChipProps) {
   const t = T[useLang()];
-  const secondsLeft = useCountdown(info?.botSwapAt ?? null);
+  const clockSkew = useGameStore((s) => s.clockSkew);
+  const secondsLeft = useCountdown(info?.botSwapAt ?? null, clockSkew);
+  const turnSecondsLeft = useCountdown(info?.turnTimerAt ?? null, clockSkew);
   const [open, setOpen] = useState(defaultPeekOpen);
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -128,6 +139,19 @@ export function SeatChip({
           }`}
         >
           {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
+        </span>
+      )}
+      {/* Turn-timer nudge: this human is PRESENT, just idle on their turn.
+          Hidden until the final stretch — never labeled "Away". */}
+      {secondsLeft === null && turnSecondsLeft !== null && turnSecondsLeft <= TURN_TIMER_WARN_S && (
+        <span
+          data-testid="turntimer-countdown"
+          role="status"
+          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${alignX} ${
+            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
+          {turnSecondsLeft > 0 ? t.turnTimer(formatCountdown(turnSecondsLeft)) : t.botTakingOver}
         </span>
       )}
       {/* Voluntary auto-play: a bot is covering this connected human's turns.

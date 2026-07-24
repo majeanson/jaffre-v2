@@ -108,6 +108,10 @@ export interface SeatChipInfo {
   readonly connected: boolean;
   /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
   readonly botSwapAt: number | null;
+  /** Epoch ms when the turn-timer house rule plays this CONNECTED human's
+   * current turn for them, else null. Shown as a late-turn nudge — never as
+   * the "Away" disconnect countdown. */
+  readonly turnTimerAt: number | null;
   /** True when this human seat has voluntary auto-play on (a bot plays for them). */
   readonly autoPlay: boolean;
   /** The seat's auction declaration ("8 SA", "Pass"), null before it bids. */
@@ -163,6 +167,8 @@ export interface TableDerived {
   readonly queued: Card | null;
   /** Cards you may queue right now (empty unless waiting during play). */
   readonly queueable: readonly Card[];
+  /** True while YOUR seat is on voluntary auto-play — the hand goes quiet. */
+  readonly autoPiloted: boolean;
   /** The trick to show (a held finished trick wins over the live one). */
   readonly trickPlays: readonly TrickPlayView[];
   /** Table-relative position the trick is sweeping toward, if any. */
@@ -204,9 +210,24 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   // The Coach reads only the redacted view — exactly what the human can see.
   const coach = coachOn && myTurn ? suggest(view, lang) : null;
   const ledSuit = view.currentTrick[0]?.card.suit ?? null;
+  // While a finished trick is held on the table, your lead can't hard-play —
+  // an instant lead lets the bots finish the NEXT trick before the hold+sweep
+  // ends, yanking the held cards off screen. Taps queue instead (below), and
+  // the queue fires 400ms after the sweep clears (useQueuedPlay).
+  const holding = heldTrick !== null;
+  // Your seat on voluntary auto-play: the server is playing your turns, so
+  // manual taps and queues would only race its alarm and bounce with a
+  // NOT_YOUR_TURN toast — the hand goes quiet until you toggle it back off.
+  const autoPiloted = me !== null && (roster.seats[me]?.autoPlay ?? false);
   const legal =
-    me !== null && view.phase === 'playing' && myTurn ? legalCards(view.hand, ledSuit) : [];
-  const queueable = queueableCards(view, me, myTurn);
+    me !== null && view.phase === 'playing' && myTurn && !holding && !autoPiloted
+      ? legalCards(view.hand, ledSuit)
+      : [];
+  const queueable = autoPiloted
+    ? []
+    : holding && myTurn && view.phase === 'playing'
+      ? legalCards(view.hand, ledSuit)
+      : queueableCards(view, me, myTurn);
 
   // While a finished trick is held, show it instead of the (already empty)
   // live trick so players see all four cards and the points.
@@ -366,6 +387,9 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       avatar: info.isBot ? botAvatar(seat) : null,
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
+      // Rosters can outlive the turn they described — only surface the
+      // per-turn clock while this seat is actually still on turn.
+      turnTimerAt: view.turn === seat ? (info.turnTimerAt ?? null) : null,
       autoPlay: info.autoPlay ?? false,
       bidText: bidTextFor(seat),
       isContract: view.contract?.seat === seat,
@@ -383,6 +407,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     legal,
     queued,
     queueable,
+    autoPiloted,
     trickPlays,
     sweepTo,
     heldBanner,

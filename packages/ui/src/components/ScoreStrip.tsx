@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { suitName, useLang, type Lang } from '../i18n.js';
 import { ARCADE } from './arcade.js';
 import type { SuitId } from '../types.js';
@@ -124,6 +124,9 @@ export interface ScoreStripProps {
   } | null;
   /** Finished rounds, oldest first — the written scoreboard rows. */
   readonly rounds?: readonly ScoreboardRound[];
+  /** Detail revealed under a finished round's scoreboard row when tapped
+   * (e.g. that round's starting hands); null for rounds with nothing. */
+  readonly renderRoundDetail?: ((round: number) => ReactNode) | undefined;
   /** 1-based number of the round in progress (omit once the game is over). */
   readonly currentRound?: number | undefined;
   readonly trump?: SuitId | null;
@@ -400,6 +403,7 @@ export function ScorePad({
   trump = null,
   myTeam = null,
   highlightRound,
+  renderRoundDetail,
   className = '',
   shadowClass = 'shadow-(--shadow-ap)',
 }: {
@@ -416,6 +420,10 @@ export function ScorePad({
   /** Round number to spotlight (the round-summary dialog marks the round it
    * is explaining) — that row gets a soft gold tint. */
   highlightRound?: number | undefined;
+  /** Detail to reveal under a finished round's row when it is tapped (e.g.
+   * that round's starting hands). Return null for rounds with nothing to
+   * show — those rows stay inert. Omit to keep every row inert. */
+  renderRoundDetail?: ((round: number) => ReactNode) | undefined;
   /** Extra classes on the pad root (e.g. to fuse it under a header band). */
   className?: string;
   /** The pad's own drop shadow. Set to '' when a wrapping card carries the
@@ -423,6 +431,9 @@ export function ScorePad({
   shadowClass?: string;
 }) {
   const t = T[useLang()];
+  // One finished round at a time can be unfolded to show its detail
+  // (starting hands) right under its row on the pad.
+  const [openRound, setOpenRound] = useState<number | null>(null);
   const liveRound =
     currentRound !== undefined && !rounds.some((r) => r.round === currentRound)
       ? currentRound
@@ -509,31 +520,71 @@ export function ScorePad({
             </tr>
           </thead>
           <tbody>
-            {rounds.map((r) => (
-              <tr
-                key={r.round}
-                className={`border-b border-(--color-ap-ink)/10 last:border-0 ${
-                  // The round being explained (round summary) pops off the pad.
-                  r.round === highlightRound ? 'bg-(--color-ap-gold)/20 font-bold' : ''
-                }`}
-              >
-                <td className="py-1 pl-3 text-left font-arcade-ui text-(--color-ap-ink)/60">
-                  R{r.round}
-                </td>
-                <td className="py-1 text-center">{deltaCell(r.deltas[0])}</td>
-                <td className="py-1 text-center">{deltaCell(r.deltas[1])}</td>
-                <td className="py-1 pr-3 text-right">
-                  <BetCell
-                    name={r.bidderName}
-                    team={r.bidderTeam}
-                    bid={r.bid}
-                    sansAtout={r.sansAtout}
-                    trump={r.trump}
-                    made={r.made}
-                  />
-                </td>
-              </tr>
-            ))}
+            {rounds.map((r) => {
+              const detail = renderRoundDetail?.(r.round) ?? null;
+              const canExpand = detail !== null;
+              const open = canExpand && openRound === r.round;
+              const toggle = () => setOpenRound(open ? null : r.round);
+              return (
+                <Fragment key={r.round}>
+                  <tr
+                    className={`border-b border-(--color-ap-ink)/10 last:border-0 ${
+                      // The round being explained (round summary) pops off the pad.
+                      r.round === highlightRound ? 'bg-(--color-ap-gold)/20 font-bold' : ''
+                    } ${
+                      canExpand
+                        ? 'cursor-pointer hover:bg-(--color-ap-ink)/10 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-(--color-ap-violet)'
+                        : ''
+                    }`}
+                    {...(canExpand
+                      ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          'aria-expanded': open,
+                          onClick: toggle,
+                          onKeyDown: (e: KeyboardEvent) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggle();
+                            }
+                          },
+                        }
+                      : {})}
+                  >
+                    <td className="py-1 pl-3 text-left font-arcade-ui text-(--color-ap-ink)/60">
+                      {canExpand && (
+                        <span
+                          aria-hidden
+                          className={`mr-0.5 inline-block transition-transform ${open ? 'rotate-90' : ''}`}
+                        >
+                          ▸
+                        </span>
+                      )}
+                      R{r.round}
+                    </td>
+                    <td className="py-1 text-center">{deltaCell(r.deltas[0])}</td>
+                    <td className="py-1 text-center">{deltaCell(r.deltas[1])}</td>
+                    <td className="py-1 pr-3 text-right">
+                      <BetCell
+                        name={r.bidderName}
+                        team={r.bidderTeam}
+                        bid={r.bid}
+                        sansAtout={r.sansAtout}
+                        trump={r.trump}
+                        made={r.made}
+                      />
+                    </td>
+                  </tr>
+                  {open && (
+                    <tr className="border-b border-(--color-ap-ink)/10 last:border-0">
+                      <td colSpan={4} className="px-3 pt-0.5 pb-2">
+                        {detail}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
             {liveRound !== null && (
               <tr className="text-(--color-ap-ink)/55">
                 <td className="py-1 pl-3 text-left font-arcade-ui">R{liveRound}</td>
@@ -636,6 +687,7 @@ export function ScoreStrip({
   trickCounts,
   specials,
   rounds = [],
+  renderRoundDetail,
   currentRound,
   action,
   actions,
@@ -753,6 +805,7 @@ export function ScoreStrip({
               scores={scores}
               target={target}
               rounds={rounds}
+              renderRoundDetail={renderRoundDetail}
               currentRound={currentRound}
               roundPoints={roundPoints}
               contract={contract}

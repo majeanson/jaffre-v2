@@ -416,6 +416,21 @@ const LOADERS: Record<SceneId, () => void> = {
     };
     inject(cached('mid-trick', midTrick), { roster });
   },
+  'seat-turntimer-nudge': () => {
+    // Inside the warn window (≤20s) so the nudge is visible; computed at load
+    // time so it never starts expired.
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: true, turnTimerAt: Date.now() + 15_000 },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+    };
+    inject(cached('mid-trick', midTrick), { roster });
+  },
   'seat-autoplay-badge': () => {
     const roster: Roster = {
       seats: [
