@@ -1,5 +1,6 @@
 import type { Lang } from '@jaffre/ui';
 import type { Stats } from './net/history.js';
+import { getProfile } from './net/auth.js';
 import { levelFromStats, levelRequirement } from './progression.js';
 
 /**
@@ -116,7 +117,10 @@ export const CARD_SKINS: readonly Cosmetic[] = [
   },
   { id: 'newsprint', label: 'Newsprint', ...atLevel(5) },
   { id: 'blueprint', label: 'Blueprint', ...atLevel(7) },
-  { id: 'og-deck', label: 'OG Deck', ...atLevel(8, (s) => s.games >= 15) },
+  // Strictly level-gated (no legacy games fallback, no award grant): the full
+  // OG deck is THE level-8 carrot, and both old bypasses (games >= 15, the
+  // tutorial award's reward) undercut it well before 550 XP.
+  { id: 'og-deck', label: 'OG Deck', ...atLevel(8) },
   {
     // ≈ level 9
     id: 'woodcut',
@@ -208,16 +212,39 @@ export const CARD_SKINS: readonly Cosmetic[] = [
 // ── Bonhomme skins ──────────────────────────────────────────────────────────
 // A THIRD, independent cosmetic axis: which figure art appears on the two
 // scoring 0-cards (see packages/ui/cardSkin.tsx's `bonhommes` context field
-// and PlayingCard's centre-mark precedence). All three are FREE — this is a
-// display preference, not something to grind for — but they're still plain
-// `Cosmetic` entries so the gallery's tile/toast machinery (buildTiles,
-// requirement-free `owned()`) works unmodified. Order = the ladder shown:
-// pixel (always-on sprite) → painted (today's default) → og (unlock the full
-// portrait look for free).
+// and PlayingCard's centre-mark precedence). Only `pixel` is free; the other
+// two are earned. Order = the ladder shown: pixel (free sprite) → painted
+// (unlocks by painting your card in the Studio — it has nothing to show
+// before that anyway) → og (the tutorial award's reward; see awards.ts).
 export const BONHOMME_SKINS: readonly Cosmetic[] = [
   { id: 'pixel', label: 'Pixel', free: true },
-  { id: 'painted', label: 'Painted', free: true },
-  { id: 'og', label: 'Classic OG', free: true },
+  {
+    id: 'painted',
+    label: 'Painted',
+    free: false,
+    // Profile-gated, not stat-gated: owning it IS having painted a card. The
+    // stats argument is unused, but owned() still only evaluates this once
+    // stats have loaded — offline the tile stays locked, which is harmless
+    // since an unpainted 'painted' renders exactly like the default anyway.
+    unlock: () => getProfile().paint !== null,
+    requirement: (_s, lang) => ({
+      text: t(lang, 'Paint your card in the Studio', 'Peignez votre carte au Studio'),
+      have: getProfile().paint !== null ? 1 : 0,
+      need: 1,
+    }),
+  },
+  {
+    id: 'og',
+    label: 'Classic OG',
+    free: false,
+    // No stat gate — owned solely via the tutorial award's reward grant
+    // (awards.ts), threaded into owned() as the granted set.
+    requirement: (_s, lang) => ({
+      text: t(lang, 'Finish the tutorial', 'Terminez le tutoriel'),
+      have: 0,
+      need: 1,
+    }),
+  },
 ];
 
 /** French labels for the bonhomme catalog — kept alongside (not inside)

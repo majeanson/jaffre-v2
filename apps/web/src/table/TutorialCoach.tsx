@@ -169,8 +169,8 @@ export function TutorialCoach() {
     return () => clearTimeout(t);
   }, [pipDone, progress, total, current]);
 
-  // Completing every coach-mark earns the tutorial award (which unlocks the OG
-  // Deck). Latch only AFTER the server confirms the grant, so a brand-new user
+  // Completing every coach-mark earns the tutorial award (which unlocks the
+  // Classic OG bonhomme). Latch only AFTER the server confirms the grant, so a brand-new user
   // who finishes offline / before any identity exists retries on the next
   // practice visit instead of silently losing the award (the grant is
   // idempotent server-side, so a retry never double-grants).
@@ -198,7 +198,12 @@ export function TutorialCoach() {
         )}
       {current !== null &&
         createPortal(
+          // key: each mark MOUNTS fresh — the pop-in replays and the arm-delay
+          // guard resets, so when one tip follows another the swap is visible
+          // and the tap (or ghost click) that closed the first can't also land
+          // on the second's identically-placed ✕.
           <Mark
+            key={current}
             copy={MARKS[current][lang]}
             lang={lang}
             onLearn={() => setHelpJump(MARKS[current][lang].concept)}
@@ -351,13 +356,24 @@ function Mark({
   readonly onClose: () => void;
 }) {
   const u = UI[lang];
+  // A tip is inert for its first beat: after one mark replaces another the ✕
+  // sits at the exact same spot, and on mobile the synthesized click / a fast
+  // double-tap from dismissing the previous tip would instantly kill this one.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), 350);
+    return () => clearTimeout(t);
+  }, []);
   return (
-    <div className="pointer-events-none fixed left-1/2 top-[4.75rem] z-40 w-[min(94vw,30rem)] -translate-x-1/2 px-2 max-sm:top-[4.25rem]">
+    // z-[48]: above every in-game overlay (the round summary is a full-screen
+    // z-[45] scene that was burying the round-over tip) but below the z-50
+    // sheets, matching ConnectionBanner's slot.
+    <div className="pointer-events-none fixed left-1/2 top-[4.75rem] z-[48] w-[min(94vw,30rem)] -translate-x-1/2 px-2 max-sm:top-[4.25rem]">
       {/* An ink card with a gold spark — permanently dark, so its text is white
           (not the theme-flipping --color-ap-text). Matches CoachHint's look. */}
       <div
         role="status"
-        className="pop-in pointer-events-auto rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-3 shadow-(--shadow-ap-hero)"
+        className={`pop-in ${armed ? 'pointer-events-auto' : 'pointer-events-none'} rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-3 shadow-(--shadow-ap-hero)`}
       >
         <div className="flex items-start gap-2.5">
           <span aria-hidden className="mt-0.5 text-(--color-ap-gold)">

@@ -125,10 +125,12 @@ export const AWARDS: readonly AwardDef[] = [
     desc: (l) =>
       t(
         l,
-        'Finish the practice tutorial. Unlocks the OG Deck.',
-        'Terminez le tutoriel. Débloque le paquet OG.',
+        'Finish the practice tutorial. Unlocks the Classic OG bonhomme.',
+        'Terminez le tutoriel. Débloque le bonhomme Classique OG.',
       ),
-    reward: 'og-deck',
+    // The 'og' BONHOMME skin — deliberately NOT the full og-deck card skin,
+    // which is the level-8 track reward and must stay level-gated.
+    reward: 'og',
   },
 ];
 

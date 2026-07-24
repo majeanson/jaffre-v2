@@ -83,11 +83,13 @@ export function CosmeticPicker({ tiles, onSelect, label }: CosmeticPickerProps) 
                   🔒
                 </span>
               )}
-              {/* Equipped ribbon lives on the preview corner (like the lock) so
+              {/* Equipped ribbon lives on the preview corner (like the lock —
+                  which wins when a tile is somehow both, e.g. the default
+                  bonhomme before its unlock) so
                   the label row below can give the full skin name room to breathe
                   — on a narrow phone tile, name + inline badge used to collide
                   and truncate ("ARCA…"). */}
-              {tile.selected && (
+              {tile.selected && !tile.locked && (
                 <span className="absolute right-[0.3em] top-[0.3em] z-10 rounded-full border-2 border-(--color-ap-violet) bg-(--color-ap-panel) px-[0.5em] py-[0.05em] font-arcade-ui text-[0.55em] font-bold uppercase tracking-[0.1em] text-(--color-ap-violet-soft) shadow-(--shadow-ap-sm)">
                   {t.selected}
                 </span>
