@@ -285,6 +285,70 @@ Soleil`). Promote one bilingual `TEAM_LABELS` in `teams.ts` and import everywher
 
 ---
 
+## Visual audit — screenshot sweep 2026-07-24
+
+307 gallery shots (51 scenes × desktop/small-desktop/tablet/phone, dark + light),
+five parallel reviewers, top findings re-verified by eye. ZERO automated
+overflow/top-bar warnings — everything below is judgment-call layout quality.
+
+### High
+
+- [ ] (M) **Hub screens waste 40-60% of tall viewports** — Corner, Stats (every
+      state), PublicLobby, Journey-lite states, and the Home stack all anchor to
+      the top and leave a dead void below at 900px+ heights (worst:
+      `desktop-dark-corner`, `small-desktop-dark-home`, `tablet-dark-corner`).
+      Vertically center the meta screens' content column (Home already does
+      `lg:justify-center` — extend the idiom) and/or let hub content breathe
+      (larger cards on tall viewports). THE dominant pattern across ~20 shots.
+- [ ] (M) **Light theme's quiet states are near-invisible** — `waiting` screen
+      is effectively a blank white page (worst shot of the audit), identity
+      loading skeletons and the Help checklist rings vanish, spectator felt
+      placeholder is unreadable. These grays were tuned on dark. Re-token them
+      on ink-based colors and re-run `audit:contrast`.
+- [ ] (S) **Reconnecting pill collides with seat rows** (phone lobby, both
+      skins) — it overlays Seat 2's chip/badge instead of displacing them. Give
+      it its own row above the seat list (mirrors the seat-chip badge-collision
+      fix already shipped).
+- [ ] (S/M) **Round-over settings cluster on phone** — 8 icon buttons
+      (share/gear/skins/lang/sound/help/coach/log) sit edge-to-edge under the
+      score sheet; several look sub-40px (`phone-dark-score-details`). Apply the
+      40px+gaps treatment the utility row got.
+
+### Medium
+
+- [ ] (S) TableCards room names truncate mid-word ("AMBER-FO…") at several
+      widths while a sibling card shows a short name — let the name wrap to two
+      lines or shrink-to-fit instead of ellipsis.
+- [ ] (M) Floating panels (game log, chat, score details) sit on the felt with
+      no scrim and can clip live controls (log clips Marcel's badge on tablet,
+      sort/timer buttons behind it) — add a soft scrim + keep panels clear of
+      seat chips, or dock them to an edge.
+- [ ] (S) Customize sheet has no backdrop scrim (background buttons compete) and
+      keeps phone width on tablet (dead margins). Dim the backdrop like
+      LoginSheet's pattern should; widen modestly at sm+.
+- [ ] (S) Spectator's felt stretches to a tall oval on portrait tablet while
+      every seated view keeps a circle — cap the felt's aspect for spectators.
+- [ ] (S) `phone-light-stats-veteran`: a badge overlaps the last digit of the
+      net-points figure ("+430" reads "+43⊙").
+- [ ] (S) Round-over modal lets a corner of the previous trick's card peek above
+      its top edge (several viewports) and a stray gold sliver shows at the left
+      screen edge on phone — clip or fade the trick layer while the modal is up.
+- [ ] (S) Tablet single-column: CREATE/JOIN/PLAY rows stretch 768px edge-to-edge
+      for one word — cap the action column (`max-w-*` centered) at tablet.
+- [ ] (S) Lobby seat rows: empty seats (two stacked buttons) are taller than
+      occupied ones, breaking the list rhythm; the per-seat control cluster
+      (difficulty/swap/kick) sits within ~4px on phone.
+
+### Low
+
+- [ ] Share sheet URL field truncates with no full-value affordance.
+- [ ] Phone round-history header shows bare "R" vs desktop "ROUND".
+- [ ] Practice human avatar is a plain initial circle next to pixel-art bots.
+- [ ] `identity-light` scene stages a light modal on a dark page — verify it's a
+      scene-staging artifact, not a reachable state.
+- [ ] Home chrome bar packs 6 controls at 390px — tight but not colliding; keep
+      an eye on it if another entry is ever added.
+
 ## Verified-good (don't "polish" these into regressions)
 
 - Felt layering/theming is coherent post-revert; BidOverlay's `z-[15]` is deliberate.
