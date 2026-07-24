@@ -639,8 +639,8 @@ function RulesEn() {
 
       <Rule title="Scoring">
         <p>
-          Make your bet and your team scores <Strong>+bet</Strong> (×2 sans atout); miss it and you
-          score <Strong>−bet</Strong> (×2 sans atout). The defenders always keep the trick points
+          Make your bid and your team scores <Strong>+bid</Strong> (×2 sans atout); miss it and you
+          score <Strong>−bid</Strong> (×2 sans atout). The defenders always keep the trick points
           they took. First team to <Strong>41</Strong> wins — if both teams cross in the same round,
           the higher total takes it (the contract team on an exact tie).
         </p>
@@ -663,7 +663,7 @@ function RulesEn() {
       <Rule title="Reading the table">
         <ul className="list-disc space-y-1 pl-4">
           <li>
-            The <Strong>top bar</Strong> shows score · bet · trump; tap it for round details, the
+            The <Strong>top bar</Strong> shows score · bid · trump; tap it for round details, the
             skin picker, and the game log.
           </li>
           <li>
@@ -687,7 +687,7 @@ function TipsEn() {
         <Tip label="Bidding is about your best suit.">
           Size up your hand once for each suit as trump — your longest, strongest suit is your real
           strength. Then bid the <Strong>smallest number that wins the auction</Strong>: making 12
-          on a bet of 7 still only scores 7.
+          on a bid of 7 still only scores 7.
         </Tip>
         <Tip label="Count your sure tricks.">
           Every <Strong>7 is a trick</Strong>, and a 6 with cover — 7-6 together, or a 6 with a
@@ -778,9 +778,9 @@ function TipsEn() {
       </TipSection>
 
       <TipSection title="Declarer play">
-        <Tip label="When you win the bet, you set trump.">
+        <Tip label="When you win the bid, you set trump.">
           Your <Strong>first card names the trump suit</Strong> — lead your best suit, and lead
-          trumps high to strip them from the defenders. Once your points reach your bet, stop
+          trumps high to strip them from the defenders. Once your points reach your bid, stop
           pushing; extra tricks are worthless to you.
         </Tip>
         <Tip label="Spend trumps like money.">
@@ -873,7 +873,7 @@ function TipsEn() {
       <TipSection title="Playing to 41">
         <Tip label="Count to your number, then change gears.">
           A round holds <Strong>11 points</Strong>. Declaring, count what you&rsquo;ve captured
-          toward your bet — the moment it&rsquo;s home, stop spending winners and start shedding
+          toward your bid — the moment it&rsquo;s home, stop spending winners and start shedding
           losers safely. Defending, run the same count: once the contract is decided either way,{' '}
           <Strong>stop paying to fight it and grab every point in reach</Strong> — defenders keep
           what they take, so there is no passive trick.

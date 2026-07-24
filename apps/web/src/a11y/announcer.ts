@@ -1,5 +1,6 @@
 import type { GameEvent } from '@jaffre/engine';
 import type { Lang } from '@jaffre/ui';
+import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
 const SUIT_NAMES: Record<Lang, Record<'red' | 'brown' | 'green' | 'blue', string>> = {
   en: { red: 'red', brown: 'brown', green: 'green', blue: 'blue' },
@@ -67,19 +68,19 @@ export function announce(event: GameEvent, names: readonly string[], lang: Lang 
     case 'round_scored': {
       const s = event.summary;
       if (lang === 'fr') {
-        const team = s.contract.seat % 2 === 0 ? "L'Équipe Soleil" : "L'Équipe Lune";
+        const team = `L'${TEAM_LABELS.fr[(s.contract.seat % 2) as 0 | 1]}`;
         return `${team} ${s.contractMade ? 'réussit' : 'rate'} ${s.contract.value}${
           s.contract.sansAtout ? ' sans atout' : ''
-        }. Pointage : Équipe Soleil ${s.scores[0]}, Équipe Lune ${s.scores[1]}.`;
+        }. Pointage : ${TEAM_LABELS.fr[0]} ${s.scores[0]}, ${TEAM_LABELS.fr[1]} ${s.scores[1]}.`;
       }
-      const team = s.contract.seat % 2 === 0 ? 'Team Sun' : 'Team Moon';
+      const team = TEAM_LABELS.en[(s.contract.seat % 2) as 0 | 1];
       return `${team} ${s.contractMade ? 'makes' : 'fails'} ${s.contract.value}${
         s.contract.sansAtout ? ' sans atout' : ''
-      }. Score: Team Sun ${s.scores[0]}, Team Moon ${s.scores[1]}.`;
+      }. Score: ${TEAM_LABELS.en[0]} ${s.scores[0]}, ${TEAM_LABELS.en[1]} ${s.scores[1]}.`;
     }
     case 'game_over':
       return lang === 'fr'
-        ? `Partie terminée — ${event.winner === 0 ? "l'Équipe Soleil" : "l'Équipe Lune"} gagne!`
-        : `Game over — ${event.winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`;
+        ? `Partie terminée — ${teamLabelWithArticle(event.winner, 'fr')} gagne!`
+        : `Game over — ${TEAM_LABELS.en[event.winner]} wins!`;
   }
 }

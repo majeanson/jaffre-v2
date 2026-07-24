@@ -3,6 +3,7 @@ import { ARCADE, SuitShape, suitName, TeamGlyph, useLang, type Lang } from '@jaf
 import { useEffect, useState } from 'react';
 import { fetchLeaderboard, fetchStats, type Leaderboard, type Stats } from '../net/history.js';
 import type { GamePeekInfo, SeatChipInfo } from './useTableDerived.js';
+import { TEAM_LABELS } from '../teams.js';
 
 const T: Record<
   Lang,
@@ -46,7 +47,7 @@ const T: Record<
   }
 > = {
   en: {
-    teams: ['Team Sun', 'Team Moon'],
+    teams: TEAM_LABELS.en,
     connected: 'Connected',
     disconnected: 'Disconnected',
     you: 'you',
@@ -68,20 +69,20 @@ const T: Record<
     roundN: (n) => `Round ${n}`,
     score: 'Score',
     firstTo: (n) => `first to ${n}`,
-    bet: 'Bet',
-    noBet: 'No bet yet',
+    bet: 'Bid',
+    noBet: 'No bid yet',
     trump: 'Trump',
     noTrump: 'No trump',
     undecided: 'undecided',
     tricks: 'Tricks',
     dealer: 'Dealer',
     toPlay: 'To play',
-    holdsBet: 'Bet holder',
+    holdsBet: 'Bid holder',
     autoPlay: 'Auto-play',
     bidThisRound: 'Bid this round',
   },
   fr: {
-    teams: ['Équipe Soleil', 'Équipe Lune'],
+    teams: TEAM_LABELS.fr,
     connected: 'Connecté',
     disconnected: 'Déconnecté',
     you: 'toi',
@@ -90,7 +91,7 @@ const T: Record<
     record: 'Ton bilan',
     games: 'Parties',
     wins: 'Victoires',
-    winRate: 'Taux',
+    winRate: '% victoires',
     streak: 'Série',
     best: (n) => `record ${n}`,
     loading: 'Chargement…',

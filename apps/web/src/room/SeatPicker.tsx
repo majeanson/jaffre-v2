@@ -5,6 +5,7 @@ import { IconButton } from '../components/IconButton.js';
 import { IconSwap, IconX } from '../components/icons.js';
 import { getProfile } from '../net/auth.js';
 import { botAvatar } from '../paint/botAvatars.js';
+import { TEAM_LABELS } from '../teams.js';
 
 /** Difficulty chips are colour-coded so the table reads at a glance: green
  * (easy) → gold (normal) → red (hard). */
@@ -35,8 +36,6 @@ const T: Record<
   Lang,
   {
     seatLabel: (n: number) => string;
-    teamSun: string;
-    teamMoon: string;
     you: string;
     cycleBot: string;
     moveHere: string;
@@ -50,8 +49,6 @@ const T: Record<
 > = {
   en: {
     seatLabel: (n) => `Seat ${String(n)}`,
-    teamSun: 'Team Sun',
-    teamMoon: 'Team Moon',
     you: 'You',
     cycleBot: 'Tap to change bot difficulty',
     moveHere: 'Move here',
@@ -64,14 +61,12 @@ const T: Record<
   },
   fr: {
     seatLabel: (n) => `Siège ${String(n)}`,
-    teamSun: 'Équipe Soleil',
-    teamMoon: 'Équipe Lune',
     you: 'Toi',
     cycleBot: 'Touche pour changer la difficulté du bot',
     moveHere: 'Déplace-toi ici',
     sitHere: 'Assis-toi ici',
-    swapHere: 'Échanger ici',
-    joinHere: 'Joindre',
+    swapHere: 'Échange ici',
+    joinHere: 'Joins-toi',
     addBot: 'Ajouter un bot',
     removeBot: 'Retirer le bot',
     kickPlayer: 'Retirer ce joueur de la table',
@@ -122,7 +117,7 @@ export function SeatPicker({
               <TeamGlyph
                 team={(seat % 2) as 0 | 1}
                 size="1.1em"
-                label={seat % 2 === 0 ? t.teamSun : t.teamMoon}
+                label={TEAM_LABELS[lang][(seat % 2) as 0 | 1]}
               />
             </span>
             {info !== null ? (

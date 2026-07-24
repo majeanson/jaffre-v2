@@ -138,7 +138,7 @@ export function levelRequirement(
   lang: Lang,
 ): { text: string; have: number; need: number } {
   return {
-    text: t(lang, `Reach level ${String(need)}`, `Atteignez le niveau ${String(need)}`),
+    text: t(lang, `Reach level ${String(need)}`, `Atteins le niveau ${String(need)}`),
     have: levelFromStats(s),
     need,
   };

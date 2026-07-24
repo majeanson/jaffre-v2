@@ -13,6 +13,7 @@ import {
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useScrollLock } from '../components/useScrollLock.js';
 import { StartingHandsInset, StartingHandsPanel } from './StartingHandsPanel.js';
+import { TEAM_LABELS } from '../teams.js';
 
 const T: Record<
   Lang,
@@ -35,13 +36,13 @@ const T: Record<
   }
 > = {
   en: {
-    teams: ['Team Sun', 'Team Moon'],
+    teams: TEAM_LABELS.en,
     summary: 'Round summary',
     round: (n) => `Round ${n}`,
     made: 'made',
     missed: 'missed',
     explainMade: (name, bid, pts, team, delta) =>
-      `${name} took ${pts} trick points on a bet of ${bid} — ${team} scores +${delta}.`,
+      `${name} took ${pts} trick points on a bid of ${bid} — ${team} scores +${delta}.`,
     explainMissed: (name, bid, pts, team, delta) =>
       `${name} needed ${bid} but took ${pts} trick points — ${team} loses ${Math.abs(delta)}.`,
     explainOther: (team, delta) => ` ${team} takes ${delta >= 0 ? `+${delta}` : delta}.`,
@@ -53,7 +54,7 @@ const T: Record<
     ready: 'Ready for the next round',
   },
   fr: {
-    teams: ['Équipe Soleil', 'Équipe Lune'],
+    teams: TEAM_LABELS.fr,
     summary: 'Résumé de la ronde',
     round: (n) => `Ronde ${n}`,
     made: 'réussit',

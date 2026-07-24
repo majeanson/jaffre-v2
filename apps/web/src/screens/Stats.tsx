@@ -258,7 +258,10 @@ function ScorepadRow({ game }: { readonly game: HistoryGame }) {
 function formatDate(ms: number | null, lang: Lang): string {
   if (ms === null) return '';
   const d = new Date(ms);
-  return d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 /** "with Ginette · vs Marcel & Réal" — teammate first, then both opponents. */

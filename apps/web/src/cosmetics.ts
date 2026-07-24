@@ -110,7 +110,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.streak.best >= 3,
     requirement: (s, lang) => ({
-      text: t(lang, 'Win 3 in a row', 'Gagnez 3 fois de suite'),
+      text: t(lang, 'Win 3 in a row', 'Gagne 3 fois de suite'),
       have: s.streak.best,
       need: 3,
     }),
@@ -128,7 +128,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.wins >= 10,
     requirement: (s, lang) => ({
-      text: t(lang, 'Win 10 games', 'Gagnez 10 parties'),
+      text: t(lang, 'Win 10 games', 'Gagne 10 parties'),
       have: s.wins,
       need: 10,
     }),
@@ -145,7 +145,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.netPoints >= 100,
     requirement: (s, lang) => ({
-      text: t(lang, 'Reach +100 net points', 'Atteignez +100 points nets'),
+      text: t(lang, 'Reach +100 net points', 'Atteins +100 points nets'),
       have: Math.max(0, s.netPoints),
       need: 100,
     }),
@@ -158,7 +158,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.bids.made >= 25,
     requirement: (s, lang) => ({
-      text: t(lang, 'Make 25 bids', 'Réussissez 25 mises'),
+      text: t(lang, 'Make 25 bids', 'Réussis 25 mises'),
       have: s.bids.made,
       need: 25,
     }),
@@ -172,7 +172,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.nemesis !== null,
     requirement: (s, lang) => ({
-      text: t(lang, 'Earn a nemesis', 'Faites-vous une némésis'),
+      text: t(lang, 'Earn a nemesis', 'Fais-toi une némésis'),
       have: s.nemesis === null ? 0 : 1,
       need: 1,
     }),
@@ -185,9 +185,9 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     unlock: (s) => s.games >= 20 && s.winRate >= 0.6,
     requirement: (s, lang) =>
       s.games < 20
-        ? { text: t(lang, 'Play 20 games', 'Jouez 20 parties'), have: s.games, need: 20 }
+        ? { text: t(lang, 'Play 20 games', 'Joue 20 parties'), have: s.games, need: 20 }
         : {
-            text: t(lang, 'Reach a 60% win rate', 'Atteignez 60 % de victoires'),
+            text: t(lang, 'Reach a 60% win rate', 'Atteins 60 % de victoires'),
             have: Math.round(s.winRate * 100),
             need: 60,
           },
@@ -200,7 +200,7 @@ export const CARD_SKINS: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.sansAtout.made >= 3,
     requirement: (s, lang) => ({
-      text: t(lang, 'Make 3 sans-atout bids', 'Réussissez 3 mises sans atout'),
+      text: t(lang, 'Make 3 sans-atout bids', 'Réussis 3 mises sans atout'),
       have: s.sansAtout.made,
       need: 3,
     }),
@@ -228,7 +228,7 @@ export const BONHOMME_SKINS: readonly Cosmetic[] = [
     // since an unpainted 'painted' renders exactly like the default anyway.
     unlock: () => getProfile().paint !== null,
     requirement: (_s, lang) => ({
-      text: t(lang, 'Paint your card in the Studio', 'Peignez votre carte au Studio'),
+      text: t(lang, 'Paint your card in the Studio', 'Peins ta carte au Studio'),
       have: getProfile().paint !== null ? 1 : 0,
       need: 1,
     }),
@@ -240,7 +240,7 @@ export const BONHOMME_SKINS: readonly Cosmetic[] = [
     // No stat gate — owned solely via the tutorial award's reward grant
     // (awards.ts), threaded into owned() as the granted set.
     requirement: (_s, lang) => ({
-      text: t(lang, 'Finish the tutorial', 'Terminez le tutoriel'),
+      text: t(lang, 'Finish the tutorial', 'Termine le tutoriel'),
       have: 0,
       need: 1,
     }),

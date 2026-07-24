@@ -5,8 +5,9 @@ import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from 'react
 import { LinkNudge } from '../components/LinkAccount.js';
 import { useScrollLock } from '../components/useScrollLock.js';
 import { Confetti } from './Confetti.js';
-import { StartingHandsRows } from './StartingHandsPanel.js';
+import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js';
 import { XpStrip } from './XpStrip.js';
+import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
 const TEAM_COLOR = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
@@ -35,7 +36,6 @@ const T: Record<
     tricksCaption: string;
     total: string;
     roundByRound: string;
-    startingHands: string;
     tapForHands: string;
     rd: string;
     contract: string;
@@ -57,7 +57,7 @@ const T: Record<
     gameOver: 'Game over',
     youWin: 'You win!',
     youLose: 'You lose',
-    wins: (winner) => `${winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`,
+    wins: (winner) => `${TEAM_LABELS.en[winner]} wins!`,
     tonight: 'Tonight:',
     sun: 'Sun',
     moon: 'Moon',
@@ -75,7 +75,6 @@ const T: Record<
     tricksCaption: 'Tricks captured per player, one row per game',
     total: 'Total',
     roundByRound: 'Round-by-round scores',
-    startingHands: 'Starting hands',
     tapForHands: 'Tap a round to see its starting hands',
     rd: 'Rd',
     contract: 'Contract',
@@ -86,7 +85,7 @@ const T: Record<
     swapSeats: 'Swap seats',
     leave: 'Leave',
     rating: 'Rating',
-    teamLabel: (t) => (t === 0 ? 'Team Sun' : 'Team Moon'),
+    teamLabel: (t) => TEAM_LABELS.en[t],
     hailMaryWonTitle: 'Hail Mary!',
     hailMaryLostTitle: '12 sans atout — missed',
     hailMaryWonMsg: (team) => `${team} called 12 sans atout and swept it — instant win.`,
@@ -97,7 +96,7 @@ const T: Record<
     gameOver: 'Partie terminée',
     youWin: 'Tu gagnes!',
     youLose: 'Tu perds',
-    wins: (winner) => `L'Équipe ${winner === 0 ? 'Soleil' : 'Lune'} gagne!`,
+    wins: (winner) => `L'${TEAM_LABELS.fr[winner]} gagne!`,
     tonight: 'Ce soir :',
     sun: 'Soleil',
     moon: 'Lune',
@@ -115,8 +114,7 @@ const T: Record<
     tricksCaption: 'Levées gagnées par joueur, une rangée par partie',
     total: 'Total',
     roundByRound: 'Pointage ronde par ronde',
-    startingHands: 'Mains de départ',
-    tapForHands: 'Touchez une ronde pour voir les mains de départ',
+    tapForHands: 'Touche une ronde pour voir les mains de départ',
     rd: 'R',
     contract: 'Contrat',
     deltaSun: 'Δ Soleil',
@@ -125,8 +123,8 @@ const T: Record<
     rematch: 'Revanche',
     swapSeats: 'Échanger les sièges',
     leave: 'Quitter',
-    rating: 'Classement',
-    teamLabel: (t) => (t === 0 ? "l'Équipe Soleil" : "l'Équipe Lune"),
+    rating: 'Cote',
+    teamLabel: (t) => teamLabelWithArticle(t, 'fr'),
     hailMaryWonTitle: 'Coup de grâce!',
     hailMaryLostTitle: '12 sans atout — raté',
     hailMaryWonMsg: (team) =>
@@ -417,7 +415,8 @@ export function GameRecap({
   myRating,
   showXp = false,
 }: GameRecapProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   // Which round's starting hands are expanded in the round-by-round table
   // (one at a time), keyed by roundIndex; null when all are collapsed.
   const [openRound, setOpenRound] = useState<number | null>(null);
@@ -712,7 +711,7 @@ export function GameRecap({
                         {canExpand && open && (
                           <tr className={stripe}>
                             <td colSpan={5} className="px-1.5 pb-2">
-                              <div role="region" aria-label={t.startingHands}>
+                              <div role="region" aria-label={STARTING_HANDS_LABEL[lang]}>
                                 <StartingHandsRows hands={hands} names={names} />
                               </div>
                             </td>

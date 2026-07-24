@@ -5,6 +5,7 @@ import { getProfile } from '../net/auth.js';
 import { botAvatar } from '../paint/botAvatars.js';
 import { playerName } from '../net/socket.js';
 import { RoomComms } from '../comms/RoomComms.js';
+import { TEAM_LABELS } from '../teams.js';
 
 export interface VisitorProps {
   readonly code: string;
@@ -26,8 +27,6 @@ const T: Record<
     youSitHere: string;
     bot: string;
     away: string;
-    teamSun: string;
-    teamMoon: string;
     score: string;
     inPlay: string;
     vs: string;
@@ -47,8 +46,6 @@ const T: Record<
     youSitHere: 'You · sit here',
     bot: 'Bot',
     away: 'Away',
-    teamSun: 'Team Sun',
-    teamMoon: 'Team Moon',
     score: 'Score',
     inPlay: 'In play',
     vs: 'vs',
@@ -67,8 +64,6 @@ const T: Record<
     youSitHere: 'Toi · assis-toi ici',
     bot: 'Bot',
     away: 'Absent',
-    teamSun: 'Équipe Soleil',
-    teamMoon: 'Équipe Lune',
     score: 'Pointage',
     inPlay: 'En jeu',
     vs: 'c.',
@@ -80,13 +75,11 @@ const T: Record<
   },
 };
 
-type Strings = (typeof T)[Lang];
-
 /** Seats 0 & 2 are Team Sun, 1 & 3 Team Moon — the felt-table pairing. */
-function teamOf(seat: number, t: Strings): { name: string; color: string } {
+function teamOf(seat: number, lang: Lang): { name: string; color: string } {
   return seat % 2 === 0
-    ? { name: t.teamSun, color: 'var(--color-team-a)' }
-    : { name: t.teamMoon, color: 'var(--color-team-b)' };
+    ? { name: TEAM_LABELS[lang][0], color: 'var(--color-team-a)' }
+    : { name: TEAM_LABELS[lang][1], color: 'var(--color-team-b)' };
 }
 
 /**
@@ -96,7 +89,8 @@ function teamOf(seat: number, t: Strings): { name: string; color: string } {
  * actions to take over a bot's seat, keep watching, or leave.
  */
 export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const { roster, view } = useGameStore();
   const scores = view?.scores;
   // Whoever is first seated and human "owns" this table — the landing greets a
@@ -120,7 +114,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   // and shows you.
   const seatCell = (seat: number) => {
     const info = roster?.seats[seat] ?? null;
-    const team = teamOf(seat, t);
+    const team = teamOf(seat, lang);
     const takeable = seat === yourSeat;
     const displayName = takeable ? me : (info?.name ?? t.openSeat);
     const tags = takeable
@@ -230,11 +224,11 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
         {scores !== undefined && (
           <p className="text-center font-arcade-ui text-[0.85em] text-(--color-ap-muted)">
             <span style={{ color: 'var(--color-team-a)' }}>
-              {t.teamSun} {scores[0]}
+              {TEAM_LABELS[lang][0]} {scores[0]}
             </span>
             <span className="mx-2 text-(--color-ap-muted)">{t.vs}</span>
             <span style={{ color: 'var(--color-team-b)' }}>
-              {t.teamMoon} {scores[1]}
+              {TEAM_LABELS[lang][1]} {scores[1]}
             </span>
           </p>
         )}

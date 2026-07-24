@@ -39,7 +39,7 @@ const T: Record<
     home: 'Accueil',
     loading: 'Chargement…',
     error: 'Impossible de charger le classement. Réessaie bientôt.',
-    empty: 'Aucun joueur classé. Jouez 10 parties en ligne pour rejoindre le classement.',
+    empty: 'Aucun joueur classé. Joue 10 parties en ligne pour rejoindre le classement.',
     you: 'Toi',
     games: (n) => `${String(n)} parties`,
   },

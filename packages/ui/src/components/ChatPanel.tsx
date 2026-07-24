@@ -66,9 +66,12 @@ export interface ChatPanelProps {
 
 const MAX_CHARS = 500;
 
-function hhmm(at: number): string {
+function hhmm(at: number, lang: Lang): string {
   const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return d.toLocaleTimeString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 /** Room text chat: message list + input. Compact — shares space with the log. */
@@ -80,7 +83,8 @@ export function ChatPanel({
   plainToggle = false,
   actions,
 }: ChatPanelProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const [open, setOpen] = useState(!collapsible || defaultOpen);
   const [text, setText] = useState('');
   const [hint, setHint] = useState(false);
@@ -159,7 +163,7 @@ export function ChatPanel({
         {entries.length === 0 && <p className="text-(--color-ap-muted)">{t.empty}</p>}
         {entries.map((e, i) => (
           <p key={i} className="break-words">
-            <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at)}</span>{' '}
+            <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at, lang)}</span>{' '}
             <span
               className="font-bold text-(--color-ap-violet-soft)"
               style={

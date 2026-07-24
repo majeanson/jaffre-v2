@@ -3,6 +3,13 @@ import { cardId } from '@jaffre/engine';
 import { PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useState } from 'react';
 
+/** "Starting hands" / "Mains de départ" — the one bilingual source for this
+ * label; GameRecap.tsx reuses it instead of keeping its own copy. */
+export const STARTING_HANDS_LABEL: Record<Lang, string> = {
+  en: 'Starting hands',
+  fr: 'Mains de départ',
+};
+
 const T: Record<
   Lang,
   { show: string; hide: string; region: string; roundRegion: (round: number) => string }
@@ -10,13 +17,13 @@ const T: Record<
   en: {
     show: 'Show starting hands',
     hide: 'Hide starting hands',
-    region: 'Starting hands',
+    region: STARTING_HANDS_LABEL.en,
     roundRegion: (round) => `Round ${String(round)} starting hands`,
   },
   fr: {
     show: 'Voir les mains de départ',
     hide: 'Cacher les mains de départ',
-    region: 'Mains de départ',
+    region: STARTING_HANDS_LABEL.fr,
     roundRegion: (round) => `Mains de départ de la ronde ${String(round)}`,
   },
 };

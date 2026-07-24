@@ -43,8 +43,8 @@ export const MARKS: Record<MarkStep, Record<Lang, MarkCopy>> = {
   },
   firstBet: {
     en: {
-      title: 'First bet is in',
-      body: 'A bet promises that many trick points this round. The highest bet takes the contract — sans atout doubles the stake and outbids an equal plain bet.',
+      title: 'First bid is in',
+      body: 'A bid promises that many trick points this round. The highest bid takes the contract — sans atout doubles the stake and outbids an equal plain bid.',
       concept: 'mise',
     },
     fr: {
@@ -104,7 +104,7 @@ export const MARKS: Record<MarkStep, Record<Lang, MarkCopy>> = {
   roundOver: {
     en: {
       title: 'Round scored',
-      body: 'Make your bet and your team scores +the bet (×2 sans atout); miss it and score −the bet. Defenders always keep the trick points they took. First team to 41 wins.',
+      body: 'Make your bid and your team scores +the bid (×2 sans atout); miss it and score −the bid. Defenders always keep the trick points they took. First team to 41 wins.',
       concept: 'mise',
     },
     fr: {

@@ -126,7 +126,7 @@ test('avatar peek opens two sections: the player and the current game', async ({
   await expect(peek.getByText(/^Round \d+$/)).toBeVisible();
   await expect(peek.getByText('Score', { exact: true })).toBeVisible();
   await expect(peek.getByText(/first to \d+/)).toBeVisible();
-  await expect(peek.getByText('Bet', { exact: true })).toBeVisible();
+  await expect(peek.getByText('Bid', { exact: true })).toBeVisible();
   await expect(peek.getByText('Trump', { exact: true })).toBeVisible();
   await expect(peek.getByText('Tricks', { exact: true })).toBeVisible();
 

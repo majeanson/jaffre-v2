@@ -39,11 +39,11 @@ const T: Record<
       `${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
         red ? ', captured the red 0 for +5' : ''
       }${brown ? ', captured the brown 0 for −2' : ''}`,
-    betMade: 'Bet made',
-    betMissed: 'Bet missed',
+    betMade: 'Bid made',
+    betMissed: 'Bid missed',
     scoreboard: 'Round-by-round scoreboard',
     round: 'Round',
-    bet: 'Bet',
+    bet: 'Bid',
     bidding: 'bidding…',
     noRounds: 'no rounds played yet',
     total: 'Total',
@@ -54,7 +54,7 @@ const T: Record<
     scoreDetails: 'Score details',
     dismissScore: 'Dismiss',
     you: 'you',
-    noBetYet: 'no bet yet',
+    noBetYet: 'no bid yet',
     mustTake: 'must take',
     trickPoints: 'trick points',
     noTrumpStake: ' with no trump (stake ×2)',

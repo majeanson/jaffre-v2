@@ -28,7 +28,7 @@ export const THEMES: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.sansAtout.attempted >= 1,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Tentez une mise sans atout' : 'Attempt a sans-atout bid',
+      text: lang === 'fr' ? 'Tente une mise sans atout' : 'Attempt a sans-atout bid',
       have: s.sansAtout.attempted,
       need: 1,
     }),
@@ -42,7 +42,7 @@ export const THEMES: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.wins >= 5,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Gagnez 5 parties' : 'Win 5 games',
+      text: lang === 'fr' ? 'Gagne 5 parties' : 'Win 5 games',
       have: s.wins,
       need: 5,
     }),
@@ -54,7 +54,7 @@ export const THEMES: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.streak.best >= 4,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Gagnez 4 fois de suite' : 'Win 4 in a row',
+      text: lang === 'fr' ? 'Gagne 4 fois de suite' : 'Win 4 in a row',
       have: s.streak.best,
       need: 4,
     }),
@@ -66,7 +66,7 @@ export const THEMES: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.netPoints >= 50,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Atteignez +50 points nets' : 'Reach +50 net points',
+      text: lang === 'fr' ? 'Atteins +50 points nets' : 'Reach +50 net points',
       have: Math.max(0, s.netPoints),
       need: 50,
     }),
@@ -79,7 +79,7 @@ export const THEMES: readonly Cosmetic[] = [
     free: false,
     unlock: (s) => s.bids.made >= 15,
     requirement: (s, lang: Lang) => ({
-      text: lang === 'fr' ? 'Réussissez 15 mises' : 'Make 15 bids',
+      text: lang === 'fr' ? 'Réussis 15 mises' : 'Make 15 bids',
       have: s.bids.made,
       need: 15,
     }),

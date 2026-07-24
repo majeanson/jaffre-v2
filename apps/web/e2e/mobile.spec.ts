@@ -81,7 +81,7 @@ test('practice table is playable on a 390px phone', async ({ page }) => {
   }
 
   // (c) The bid panel fits the viewport and Pass is tappable.
-  const bidGroup = page.getByRole('group', { name: 'Bet cards' });
+  const bidGroup = page.getByRole('group', { name: 'Bid cards' });
   const groupBox = await boxOf(bidGroup);
   expect(groupBox.x).toBeGreaterThanOrEqual(0);
   expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(390);
