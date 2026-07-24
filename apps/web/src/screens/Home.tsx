@@ -4,8 +4,6 @@ import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
 import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
-import { InstallButton } from '../pwa/InstallButton.js';
-import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
 import { HeroBanner } from '../home/HeroBanner.js';
@@ -16,7 +14,7 @@ import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
-import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
+import { listTables, type TableEntry } from '../net/rooms.js';
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -33,31 +31,19 @@ export interface HomeProps {
   readonly onJoinRoom: (code: string) => void;
   /** Mount with the help sheet already open (scene viewer). */
   readonly helpOpen?: boolean;
-  /** Scene viewer only: stage the "Your tables" row (else it reads localStorage). */
-  readonly demoTables?: readonly TableEntry[] | undefined;
   /** Scene viewer: force the identity into a staged state. */
   readonly identityStage?: IdentityStage;
 }
 
 /** The title screen in the arcade shell: brand moment on top, your painted
  * identity card, then the play actions, quiet chrome below. */
-export function Home({
-  onPractice,
-  onJoinRoom,
-  helpOpen = false,
-  demoTables,
-  identityStage,
-}: HomeProps) {
+export function Home({ onPractice, onJoinRoom, helpOpen = false, identityStage }: HomeProps) {
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
-  // Stateful so quitting a table drops its card without a reload.
-  const [storedTables, setStoredTables] = useState<readonly TableEntry[]>(listTables);
-  const tables = demoTables ?? storedTables;
-  const quitTable = (code: string) => {
-    void leaveTable(code); // forgets locally right away, frees the seat async
-    setStoredTables(listTables());
-  };
+  // The standing tables feed the "Ton coin" door's count/your-turn pulse; the
+  // cards themselves live on the #corner sheet now.
+  const [tables] = useState<readonly TableEntry[]>(listTables);
 
   // Establish identity as soon as the home screen shows (not only once the
   // recovery card mounts — it now lives inside the Customize disclosure) so a
@@ -145,15 +131,14 @@ export function Home({
               onJoinRoom(code);
             }}
             tables={tables}
-            {...(staged ? {} : { onLeaveTable: quitTable })}
-            // Scene viewer stages "Your tables" — open the door so it shows.
-            defaultYoursOpen={demoTables !== undefined}
           />
 
           {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
               how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
               one thing everywhere. Full-width bar so it lines up under the play
-              actions; icons stay centered. Solid panel so axe reads the contrast. */}
+              actions; icons stay centered. Solid panel so axe reads the contrast.
+              Install + turn-alerts are one-time settings, not a door you need
+              every visit — they live at the bottom of the Help sheet instead. */}
           <div
             className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
             style={{ '--rise-delay': '280ms' } as CSSProperties}
@@ -162,8 +147,6 @@ export function Home({
               <IconQuestion />
             </HelpButton>
             <SkinLink />
-            <InstallButton />
-            <NotificationsToggle />
             <LangSwitcher />
             {!staged && <LoginButton />}
           </div>

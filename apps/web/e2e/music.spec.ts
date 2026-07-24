@@ -71,6 +71,17 @@ async function stubbedPage(context: BrowserContext, name: string): Promise<Page>
   return page;
 }
 
+/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
+ * fill-bots shortcut is gone — house style is one control per seat). */
+async function fillWithBots(page: Page): Promise<void> {
+  const addBot = page.getByRole('button', { name: 'Add bot' });
+  while ((await addBot.count()) > 0) {
+    const before = await addBot.count();
+    await addBot.first().click();
+    await expect.poll(() => addBot.count()).toBeLessThan(before);
+  }
+}
+
 /** The stub's players, read back for assertions. */
 async function stubPlayers(page: Page): Promise<YtStubPlayer[]> {
   return page.evaluate(() =>
@@ -124,7 +135,7 @@ test('music: add propagates, listening survives lobby→table, ENDED advances th
   // ── Both sit, bots fill, the game starts: the dock must survive ──────────
   await a.getByRole('button', { name: 'Sit here' }).first().click();
   await b.getByRole('button', { name: 'Sit here' }).first().click();
-  await a.getByTestId('fill-bots').click();
+  await fillWithBots(a);
   await a.getByRole('button', { name: 'Start the game' }).click();
   await expect(a.getByTestId('score-strip')).toBeVisible();
   await expect(b.getByTestId('score-strip')).toBeVisible();

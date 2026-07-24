@@ -5,18 +5,32 @@ import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { createPlayer, loadIframeApi, YT_ENDED, type YTPlayer } from './youtube.js';
 
-const T: Record<Lang, { nowPlaying: string; listen: string; stop: string; emptyQueue: string }> = {
+const T: Record<
+  Lang,
+  {
+    nowPlaying: string;
+    listen: string;
+    stop: string;
+    emptyQueue: string;
+    minimize: string;
+    expand: string;
+  }
+> = {
   en: {
     nowPlaying: 'Music playing at this table',
     listen: 'Listen',
     stop: 'Stop',
     emptyQueue: 'Queue is empty — add another song to keep it going.',
+    minimize: 'Hide the video (music keeps playing)',
+    expand: 'Show the video',
   },
   fr: {
     nowPlaying: 'Musique en cours à cette table',
     listen: 'Écouter',
     stop: 'Couper',
     emptyQueue: 'File vide — ajoute une autre chanson pour continuer.',
+    minimize: 'Cacher la vidéo (la musique continue)',
+    expand: 'Montrer la vidéo',
   },
 };
 
@@ -43,6 +57,7 @@ export function MusicDock() {
   const t = T[useLang()];
   const { state, listening, volume, setListening } = useMusicStore();
   const current = state?.current ?? null;
+  const [minimized, setMinimized] = useState(false);
   const holderRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
@@ -155,7 +170,10 @@ export function MusicDock() {
         <button
           type="button"
           data-testid="music-pill-listen"
-          onClick={() => setListening(true)}
+          onClick={() => {
+            setMinimized(false);
+            setListening(true);
+          }}
           className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) px-2 py-1 font-arcade-display text-[0.6em] uppercase text-(--color-ap-ink) shadow-(--shadow-ap-sm)"
         >
           {t.listen}
@@ -164,18 +182,31 @@ export function MusicDock() {
     );
   }
 
-  // Listening: the dock with the visible player. YouTube's API ToS wants the
-  // player visible and unobscured (≥200×200) — never shrink or hide this
-  // while audio plays; "Stop" is the way out.
+  // Listening: the dock with the player. Minimizing must NOT unmount or
+  // destroy the iframe — that is what stops the audio — so the holder stays
+  // in the DOM and is only visually collapsed. "Stop" remains the way to
+  // actually end playback.
   return (
     <div
       data-testid="music-dock"
-      className={`${ARCADE.popover} fixed bottom-3 left-3 z-40 flex w-80 max-w-[calc(100vw-1.5rem)] flex-col gap-1.5 p-1.5`}
+      className={`${ARCADE.popover} fixed bottom-3 left-3 z-40 flex flex-col gap-1.5 p-1.5 ${
+        minimized ? 'max-w-[calc(100vw-1.5rem)]' : 'w-80 max-w-[calc(100vw-1.5rem)]'
+      }`}
     >
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-(--color-ap-text)">
           {current?.title ?? t.emptyQueue}
         </span>
+        <button
+          type="button"
+          data-testid={minimized ? 'music-expand' : 'music-minimize'}
+          onClick={() => setMinimized(!minimized)}
+          aria-label={minimized ? t.expand : t.minimize}
+          title={minimized ? t.expand : t.minimize}
+          className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 font-arcade-display text-[0.6em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+        >
+          {minimized ? '▴' : '▾'}
+        </button>
         <button
           type="button"
           data-testid="music-stop"
@@ -188,7 +219,14 @@ export function MusicDock() {
       <div
         ref={holderRef}
         data-testid="music-player"
-        className="h-[200px] w-full overflow-hidden rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-black [&_iframe]:h-full [&_iframe]:w-full"
+        aria-hidden={minimized}
+        className={
+          minimized
+            ? // Collapsed, not display:none — some mobile browsers pause a
+              // media iframe that leaves layout entirely; 1px keeps it "live".
+              'pointer-events-none absolute bottom-0 left-0 h-px w-px overflow-hidden opacity-0 [&_iframe]:h-full [&_iframe]:w-full'
+            : 'h-[200px] w-full overflow-hidden rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-black [&_iframe]:h-full [&_iframe]:w-full'
+        }
       />
     </div>
   );

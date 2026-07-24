@@ -5,6 +5,10 @@ export type MusicPlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const VOLUME_KEY = 'jaffre-music-volume';
 
+/** Opting in with a saved volume below this floor bumps it up — pressing
+ * "Listen" and hearing silence reads as "broken", not "muted". */
+const LISTEN_VOLUME_FLOOR = 20;
+
 function storedVolume(): number {
   const raw = Number(localStorage.getItem(VOLUME_KEY));
   return Number.isFinite(raw) && raw >= 0 && raw <= 100 ? raw : 60;
@@ -36,7 +40,14 @@ export const useMusicStore = create<MusicStore>((set) => ({
   playerStatus: 'idle',
 
   setState: (state) => set({ state }),
-  setListening: (listening) => set({ listening }),
+  setListening: (listening) =>
+    set((prev) => {
+      if (listening && prev.volume < LISTEN_VOLUME_FLOOR) {
+        localStorage.setItem(VOLUME_KEY, String(LISTEN_VOLUME_FLOOR));
+        return { listening, volume: LISTEN_VOLUME_FLOOR };
+      }
+      return { listening };
+    }),
   setVolume: (volume) => {
     localStorage.setItem(VOLUME_KEY, String(volume));
     set({ volume });

@@ -12,11 +12,13 @@ test('a French browser gets the French home screen by default', async ({ browser
   const page = await context.newPage();
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Jouer', exact: true })).toBeVisible();
-  // "Ton record" lives behind the "Ton coin" door now — open it first.
+  // The "Ton coin" door opens the full #corner sheet; "Ton record" is one of
+  // its subtabs.
   await page.getByRole('button', { name: 'Ton coin' }).click();
   await expect(page.getByRole('link', { name: 'Ton record' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
-  // The bots/friends split lives behind the PLAY door.
+  // Back to the title screen — the bots/friends split lives behind PLAY.
+  await page.getByRole('button', { name: 'Accueil' }).click();
   await page.getByRole('button', { name: 'Jouer', exact: true }).click();
   await expect(page.getByText('Pratique contre les bots')).toBeVisible();
   await context.close();

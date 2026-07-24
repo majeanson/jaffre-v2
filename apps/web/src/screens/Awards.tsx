@@ -3,13 +3,16 @@ import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
 import { AWARDS } from '../awards.js';
-import { CARD_SKINS } from '../cosmetics.js';
+import { BONHOMME_SKINS, CARD_SKINS, bonhommeLabel } from '../cosmetics.js';
 import { THEMES } from '../theme.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+import { MetaNav } from '../components/MetaNav.js';
 
-/** Display label of an award's cosmetic reward, across both catalogs. */
-function rewardLabel(id: string): string {
+/** Display label of an award's cosmetic reward, across all three catalogs
+ * (bonhommes carry the only localized labels — see bonhommeLabel). */
+function rewardLabel(id: string, lang: Lang): string {
+  if (BONHOMME_SKINS.some((c) => c.id === id)) return bonhommeLabel(id, lang);
   return CARD_SKINS.find((c) => c.id === id)?.label ?? THEMES.find((c) => c.id === id)?.label ?? id;
 }
 
@@ -22,7 +25,7 @@ export interface AwardsProps {
 
 const T: Record<
   Lang,
-  { title: string; home: string; dealing: string; done: string; unlocks: string; journey: string }
+  { title: string; home: string; dealing: string; done: string; unlocks: string }
 > = {
   en: {
     title: 'Awards',
@@ -30,7 +33,6 @@ const T: Record<
     dealing: 'Loading…',
     done: 'Earned',
     unlocks: 'Unlocks',
-    journey: 'Journey',
   },
   fr: {
     title: 'Récompenses',
@@ -38,7 +40,6 @@ const T: Record<
     dealing: 'Chargement…',
     done: 'Obtenu',
     unlocks: 'Débloque',
-    journey: 'Parcours',
   },
 };
 
@@ -82,15 +83,12 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
               {t.title}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Cta variant="secondary" onClick={() => (location.hash = '#journey')}>
-              {t.journey}
-            </Cta>
-            <Cta variant="secondary" onClick={onLeave}>
-              {t.home}
-            </Cta>
-          </div>
+          <Cta variant="secondary" onClick={onLeave}>
+            {t.home}
+          </Cta>
         </header>
+
+        <MetaNav current="awards" />
 
         {earned === null ? (
           <div className={SHELL_NOTE}>
@@ -135,7 +133,7 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
                         }`}
                       >
                         <span aria-hidden>🎁</span>
-                        {t.unlocks}: {rewardLabel(a.reward)}
+                        {t.unlocks}: {rewardLabel(a.reward, lang)}
                       </span>
                     )}
                     {!has && req !== undefined && (

@@ -28,6 +28,7 @@ import { THEMES } from '../theme.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+import { MetaNav } from '../components/MetaNav.js';
 
 export interface JourneyProps {
   readonly onLeave: () => void;
@@ -62,8 +63,6 @@ const T: Record<
     breather: string;
     challengesTitle: string;
     challengesBlurb: string;
-    collection: string;
-    awards: string;
   }
 > = {
   en: {
@@ -92,8 +91,6 @@ const T: Record<
     challengesTitle: 'Beyond the track',
     challengesBlurb:
       'Challenge skins and themes — streaks, win rate, sans-atout, your nemesis — unlock from how you play, not how much. Find them in the Collection and next to their Awards.',
-    collection: 'Collection',
-    awards: 'Awards',
   },
   fr: {
     title: 'Parcours',
@@ -122,8 +119,6 @@ const T: Record<
     challengesTitle: 'Au-delà du parcours',
     challengesBlurb:
       'Les habillages et thèmes défis — séries, taux de victoires, sans-atout, ta némésis — se débloquent selon ta façon de jouer, pas ton volume. Retrouve-les dans la Collection et à côté de leurs Récompenses.',
-    collection: 'Collection',
-    awards: 'Récompenses',
   },
 };
 
@@ -133,11 +128,13 @@ function labelOf(reward: TrackReward): string {
 }
 
 /** A skin reward previews as its face-DOWN card — the back is the star here
- * (it's what the whole table sees of your deck all game long). */
+ * (it's what the whole table sees of your deck all game long). Scaled into the
+ * shared PREVIEW_SLOT footprint so a card-skin rung is the same height as a
+ * theme rung (an sm card is ~1.5× the swatch otherwise). */
 function SkinBackPreview({ id }: { readonly id: string }) {
   const attrs = id === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': id };
   return (
-    <div {...attrs}>
+    <div {...attrs} className="scale-[0.62]">
       <CardSkinProvider value={{ id, renderers: CARD_SKIN_RENDERERS[id] ?? {} }}>
         <PlayingCard card={{ suit: 'red', value: 5 }} size="sm" faceDown tilt={-6} />
       </CardSkinProvider>
@@ -163,9 +160,6 @@ function ThemeSwatch({ id }: { readonly id: string }) {
     </div>
   );
 }
-
-const LINK_CLASS =
-  'inline-flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-5 py-3 font-arcade-display text-[0.8rem] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none';
 
 /**
  * The Journey screen — the ONE place progression reads as a single ladder:
@@ -218,6 +212,8 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
             {t.home}
           </Cta>
         </header>
+
+        <MetaNav current="journey" />
 
         {progress === null ? (
           <Panel className="p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted)">
@@ -315,7 +311,10 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                       </span>
                       {reward !== undefined ? (
                         <>
-                          <span className="flex shrink-0 items-center">
+                          {/* Fixed slot for BOTH preview kinds — rung height
+                              stays uniform whether the reward is a card back
+                              or a theme swatch. */}
+                          <span className="flex h-[3em] w-[3.4em] shrink-0 items-center justify-center">
                             {reward.kind === 'skin' ? (
                               <SkinBackPreview id={reward.cosmeticId} />
                             ) : (
@@ -333,9 +332,14 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                           </span>
                         </>
                       ) : (
-                        <span className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">
-                          {t.breather}
-                        </span>
+                        <>
+                          {/* Empty preview slot keeps the text column aligned
+                              with the reward rungs. */}
+                          <span className="h-[3em] w-[3.4em] shrink-0" />
+                          <span className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">
+                            {t.breather}
+                          </span>
+                        </>
                       )}
                       {done && (
                         <span aria-hidden className="ml-auto text-[1.1em] text-(--color-ap-ok)">
@@ -356,20 +360,6 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
               <p className="font-arcade-ui text-[0.78em] text-(--color-ap-muted)">
                 {t.challengesBlurb}
               </p>
-              <div className="flex flex-wrap gap-3">
-                <a href="#collection" className={LINK_CLASS}>
-                  <span aria-hidden className="text-(--color-ap-gold)">
-                    🎨
-                  </span>
-                  {t.collection}
-                </a>
-                <a href="#awards" className={LINK_CLASS}>
-                  <span aria-hidden className="text-(--color-ap-gold)">
-                    🏅
-                  </span>
-                  {t.awards}
-                </a>
-              </div>
             </Panel>
           </>
         )}

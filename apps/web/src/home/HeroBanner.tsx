@@ -103,10 +103,12 @@ export function HeroBanner({
 
   return (
     <header className="relative flex w-full flex-col items-center">
-      {/* Violet spotlight behind the fan. */}
+      {/* Violet spotlight behind the fan + wordmark — anchored to the centre
+          of this header (translate, not a viewport offset) so it stays on the
+          brand moment at every viewport instead of drifting high or low. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-[5vmin] mx-auto h-[32vmin] max-h-60 w-[64vmin] max-w-lg rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-20"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[32vmin] max-h-60 w-[64vmin] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-20"
       />
 
       <div key={deal} className="pointer-events-none relative h-[clamp(5rem,13vmin,9rem)] w-full">

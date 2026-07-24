@@ -37,7 +37,7 @@ export function LevelBadge() {
       href="#journey"
       data-testid="level-badge"
       title={t.journey}
-      className="flex w-full max-w-xs items-center gap-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.55em] shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) hover:bg-(--color-ap-panel-hover)"
+      className="flex w-full items-center gap-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.55em] shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) hover:bg-(--color-ap-panel-hover)"
     >
       <span className="shrink-0 font-arcade-display text-[0.78em] uppercase tracking-wide text-(--color-ap-gold)">
         {t.level(progress.level)}

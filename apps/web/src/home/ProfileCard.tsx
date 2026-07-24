@@ -92,7 +92,10 @@ export function ProfileCard({
     // Always a centered column: your card over the Customize trigger. Closed,
     // the card stays small (the hero fan above already shows it big) so the
     // brand moment owns the screen; opening reveals colour + the paint entry.
-    <div className="flex w-full max-w-xs flex-col items-center gap-[0.8em]">
+    // Full column width so the Customize trigger lines up edge-to-edge with
+    // the Level bar and the PLAY / "Ton coin" doors — every home button one
+    // width.
+    <div className="flex w-full flex-col items-center gap-[0.8em]">
       <div className={open ? '' : 'text-[0.5em]'}>
         <PlayerCard {...cardProps} />
       </div>
@@ -100,7 +103,7 @@ export function ProfileCard({
       <Collapsible
         open={open}
         onOpenChange={setOpen}
-        className={open ? 'w-full' : 'w-auto'}
+        className="w-full"
         summary={
           <>
             <AvatarChip name={name} color={fill} size="sm" />

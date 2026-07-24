@@ -10,6 +10,8 @@ import {
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '../components/useScrollLock.js';
+import { InstallButton } from '../pwa/InstallButton.js';
+import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { TEAMS } from '../teams.js';
 import { loadTutorialSeen, resetTutorial } from '../table/tutorialPref.js';
 import { MARK_ORDER, MARKS } from '../table/tutorialSteps.js';
@@ -37,6 +39,7 @@ const T: Record<
     learning: string;
     learningHint: string;
     replay: string;
+    appRow: string;
   }
 > = {
   en: {
@@ -51,6 +54,7 @@ const T: Record<
     learning: 'Learning the game',
     learningHint: 'The practice table flags each of these as it comes up.',
     replay: 'Replay tutorial',
+    appRow: 'App · install & turn alerts',
   },
   fr: {
     title: 'Comment jouer',
@@ -64,6 +68,7 @@ const T: Record<
     learning: 'Apprendre le jeu',
     learningHint: 'La table d’entraînement te signale chacun de ces points quand il arrive.',
     replay: 'Rejouer le tutoriel',
+    appRow: 'Appli · installation et alertes de tour',
   },
 };
 
@@ -1391,6 +1396,19 @@ export function HelpSheet({ onClose, jumpTo }: HelpSheetProps) {
             </details>
 
             <Glossary lang={lang} />
+
+            {/* App plumbing lives here, not in Home's chrome: install + turn
+                alerts are one-time settings, and the sheet is reachable from
+                every screen. */}
+            <div className="flex items-center justify-between gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-4 shadow-(--shadow-ap-sm)">
+              <span className="font-arcade-display text-(length:--text-fluid-sm) uppercase text-(--color-ap-muted)">
+                {t.appRow}
+              </span>
+              <span className="flex items-center gap-2">
+                <InstallButton />
+                <NotificationsToggle />
+              </span>
+            </div>
 
             {/* Absolute within the scroll content: the popup sits beside the
              * clicked term and scrolls with the text — no lost reading spot.

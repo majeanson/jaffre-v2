@@ -15,6 +15,7 @@ import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
 import { Collection } from './Collection.js';
+import { Corner } from './Corner.js';
 import { Journey } from './Journey.js';
 import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
@@ -143,11 +144,13 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
-          demoTables={current.id === 'your-tables' ? DEMO_TABLES : undefined}
           {...(IDENTITY_STAGES[current.id] !== undefined
             ? { identityStage: IDENTITY_STAGES[current.id] }
             : {})}
         />
+      )}
+      {current.screen === 'corner' && (
+        <Corner key={current.id} demoTables={DEMO_TABLES} onLeave={onLeave} />
       )}
       {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
       {current.screen === 'history' && (

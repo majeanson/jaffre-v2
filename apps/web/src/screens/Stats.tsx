@@ -8,6 +8,7 @@ import {
 } from '../net/history.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+import { MetaNav } from '../components/MetaNav.js';
 
 export interface StatsProps {
   readonly onLeave: () => void;
@@ -337,6 +338,8 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
             {t.home}
           </Cta>
         </header>
+
+        <MetaNav current="stats" />
 
         {error ? (
           <p className={SHELL_NOTE}>{t.error}</p>

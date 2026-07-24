@@ -50,3 +50,10 @@ test('staged stats scene shows the full aggregate record', async ({ page }) => {
   await expect(page.getByTestId('nemesis-name')).toHaveText('Marcel');
   await expect(page.getByText('beats you 5 of 8')).toBeVisible();
 });
+
+test('the meta-nav strip links Your record to Your games', async ({ page }) => {
+  await page.goto('/#stats');
+  await page.getByRole('link', { name: 'Your games' }).click();
+  await expect(page.getByRole('heading', { name: 'Your games' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('#history');
+});

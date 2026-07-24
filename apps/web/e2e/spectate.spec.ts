@@ -28,6 +28,17 @@ async function createRoomAndSit(page: Page): Promise<string> {
   return code;
 }
 
+/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
+ * fill-bots shortcut is gone — house style is one control per seat). */
+async function fillWithBots(page: Page): Promise<void> {
+  const addBot = page.getByRole('button', { name: 'Add bot' });
+  while ((await addBot.count()) > 0) {
+    const before = await addBot.count();
+    await addBot.first().click();
+    await expect.poll(() => addBot.count()).toBeLessThan(before);
+  }
+}
+
 test('a started public game is watchable from the lobby, and a spectator can take over a bot seat', async ({
   browser,
 }) => {
@@ -40,7 +51,7 @@ test('a started public game is watchable from the lobby, and a spectator can tak
 
   // A hosts, fills every other seat with bots, and starts the game.
   const code = await createRoomAndSit(a);
-  await a.getByTestId('fill-bots').click();
+  await fillWithBots(a);
   await a.getByRole('button', { name: 'Start the game' }).click();
   await expect(a.getByTestId('score-strip')).toBeVisible();
 
@@ -140,7 +151,7 @@ test('a stale Join on an already-taken seat surfaces the seat-taken toast', asyn
 
   // A hosts and fills the rest of the table with bots (3 bot seats).
   const code = await createRoomAndSit(a);
-  await a.getByTestId('fill-bots').click();
+  await fillWithBots(a);
   await expect(a.getByTestId('seat-row-1')).toBeVisible();
 
   // B and C both land on the (still-waiting) room; both see the bot's JOIN.

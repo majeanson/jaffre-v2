@@ -100,13 +100,6 @@ export function AttractMode() {
     >
       <style>{KEYFRAMES}</style>
 
-      {/* Violet spotlight so the takeover reads as its own mode, not the home
-          screen with the content stripped out. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-[18vh] mx-auto h-[46vmin] w-[80vmin] rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-25"
-      />
-
       {/* The Jaffre wordmark, same recipe as the hero banner, anchored up top. */}
       <h1 className="relative z-10 font-arcade-display text-[clamp(3.5rem,13vmin,7.5rem)] leading-none tracking-tight text-(--color-ap-gold) drop-shadow-[4px_4px_0_var(--color-ap-ink)]">
         Jaffre
@@ -114,6 +107,10 @@ export function AttractMode() {
 
       {/* Ghost trick, dealt in the centre and looping. */}
       <div aria-hidden className="pointer-events-none relative h-[38vmin] w-full">
+        {/* Violet spotlight so the takeover reads as its own mode. It lives
+            INSIDE the trick container, centred on the card cluster — a
+            viewport offset drifted off-target on every aspect ratio. */}
+        <div className="absolute left-1/2 top-1/2 h-[46vmin] w-[80vmin] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,var(--color-ap-violet-soft),transparent_70%)] opacity-25" />
         {GHOST_TRICK.map(({ card, from, to, rot }, i) => (
           <span
             key={i}

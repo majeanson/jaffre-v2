@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { RoomComms } from '../comms/RoomComms.js';
 import { LinkNudge } from '../components/LinkAccount.js';
@@ -35,11 +35,10 @@ const T: Record<
     hailMaryHint: string;
     turnTimer: string;
     turnTimerHint: string;
-    fillBots: string;
     publicTable: string;
     publicHint: string;
-    inviteNudge: string;
     reclaimHint: string;
+    houseRules: string;
   }
 > = {
   en: {
@@ -52,16 +51,13 @@ const T: Record<
     back: '← Back home',
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
-    hailMaryHint: 'Call 12 sans atout and make it to win the whole game — miss and you lose it.',
+    hailMaryHint: 'Make 12 sans atout to win the whole game — miss and you lose it.',
     turnTimer: 'Turn timer',
-    turnTimerHint:
-      'Idle players get 60 seconds per turn — then a bot plays for that turn. Good for public tables.',
-    fillBots: 'Fill empty seats with bots',
+    turnTimerHint: '60 seconds per turn, then a bot plays it.',
     publicTable: 'List on the public lobby',
-    publicHint:
-      'On by default — anyone can find and join via Quick Play or Browse. Untick for invite-only.',
-    inviteNudge: 'Waiting for players — share the code, or fill the empty seats with bots.',
+    publicHint: 'Anyone can join from the public lobby. Untick for invite-only.',
     reclaimHint: 'One of these seats yours? Log in on the home screen to reclaim it.',
+    houseRules: 'House rules',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -73,19 +69,14 @@ const T: Record<
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
     hailMary: '12 sans atout — tout ou rien',
-    hailMaryHint:
-      'Demande 12 sans atout et réussis-la pour gagner toute la partie — rate-la et tu la perds.',
+    hailMaryHint: 'Réussis 12 sans atout pour gagner la partie — rate et tu la perds.',
     turnTimer: 'Minuterie de tour',
-    turnTimerHint:
-      'Les joueurs inactifs ont 60 secondes par tour — ensuite un bot joue ce tour. Idéal pour les tables publiques.',
-    fillBots: 'Remplir les sièges vides avec des bots',
+    turnTimerHint: '60 secondes par tour, ensuite un bot joue le tour.',
     publicTable: 'Afficher dans le salon public',
-    publicHint:
-      'Activé par défaut — tout le monde peut trouver et rejoindre via Partie rapide ou Parcourir. Décoche pour jouer sur invitation.',
-    inviteNudge:
-      'En attente de joueurs — partage le code, ou remplis les sièges vides avec des bots.',
+    publicHint: 'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',
     reclaimHint:
       "Un de ces sièges est à toi ? Connecte-toi sur l'écran d'accueil pour le reprendre.",
+    houseRules: 'Règles maison',
   },
 };
 
@@ -98,9 +89,20 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
   // default matches; unchecking is the deliberate act).
   const hailMary = roster?.rules?.hailMary12 ?? true;
-  // Turn timer ships OFF — cozy home games stay untimed unless a host opts in.
-  const turnTimer = roster?.rules?.turnTimer ?? false;
+  // Turn timer ships ON (server default matches — turnTimerRuleOn); unchecking
+  // it is the deliberate opt-down to an untimed home game.
+  const turnTimer = roster?.rules?.turnTimer ?? true;
   const isPublic = roster?.public ?? false;
+
+  // Rules fold behind one door, closed by default. Auto-open ONCE when the
+  // roster shows a non-default rule (hail-mary OFF or timer OFF) so a changed
+  // rule is never invisible. Public is excluded: created rooms are public by
+  // default, so public=true is the normal state, not a surprise.
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const hasRoster = roster !== null;
+  useEffect(() => {
+    if (hasRoster && (!hailMary || !turnTimer)) setRulesOpen(true);
+  }, [hasRoster, hailMary, turnTimer]);
 
   // Any room this browser created (Quick Play or Create a room) is public by
   // default: once we're seated, flip it on. Unticking the toggle below is the
@@ -139,15 +141,6 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           {...(roster?.hostSeat !== undefined ? { hostSeat: roster.hostSeat } : {})}
         />
 
-        {/* Quiet invite nudge: seated, not started, and at least one seat is
-            still empty (null — bots don't count). */}
-        {roster !== null && !roster.started && seated && !full && (
-          <p className="flex flex-wrap items-center justify-center gap-2 font-arcade-ui text-xs text-(--color-ap-muted)">
-            {t.inviteNudge}
-            <ShareButton code={code} />
-          </p>
-        )}
-
         {/* Quiet reclaim hint: spectating a full, not-yet-started table — a
             browser that lost its token can log in on Home to get its seat back. */}
         {roster !== null && !roster.started && !seated && full && (
@@ -156,90 +149,99 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           </p>
         )}
 
-        {/* One tap instead of three: a solo host fills the table in one go.
-            Per-seat Add bot stays for mixed tables (two humans + two bots). */}
-        {roster !== null && !roster.started && !full && (
-          <Cta
-            variant="secondary"
-            data-testid="fill-bots"
-            className="w-full"
-            onClick={() => {
-              roster.seats.forEach((s, seat) => {
-                if (s === null)
-                  send({ t: 'add_bot', seat: seat as 0 | 1 | 2 | 3, difficulty: 'normal' });
-              });
-            }}
-          >
-            {t.fillBots}
-          </Cta>
-        )}
-
-        <label
-          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
-            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-          }`}
+        <details
+          open={rulesOpen}
+          onToggle={(e) => setRulesOpen(e.currentTarget.open)}
+          className="group rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap)"
         >
-          <input
-            type="checkbox"
-            role="switch"
-            checked={hailMary}
-            disabled={!seated}
-            onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })}
-            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
-          />
-          <span className="flex min-w-0 flex-col gap-1">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-(--radius-ap-control) px-4 py-3 hover:bg-(--color-ap-panel-hover)">
             <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
-              {t.hailMary}
+              {t.houseRules}
             </span>
-            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.hailMaryHint}</span>
-          </span>
-        </label>
+            <span
+              aria-hidden
+              className="text-(--color-ap-muted) transition-transform duration-(--duration-flick) group-open:rotate-90"
+            >
+              ▸
+            </span>
+          </summary>
+          <div className="flex flex-col gap-3 border-t-2 border-(--color-ap-ink) px-3 pb-3 pt-3">
+            <label
+              className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+                seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                checked={hailMary}
+                disabled={!seated}
+                onChange={(e) =>
+                  send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })
+                }
+                className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+              />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+                  {t.hailMary}
+                </span>
+                <span className="text-xs leading-snug text-(--color-ap-muted)">
+                  {t.hailMaryHint}
+                </span>
+              </span>
+            </label>
 
-        <label
-          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
-            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-          }`}
-        >
-          <input
-            type="checkbox"
-            role="switch"
-            data-testid="turn-timer-toggle"
-            checked={turnTimer}
-            disabled={!seated}
-            onChange={(e) =>
-              send({ t: 'set_rules', hailMary12: hailMary, turnTimer: e.target.checked })
-            }
-            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
-          />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
-              {t.turnTimer}
-            </span>
-            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.turnTimerHint}</span>
-          </span>
-        </label>
+            <label
+              className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+                seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                data-testid="turn-timer-toggle"
+                checked={turnTimer}
+                disabled={!seated}
+                onChange={(e) =>
+                  send({ t: 'set_rules', hailMary12: hailMary, turnTimer: e.target.checked })
+                }
+                className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+              />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+                  {t.turnTimer}
+                </span>
+                <span className="text-xs leading-snug text-(--color-ap-muted)">
+                  {t.turnTimerHint}
+                </span>
+              </span>
+            </label>
 
-        <label
-          className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
-            seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-          }`}
-        >
-          <input
-            type="checkbox"
-            role="switch"
-            data-testid="public-toggle"
-            checked={isPublic}
-            disabled={!seated}
-            onChange={(e) => send({ t: 'set_public', on: e.target.checked })}
-            className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
-          />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
-              {t.publicTable}
-            </span>
-            <span className="text-xs leading-snug text-(--color-ap-muted)">{t.publicHint}</span>
-          </span>
-        </label>
+            <label
+              className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+                seated ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                data-testid="public-toggle"
+                checked={isPublic}
+                disabled={!seated}
+                onChange={(e) => send({ t: 'set_public', on: e.target.checked })}
+                className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+              />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+                  {t.publicTable}
+                </span>
+                <span className="text-xs leading-snug text-(--color-ap-muted)">
+                  {t.publicHint}
+                </span>
+              </span>
+            </label>
+          </div>
+        </details>
 
         <Cta onClick={() => send({ t: 'start' })} disabled={!full} className="w-full">
           {full ? t.start : t.waiting}

@@ -7,6 +7,7 @@
 export type SceneScreen =
   | 'table'
   | 'home'
+  | 'corner'
   | 'lobby'
   | 'history'
   | 'stats'
@@ -67,8 +68,8 @@ export const SCENE_METAS = [
   },
   {
     id: 'your-tables',
-    label: 'Home — your tables (resume)',
-    screen: 'home',
+    label: 'Your corner — tables (resume)',
+    screen: 'corner',
     probe: 'role=button[name="Resume"]',
   },
   {

@@ -912,6 +912,10 @@
   #root {
     height: 100%;
     overflow-y: auto;
+    /* Gameboy rule: the app NEVER pans sideways. Any element that overflows
+     * the viewport width gets clipped here instead of opening a horizontal
+     * scroll track with blank space beside the page. */
+    overflow-x: hidden;
     overscroll-behavior: none;
     /* viewport-fit=cover lets us paint edge-to-edge when installed; keep the
      * UI itself clear of the notch and home-bar (all four env()s are 0 in a

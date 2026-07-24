@@ -42,6 +42,17 @@ async function createRoomAndSit(page: Page): Promise<string> {
   return code;
 }
 
+/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
+ * fill-bots shortcut is gone — house style is one control per seat). */
+async function fillWithBots(page: Page): Promise<void> {
+  const addBot = page.getByRole('button', { name: 'Add bot' });
+  while ((await addBot.count()) > 0) {
+    const before = await addBot.count();
+    await addBot.first().click();
+    await expect.poll(() => addBot.count()).toBeLessThan(before);
+  }
+}
+
 test('a created room is public by default, appears in #lobby live, and a second player joins as themselves', async ({
   browser,
 }) => {
@@ -66,6 +77,8 @@ test('a created room is public by default, appears in #lobby live, and a second 
   // A creates a room and sits. Sitting is the moment the default-public flag
   // applies and the room registers with the lobby.
   const code = await createRoomAndSit(a);
+  // House rules is a native <details>/<summary> disclosure — no button role.
+  await a.getByText('House rules', { exact: true }).click();
   await expect(a.getByTestId('public-toggle')).toBeChecked();
 
   // ...and B's OPEN lobby page grows the card, unprompted: host Alice, 1/4.
@@ -88,7 +101,7 @@ test('a created room is public by default, appears in #lobby live, and a second 
   // A fills the empty seats with bots and starts. Both players land on the
   // felt, and the started room flips from a joinable 'waiting' entry to a
   // watchable 'playing' one on the public lobby (spectators welcome).
-  await a.getByTestId('fill-bots').click();
+  await fillWithBots(a);
   await a.getByRole('button', { name: 'Start the game' }).click();
   await expect(a.getByTestId('score-strip')).toBeVisible();
   await expect(b.getByTestId('score-strip')).toBeVisible();

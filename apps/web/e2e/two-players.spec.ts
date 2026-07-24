@@ -31,6 +31,17 @@ async function newPage(context: BrowserContext): Promise<Page> {
 /** Rename through the real UI: type on the identity card itself, blur
  * commits. (A second "Your name" field lives in the Customize drawer — same
  * wiring; the card is the path players actually take.) */
+/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
+ * fill-bots shortcut is gone — house style is one control per seat). */
+async function fillWithBots(page: Page): Promise<void> {
+  const addBot = page.getByRole('button', { name: 'Add bot' });
+  while ((await addBot.count()) > 0) {
+    const before = await addBot.count();
+    await addBot.first().click();
+    await expect.poll(() => addBot.count()).toBeLessThan(before);
+  }
+}
+
 async function renameVia(page: Page, name: string): Promise<void> {
   const field = page.getByRole('textbox', { name: 'Your name' }).first();
   await field.fill(name);
@@ -66,7 +77,7 @@ test('two sessions rename via the UI, share a table with 2 bots, and stay themse
 
   // A fills the table with bots right away — the common host move, and the
   // exact shape a newcomer meets: three bot seats, no empty ones.
-  await a.getByTestId('fill-bots').click();
+  await fillWithBots(a);
 
   // ── B joins from the live lobby and takes a BOT's place ──────────────────
   await b.getByRole('button', { name: 'Play', exact: true }).click();

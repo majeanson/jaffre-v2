@@ -33,6 +33,7 @@ import { fetchAwards } from '../net/awards.js';
 import { grantedRewardIds } from '../awards.js';
 import { feedback } from '../audio/clicks.js';
 import { Toast } from '../components/Toast.js';
+import { MetaNav } from '../components/MetaNav.js';
 
 export interface CollectionProps {
   readonly onLeave: () => void;
@@ -68,7 +69,6 @@ const T: Record<
     themes: string;
     showAll: string;
     blurb: string;
-    journey: string;
     paintFirst: string;
     equipped: (name: string) => string;
   }
@@ -84,7 +84,6 @@ const T: Record<
     showAll: 'Show all (dev)',
     blurb:
       'Level up on the Journey for the track skins and themes; the rest are challenge unlocks. Equip any you own — it follows your account.',
-    journey: 'Journey',
     paintFirst: 'Paint your card first',
     equipped: (name) => `Equipped ${name}`,
   },
@@ -99,7 +98,6 @@ const T: Record<
     showAll: 'Tout afficher (dev)',
     blurb:
       'Monte de niveau sur le Parcours pour les habillages et thèmes du tracé; le reste, ce sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
-    journey: 'Parcours',
     paintFirst: "Peins ta carte d'abord",
     equipped: (name) => `Équipé : ${name}`,
   },
@@ -232,7 +230,15 @@ function BonhommePreview({ id, paintHint }: { readonly id: string; readonly pain
  * the real table look before the selection grids (which each preview a single
  * cosmetic in isolation, and so never shift when the other axis changes).
  */
-function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly theme: string }) {
+function LivePreview({
+  cardSkin,
+  theme,
+  bonhomme,
+}: {
+  readonly cardSkin: string;
+  readonly theme: string;
+  readonly bonhomme: 'pixel' | 'painted' | 'og';
+}) {
   const themeAttrs = theme === DEFAULT_THEME ? {} : { 'data-theme': theme };
   const skinAttrs = cardSkin === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': cardSkin };
   return (
@@ -250,8 +256,12 @@ function LivePreview({ cardSkin, theme }: { readonly cardSkin: string; readonly 
           style={{ background: 'var(--color-team-b)' }}
         />
       </div>
+      {/* This local provider SHADOWS App's — it must re-carry `bonhommes`, or
+          the equipped figure choice silently drops to the default here. */}
       <div {...skinAttrs}>
-        <CardSkinProvider value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {} }}>
+        <CardSkinProvider
+          value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {}, bonhommes: bonhomme }}
+        >
           <div className="flex items-end justify-center">
             {SAMPLE.map((card, i) => (
               <div key={i} style={{ marginLeft: i === 0 ? 0 : '-1.1em', zIndex: i }}>
@@ -323,7 +333,7 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
       .catch(() => {
         /* offline: everything stays free/locked, no progress bars */
       });
-    // Award-granted cosmetics (e.g. the tutorial's OG Deck) are owned even
+    // Award-granted cosmetics (e.g. the tutorial's OG bonhomme) are owned even
     // without the matching stats — fold them into the owned set.
     fetchAwards()
       .then((a) => live && setRewards(grantedRewardIds(a.map((x) => x.id))))
@@ -344,8 +354,8 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
     ...c,
     label: bonhommeLabel(c.id, lang),
   }));
-  // All three are free, so this is always every id — kept via owned() anyway
-  // to reuse buildTiles' locked/requirement plumbing unmodified.
+  // pixel is free; painted unlocks by painting your card, og by the tutorial
+  // award's reward grant — all resolved by the same owned() plumbing.
   const ownedBonhommes = owned(bonhommeCatalog, stats, showAll, rewards);
 
   const chooseCardSkin = (id: string) => {
@@ -390,19 +400,14 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
           <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
             {t.title}
           </h1>
-          <div className="flex items-center gap-2">
-            {/* Not in the in-game modal (leaveLabel set): navigating to the
-                Journey would tear the table route down mid-game. */}
-            {leaveLabel === undefined && (
-              <Cta variant="secondary" onClick={() => (location.hash = '#journey')}>
-                {t.journey}
-              </Cta>
-            )}
-            <Cta variant="secondary" onClick={onLeave}>
-              {leaveLabel ?? t.home}
-            </Cta>
-          </div>
+          <Cta variant="secondary" onClick={onLeave}>
+            {leaveLabel ?? t.home}
+          </Cta>
         </header>
+
+        {/* Not in the in-game modal (leaveLabel set): navigating away via the
+            strip would tear the table route down mid-game. */}
+        {leaveLabel === undefined && <MetaNav current="collection" />}
 
         <div className="flex items-center justify-between gap-4">
           <p className="font-arcade-ui text-[0.85em] text-(--color-ap-muted)">{t.blurb}</p>
@@ -423,10 +428,11 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
               {t.preview}
             </h2>
             <span className="truncate font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
-              {labelOf(CARD_SKINS, cardSkin)} · {labelOf(THEMES, theme)}
+              {labelOf(CARD_SKINS, cardSkin)} · {bonhommeLabel(bonhomme, lang)} ·{' '}
+              {labelOf(THEMES, theme)}
             </span>
           </div>
-          <LivePreview cardSkin={cardSkin} theme={theme} />
+          <LivePreview cardSkin={cardSkin} theme={theme} bonhomme={bonhomme} />
           <p className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">{t.previewHint}</p>
         </Panel>
 

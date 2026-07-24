@@ -1,7 +1,7 @@
 import type { BotDifficulty } from '@jaffre/protocol';
 import { ARCADE, SuitShape, suitName, TeamGlyph, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useState } from 'react';
-import { fetchStats, type Stats } from '../net/history.js';
+import { fetchLeaderboard, fetchStats, type Leaderboard, type Stats } from '../net/history.js';
 import type { GamePeekInfo, SeatChipInfo } from './useTableDerived.js';
 
 const T: Record<
@@ -21,7 +21,9 @@ const T: Record<
     best: (n: number) => string;
     loading: string;
     noRecord: string;
-    selfOnly: string;
+    elo: string;
+    rankedGames: string;
+    unranked: string;
     // Section headers.
     thisGame: string;
     player: string;
@@ -58,7 +60,9 @@ const T: Record<
     best: (n) => `best ${n}`,
     loading: 'Loading…',
     noRecord: 'No games yet',
-    selfOnly: 'Records are private — only yours is shown.',
+    elo: 'Elo',
+    rankedGames: 'Ranked games',
+    unranked: 'Not on the leaderboard yet.',
     thisGame: 'This game',
     player: 'Player',
     roundN: (n) => `Round ${n}`,
@@ -91,7 +95,9 @@ const T: Record<
     best: (n) => `record ${n}`,
     loading: 'Chargement…',
     noRecord: 'Aucune partie',
-    selfOnly: 'Les bilans sont privés — seul le tien est affiché.',
+    elo: 'Elo',
+    rankedGames: 'Parties classées',
+    unranked: 'Pas encore au classement.',
     thisGame: 'Cette partie',
     player: 'Joueur',
     roundN: (n) => `Ronde ${n}`,
@@ -173,6 +179,46 @@ function OwnRecord() {
         label={t.streak}
         value={`${String(stats.streak.current)} · ${t.best(stats.streak.best)}`}
       />
+    </dl>
+  );
+}
+
+/** Another human's PUBLIC standing — their Elo line off the public leaderboard,
+ * matched by display name (the roster carries no uid, by design). Full records
+ * stay private; the board is the one thing everyone can already see. */
+function PublicStanding({ name }: { name: string }) {
+  const t = T[useLang()];
+  const [board, setBoard] = useState<Leaderboard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    fetchLeaderboard()
+      .then((b) => {
+        if (live) setBoard(b);
+      })
+      .catch(() => {
+        if (live) setBoard(null);
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [name]);
+
+  if (loading) return <p className="text-(--color-ap-muted)">{t.loading}</p>;
+  if (board === null) return <p className="text-(--color-ap-muted)">{t.unranked}</p>;
+  const rankIndex = board.top.findIndex((r) => r.name === name);
+  const row = board.top[rankIndex];
+  if (row === undefined) return <p className="text-(--color-ap-muted)">{t.unranked}</p>;
+
+  return (
+    <dl className="flex flex-col gap-1">
+      <StatRow label={t.elo} value={`${String(row.rating)} · #${String(rankIndex + 1)}`} />
+      <StatRow label={t.rankedGames} value={String(row.ratingGames)} />
     </dl>
   );
 }
@@ -387,7 +433,7 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
           <OwnRecord />
         </div>
       ) : (
-        <p className="text-(--color-ap-muted)">{t.selfOnly}</p>
+        <PublicStanding name={info.name} />
       )}
     </section>
   );
@@ -402,7 +448,8 @@ export interface PlayerPeekProps {
  * player it's about (identity, live role, difficulty or your record) and the
  * full state of the game right now (score, bet, trump, tricks) — the latter
  * shared across every seat. Respects the self-scoped stats API: only your own
- * record is ever fetched; other humans show name/team/connection only.
+ * record is ever fetched; other humans show name/team/connection plus their
+ * PUBLIC leaderboard standing (Elo), never their private record.
  */
 export function PlayerPeek({ info }: PlayerPeekProps) {
   return (

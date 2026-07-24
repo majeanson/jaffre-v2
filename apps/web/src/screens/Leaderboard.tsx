@@ -5,6 +5,7 @@ import {
   type Leaderboard as LeaderboardData,
   type LeaderboardRow,
 } from '../net/history.js';
+import { MetaNav } from '../components/MetaNav.js';
 
 export interface LeaderboardProps {
   readonly onLeave: () => void;
@@ -79,6 +80,8 @@ export function Leaderboard({ onLeave, demo }: LeaderboardProps) {
             {t.home}
           </Cta>
         </header>
+
+        <MetaNav current="leaderboard" />
 
         {error ? (
           <p className={SHELL_NOTE}>{t.error}</p>

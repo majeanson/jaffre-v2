@@ -20,6 +20,7 @@ import { Awards } from './screens/Awards.js';
 import { Leaderboard } from './screens/Leaderboard.js';
 import { PublicLobby } from './screens/PublicLobby.js';
 import { Collection, collectionReturnHash } from './screens/Collection.js';
+import { Corner } from './screens/Corner.js';
 import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Journey } from './screens/Journey.js';
@@ -39,6 +40,7 @@ type Route =
   | { kind: 'practice'; seed: number | null }
   | { kind: 'room'; code: string }
   | { kind: 'scenes'; id: string | null }
+  | { kind: 'corner' }
   | { kind: 'history' }
   | { kind: 'stats' }
   | { kind: 'awards' }
@@ -60,6 +62,7 @@ function parseHash(): Route {
   // '#scenes[/<id>]' — live-through every game phase instantly (design/dev tool).
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
+  if (h === '#corner') return { kind: 'corner' };
   if (h === '#history') return { kind: 'history' };
   if (h === '#stats') return { kind: 'stats' };
   if (h === '#awards') return { kind: 'awards' };
@@ -195,6 +198,9 @@ function AppRoutes() {
   }
   if (route.kind === 'scenes') {
     return <Scenes sceneId={route.id} onLeave={() => (location.hash = '')} />;
+  }
+  if (route.kind === 'corner') {
+    return <Corner onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'history') {
     return <History onLeave={() => (location.hash = '')} />;

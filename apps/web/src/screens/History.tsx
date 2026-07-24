@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useLang, type Lang } from '@jaffre/ui';
+import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { fetchHistory, type HistoryGame } from '../net/history.js';
+import { MetaNav } from '../components/MetaNav.js';
 
 export interface HistoryProps {
   readonly onLeave: () => void;
@@ -27,7 +28,7 @@ const T: Record<
 > = {
   en: {
     title: 'Your games',
-    home: '← Home',
+    home: 'Home',
     won: 'Won',
     lost: 'Lost',
     room: (code) => `Room ${code}`,
@@ -41,7 +42,7 @@ const T: Record<
   },
   fr: {
     title: 'Tes parties',
-    home: '← Accueil',
+    home: 'Accueil',
     won: 'Gagnée',
     lost: 'Perdue',
     room: (code) => `Salon ${code}`,
@@ -144,17 +145,12 @@ export function History({ onLeave, demoGames }: HistoryProps) {
           <h1 className="font-arcade-display text-(length:--text-fluid-2xl) uppercase text-(--color-ap-gold)">
             {t.title}
           </h1>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              onLeave();
-            }}
-            className="text-sm text-(--color-ap-muted) hover:text-(--color-ap-text)"
-          >
+          <Cta variant="secondary" onClick={onLeave}>
             {t.home}
-          </a>
+          </Cta>
         </header>
+
+        <MetaNav current="history" />
 
         {error ? (
           <p className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-6 text-center text-(--color-ap-muted) shadow-(--shadow-ap)">

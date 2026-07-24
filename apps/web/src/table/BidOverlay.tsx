@@ -33,7 +33,9 @@ export function BidOverlay({
   return (
     // pointer-events: only the panel itself catches taps — the seat chips
     // around it stay peekable while the auction goes around the table.
-    <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center *:pointer-events-auto">
+    // z-[15]: above the trick area (z-10) but below the seat chips (z-20),
+    // so a chip's peek popover opens OVER the auction panel, never under it.
+    <div className="pointer-events-none absolute inset-0 z-[15] grid place-items-center *:pointer-events-auto">
       <BetCards
         options={options}
         {...(order !== undefined ? { order } : {})}
