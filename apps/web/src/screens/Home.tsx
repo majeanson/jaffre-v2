@@ -14,7 +14,7 @@ import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
-import { listTables, type TableEntry } from '../net/rooms.js';
+import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -33,17 +33,28 @@ export interface HomeProps {
   readonly helpOpen?: boolean;
   /** Scene viewer: force the identity into a staged state. */
   readonly identityStage?: IdentityStage;
+  /** Scene viewer: stage the PLAY door's table list without hitting the network. */
+  readonly demoTables?: readonly TableEntry[];
+  /** Scene viewer: mount the PLAY door already open. */
+  readonly playOpen?: boolean;
 }
 
 /** The title screen in the arcade shell: brand moment on top, your painted
  * identity card, then the play actions, quiet chrome below. */
-export function Home({ onPractice, onJoinRoom, helpOpen = false, identityStage }: HomeProps) {
+export function Home({
+  onPractice,
+  onJoinRoom,
+  helpOpen = false,
+  identityStage,
+  demoTables,
+  playOpen,
+}: HomeProps) {
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
-  // The standing tables feed the "Ton coin" door's count/your-turn pulse; the
-  // cards themselves live on the #corner sheet now.
-  const [tables] = useState<readonly TableEntry[]>(listTables);
+  // The standing tables feed the PLAY door's "your tables" row and its
+  // closed-door count/your-turn pulse.
+  const [tables, setTables] = useState<readonly TableEntry[]>(listTables);
 
   // Establish identity as soon as the home screen shows (not only once the
   // recovery card mounts — it now lives inside the Customize disclosure) so a
@@ -130,7 +141,16 @@ export function Home({ onPractice, onJoinRoom, helpOpen = false, identityStage }
               saveName();
               onJoinRoom(code);
             }}
-            tables={tables}
+            tables={demoTables ?? tables}
+            defaultOpen={playOpen ?? false}
+            {...(demoTables === undefined
+              ? {
+                  onQuitTable: (code: string) => {
+                    void leaveTable(code);
+                    setTables(listTables());
+                  },
+                }
+              : {})}
           />
 
           {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for

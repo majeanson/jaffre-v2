@@ -1,37 +1,33 @@
 import { useState, type CSSProperties } from 'react';
-import type { BotDifficulty } from '@jaffre/protocol';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { markMakePublic, type TableEntry } from '../net/rooms.js';
-import { useTableStatuses } from './TableCards.js';
+import { TableCard, useTableStatuses } from './TableCards.js';
 import { generateRoomCode } from './roomCode.js';
 import {
+  botsFromSetting,
   loadPracticeBots,
-  PRACTICE_BOT_NAMES,
   savePracticeBots,
-  type PracticeBots,
+  settingFromBots,
+  SETTING_ORDER,
+  type PracticeSetting,
 } from './practiceBots.js';
 
-const DIFFICULTY_ORDER: readonly BotDifficulty[] = ['easy', 'normal', 'hard'];
-const DIFFICULTY_LABEL: Record<Lang, Record<BotDifficulty, string>> = {
-  en: { easy: 'Easy', normal: 'Normal', hard: 'Hard' },
-  fr: { easy: 'Facile', normal: 'Normal', hard: 'Difficile' },
+const DIFFICULTY_LABEL: Record<Lang, Record<PracticeSetting, string>> = {
+  en: { easy: 'Easy', normal: 'Normal', hard: 'Hard', mixed: 'Mixed' },
+  fr: { easy: 'Facile', normal: 'Normal', hard: 'Difficile', mixed: 'Variés' },
 };
 
 const T: Record<
   Lang,
   {
     play: string;
-    yours: string;
+    yourTables: string;
     practice: string;
-    practiceSub: string;
-    friendsSub: string;
-    opponents: string;
+    botsChip: (label: string) => string;
     botDifficulty: string;
     playNow: string;
-    playFriends: string;
     createRoom: string;
     joinPublic: string;
-    withCode: string;
     roomCode: string;
     joinRoom: string;
     going: (n: number) => string;
@@ -40,45 +36,37 @@ const T: Record<
 > = {
   en: {
     play: 'Play',
+    yourTables: 'Your tables',
     practice: 'Practice vs bots',
-    practiceSub: 'Instant — stays off your record.',
-    friendsSub: 'Share a room code — these games count.',
-    opponents: 'Opponents',
+    botsChip: (label) => `Bots: ${label}`,
     botDifficulty: 'Bot difficulty',
     playNow: 'Play now',
-    playFriends: 'Play with friends',
     createRoom: 'Create a room',
     joinPublic: 'Join a public game',
-    withCode: 'With code',
     roomCode: 'Room code',
     joinRoom: 'Join room',
-    yours: 'Your corner',
     going: (n) => `${String(n)} going`,
     yourTurn: 'Your turn',
   },
   fr: {
     play: 'Jouer',
+    yourTables: 'Tes tables',
     practice: 'Pratique contre les bots',
-    practiceSub: 'Instantané — rien au dossier.',
-    friendsSub: 'Partage un code de salon — ces parties comptent.',
-    opponents: 'Adversaires',
+    botsChip: (label) => `Bots : ${label}`,
     botDifficulty: 'Difficulté des bots',
     playNow: 'Jouer maintenant',
-    playFriends: 'Jouer entre amis',
     createRoom: 'Créer un salon',
     joinPublic: 'Joindre une partie publique',
-    withCode: 'ou joins avec un code',
     roomCode: 'Code du salon',
     joinRoom: 'Joindre le salon',
-    yours: 'Ton coin',
     going: (n) => `${String(n)} en route`,
     yourTurn: 'À ton tour',
   },
 };
 
-function nextDifficulty(current: BotDifficulty): BotDifficulty {
-  const i = DIFFICULTY_ORDER.indexOf(current);
-  return DIFFICULTY_ORDER[(i + 1) % DIFFICULTY_ORDER.length] as BotDifficulty;
+function nextSetting(current: PracticeSetting): PracticeSetting {
+  const i = SETTING_ORDER.indexOf(current);
+  return SETTING_ORDER[(i + 1) % SETTING_ORDER.length] as PracticeSetting;
 }
 
 export interface PlayMenuProps {
@@ -86,20 +74,33 @@ export interface PlayMenuProps {
   readonly onJoinRoom: (code: string) => void;
   /** Tables this browser has sat at, newest first — feeds the door's count. */
   readonly tables: readonly TableEntry[];
+  /** Permanently quit a standing table (frees the seat, drops the card). */
+  readonly onQuitTable?: (code: string) => void;
+  /** Mount with the door already open (scene viewer). */
+  readonly defaultOpen?: boolean;
 }
 
 /**
- * The title-screen actions in the arcade shell: practice (primary), play with
- * friends (create-a-room + join-by-code), and the "Your corner" door into the
- * full-sheet meta screens (tables, games, record, …).
+ * The title-screen PLAY door in the arcade shell: your standing tables (if
+ * any), practice vs bots, and play with friends (public lobby + create/join a
+ * room), all one column behind a single knock.
  */
-export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
-  const t = T[useLang()];
-  const difficultyLabel = DIFFICULTY_LABEL[useLang()];
+export function PlayMenu({
+  onPractice,
+  onJoinRoom,
+  tables,
+  onQuitTable,
+  defaultOpen,
+}: PlayMenuProps) {
+  const lang = useLang();
+  const t = T[lang];
+  const difficultyLabel = DIFFICULTY_LABEL[lang];
   const [code, setCode] = useState('');
-  const [bots, setBots] = useState<PracticeBots>(loadPracticeBots);
-  // One PLAY door: the split (bots vs friends) only appears after you knock.
-  const [open, setOpen] = useState(false);
+  const [setting, setSetting] = useState<PracticeSetting>(() =>
+    settingFromBots(loadPracticeBots()),
+  );
+  // One PLAY door: everything else only appears after you knock.
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const statuses = useTableStatuses(tables);
   // A live table is waiting on YOU — the closed door announces it.
   const yourTurn = tables.some((tbl) => {
@@ -113,12 +114,10 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
     );
   });
 
-  const cycleBot = (seat: 0 | 1 | 2) => {
-    const next = bots.map((d, i) =>
-      i === seat ? nextDifficulty(d) : d,
-    ) as unknown as PracticeBots;
-    setBots(next);
-    savePracticeBots(next);
+  const cycleSetting = () => {
+    const next = nextSetting(setting);
+    setSetting(next);
+    savePracticeBots(botsFromSetting(next));
   };
 
   const joinTyped = () => {
@@ -134,8 +133,8 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
       aria-label={t.play}
       className="grid w-full grid-cols-1 gap-3 font-arcade-ui sm:grid-cols-2"
     >
-      {/* ONE door in: a single PLAY panel. The bots-vs-friends split only
-          appears after you press it — no split on the title screen itself. */}
+      {/* ONE door in: a single PLAY panel. Everything else only appears after
+          you press it — no split on the title screen itself. */}
       <div
         className="rise-in group relative flex flex-col gap-4 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-(--color-ap-ink) shadow-(--shadow-ap-lg) max-sm:p-4 sm:col-span-2"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
@@ -153,6 +152,21 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             {t.play}
+            {yourTurn ? (
+              <span className="flex items-center gap-1.5 font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-ok)">
+                <span
+                  aria-hidden
+                  className="size-2 animate-pulse rounded-full bg-(--color-ap-ok)"
+                />
+                {t.yourTurn}
+              </span>
+            ) : (
+              tables.length > 0 && (
+                <span className="font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-muted)">
+                  {t.going(tables.length)}
+                </span>
+              )
+            )}
             <span
               aria-hidden
               className="transition-transform duration-(--duration-flick) group-hover:translate-x-1"
@@ -161,35 +175,43 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
             </span>
           </button>
         ) : (
-          // Base grid-cols-1 is load-bearing: an implicit column sizes to its
-          // content and can silently overflow a 390px viewport (see the
-          // scenes.spec "home fits" regression note).
-          <div className="relative z-10 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="relative z-10 flex flex-col gap-5">
+            {tables.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <span className="font-arcade-display text-[clamp(1rem,2vmin,1.2rem)] uppercase tracking-wide">
+                  {t.yourTables}
+                </span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {tables.slice(0, 4).map((tbl) => (
+                    <TableCard
+                      key={tbl.code}
+                      table={tbl}
+                      status={statuses[tbl.code] ?? null}
+                      onResume={() => {
+                        location.hash = '#room/' + tbl.code;
+                      }}
+                      {...(onQuitTable !== undefined
+                        ? { onLeave: () => onQuitTable(tbl.code) }
+                        : {})}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
               <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
                 {t.practice}
               </span>
-              {/* Full-opacity ink (see the withCode note): muted fails AA here. */}
-              <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
-                {t.practiceSub}
-              </span>
-              {/* Tap a bot to cycle its difficulty; "Play now" starts. */}
-              <div
-                className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(length:--text-fluid-xs)"
+              {/* Tap to cycle the shared difficulty; "Play now" starts. */}
+              <button
+                type="button"
+                onClick={cycleSetting}
                 aria-label={t.botDifficulty}
+                className="w-fit cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
               >
-                <span className="font-arcade-display uppercase tracking-wide">{t.opponents}</span>
-                {([0, 1, 2] as const).map((seat) => (
-                  <button
-                    key={seat}
-                    type="button"
-                    onClick={() => cycleBot(seat)}
-                    className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-                  >
-                    {PRACTICE_BOT_NAMES[seat]} · {difficultyLabel[bots[seat]]}
-                  </button>
-                ))}
-              </div>
+                {t.botsChip(difficultyLabel[setting])}
+              </button>
               <button
                 type="button"
                 onClick={onPractice}
@@ -199,50 +221,34 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
                 <span aria-hidden>→</span>
               </button>
             </div>
+
+            {/* The public path leads to the LIVE lobby list — you see who's
+                open and pick, instead of being teleported blind; the lobby's
+                own Quick Play still one-taps into the fullest table (or
+                hosts a fresh public one when the list is empty). */}
+            <Cta
+              type="button"
+              onClick={() => {
+                location.hash = '#lobby';
+              }}
+            >
+              {t.joinPublic}
+            </Cta>
+
             <div className="flex flex-col gap-3">
-              <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
-                {t.playFriends}
-              </span>
-              <span className="-mt-1.5 font-arcade-ui text-(length:--text-fluid-xs) leading-snug">
-                {t.friendsSub}
-              </span>
-              {/* The public path leads to the LIVE lobby list — you see who's
-                  open and pick, instead of being teleported blind; the lobby's
-                  own Quick Play still one-taps into the fullest table (or
-                  hosts a fresh public one when the list is empty). */}
-              <Cta
-                type="button"
-                onClick={() => {
-                  location.hash = '#lobby';
-                }}
-              >
-                {t.joinPublic}
-              </Cta>
               <Cta
                 type="button"
                 variant="secondary"
                 onClick={() => {
                   // New tables are public by default — the pre-game toggle is
                   // how a host opts DOWN to invite-only.
-                  const code = generateRoomCode();
-                  markMakePublic(code);
-                  onJoinRoom(code);
+                  const roomCode = generateRoomCode();
+                  markMakePublic(roomCode);
+                  onJoinRoom(roomCode);
                 }}
               >
                 {t.createRoom}
               </Cta>
-              {/* Full-opacity ink: a faded label on the violet ground fails AA. */}
-              <div
-                aria-hidden
-                className="flex items-center gap-3 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide"
-              >
-                <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-                {t.withCode}
-                <span className="h-0.5 flex-1 bg-(--color-ap-ink)" />
-              </div>
-              {/* Stack input over button: the join label is long in French
-                  ("Joindre le salon") and a side-by-side row squished the field
-                  down to a sliver in the narrow rail. Full-width both. */}
               <form
                 className="flex flex-col gap-2"
                 onSubmit={(e) => {
@@ -271,40 +277,6 @@ export function PlayMenu({ onPractice, onJoinRoom, tables }: PlayMenuProps) {
           </div>
         )}
       </div>
-
-      {/* ONE door for everything that's yours — it opens the full "Your
-          corner" sheet (#corner) whose subtab strip fans out to tables, games,
-          record, and the rest. The closed button carries the live-tables
-          count. Stays a <button> (not an <a>): the e2e suite and the PLAY
-          door both address the title-screen doors by button role. */}
-      <button
-        type="button"
-        onClick={() => {
-          location.hash = '#corner';
-        }}
-        className={`rise-in flex items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-4 font-arcade-display text-[clamp(1.1rem,2.2vmin,1.4rem)] uppercase tracking-wide text-(--color-ap-text) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none sm:col-span-2 ${
-          yourTurn ? 'ap-glow' : 'shadow-(--shadow-ap-sm)'
-        }`}
-        style={{ '--rise-delay': '220ms' } as CSSProperties}
-      >
-        <span aria-hidden className="text-(--color-ap-gold)">
-          ★
-        </span>
-        {t.yours}
-        {yourTurn ? (
-          <span className="flex items-center gap-1.5 font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-ok)">
-            <span aria-hidden className="size-2 animate-pulse rounded-full bg-(--color-ap-ok)" />
-            {t.yourTurn}
-          </span>
-        ) : (
-          tables.length > 0 && (
-            <span className="font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-muted)">
-              {t.going(tables.length)}
-            </span>
-          )
-        )}
-        <span aria-hidden>→</span>
-      </button>
     </section>
   );
 }

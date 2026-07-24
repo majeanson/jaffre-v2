@@ -34,3 +34,17 @@ export function savePracticeBots(bots: PracticeBots): void {
     // Storage unavailable (private mode / SSR) — practice still runs on defaults.
   }
 }
+
+/** The single-cycler setting: one shared difficulty, or 'mixed' for easy/normal/hard. */
+export type PracticeSetting = BotDifficulty | 'mixed';
+
+/** All three bots share a difficulty → that value; anything else → 'mixed'. */
+export function settingFromBots(bots: PracticeBots): PracticeSetting {
+  return bots[0] === bots[1] && bots[1] === bots[2] ? bots[0] : 'mixed';
+}
+
+export function botsFromSetting(s: PracticeSetting): PracticeBots {
+  return s === 'mixed' ? ['easy', 'normal', 'hard'] : [s, s, s];
+}
+
+export const SETTING_ORDER: readonly PracticeSetting[] = ['easy', 'normal', 'hard', 'mixed'];
