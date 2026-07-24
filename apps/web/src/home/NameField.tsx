@@ -20,7 +20,7 @@ export function NameField({ value, onChange, onCommit, error = null }: NameField
   const t = T[useLang()];
   const invalid = error !== null;
   return (
-    <div className="flex w-full max-w-xs flex-col items-center gap-[0.4em]">
+    <div className="flex w-full flex-col items-center gap-[0.4em]">
       <label
         className={`flex w-full items-center gap-3 rounded-(--radius-ap-control) border-2 bg-(--color-ap-panel) px-4 py-[0.6em] font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-sm) focus-within:bg-(--color-ap-panel-hover) ${
           invalid ? 'border-(--color-ap-danger)' : 'border-(--color-ap-ink)'

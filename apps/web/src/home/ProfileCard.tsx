@@ -144,7 +144,7 @@ export function ProfileCard({
                 );
               })}
             </div>
-            <Cta type="button" variant="secondary" onClick={() => onPaint?.()}>
+            <Cta type="button" variant="secondary" className="w-full" onClick={() => onPaint?.()}>
               {t.paint}
             </Cta>
           </>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { useLang, type Lang } from '@jaffre/ui';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
@@ -15,6 +16,11 @@ import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
+
+const T: Record<Lang, { corner: string }> = {
+  en: { corner: 'Your corner' },
+  fr: { corner: 'Ton coin' },
+};
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
 export interface IdentityStage {
@@ -37,6 +43,8 @@ export interface HomeProps {
   readonly demoTables?: readonly TableEntry[];
   /** Scene viewer: mount the PLAY door already open. */
   readonly playOpen?: boolean;
+  /** Scene viewer: stage the PLAY door's initial step (create/join) once open. */
+  readonly playStep?: 'create' | 'join';
 }
 
 /** The title screen in the arcade shell: brand moment on top, your painted
@@ -48,7 +56,9 @@ export function Home({
   identityStage,
   demoTables,
   playOpen,
+  playStep,
 }: HomeProps) {
+  const t = T[useLang()];
   const staged = identityStage !== undefined;
   const [name, setName] = useState(playerName());
   const [profile, setProfile] = useState<Profile>(getProfile());
@@ -118,6 +128,23 @@ export function Home({
 
           {/* Your level + XP bar → the Journey. Live screen only. */}
           {!staged && <LevelBadge />}
+
+          {/* Your corner: the profile overview + meta screens — one door, always available. */}
+          <button
+            type="button"
+            onClick={() => {
+              location.hash = '#corner';
+            }}
+            className="flex w-full items-center gap-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.55em] text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
+          >
+            <span aria-hidden className="text-(--color-ap-gold)">
+              ★
+            </span>
+            <span className="font-arcade-display uppercase tracking-wide">{t.corner}</span>
+            <span aria-hidden className="ml-auto">
+              →
+            </span>
+          </button>
         </div>
 
         {/* RIGHT — play actions, then quiet chrome, all one column width */}
@@ -143,6 +170,7 @@ export function Home({
             }}
             tables={demoTables ?? tables}
             defaultOpen={playOpen ?? false}
+            {...(playStep !== undefined ? { defaultStep: playStep } : {})}
             {...(demoTables === undefined
               ? {
                   onQuitTable: (code: string) => {
