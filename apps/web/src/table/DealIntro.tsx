@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayingCard } from '@jaffre/ui';
 
 /** How long the fly-out itself takes before the layer starts fading. */
@@ -14,18 +14,44 @@ const CARDS_PER_SEAT = 3;
 const BACK_CARD = { suit: 'red', value: 0 } as const;
 
 /**
- * Fly-out targets, one per table-relative seat (0 = you/bottom, 1 = left,
- * 2 = top, 3 = right). These are eyeballed directional offsets toward each
- * rim of the felt — NOT measured SeatChip DOM positions, matching the idiom
- * AttractMode's ghost trick already uses. The deck itself sits top-left, so
- * "up" and "left" are short hops and "down"/"right" are long ones.
+ * FALLBACK fly-out targets, one per table-relative seat (0 = you/bottom,
+ * 1 = left, 2 = top, 3 = right) — eyeballed directional offsets toward each
+ * rim of the felt. The real targets are MEASURED from the live seat-chip DOM
+ * (`[data-deal-target]` anchors on the Stage wrappers + your UtilityRow chip)
+ * so the cards land exactly on the avatars; these directions only cover a
+ * missing anchor (e.g. spectating, where "your" chip doesn't render).
  */
-const TARGETS: Record<0 | 1 | 2 | 3, readonly [string, string]> = {
+const FALLBACK_TARGETS: Record<0 | 1 | 2 | 3, readonly [string, string]> = {
   0: ['4vmin', '48vmin'],
   1: ['-8vmin', '22vmin'],
   2: ['26vmin', '2vmin'],
   3: ['46vmin', '20vmin'],
 };
+
+/** The measured px offset from the deck to each seat's avatar (chip centre). */
+type Targets = Record<0 | 1 | 2 | 3, readonly [string, string]>;
+
+/** Deck → avatar offsets, measured from the live DOM. The chips live in two
+ * different containers (opponents on the Stage rim, your own chip down in the
+ * UtilityRow), so viewport rects are the one common coordinate space. */
+function measureTargets(deck: HTMLElement): Targets {
+  const origin = deck.getBoundingClientRect();
+  const out: Partial<Record<0 | 1 | 2 | 3, readonly [string, string]>> = {};
+  for (const seat of [0, 1, 2, 3] as const) {
+    const chip = document.querySelector(`[data-deal-target="${String(seat)}"]`);
+    const rect = chip?.getBoundingClientRect();
+    // A zero-size rect means the anchor exists but renders nothing (e.g. a
+    // spectator's empty "you" slot) — fall back to the directional guess.
+    if (rect === undefined || rect.width === 0) {
+      out[seat] = FALLBACK_TARGETS[seat];
+      continue;
+    }
+    const dx = rect.left + rect.width / 2 - (origin.left + origin.width / 2);
+    const dy = rect.top + rect.height / 2 - (origin.top + origin.height / 2);
+    out[seat] = [`${String(Math.round(dx))}px`, `${String(Math.round(dy))}px`];
+  }
+  return out as Targets;
+}
 
 const KEYFRAMES = `
 @keyframes deal-fly {
@@ -48,6 +74,17 @@ type Phase = 'idle' | 'dealing' | 'fading';
 export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
   const prevRound = useRef<number | undefined>(undefined);
   const [phase, setPhase] = useState<Phase>('idle');
+  const deckRef = useRef<HTMLDivElement>(null);
+  const [targets, setTargets] = useState<Targets>(FALLBACK_TARGETS);
+
+  // Measure where the avatars ACTUALLY are the moment the deal starts — the
+  // deck renders in the same commit that flips the phase, so a layout effect
+  // can read both rects before the browser paints the first frame.
+  useLayoutEffect(() => {
+    if (phase !== 'dealing') return;
+    const deck = deckRef.current;
+    if (deck !== null) setTargets(measureTargets(deck));
+  }, [phase]);
 
   useEffect(() => {
     const isFirstMount = prevRound.current === undefined;
@@ -86,7 +123,7 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
       <style>{KEYFRAMES}</style>
       {/* The deck itself: a few stacked face-down cards, top-left inside the
           felt oval, clear of the top seat chip which is centered. */}
-      <div className="absolute top-[6%] left-[4%] max-sm:top-[8%] max-sm:left-[3%]">
+      <div ref={deckRef} className="absolute top-[6%] left-[4%] max-sm:top-[8%] max-sm:left-[3%]">
         {Array.from({ length: 4 }, (_, i) => (
           <div
             key={i}
@@ -101,12 +138,14 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
           deck's corner out toward that seat's edge of the felt. */}
       {seats.flatMap((seat) =>
         Array.from({ length: CARDS_PER_SEAT }, (_, i) => {
-          const [tx, ty] = TARGETS[seat];
+          const [tx, ty] = targets[seat];
           const delay = (seat * CARDS_PER_SEAT + i) * 0.09;
           return (
             <div
               key={`${String(seat)}-${String(i)}`}
-              className="absolute top-[8%] left-[5%] max-sm:top-[10%] max-sm:left-[4%]"
+              // Same anchor as the deck itself — the measured offsets are
+              // deck-centre → chip-centre, so the flight starts where they do.
+              className="absolute top-[6%] left-[4%] max-sm:top-[8%] max-sm:left-[3%]"
               style={
                 {
                   '--dtx': tx,

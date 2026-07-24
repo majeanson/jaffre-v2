@@ -62,7 +62,9 @@ export function UtilityRow({
           mirroring the top opponent so all four read as sat around the table.
           Phone: tucked right beside the utility bar — the bottom rim stays
           one slim right-aligned cluster and the felt keeps the width. */}
-      <span className="min-w-0 sm:justify-self-center">
+      {/* data-deal-target: DealIntro measures this rect so the round-start
+          deal flies YOUR cards to your own chip, wherever the layout put it. */}
+      <span data-deal-target="0" className="min-w-0 sm:justify-self-center">
         <SeatChip info={you} peekPlacement="up" peekAlign="end" />
       </span>
       {/* No overflow-hidden here: the last-trick and chat popovers anchor to

@@ -64,7 +64,12 @@ export function Stage({
           No persistent face-down fan anymore (that used to crowd the chips
           and the felt all game) — DealIntro above shows the deck only for
           the brief deal at the start of each round. */}
-      <div className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 max-sm:top-[3%] max-sm:left-[30%]">
+      {/* data-deal-target anchors: DealIntro measures these rects so the dealt
+          cards fly to the avatars' REAL positions, not eyeballed directions. */}
+      <div
+        data-deal-target="2"
+        className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 max-sm:top-[3%] max-sm:left-[30%]"
+      >
         <SeatChip info={seatInfo(2)} compact />
       </div>
       {/* Position 1 sits low on the left (not mid-rim) — the table reads as an
@@ -73,10 +78,16 @@ export function Stage({
       {/* Phone: your own chip lives right of the utility bar (UtilityRow), so
           the felt's bottom rim is free — this seat hugs the bottom-left corner
           instead of floating mid-rim, keeping the middle clear for cards. */}
-      <div className="absolute bottom-[4%] left-0 z-20 flex flex-col items-center gap-1 max-sm:bottom-[4%] max-sm:left-[2%]">
+      <div
+        data-deal-target="1"
+        className="absolute bottom-[4%] left-0 z-20 flex flex-col items-center gap-1 max-sm:bottom-[4%] max-sm:left-[2%]"
+      >
         <SeatChip info={seatInfo(1)} compact peekAlign="start" peekPlacement="up" />
       </div>
-      <div className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 max-sm:right-[2%] max-sm:top-[34%]">
+      <div
+        data-deal-target="3"
+        className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 max-sm:right-[2%] max-sm:top-[34%]"
+      >
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />
       </div>
       {bidOverlay}
