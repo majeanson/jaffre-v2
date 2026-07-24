@@ -18,6 +18,8 @@ export interface StatsProps {
   readonly demoGames?: readonly HistoryGame[];
   /** Scene viewer: hold the screen in its loading (pixel-wave) state. */
   readonly demoLoading?: boolean;
+  /** Scene viewer: a staged games-view toggle so the scene can pin either tab. */
+  readonly initialGamesView?: 'recent' | 'all';
 }
 
 const T: Record<
@@ -45,13 +47,19 @@ const T: Record<
     nemesisRelation: (losses: number, games: number) => string;
     partnerEmpty: string;
     nemesisEmpty: string;
-    recentGames: string;
+    gamesHeader: string;
+    viewRecent: string;
+    viewAll: string;
     recentCaption: string;
     thRoom: string;
     thResult: string;
     thScore: string;
     won: string;
     lost: string;
+    room: (code: string) => string;
+    seat: (n: number) => string;
+    withMate: (name: string) => string;
+    vsThem: (names: string) => string;
   }
 > = {
   en: {
@@ -81,13 +89,19 @@ const T: Record<
     nemesisRelation: (losses, games) => `beats you ${String(losses)} of ${String(games)}`,
     partnerEmpty: 'Play a few games with the same teammate to find out.',
     nemesisEmpty: 'No one has your number yet — keep it that way.',
-    recentGames: 'Recent games',
+    gamesHeader: 'Your games',
+    viewRecent: 'Recent',
+    viewAll: 'All',
     recentCaption: 'Your recent games, newest last',
     thRoom: 'Room',
     thResult: 'Result',
     thScore: 'Score',
     won: 'Won',
     lost: 'Lost',
+    room: (code) => `Room ${code}`,
+    seat: (n) => `seat ${String(n)}`,
+    withMate: (name) => `with ${name}`,
+    vsThem: (names) => `vs ${names}`,
   },
   fr: {
     title: 'Ton record',
@@ -120,15 +134,23 @@ const T: Record<
     nemesisRelation: (losses, games) => `te bat ${String(losses)} fois sur ${String(games)}`,
     partnerEmpty: 'Joue quelques parties avec le même partenaire pour le découvrir.',
     nemesisEmpty: "Personne n'a encore le dessus sur toi — garde ça de même.",
-    recentGames: 'Parties récentes',
+    gamesHeader: 'Tes parties',
+    viewRecent: 'Récentes',
+    viewAll: 'Toutes',
     recentCaption: 'Tes parties récentes, les plus récentes en dernier',
     thRoom: 'Salon',
     thResult: 'Résultat',
     thScore: 'Pointage',
     won: 'Gagnée',
     lost: 'Perdue',
+    room: (code) => `Salon ${code}`,
+    seat: (n) => `siège ${String(n)}`,
+    withMate: (name) => `avec ${name}`,
+    vsThem: (names) => `contre ${names}`,
   },
 };
+
+type Strings = (typeof T)[Lang];
 
 /** made/attempted as a whole-percent, or null when nothing's been attempted. */
 function accuracyPct(made: number, attempted: number): number | null {
@@ -233,6 +255,67 @@ function ScorepadRow({ game }: { readonly game: HistoryGame }) {
   );
 }
 
+function formatDate(ms: number | null, lang: Lang): string {
+  if (ms === null) return '';
+  const d = new Date(ms);
+  return d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en', { month: 'short', day: 'numeric' });
+}
+
+/** "with Ginette · vs Marcel & Réal" — teammate first, then both opponents. */
+function rosterLine(game: HistoryGame, t: Strings): string | null {
+  const yourTeam = game.yourSeat % 2;
+  const teammate = game.players.find((p) => p.seat !== game.yourSeat && p.seat % 2 === yourTeam);
+  const opponents = game.players.filter((p) => p.seat % 2 !== yourTeam);
+  if (teammate === undefined && opponents.length === 0) return null;
+  const vs = opponents.map((p) => p.name).join(' & ');
+  if (teammate === undefined) return vs === '' ? null : t.vsThem(vs);
+  return vs === '' ? t.withMate(teammate.name) : `${t.withMate(teammate.name)} · ${t.vsThem(vs)}`;
+}
+
+/** One finished (or in-progress) game as a link into its replay — the "All" list row. */
+function GameRow({ game }: { readonly game: HistoryGame }) {
+  const lang = useLang();
+  const t = T[lang];
+  const won = game.winnerTeam !== null && game.winnerTeam === game.yourSeat % 2;
+  const decided = game.winnerTeam !== null;
+  const roster = rosterLine(game, t);
+  return (
+    <a
+      href={`#replay/${game.id}`}
+      className="flex items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
+    >
+      <span
+        className={`inline-block shrink-0 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.5em] py-1 text-center font-arcade-display text-sm uppercase shadow-(--shadow-ap-sm) ${
+          !decided
+            ? 'bg-(--color-ap-panel-hover) text-(--color-ap-muted)'
+            : won
+              ? 'bg-(--color-ap-ok) text-(--color-ap-ink)'
+              : 'bg-(--color-ap-danger) text-(--color-ap-ink)'
+        }`}
+      >
+        {decided ? (won ? t.won : t.lost) : '—'}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold text-(--color-ap-text)">
+          {t.room(game.roomCode)}
+        </span>
+        <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+          {formatDate(game.finishedAt, lang)} · {t.seat(game.yourSeat + 1)}
+          {roster !== null ? ` · ${roster}` : ''}
+        </span>
+      </span>
+      <span className="font-arcade-display text-lg tabular-nums text-(--color-ap-text)">
+        {game.scores[0]}
+        <span className="mx-1 text-(--color-ap-muted)">—</span>
+        {game.scores[1]}
+      </span>
+      <span aria-hidden className="text-(--color-ap-muted)">
+        ›
+      </span>
+    </a>
+  );
+}
+
 const SHELL_NOTE =
   'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
 
@@ -288,11 +371,18 @@ function SocialPanel({
 /** "Your record": the arcade record-book — an ivory ruled hero (win rate +
  * form sparkline), the headline numbers, bid accuracy, the people you sit
  * with, and a ruled scorepad of recent games. */
-export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: StatsProps) {
+export function Stats({
+  onLeave,
+  demoStats,
+  demoGames,
+  demoLoading = false,
+  initialGamesView,
+}: StatsProps) {
   const t = T[useLang()];
   const [stats, setStats] = useState<StatsData | null>(demoStats ?? null);
   const [games, setGames] = useState<readonly HistoryGame[] | null>(demoGames ?? null);
   const [error, setError] = useState(false);
+  const [view, setView] = useState<'recent' | 'all'>(initialGamesView ?? 'recent');
 
   useEffect(() => {
     if (demoStats !== undefined || demoLoading) return;
@@ -462,29 +552,54 @@ export function Stats({ onLeave, demoStats, demoGames, demoLoading = false }: St
               />
             </section>
 
-            {/* Scorepad — ruled ledger of recent games. */}
-            {recent.length > 0 && (
+            {/* Games — ruled ledger, Recent (≤12, scorepad) or All (full list, replay links). */}
+            {games !== null && games.length > 0 && (
               <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px]">
                 <div
-                  className={`border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] ${MICRO_LABEL}`}
+                  className={`flex items-center justify-between gap-3 border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] ${MICRO_LABEL}`}
                 >
-                  {t.recentGames}
-                </div>
-                <table className="w-full border-collapse">
-                  <caption className="sr-only">{t.recentCaption}</caption>
-                  <thead className="sr-only">
-                    <tr>
-                      <th scope="col">{t.thRoom}</th>
-                      <th scope="col">{t.thResult}</th>
-                      <th scope="col">{t.thScore}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...recent].reverse().map((game) => (
-                      <ScorepadRow key={game.id} game={game} />
+                  <span>{t.gamesHeader}</span>
+                  <span className="flex gap-1.5 normal-case tracking-normal">
+                    {(['recent', 'all'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-pressed={view === v}
+                        onClick={() => setView(v)}
+                        className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1 font-arcade-display text-[0.65em] uppercase tracking-wide shadow-(--shadow-ap-sm) transition-colors ${
+                          view === v
+                            ? 'bg-(--color-ap-violet) text-(--color-ap-ink)'
+                            : 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
+                        }`}
+                      >
+                        {v === 'recent' ? t.viewRecent : t.viewAll}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
+                  </span>
+                </div>
+                {view === 'recent' ? (
+                  <table className="w-full border-collapse">
+                    <caption className="sr-only">{t.recentCaption}</caption>
+                    <thead className="sr-only">
+                      <tr>
+                        <th scope="col">{t.thRoom}</th>
+                        <th scope="col">{t.thResult}</th>
+                        <th scope="col">{t.thScore}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...recent].reverse().map((game) => (
+                        <ScorepadRow key={game.id} game={game} />
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="flex flex-col gap-2 p-3">
+                    {games.map((g) => (
+                      <GameRow key={g.id} game={g} />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
           </div>
