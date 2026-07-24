@@ -115,7 +115,8 @@ describe('level track', () => {
 
   it('never re-locks a previously games-gated cosmetic (worst-case XP: all losses, no bids)', () => {
     const legacy: readonly (readonly [string, number])[] = [
-      ['og-deck', 15],
+      // og-deck deliberately absent: its games>=15 fallback (and the tutorial
+      // award's grant) were removed 2026-07-24 to make it strictly level 8.
       ['lamplight-foil', 25],
       ['stained-glass', 30],
       ['vaporwave', 40],

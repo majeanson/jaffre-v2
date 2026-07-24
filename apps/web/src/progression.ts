@@ -45,13 +45,19 @@ export function xpFromStats(s: Stats): number {
   return xpBreakdown(s).total;
 }
 
-/** Total XP required to REACH a level (level 1 = 0 XP). The step from level n
- * to n+1 costs `30 + 12(n-1)` XP — a gentle ramp: level 2 lands after the very
- * first game, the max level takes a real season of play. This is that step
- * summed in closed form. */
+/** Total XP required to REACH a level (level 1 = 0 XP). A hand-rounded ramp —
+ * every threshold reads as a clean number on the Journey track. Retuned
+ * 2026-07-24 from the old `30 + 12(n-1)`-step curve by rounding each threshold
+ * DOWN only (frozen-constants rule: a retune must never level anyone down or
+ * re-lock a track cosmetic — lower thresholds can only promote). */
+const XP_THRESHOLDS: readonly number[] = [
+  0, 25, 50, 100, 150, 250, 350, 450, 550, 650, 800, 950, 1100, 1300, 1500, 1700, 1900, 2100,
+  2350, 2600,
+];
+
 export function xpToReach(level: number): number {
   const n = Math.min(MAX_LEVEL, Math.max(1, level)) - 1;
-  return 30 * n + 12 * ((n * (n - 1)) / 2);
+  return XP_THRESHOLDS[n] ?? 0;
 }
 
 export function levelFromXp(xp: number): number {
