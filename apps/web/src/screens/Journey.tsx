@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
-  AvatarChip,
   CardSkinProvider,
   CARD_SKIN_RENDERERS,
-  Cta,
   Panel,
   PixelWave,
   PlayingCard,
   useLang,
   type Lang,
 } from '@jaffre/ui';
+import { MetaHeader } from '../components/MetaHeader.js';
+import { ProgressBar } from '../components/ProgressBar.js';
 import {
   LEVEL_TRACK,
   MAX_LEVEL,
@@ -26,8 +26,6 @@ import {
 import { CARD_SKINS, DEFAULT_CARD_SKIN } from '../cosmetics.js';
 import { THEMES } from '../theme.js';
 import { fetchStats, type Stats } from '../net/history.js';
-import { getProfile } from '../net/auth.js';
-import { playerName } from '../net/socket.js';
 import { MetaNav } from '../components/MetaNav.js';
 
 export interface JourneyProps {
@@ -42,6 +40,7 @@ const T: Record<
     title: string;
     home: string;
     dealing: string;
+    error: string;
     level: string;
     maxLevel: string;
     xp: (into: number, span: number) => string;
@@ -69,6 +68,7 @@ const T: Record<
     title: 'Journey',
     home: 'Home',
     dealing: 'Loading…',
+    error: 'The Journey needs the online server. Try again shortly.',
     level: 'Level',
     maxLevel: 'Max level',
     xp: (into, span) => `${String(into)} / ${String(span)} XP to next level`,
@@ -96,6 +96,7 @@ const T: Record<
     title: 'Parcours',
     home: 'Accueil',
     dealing: 'Chargement…',
+    error: 'Le Parcours a besoin du serveur en ligne. Réessaie bientôt.',
     level: 'Niveau',
     maxLevel: 'Niveau max',
     xp: (into, span) => `${String(into)} / ${String(span)} XP vers le prochain niveau`,
@@ -172,13 +173,14 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
   const lang = useLang();
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (demoStats !== undefined) return;
     let live = true;
     fetchStats()
       .then((s) => live && setStats(s))
-      .catch(() => live && setStats(null));
+      .catch(() => live && setError(true));
     return () => {
       live = false;
     };
@@ -201,21 +203,15 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-[0.5em]">
-            <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
-            <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-              {t.title}
-            </h1>
-          </div>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
         <MetaNav current="journey" />
 
-        {progress === null ? (
+        {error ? (
+          <Panel className="p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted)">
+            {t.error}
+          </Panel>
+        ) : progress === null ? (
           <Panel className="p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted)">
             <PixelWave label={t.dealing} />
           </Panel>
@@ -234,12 +230,7 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                   {t.totalXp(progress.xp)}
                 </span>
               </div>
-              <div className="h-[0.8em] w-full overflow-hidden rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/20">
-                <div
-                  className="h-full bg-(--color-ap-violet)"
-                  style={{ width: `${String(pct)}%` }}
-                />
-              </div>
+              <ProgressBar pct={pct} />
               <p className="font-arcade-ui text-[0.78em] tabular-nums text-(--color-ap-muted)">
                 {progress.level >= MAX_LEVEL ? t.maxLevel : t.xp(progress.into, progress.span)}
               </p>

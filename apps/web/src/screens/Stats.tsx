@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
+import { AvatarChip, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import {
   fetchHistory,
   fetchStats,
   type HistoryGame,
   type Stats as StatsData,
 } from '../net/history.js';
-import { getProfile } from '../net/auth.js';
-import { playerName } from '../net/socket.js';
+import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { ShellNote } from '../components/ShellNote.js';
 
 export interface StatsProps {
   readonly onLeave: () => void;
@@ -92,7 +92,7 @@ const T: Record<
     gamesHeader: 'Your games',
     viewRecent: 'Recent',
     viewAll: 'All',
-    recentCaption: 'Your recent games, newest last',
+    recentCaption: 'Your recent games, newest first',
     thRoom: 'Room',
     thResult: 'Result',
     thScore: 'Score',
@@ -137,7 +137,7 @@ const T: Record<
     gamesHeader: 'Tes parties',
     viewRecent: 'Récentes',
     viewAll: 'Toutes',
-    recentCaption: 'Tes parties récentes, les plus récentes en dernier',
+    recentCaption: 'Tes parties récentes, les plus récentes en premier',
     thRoom: 'Salon',
     thResult: 'Résultat',
     thScore: 'Pointage',
@@ -319,9 +319,6 @@ function GameRow({ game }: { readonly game: HistoryGame }) {
   );
 }
 
-const SHELL_NOTE =
-  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
-
 /** A muted uppercase micro-label — reused across the record's panels. */
 const MICRO_LABEL =
   'font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)';
@@ -420,34 +417,24 @@ export function Stats({
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-[0.5em]">
-            <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
-            <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-              {t.title}
-            </h1>
-          </div>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
         <MetaNav current="stats" />
 
         {error ? (
-          <p className={SHELL_NOTE}>{t.error}</p>
+          <ShellNote>{t.error}</ShellNote>
         ) : stats === null ? (
-          <div className={SHELL_NOTE}>
+          <ShellNote>
             <PixelWave label={t.dealing} />
-          </div>
+          </ShellNote>
         ) : stats.games === 0 ? (
-          <div className={SHELL_NOTE}>
+          <ShellNote>
             <div className="font-arcade-display text-[1.3em] uppercase text-(--color-ap-ok)">
               {t.noGames}
             </div>
             <p className="mt-[0.5em]">{t.noGamesBody}</p>
             <p className="mt-[0.5em] text-[0.85em] text-(--color-ap-muted)">{t.practiceNote}</p>
-          </div>
+          </ShellNote>
         ) : (
           <div className="flex flex-col gap-4">
             {/* Hero fact: an ivory ruled record-book page — win rate (gold) +

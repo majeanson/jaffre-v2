@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { ProgressBar } from '../components/ProgressBar.js';
+import { ShellNote } from '../components/ShellNote.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards, type EarnedAward } from '../net/awards.js';
 import { AWARDS } from '../awards.js';
 import { levelProgress, xpFromStats } from '../progression.js';
 import { CARD_SKINS, currentCardSkin } from '../cosmetics.js';
 import { THEMES, currentTheme } from '../theme.js';
-import { getProfile } from '../net/auth.js';
-import { playerName } from '../net/socket.js';
 
 export interface CornerProps {
   readonly onLeave: () => void;
@@ -24,6 +25,7 @@ const T: Record<
     title: string;
     home: string;
     dealing: string;
+    error: string;
     level: (n: number) => string;
     winRate: string;
     wonOf: (wins: number, games: number) => string;
@@ -37,6 +39,7 @@ const T: Record<
     title: 'Your corner',
     home: 'Home',
     dealing: 'Loading…',
+    error: 'Your corner needs the online server. Try again shortly.',
     level: (n) => `Level ${String(n)}`,
     winRate: 'Win rate',
     wonOf: (wins, games) => `${String(wins)} of ${String(games)} won`,
@@ -49,6 +52,7 @@ const T: Record<
     title: 'Ton coin',
     home: 'Accueil',
     dealing: 'Chargement…',
+    error: 'Ton coin a besoin du serveur en ligne. Réessaie bientôt.',
     level: (n) => `Niveau ${String(n)}`,
     winRate: 'Taux de victoires',
     wonOf: (wins, games) => `${String(wins)} sur ${String(games)} gagnées`,
@@ -58,9 +62,6 @@ const T: Record<
     equipped: 'Équipé',
   },
 };
-
-const SHELL_NOTE =
-  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
 
 /** A muted uppercase micro-label — same idiom as Stats.tsx's section labels. */
 const MICRO_LABEL =
@@ -82,13 +83,14 @@ export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
   const [earned, setEarned] = useState<readonly EarnedAward[]>(demoAwards ?? []);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (demoStats !== undefined) return;
     let live = true;
     fetchStats()
       .then((s) => live && setStats(s))
-      .catch(() => live && setStats(null));
+      .catch(() => live && setError(true));
     fetchAwards()
       .then((a) => live && setEarned(a))
       .catch(() => live && setEarned([]));
@@ -107,24 +109,16 @@ export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-[0.5em]">
-            <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
-            <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-              {t.title}
-            </h1>
-          </div>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
         <MetaNav current="corner" />
 
-        {stats === null ? (
-          <div className={SHELL_NOTE}>
+        {error ? (
+          <ShellNote>{t.error}</ShellNote>
+        ) : stats === null ? (
+          <ShellNote>
             <PixelWave label={t.dealing} />
-          </div>
+          </ShellNote>
         ) : (
           <CornerTiles
             lang={lang}
@@ -164,12 +158,7 @@ function CornerTiles({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <a href="#journey" className={TILE_CLASS}>
         <span className={MICRO_LABEL}>{t.level(progress.level)}</span>
-        <span className="h-[0.55em] w-full overflow-hidden rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/20">
-          <span
-            className="block h-full bg-(--color-ap-violet)"
-            style={{ width: `${String(barPct)}%` }}
-          />
-        </span>
+        <ProgressBar pct={barPct} />
       </a>
 
       <a href="#stats" className={TILE_CLASS}>

@@ -83,7 +83,9 @@ function liveBadge(
   return { label: t.inPlay, dot: 'bg-(--color-ap-muted)' };
 }
 
-/** Peek each table's live phase/turn once on mount (+ when the set changes). */
+/** Peek each table's live phase/turn on mount, when the set changes, and
+ * again on window focus — so the "Your turn" pulse doesn't go stale while
+ * Home sits open in a background tab. No polling. */
 export function useTableStatuses(
   tables: readonly TableEntry[],
 ): Record<string, TableStatus | null> {
@@ -92,13 +94,18 @@ export function useTableStatuses(
   useEffect(() => {
     const list = codes === '' ? [] : codes.split(',');
     let live = true;
-    void Promise.all(list.map(async (c) => [c, await fetchTableStatus(c)] as const)).then(
-      (pairs) => {
-        if (live) setMap(Object.fromEntries(pairs));
-      },
-    );
+    const peek = () => {
+      void Promise.all(list.map(async (c) => [c, await fetchTableStatus(c)] as const)).then(
+        (pairs) => {
+          if (live) setMap(Object.fromEntries(pairs));
+        },
+      );
+    };
+    peek();
+    window.addEventListener('focus', peek);
     return () => {
       live = false;
+      window.removeEventListener('focus', peek);
     };
   }, [codes]);
   return map;

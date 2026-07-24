@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
 import { AWARDS } from '../awards.js';
 import { BONHOMME_SKINS, CARD_SKINS, bonhommeLabel } from '../cosmetics.js';
 import { THEMES } from '../theme.js';
-import { getProfile } from '../net/auth.js';
-import { playerName } from '../net/socket.js';
+import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { ProgressBar } from '../components/ProgressBar.js';
+import { ShellNote } from '../components/ShellNote.js';
 
 /** Display label of an award's cosmetic reward, across all three catalogs
  * (bonhommes carry the only localized labels — see bonhommeLabel). */
@@ -43,9 +44,6 @@ const T: Record<
   },
 };
 
-const SHELL_NOTE =
-  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
-
 /** The awards showcase — a grid of badge tiles. Earned tiles are lit with the
  * award icon; locked tiles are dimmed with their unlock requirement + a
  * progress bar (mirroring the Collection gallery's locked-tile language). */
@@ -76,24 +74,14 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-[0.5em]">
-            <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
-            <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-              {t.title}
-            </h1>
-          </div>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
         <MetaNav current="awards" />
 
         {earned === null ? (
-          <div className={SHELL_NOTE}>
+          <ShellNote>
             <PixelWave label={t.dealing} />
-          </div>
+          </ShellNote>
         ) : (
           <>
             <p className="font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-muted)">
@@ -138,12 +126,7 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
                     )}
                     {!has && req !== undefined && (
                       <>
-                        <div className="mt-[0.2em] h-[0.4em] w-full overflow-hidden rounded-full bg-(--color-ap-ink)/20">
-                          <div
-                            className="h-full bg-(--color-ap-violet)"
-                            style={{ width: `${String(pct)}%` }}
-                          />
-                        </div>
+                        <ProgressBar pct={pct} className="mt-[0.2em] w-full" />
                         <span className="font-arcade-ui text-[0.68em] text-(--color-ap-muted)">
                           {req.text} · {Math.min(req.have, req.need)}/{req.need}
                         </span>

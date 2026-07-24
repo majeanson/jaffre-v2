@@ -195,7 +195,9 @@ export function PlayMenu({
                   {t.yourTables}
                 </span>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {tables.slice(0, 4).map((tbl) => (
+                  {/* MAX standing tables (net/rooms.ts) is 6 — the same cap, so
+                      nothing here is ever silently hidden. */}
+                  {tables.slice(0, 6).map((tbl) => (
                     <TableCard
                       key={tbl.code}
                       table={tbl}

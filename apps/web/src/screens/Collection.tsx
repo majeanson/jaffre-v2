@@ -4,7 +4,6 @@ import {
   CardSkinProvider,
   CARD_SKIN_RENDERERS,
   CosmeticPicker,
-  Cta,
   Panel,
   PlayingCard,
   useLang,
@@ -32,8 +31,9 @@ import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
 import { grantedRewardIds } from '../awards.js';
 import { feedback } from '../audio/clicks.js';
-import { Toast } from '../components/Toast.js';
+import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { Toast } from '../components/Toast.js';
 
 export interface CollectionProps {
   readonly onLeave: () => void;
@@ -389,14 +389,7 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-            {t.title}
-          </h1>
-          <Cta variant="secondary" onClick={onLeave}>
-            {leaveLabel ?? t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={leaveLabel ?? t.home} onLeave={onLeave} />
 
         {/* Not in the in-game modal (leaveLabel set): navigating away via the
             strip would tear the table route down mid-game. */}

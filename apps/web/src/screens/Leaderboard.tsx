@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { AvatarChip, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import {
   fetchLeaderboard,
   type Leaderboard as LeaderboardData,
   type LeaderboardRow,
 } from '../net/history.js';
+import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { ShellNote } from '../components/ShellNote.js';
 
 export interface LeaderboardProps {
   readonly onLeave: () => void;
@@ -45,9 +47,6 @@ const T: Record<
   },
 };
 
-const SHELL_NOTE =
-  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.2em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
-
 /** The global skill ladder — top-rated players, with the caller's own row
  * pinned below when they rank outside the visible top. */
 export function Leaderboard({ onLeave, demo }: LeaderboardProps) {
@@ -72,25 +71,18 @@ export function Leaderboard({ onLeave, demo }: LeaderboardProps) {
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
-        <header className="flex items-center justify-between gap-4">
-          <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
-            {t.title}
-          </h1>
-          <Cta variant="secondary" onClick={onLeave}>
-            {t.home}
-          </Cta>
-        </header>
+        <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
         <MetaNav current="leaderboard" />
 
         {error ? (
-          <p className={SHELL_NOTE}>{t.error}</p>
+          <ShellNote>{t.error}</ShellNote>
         ) : board === null ? (
-          <div className={SHELL_NOTE}>
+          <ShellNote>
             <PixelWave label={t.loading} />
-          </div>
+          </ShellNote>
         ) : board.top.length === 0 ? (
-          <p className={SHELL_NOTE}>{t.empty}</p>
+          <ShellNote>{t.empty}</ShellNote>
         ) : (
           <ol className="flex flex-col gap-2">
             {board.top.map((row, i) => (
