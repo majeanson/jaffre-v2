@@ -51,8 +51,8 @@ export function xpFromStats(s: Stats): number {
  * DOWN only (frozen-constants rule: a retune must never level anyone down or
  * re-lock a track cosmetic — lower thresholds can only promote). */
 const XP_THRESHOLDS: readonly number[] = [
-  0, 25, 50, 100, 150, 250, 350, 450, 550, 650, 800, 950, 1100, 1300, 1500, 1700, 1900, 2100,
-  2350, 2600,
+  0, 25, 50, 100, 150, 250, 350, 450, 550, 650, 800, 950, 1100, 1300, 1500, 1700, 1900, 2100, 2350,
+  2600,
 ];
 
 export function xpToReach(level: number): number {

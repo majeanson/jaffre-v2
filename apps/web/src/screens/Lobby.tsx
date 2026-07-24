@@ -73,7 +73,8 @@ const T: Record<
     turnTimer: 'Minuterie de tour',
     turnTimerHint: '60 secondes par tour, ensuite un bot joue le tour.',
     publicTable: 'Afficher dans le salon public',
-    publicHint: 'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',
+    publicHint:
+      'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',
     reclaimHint:
       "Un de ces sièges est à toi ? Connecte-toi sur l'écran d'accueil pour le reprendre.",
     houseRules: 'Règles maison',
@@ -176,9 +177,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
                 role="switch"
                 checked={hailMary}
                 disabled={!seated}
-                onChange={(e) =>
-                  send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })
-                }
+                onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })}
                 className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
               />
               <span className="flex min-w-0 flex-col gap-1">
@@ -235,9 +234,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
                 <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
                   {t.publicTable}
                 </span>
-                <span className="text-xs leading-snug text-(--color-ap-muted)">
-                  {t.publicHint}
-                </span>
+                <span className="text-xs leading-snug text-(--color-ap-muted)">{t.publicHint}</span>
               </span>
             </label>
           </div>

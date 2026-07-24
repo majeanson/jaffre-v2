@@ -260,7 +260,11 @@ function LivePreview({
           the equipped figure choice silently drops to the default here. */}
       <div {...skinAttrs}>
         <CardSkinProvider
-          value={{ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {}, bonhommes: bonhomme }}
+          value={{
+            id: cardSkin,
+            renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {},
+            bonhommes: bonhomme,
+          }}
         >
           <div className="flex items-end justify-center">
             {SAMPLE.map((card, i) => (
