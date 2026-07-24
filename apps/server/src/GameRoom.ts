@@ -62,8 +62,9 @@ export const BOT_SWAP_MS = 45_000;
 export const PREGAME_VACATE_MS = 60_000;
 /** Optional house rule (meta.rules.turnTimer): how long a CONNECTED human may
  * sit idle on their own bid/play before a bot covers that one turn for them.
- * Off by default — see meta.rules. Tests can override per-room via
- * `meta.turnTimerMs`, same pattern as BOT_SWAP_MS/botSwapMs. */
+ * ON by default (see turnTimerRuleOn) — unchecking it in the lobby is the
+ * deliberate opt-out. Tests can override per-room via `meta.turnTimerMs`,
+ * same pattern as BOT_SWAP_MS/botSwapMs. */
 export const TURN_TIMER_MS = 60_000;
 const CHAT_CAP = 100;
 /** Sliding-window chat rate limit: at most this many messages per uid within
@@ -1659,10 +1660,7 @@ export class GameRoom implements DurableObject {
     // On turn-timer tables the roster is the only carrier of the fresh turn's
     // turnTimerAt deadline — without a roster per action the countdown nudge
     // would only ever surface after an unrelated join/close/ready refresh.
-    if (
-      this.meta.rules?.turnTimer === true &&
-      (game.phase === 'bidding' || game.phase === 'playing')
-    ) {
+    if (this.turnTimerRuleOn() && (game.phase === 'bidding' || game.phase === 'playing')) {
       this.broadcastRoster({});
     }
     if (game.phase === 'game_over') {
@@ -1944,8 +1942,16 @@ export class GameRoom implements DurableObject {
    * voluntary auto-play or the (separate) disconnect clock — those already
    * have their own bot-covering machinery.
    */
+  /** The turn-timer house rule ships ON: it applies unless a host explicitly
+   * unchecked it in the lobby (stored `turnTimer: false`). A persisted
+   * meta.rules without the key (pre-flip room, or set_rules from an old
+   * client) gets the default too — rooms are short-lived, so no migration. */
+  private turnTimerRuleOn(): boolean {
+    return this.meta.rules?.turnTimer ?? true;
+  }
+
   private turnTimerDeadline(): number {
-    if (this.meta.rules?.turnTimer !== true) return Number.POSITIVE_INFINITY;
+    if (!this.turnTimerRuleOn()) return Number.POSITIVE_INFINITY;
     const game = this.game;
     if (game === null || (game.phase !== 'bidding' && game.phase !== 'playing')) {
       return Number.POSITIVE_INFINITY;
@@ -2100,7 +2106,12 @@ export class GameRoom implements DurableObject {
       seriesWins: this.meta.seriesWins,
       seriesGames: this.meta.seriesGames,
       ...(this.meta.seriesTricks !== undefined ? { seriesTricks: this.meta.seriesTricks } : {}),
-      rules: this.meta.rules ?? { hailMary12: true },
+      // Both defaults made explicit so every client sees the same effective
+      // rules the room will play by (turnTimer ships ON — turnTimerRuleOn).
+      rules: {
+        hailMary12: this.meta.rules?.hailMary12 ?? true,
+        turnTimer: this.turnTimerRuleOn(),
+      },
       public: this.meta.public ?? false,
       ...(hostSeat !== null ? { hostSeat } : {}),
       ...(this.meta.lastRatings !== undefined ? { ratings: this.meta.lastRatings } : {}),

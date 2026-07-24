@@ -256,11 +256,16 @@ async function endQuiet(room: string, ...clients: Client[]): Promise<void> {
   }
 }
 
-/** join → sit seat 0 → add 3 bots → start; returns the initial seat-0 view. */
+/** join → sit seat 0 → opt OUT of the (default-on) `turnTimer` house rule →
+ * add 3 bots → start; returns the initial seat-0 view. The opt-out keeps a
+ * connected human's idle turn deadline-free, which most tests here rely on
+ * (alarm === null at a quiescent human turn). */
 async function setupStartedGame(client: Client): Promise<SeatView> {
   client.send({ t: 'join' });
   await client.next('welcome');
   client.send({ t: 'sit', seat: 0 });
+  await client.next('roster');
+  client.send({ t: 'set_rules', hailMary12: true, turnTimer: false });
   await client.next('roster');
   for (const seat of [1, 2, 3] as const) {
     client.send({ t: 'add_bot', seat });
@@ -271,9 +276,11 @@ async function setupStartedGame(client: Client): Promise<SeatView> {
   return view.view;
 }
 
-/** join → sit seat 0 → opt into the `turnTimer` house rule (must be set
- * pre-game, like hailMary12) → add 3 bots → start; returns the initial
- * seat-0 view. Mirrors setupStartedGame. */
+/** join → sit seat 0 → set the `turnTimer` house rule explicitly ON (it's the
+ * default anyway, but the tests that use this helper are ABOUT the timer, so
+ * they don't lean on the default; must be set pre-game, like hailMary12) →
+ * add 3 bots → start; returns the initial seat-0 view. Mirrors
+ * setupStartedGame, which opts OUT instead. */
 async function setupStartedGameWithTurnTimer(client: Client): Promise<SeatView> {
   client.send({ t: 'join' });
   await client.next('welcome');
@@ -1245,7 +1252,7 @@ describe('GameRoom', () => {
     async () => {
       const room = 'room-turntimer-off';
       const client = await Client.connect(room, 'alice', 'Alice');
-      await setupStartedGame(client); // rule ships off by default — never toggled here
+      await setupStartedGame(client); // helper opts out of the (default-on) rule
       const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
 
       // Quiescent at the human's turn implies NO alarm is armed for it — with
