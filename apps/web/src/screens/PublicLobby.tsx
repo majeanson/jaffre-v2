@@ -22,6 +22,7 @@ const T: Record<
     join: string;
     watch: string;
     watchHint: string;
+    full: string;
     seats: (n: number, cap: number) => string;
     playing: (n: number, cap: number) => string;
   }
@@ -32,10 +33,11 @@ const T: Record<
     loading: 'Finding tables…',
     empty: 'No open tables right now. Quick Play starts one for you.',
     quickPlay: 'Quick Play',
-    live: 'Live',
+    live: 'Live list',
     join: 'Join',
     watch: 'Watch',
     watchHint: 'Game in progress — join as a spectator',
+    full: 'Full',
     seats: (n, cap) => `${String(n)}/${String(cap)} seated`,
     playing: (n, cap) => `${String(n)}/${String(cap)} playing`,
   },
@@ -45,10 +47,11 @@ const T: Record<
     loading: 'Recherche de tables…',
     empty: 'Aucune table ouverte. Partie rapide en crée une pour toi.',
     quickPlay: 'Partie rapide',
-    live: 'En direct',
+    live: 'Liste en direct',
     join: 'Rejoindre',
     watch: 'Regarder',
     watchHint: 'Partie en cours — regarde en spectateur',
+    full: 'Complète',
     seats: (n, cap) => `${String(n)}/${String(cap)} assis`,
     playing: (n, cap) => `${String(n)}/${String(cap)} en jeu`,
   },
@@ -83,14 +86,6 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           </Cta>
         </header>
 
-        <Cta
-          onClick={() => {
-            void quickPlay().then(onJoin);
-          }}
-        >
-          {t.quickPlay}
-        </Cta>
-
         {/* Live badge — the list updates itself; there's nothing to refresh. */}
         <p className="flex items-center gap-2 font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
           <span
@@ -100,6 +95,8 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           {t.live}
         </p>
 
+        {/* Empty-state copy points at Quick Play, so it must render ABOVE the
+            button it references — the pointer precedes the CTA. */}
         {rooms === null ? (
           <div className={SHELL_NOTE}>
             <PixelWave label={t.loading} />
@@ -110,6 +107,7 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           <ul className="flex flex-col gap-2">
             {rooms.map((r) => {
               const playing = r.phase === 'playing';
+              const full = !playing && r.players >= r.capacity;
               return (
                 <li
                   key={r.code}
@@ -139,16 +137,25 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
                   {/* aria-label must START with the visible text (WCAG 2.5.3
                       Label in Name) — the hint rides after it, never replaces it. */}
                   <Cta
+                    disabled={full}
                     onClick={() => onJoin(r.code)}
                     aria-label={playing ? `${t.watch} — ${t.watchHint}` : undefined}
                   >
-                    {playing ? t.watch : t.join}
+                    {full ? t.full : playing ? t.watch : t.join}
                   </Cta>
                 </li>
               );
             })}
           </ul>
         )}
+
+        <Cta
+          onClick={() => {
+            void quickPlay().then(onJoin);
+          }}
+        >
+          {t.quickPlay}
+        </Cta>
       </div>
     </main>
   );

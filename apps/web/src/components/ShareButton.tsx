@@ -43,7 +43,10 @@ export function ShareButton({ code, labeled = false }: ShareButtonProps) {
       .writeText(url)
       .then(() => setCopied(true))
       .catch(() => {
-        // Clipboard unavailable (permissions / insecure context) — silently drop.
+        // Clipboard unavailable (permissions / insecure context) — fall back
+        // to our own share sheet so the link is still reachable (selectable
+        // text, no silent no-op).
+        setSheetOpen(true);
       });
   };
 

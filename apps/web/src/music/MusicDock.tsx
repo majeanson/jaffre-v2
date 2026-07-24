@@ -19,7 +19,7 @@ const T: Record<
   en: {
     nowPlaying: 'Music playing at this table',
     listen: 'Listen',
-    stop: 'Stop',
+    stop: 'Stop listening',
     emptyQueue: 'Queue is empty — add another song to keep it going.',
     minimize: 'Hide the video (music keeps playing)',
     expand: 'Show the video',
@@ -27,7 +27,7 @@ const T: Record<
   fr: {
     nowPlaying: 'Musique en cours à cette table',
     listen: 'Écouter',
-    stop: 'Couper',
+    stop: 'Couper la musique',
     emptyQueue: 'File vide — ajoute une autre chanson pour continuer.',
     minimize: 'Cacher la vidéo (la musique continue)',
     expand: 'Montrer la vidéo',

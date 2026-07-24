@@ -2,6 +2,7 @@ import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
+import { localizeNotice } from './noticeCodes.js';
 import { rememberTable } from './rooms.js';
 import { reportError } from './telemetry.js';
 
@@ -172,7 +173,7 @@ function handle(msg: ServerMessage): void {
     case 'pong':
       break;
     case 'error':
-      store.setNotice(msg.message);
+      store.setNotice(localizeNotice(msg.code, msg.message));
       if (!SILENT_ERROR_CODES.has(msg.code))
         reportError(new Error(`${msg.code}: ${msg.message}`), undefined, 'ws-error');
       break;

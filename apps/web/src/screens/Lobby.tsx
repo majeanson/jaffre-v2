@@ -8,6 +8,7 @@ import { send } from '../net/socket.js';
 import { consumeMakePublic } from '../net/rooms.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { ShareButton } from '../components/ShareButton.js';
+import { ConnectionBanner } from '../table/ConnectionBanner.js';
 import { useGameStore } from '../state/gameStore.js';
 
 /** A secondary arcade button as a class string — for HelpButton, which takes a
@@ -25,10 +26,9 @@ const T: Record<
   {
     room: (code: string) => string;
     share: string;
-    reconnecting: string;
     connecting: string;
     start: string;
-    waiting: string;
+    waitingHelper: (n: number) => string;
     back: string;
     howToPlay: string;
     hailMary: string;
@@ -39,15 +39,17 @@ const T: Record<
     publicHint: string;
     reclaimHint: string;
     houseRules: string;
+    publicPill: string;
+    privatePill: string;
   }
 > = {
   en: {
     room: (code) => `Room ${code}`,
     share: 'Share this code with your table.',
-    reconnecting: 'Reconnecting…',
     connecting: 'Connecting…',
     start: 'Start the game',
-    waiting: 'Waiting for players — add bots to fill the table',
+    waitingHelper: (n) =>
+      `${String(n)} seat${n === 1 ? '' : 's'} left — add bots or share the code`,
     back: '← Back home',
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
@@ -58,17 +60,19 @@ const T: Record<
     publicHint: 'Anyone can join from the public lobby. Untick for invite-only.',
     reclaimHint: 'One of these seats yours? Log in on the home screen to reclaim it.',
     houseRules: 'House rules',
+    publicPill: 'Public',
+    privatePill: 'Private',
   },
   fr: {
     room: (code) => `Salon ${code}`,
     share: 'Partage ce code avec ta table.',
-    reconnecting: 'Reconnexion…',
     connecting: 'Connexion…',
     start: 'Commencer la partie',
-    waiting: 'En attente de joueurs — ajoute des bots pour remplir la table',
+    waitingHelper: (n) =>
+      `${String(n)} siège${n === 1 ? '' : 's'} à remplir — ajoute des bots ou partage le code`,
     back: "← Retour à l'accueil",
     howToPlay: 'Comment jouer',
-    hailMary: '12 sans atout — tout ou rien',
+    hailMary: 'Hail-Mary 12 sans atout — tout ou rien',
     hailMaryHint: 'Réussis 12 sans atout pour gagner la partie — rate et tu la perds.',
     turnTimer: 'Minuterie de tour',
     turnTimerHint: '60 secondes par tour, ensuite un bot joue le tour.',
@@ -78,6 +82,8 @@ const T: Record<
     reclaimHint:
       "Un de ces sièges est à toi ? Connecte-toi sur l'écran d'accueil pour le reprendre.",
     houseRules: 'Règles maison',
+    publicPill: 'Publique',
+    privatePill: 'Privée',
   },
 };
 
@@ -86,6 +92,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   const t = T[useLang()];
   const { roster, viewer, connection } = useGameStore();
   const full = roster !== null && roster.seats.every((s) => s !== null);
+  const emptySeats = roster === null ? 4 : roster.seats.filter((s) => s === null).length;
   const seated = typeof viewer === 'number';
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
   // default matches; unchecking is the deliberate act).
@@ -115,6 +122,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   return (
     <main className="table-felt grid min-h-full place-items-center p-6">
       <NoticeToast />
+      <ConnectionBanner />
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">
@@ -122,13 +130,15 @@ export function Lobby({ code, onLeave }: LobbyProps) {
               {t.room(code)}
             </h1>
             <ShareButton code={code} />
+            <span
+              data-testid="visibility-pill"
+              className="rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2.5 py-0.5 font-arcade-ui text-[0.65em] uppercase tracking-wide text-(--color-ap-muted)"
+            >
+              {isPublic ? t.publicPill : t.privatePill}
+            </span>
           </div>
           <p className="mt-1 text-sm text-(--color-ap-muted)">
-            {connection === 'open'
-              ? t.share
-              : connection === 'reconnecting'
-                ? t.reconnecting
-                : t.connecting}
+            {connection === 'connecting' ? t.connecting : t.share}
           </p>
         </header>
 
@@ -241,8 +251,13 @@ export function Lobby({ code, onLeave }: LobbyProps) {
         </details>
 
         <Cta onClick={() => send({ t: 'start' })} disabled={!full} className="w-full">
-          {full ? t.start : t.waiting}
+          {t.start}
         </Cta>
+        {!full && (
+          <p className="-mt-4 text-center font-arcade-ui text-xs text-(--color-ap-muted)">
+            {t.waitingHelper(emptySeats)}
+          </p>
+        )}
 
         {/* One comms surface for the whole room life: chat (voice in its send
             row) and the shared music queue — same component the table uses. */}

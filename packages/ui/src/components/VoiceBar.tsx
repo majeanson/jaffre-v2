@@ -9,6 +9,7 @@ const T: Record<
     joining: string;
     join: string;
     unavailable: string;
+    tryAgain: string;
     live: string;
     you: string;
     unmute: string;
@@ -22,6 +23,7 @@ const T: Record<
     joining: 'Joining…',
     join: 'Join voice',
     unavailable: 'Voice unavailable — the game continues without it.',
+    tryAgain: 'Try again',
     live: 'Live',
     you: 'You',
     unmute: 'Unmute',
@@ -34,6 +36,7 @@ const T: Record<
     joining: 'Connexion…',
     join: 'Joindre le vocal',
     unavailable: 'Vocal indisponible — la partie continue quand même.',
+    tryAgain: 'Réessaie',
     live: 'En direct',
     you: 'Toi',
     unmute: 'Réactiver le micro',
@@ -107,7 +110,7 @@ export function VoiceBar({
         data-testid="voice-join"
         aria-label={joining ? t.joining : t.join}
         title={joining ? t.joining : t.join}
-        className={`${ARCADE.iconBtnBase} bg-(--color-ap-panel) ${
+        className={`${ARCADE.iconBtnLabeled} bg-(--color-ap-panel) ${
           joining
             ? 'text-(--color-ap-muted)'
             : 'cursor-pointer text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
@@ -117,7 +120,7 @@ export function VoiceBar({
         <svg
           aria-hidden
           viewBox="0 0 24 24"
-          className="size-[1.2em]"
+          className="size-[1.2em] shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.8"
@@ -127,14 +130,26 @@ export function VoiceBar({
           <rect x="9" y="3" width="6" height="11" rx="3" />
           <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
         </svg>
+        <span className="whitespace-nowrap text-[11px]">{joining ? t.joining : t.join}</span>
       </button>
     );
   }
 
   if (status === 'error') {
     return (
-      <p data-testid="voice-error" className="max-w-52 text-[11px] text-(--color-ap-danger-text)">
+      <p
+        data-testid="voice-error"
+        className="flex max-w-52 flex-wrap items-center gap-2 text-[11px] text-(--color-ap-danger-text)"
+      >
         {errorMessage ?? t.unavailable}
+        <button
+          type="button"
+          onClick={onJoin}
+          data-testid="voice-retry"
+          className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-danger) px-2 py-0.5 text-[11px] text-(--color-ap-danger-text) hover:bg-(--color-ap-panel-hover)"
+        >
+          {t.tryAgain}
+        </button>
       </p>
     );
   }

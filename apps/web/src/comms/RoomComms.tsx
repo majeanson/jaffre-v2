@@ -45,6 +45,14 @@ export function RoomComms({ me, variant, defaultOpen = false }: RoomCommsProps) 
   const unread = open ? 0 : chat.length - seenRef.current;
   const nowPlaying = musicState?.current != null;
 
+  // Same seenRef idea for the Music tab: while it's the active tab, the
+  // queue's current length counts as seen. A song added while you're parked
+  // on Chat leaves the count stale, so the tab gets its own unread dot.
+  const queueLen = musicState?.queue.length ?? 0;
+  const musicSeenRef = useRef(queueLen);
+  if (tab === 'music') musicSeenRef.current = queueLen;
+  const musicUnread = tab !== 'music' && queueLen > musicSeenRef.current;
+
   // Popover: Escape closes and returns focus to the toggle (same contract the
   // collapsible ChatPanel used to provide).
   useEffect(() => {
@@ -65,7 +73,7 @@ export function RoomComms({ me, variant, defaultOpen = false }: RoomCommsProps) 
       data-testid={`comms-tab-${which}`}
       aria-pressed={tab === which}
       onClick={() => setTab(which)}
-      className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1 font-arcade-display text-[0.65em] uppercase tracking-wide shadow-(--shadow-ap-sm) transition-colors ${
+      className={`relative cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1 font-arcade-display text-[0.65em] uppercase tracking-wide shadow-(--shadow-ap-sm) transition-colors ${
         tab === which
           ? 'bg-(--color-ap-violet) text-(--color-ap-ink)'
           : 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
@@ -76,6 +84,13 @@ export function RoomComms({ me, variant, defaultOpen = false }: RoomCommsProps) 
         <span aria-hidden className="ml-1 inline-block animate-pulse">
           ♪
         </span>
+      )}
+      {which === 'music' && musicUnread && (
+        <span
+          aria-hidden
+          data-testid="music-tab-unread"
+          className="absolute -top-1 -right-1 size-2 rounded-full bg-(--color-ap-gold)"
+        />
       )}
     </button>
   );

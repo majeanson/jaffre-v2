@@ -35,6 +35,7 @@ const T: Record<
     justWatch: string;
     leave: string;
     whoAtTable: string;
+    awayHint: string;
   }
 > = {
   en: {
@@ -54,6 +55,7 @@ const T: Record<
     justWatch: 'Just watch',
     leave: 'Leave',
     whoAtTable: "Who's at the table",
+    awayHint: 'Away seats free up or pass to a bot shortly.',
   },
   fr: {
     wantsYou: (host) => `${host} t'attend`,
@@ -72,6 +74,7 @@ const T: Record<
     justWatch: 'Juste regarder',
     leave: 'Quitter',
     whoAtTable: 'Qui est à la table',
+    awayHint: 'Les sièges absents se libèrent ou passent à un bot sous peu.',
   },
 };
 
@@ -108,6 +111,9 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   const yourSeat = takeableSeats[0];
   const me = playerName();
   const myColor = getProfile().color ?? undefined;
+  // A seated human who's gone quiet (disconnected, not yet swapped to a bot)
+  // reads as a dead end without this — they'll free up or auto-bot shortly.
+  const hasAwaySeat = roster?.seats.some((s) => s !== null && !s.isBot && !s.connected) ?? false;
 
   // One seat cell of the diagram: chip + name + a text label (team, and "Bot"
   // / "Away" tags) so nothing rides on colour alone. The seat you'd take glows
@@ -230,6 +236,12 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
             <span style={{ color: 'var(--color-team-b)' }}>
               {TEAM_LABELS[lang][1]} {scores[1]}
             </span>
+          </p>
+        )}
+
+        {hasAwaySeat && (
+          <p className="text-center font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+            {t.awayHint}
           </p>
         )}
 

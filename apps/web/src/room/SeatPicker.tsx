@@ -37,6 +37,7 @@ const T: Record<
   {
     seatLabel: (n: number) => string;
     you: string;
+    host: string;
     cycleBot: string;
     moveHere: string;
     sitHere: string;
@@ -50,6 +51,7 @@ const T: Record<
   en: {
     seatLabel: (n) => `Seat ${String(n)}`,
     you: 'You',
+    host: 'Host',
     cycleBot: 'Tap to change bot difficulty',
     moveHere: 'Move here',
     sitHere: 'Sit here',
@@ -62,6 +64,7 @@ const T: Record<
   fr: {
     seatLabel: (n) => `Siège ${String(n)}`,
     you: 'Toi',
+    host: 'Hôte',
     cycleBot: 'Touche pour changer la difficulté du bot',
     moveHere: 'Déplace-toi ici',
     sitHere: 'Assis-toi ici',
@@ -136,6 +139,14 @@ export function SeatPicker({
                         : (info.paint ?? null)
                   }
                 />
+                {!info.isBot && hostSeat === seat && (
+                  <span
+                    data-testid={`host-tag-${seat}`}
+                    className="rounded-(--radius-ap-control) border-2 border-(--color-ap-gold) px-2.5 py-1 font-arcade-display text-[0.7em] uppercase tracking-wide text-(--color-ap-gold) shadow-(--shadow-ap-sm)"
+                  >
+                    {t.host}
+                  </span>
+                )}
                 {info.isBot && !started && (
                   <button
                     type="button"

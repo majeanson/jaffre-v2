@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
 import { send } from '../net/socket.js';
+import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 
 const T: Record<
@@ -13,7 +14,8 @@ const T: Record<
     add: string;
     nowPlaying: string;
     upNext: string;
-    addedBy: (name: string) => string;
+    addedByLabel: string;
+    adding: string;
     skip: (votes: number, needed: number) => string;
     skipVoted: string;
     remove: string;
@@ -30,7 +32,8 @@ const T: Record<
     add: 'Add',
     nowPlaying: 'Now playing',
     upNext: 'Up next',
-    addedBy: (name) => `Added by ${name}`,
+    addedByLabel: 'Added by',
+    adding: 'Adding…',
     skip: (votes, needed) => `Skip (${String(votes)}/${String(needed)})`,
     skipVoted: 'Skip vote cast',
     remove: 'Remove from queue',
@@ -46,7 +49,9 @@ const T: Record<
     add: 'Ajouter',
     nowPlaying: 'En lecture',
     upNext: 'À suivre',
-    addedBy: (name) => `Ajoutée par ${name}`,
+    // "Ajoutée" agrees with "cette chanson" (feminine, implicit subject).
+    addedByLabel: 'Ajoutée par',
+    adding: 'Ajout…',
     skip: (votes, needed) => `Passer (${String(votes)}/${String(needed)})`,
     skipVoted: 'Vote pour passer envoyé',
     remove: 'Retirer de la file',
@@ -85,14 +90,30 @@ export interface MusicQueuePanelProps {
 export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
   const t = T[useLang()];
   const { state, listening, volume, setListening, setVolume } = useMusicStore();
+  const notice = useGameStore((s) => s.notice);
   const [url, setUrl] = useState('');
+  // The just-submitted link, shown as a ghost "Adding…" row until the next
+  // music state (success) or an error notice (rejection) arrives.
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    if (mounted.current) setPendingUrl(null);
+    mounted.current = true;
+  }, [state]);
+
+  useEffect(() => {
+    if (notice !== null) setPendingUrl(null);
+  }, [notice]);
 
   const submit = () => {
     const trimmed = url.trim();
     if (trimmed === '') return;
     // Optimistic clear — a rejection (bad link, full queue, rate limit) comes
-    // back as the standard error toast via the socket's notice path.
+    // back as the standard error toast via the socket's notice path, which
+    // also clears the pending ghost row above.
     send({ t: 'music_add', url: trimmed });
+    setPendingUrl(trimmed);
     setUrl('');
   };
 
@@ -120,7 +141,7 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
         </button>
       </div>
 
-      {current === null && queue.length === 0 && (
+      {current === null && queue.length === 0 && pendingUrl === null && (
         <p className="px-1 text-xs text-(--color-ap-muted)">{t.empty}</p>
       )}
 
@@ -135,7 +156,7 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
           <span className="flex min-w-0 flex-1 flex-col text-xs leading-tight">
             <span className="truncate font-bold text-(--color-ap-text)">{current.title}</span>
             <span className="truncate text-(--color-ap-muted)">
-              {current.author} · {t.addedBy('')}
+              {current.author} · {t.addedByLabel}{' '}
               <AdderName name={current.addedBy} seat={current.addedBySeat} />
             </span>
           </span>
@@ -154,12 +175,22 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
         </div>
       )}
 
-      {queue.length > 0 && (
+      {(queue.length > 0 || pendingUrl !== null) && (
         <div className="flex flex-col gap-1 px-1">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-(--color-ap-muted)">
             {t.upNext}
           </span>
           <ul data-testid="music-queue" className="flex max-h-32 flex-col gap-1 overflow-y-auto">
+            {pendingUrl !== null && (
+              <li
+                data-testid="music-pending"
+                className="flex items-center gap-2 text-xs leading-tight text-(--color-ap-muted) opacity-70"
+              >
+                <span className="min-w-0 flex-1 truncate italic">
+                  {t.adding} {pendingUrl}
+                </span>
+              </li>
+            )}
             {queue.map((track) => (
               <li key={track.id} className="flex items-center gap-2 text-xs leading-tight">
                 {track.thumb !== '' && (

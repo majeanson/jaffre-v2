@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
 import { useGameStore } from '../state/gameStore.js';
+import { TOAST_DWELL_MS } from './toastTiming.js';
 
 const T: Record<Lang, { dismiss: string }> = {
   en: { dismiss: 'Dismiss' },
   fr: { dismiss: 'Fermer' },
 };
 
-const AUTO_DISMISS_MS = 5000;
+const AUTO_DISMISS_MS = TOAST_DWELL_MS;
 
 // Module-level claim: NoticeToast is mounted app-wide (App.tsx, above every
 // screen) AND still locally in Table.tsx/Lobby.tsx (not this task's files to
@@ -28,9 +29,11 @@ function claimOwnership(): boolean {
  * A dismissible toast for transient net-layer notices — mainly server
  * rejections (e.g. "Seat 2 is taken") that would otherwise vanish silently —
  * and, since kind: 'award', award-earned celebrations fired from anywhere in
- * the app. Sits above the hand, below the z-50+ sheets. The server's message
- * is shown verbatim for error notices — it's English-only and not ours to
- * translate; award notices are pre-localized by the caller.
+ * the app. Sits above the hand, below the z-50+ sheets. Common server error
+ * `code`s are localized before they ever reach the store (see
+ * net/noticeCodes.ts, applied in net/socket.ts); an unmapped code shows the
+ * server's raw English message as-is. Award notices are pre-localized by the
+ * caller.
  */
 export function NoticeToast() {
   const t = T[useLang()];
