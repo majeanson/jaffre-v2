@@ -3,7 +3,7 @@ import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
-import { Comms } from '../table/Comms.js';
+import { RoomComms } from '../comms/RoomComms.js';
 
 export interface VisitorProps {
   readonly code: string;
@@ -102,10 +102,15 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
   // visitor in their name, falling back to the raw room code.
   const host = roster?.seats.find((s): s is RosterSeat => s !== null && !s.isBot);
 
-  // A bot seat is your way in; the first is highlighted as "your" seat and
-  // previews you — your name + chosen colour, the way the felt will show it.
-  const botSeats = SEATS.filter((seat) => roster?.seats[seat]?.isBot === true);
-  const yourSeat = botSeats[0];
+  // A bot seat — or, between games, a seat a player left empty — is your way
+  // in; the first is highlighted as "your" seat and previews you — your name +
+  // chosen colour, the way the felt will show it. (Mid-game a leaver's seat
+  // becomes a bot, so empty seats here only ever mean between games.)
+  const takeableSeats = SEATS.filter((seat) => {
+    const s = roster?.seats[seat];
+    return s === null || s?.isBot === true;
+  });
+  const yourSeat = takeableSeats[0];
   const me = playerName();
   const myColor = getProfile().color ?? undefined;
 
@@ -152,7 +157,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
           upward from the bottom-right toggle. Extra bottom padding on main
           reserves the corner so the fixed toggle never sits on the Leave button. */}
       <div className="fixed right-4 bottom-4 z-40">
-        <Comms />
+        <RoomComms variant="popover" me={null} />
       </div>
       {/* my-auto centres the card when it fits and lets it scroll (instead of
           clipping) once the roster + actions grow taller than the viewport. */}
@@ -225,11 +230,11 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
         )}
 
         <div className="flex flex-col gap-3">
-          {botSeats.map((seat) => {
-            const info = roster?.seats[seat];
-            if (info === undefined || info === null) return null;
+          {takeableSeats.map((seat) => {
+            const info = roster?.seats[seat] ?? null;
             // The first open seat is the hero "Sit down"; any others read as
-            // "take over <bot>'s seat" so the primary action stays singular.
+            // "take over <bot>'s seat" (or "Open seat" for an empty one) so
+            // the primary action stays singular.
             const primary = seat === yourSeat;
             return (
               <Cta
@@ -240,7 +245,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
                 onClick={() => onSit(seat)}
                 className={primary ? 'w-full py-[0.9em] text-[1.3em]' : 'w-full'}
               >
-                {primary ? t.sitDown : t.takeOver(info.name)}
+                {primary ? t.sitDown : info === null ? t.openSeat : t.takeOver(info.name)}
               </Cta>
             );
           })}

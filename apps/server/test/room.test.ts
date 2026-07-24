@@ -1,10 +1,16 @@
-import { SELF, env, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { SELF, env, fetchMock, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
-import { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS, TURN_TIMER_MS } from '../src/GameRoom.js';
+import {
+  BOT_SWAP_MS,
+  PREGAME_VACATE_MS,
+  TRICK_HOLD_MS,
+  TURN_TIMER_MS,
+  extractVideoId,
+} from '../src/GameRoom.js';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
@@ -823,6 +829,74 @@ describe('GameRoom', () => {
   );
 
   it(
+    'between games, a joiner may claim a bot seat or an empty seat',
+    { timeout: 120_000 },
+    async () => {
+      const room = 'room-between-sit';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      let view = await setupStartedGame(client);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      view = await playToGameOver(client, stub, 4321, view);
+      expect(view.phase).toBe('game_over');
+
+      // The lobby lists a public between-games table as 'waiting' — so a
+      // newcomer landing here must actually be able to sit. Taking over a bot
+      // seat used to bounce with ALREADY_STARTED.
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      await bob.next('welcome');
+      bob.send({ t: 'sit', seat: 1 });
+      const bobSeated = await bob.next('welcome'); // fresh welcome adopts the seat
+      expect(bobSeated.viewer).toBe(1);
+
+      // Bob leaves for good — at game_over the seat frees to null (no bot
+      // swap-in) — and the EMPTY seat must be claimable too.
+      bob.send({ t: 'leave' });
+      await pollUntil(async () => {
+        const r = client.latestRoster();
+        return r !== null && r.seats[1] === null ? true : undefined;
+      }, "bob's freed seat");
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+      carol.send({ t: 'sit', seat: 1 });
+      const carolSeated = await carol.next('welcome');
+      expect(carolSeated.viewer).toBe(1);
+
+      await endQuiet(room, client, bob, carol);
+    },
+  );
+
+  it('a manual action takes control back from auto-play', { timeout: 30_000 }, async () => {
+    const room = 'room-autoplay-manual';
+    const client = await Client.connect(room, 'alice', 'Alice');
+    await setupStartedGame(client);
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+    client.send({ t: 'set_autoplay', on: true });
+    await pollUntil(async () => {
+      const r = client.latestRoster();
+      return r?.seats[0]?.autoPlay === true ? true : undefined;
+    }, 'the auto-play roster flag');
+
+    // ANY manual bid/play — even one the engine rejects as out-of-turn or
+    // wrong-phase — is Alice taking control back: onAction clears the flag
+    // before applying, so the alarm loop stops covering her either way.
+    client.send({ t: 'action', action: { type: 'play_card', card: { suit: 'red', value: 0 } } });
+    await pollUntil(async () => {
+      const r = client.latestRoster();
+      return r !== null && r.seats[0]?.autoPlay === undefined ? true : undefined;
+    }, 'the auto-play flag to clear');
+    const stored = await runInDurableObject(stub, async (_instance, state) => {
+      const meta = await state.storage.get<{ autoPlay?: Record<string, boolean> }>('meta');
+      return meta?.autoPlay ?? {};
+    });
+    expect(stored['alice']).toBeUndefined();
+
+    await endQuiet(room, client);
+  });
+
+  it(
     'holds round_over until a connected human sends ready — alarms never auto-advance it',
     { timeout: 60_000 },
     async () => {
@@ -1100,6 +1174,37 @@ describe('GameRoom', () => {
       }
 
       await endQuiet(room, client);
+    },
+  );
+
+  it(
+    'exposes turnTimerAt (never botSwapAt) for a connected human on turn with the rule ON',
+    { timeout: 30_000 },
+    async () => {
+      const room = 'room-turntimer-roster';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGameWithTurnTimer(alice);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      await driveToHumanTurnWithTimer(stub, alice);
+
+      // A fresh spectator's welcome snapshots the roster as it stands now:
+      // Alice is CONNECTED and on turn — her per-turn clock must ride the
+      // dedicated turnTimerAt field, never the disconnect botSwapAt (the
+      // client labels that one "Away").
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      const w = await carol.next('welcome');
+      const seat0 = w.roster.seats[0];
+      expect(seat0?.connected).toBe(true);
+      expect(seat0?.botSwapAt).toBeUndefined();
+      expect(seat0?.turnTimerAt).toBeTypeOf('number');
+      const remaining = (seat0?.turnTimerAt ?? 0) - Date.now();
+      expect(remaining).toBeGreaterThan(0);
+      expect(remaining).toBeLessThanOrEqual(TURN_TIMER_MS + 1000);
+      // The stamp rides along for client clock-skew correction.
+      expect(w.roster.now).toBeTypeOf('number');
+
+      await endQuiet(room, alice, carol);
     },
   );
 
@@ -1483,6 +1588,39 @@ describe('GameRoom', () => {
     },
   );
 
+  it(
+    'auto-play readies the round recap and bids the next round unattended',
+    { timeout: 30_000 },
+    async () => {
+      const room = 'room-autoplay-ready';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(client); // seat 0 human + 3 bots
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Auto-play ON from the first bid; alice never sends another message.
+      // The alarm chain must carry the table through the whole round, ready
+      // the recap FOR her (autoPlay counts at round_over), and open the next
+      // round's bidding — all without a single 'ready' or action from her.
+      client.send({ t: 'set_autoplay', on: true });
+      let sawRoundOver = false;
+      const deadline = Date.now() + 25_000;
+      for (;;) {
+        const snap = await snapshot(stub);
+        if (snap.phase === 'round_over') sawRoundOver = true;
+        if (sawRoundOver && (snap.phase === 'bidding' || snap.phase === 'playing')) break;
+        if (snap.phase === 'game_over') throw new Error('game ended before a round boundary');
+        if (Date.now() > deadline) {
+          throw new Error(`stalled at ${String(snap.phase)} — auto-play did not ready the round`);
+        }
+        const ran = await runDurableObjectAlarm(stub);
+        if (!ran) await sleep(25);
+      }
+      expect(sawRoundOver).toBe(true);
+
+      await endQuiet(room, client);
+    },
+  );
+
   /** Skip past buffered seat welcomes (sit/onJoin each send one) to the
    * demotion welcome a leave produces. */
   async function nextSpectatorWelcome(client: Client) {
@@ -1712,4 +1850,290 @@ describe('GameRoom', () => {
       await endQuiet(room, alice, bob, carol);
     },
   );
+});
+
+/* ── Shared music queue ──────────────────────────────────────────────────── */
+
+/** The exact oEmbed path the DO requests for a video id (query included), so
+ * each test registers precise one-shot interceptors — no persist shadowing. */
+const oembedPath = (videoId: string) =>
+  `/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`;
+
+function mockOEmbedOk(videoId: string, title = 'Test Song', times = 1): void {
+  fetchMock
+    .get('https://www.youtube.com')
+    .intercept({ path: oembedPath(videoId) })
+    .reply(200, {
+      title,
+      author_name: 'Test Artist',
+      thumbnail_url: 'https://i.ytimg.com/vi/x/hqdefault.jpg',
+    })
+    .times(times);
+}
+
+function mockOEmbedMissing(videoId: string): void {
+  fetchMock
+    .get('https://www.youtube.com')
+    .intercept({ path: oembedPath(videoId) })
+    .reply(404, 'Not Found');
+}
+
+/** Authoritative music state straight from DO storage. */
+interface StoredMusicSnap {
+  readonly queue: readonly { readonly id: string; readonly videoId: string }[];
+  readonly current: {
+    readonly id: string;
+    readonly videoId: string;
+    readonly startedAt: number;
+  } | null;
+  readonly nextId: number;
+}
+
+async function musicSnapshot(room: string): Promise<StoredMusicSnap | undefined> {
+  const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+  return runInDurableObject(stub, (_instance, state) =>
+    state.storage.get<StoredMusicSnap>('music'),
+  );
+}
+
+/** join a fresh client and swallow the welcome. */
+async function joined(room: string, u: string, n: string): Promise<Client> {
+  const client = await Client.connect(room, u, n);
+  client.send({ t: 'join' });
+  await client.next('welcome');
+  return client;
+}
+
+const VID_A = 'dQw4w9WgXcQ';
+const VID_B = 'abcdefghijk';
+const VID_C = 'AAAAAAAAAAA';
+
+describe('music queue', () => {
+  beforeAll(() => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+  });
+  afterAll(() => {
+    // singleWorker shares one runtime across files — let later suites reach
+    // the network again rather than dying on this block's lockdown.
+    fetchMock.enableNetConnect();
+  });
+
+  it('extracts video ids from the URL shapes people actually paste', () => {
+    expect(extractVideoId(`https://www.youtube.com/watch?v=${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId(`https://youtube.com/watch?v=${VID_A}&t=42s`)).toBe(VID_A);
+    expect(extractVideoId(`https://youtu.be/${VID_A}?si=xyz`)).toBe(VID_A);
+    expect(extractVideoId(`https://m.youtube.com/watch?v=${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId(`https://music.youtube.com/watch?v=${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId(`https://www.youtube.com/shorts/${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId(`https://www.youtube.com/embed/${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId(`https://www.youtube.com/live/${VID_A}`)).toBe(VID_A);
+    expect(extractVideoId('https://www.youtube.com/watch?v=short')).toBeNull();
+    expect(extractVideoId('https://vimeo.com/12345')).toBeNull();
+    expect(extractVideoId('not a url')).toBeNull();
+    expect(extractVideoId(`javascript:alert(1)//${VID_A}`)).toBeNull();
+    expect(extractVideoId(`https://evilyoutube.com/watch?v=${VID_A}`)).toBeNull();
+  });
+
+  it('adds a track (playing immediately), queues the next, and marks mine per-recipient', async () => {
+    const room = 'room-music-add';
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob');
+
+    mockOEmbedOk(VID_A, 'First Song');
+    const before = Date.now();
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    const aliceState = (await alice.next('music')).state;
+    const bobState = (await bob.next('music')).state;
+    expect(aliceState.current).toMatchObject({
+      videoId: VID_A,
+      title: 'First Song',
+      author: 'Test Artist',
+      addedBy: 'Alice',
+      mine: true,
+    });
+    expect(aliceState.current?.startedAt).toBeGreaterThanOrEqual(before);
+    expect(aliceState.current?.startedAt).toBeLessThanOrEqual(Date.now());
+    expect(bobState.current?.mine).toBeUndefined();
+    expect(bobState.current?.videoId).toBe(VID_A);
+
+    // Bob queues a second track — playing track untouched, entry mine-to-Bob only.
+    mockOEmbedOk(VID_B, 'Second Song');
+    bob.send({ t: 'music_add', url: `https://www.youtube.com/watch?v=${VID_B}` });
+    const aliceState2 = (await alice.next('music')).state;
+    const bobState2 = (await bob.next('music')).state;
+    expect(aliceState2.current?.videoId).toBe(VID_A);
+    expect(aliceState2.queue).toHaveLength(1);
+    expect(aliceState2.queue[0]?.mine).toBeUndefined();
+    expect(bobState2.queue[0]).toMatchObject({ videoId: VID_B, addedBy: 'Bob', mine: true });
+
+    // A fresh joiner's welcome carries the same music state.
+    const carol = await Client.connect(room, 'carol', 'Carol');
+    carol.send({ t: 'join' });
+    const welcome = await carol.next('welcome');
+    expect(welcome.music?.current?.videoId).toBe(VID_A);
+    expect(welcome.music?.queue).toHaveLength(1);
+
+    // And it survived to storage (hibernation-safe).
+    const stored = await musicSnapshot(room);
+    expect(stored?.current?.videoId).toBe(VID_A);
+    expect(stored?.queue).toHaveLength(1);
+
+    await endQuiet(room, alice, bob, carol);
+  });
+
+  it('rejects bad URLs and unavailable videos without touching the queue', async () => {
+    const room = 'room-music-bad';
+    const alice = await joined(room, 'alice', 'Alice');
+
+    alice.send({ t: 'music_add', url: 'https://vimeo.com/notyoutube' });
+    expect((await alice.next('error')).code).toBe('MUSIC_BAD_URL');
+
+    mockOEmbedMissing(VID_C);
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_C}` });
+    expect((await alice.next('error')).code).toBe('MUSIC_UNAVAILABLE');
+
+    expect(await musicSnapshot(room)).toBeUndefined();
+    await endQuiet(room, alice);
+  });
+
+  it('rate-limits adds to 5 per window', async () => {
+    const room = 'room-music-rate';
+    const alice = await joined(room, 'alice', 'Alice');
+    mockOEmbedOk(VID_A, 'Spam', 5);
+    for (let i = 0; i < 6; i++) {
+      alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    }
+    let musics = 0;
+    let errorCode: string | null = null;
+    for (let i = 0; i < 6; i++) {
+      const msg = await alice.nextAny(['music', 'error']);
+      if (msg.t === 'music') musics++;
+      else errorCode = msg.code;
+    }
+    expect(musics).toBe(5);
+    expect(errorCode).toBe('MUSIC_RATE');
+    await endQuiet(room, alice);
+  });
+
+  it('removes your own queued entry; someone else’s and the playing one stay', async () => {
+    const room = 'room-music-remove';
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob');
+    mockOEmbedOk(VID_A);
+    mockOEmbedOk(VID_B);
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    await alice.next('music');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_B}` });
+    const withQueue = (await alice.next('music')).state;
+    const queuedId = withQueue.queue[0]?.id;
+    expect(queuedId).toBeDefined();
+    if (queuedId === undefined) throw new Error('no queued id');
+
+    // Bob can't remove Alice's entry — silent no-op.
+    bob.send({ t: 'music_remove', id: queuedId });
+    // Alice removing the PLAYING entry's id is also a no-op (only queue entries).
+    const playingId = withQueue.current?.id;
+    if (playingId !== undefined) alice.send({ t: 'music_remove', id: playingId });
+    // Alice removes her queued entry for real.
+    alice.send({ t: 'music_remove', id: queuedId });
+    const after = (await alice.next('music')).state;
+    expect(after.queue).toHaveLength(0);
+    expect(after.current?.videoId).toBe(VID_A);
+    const stored = await musicSnapshot(room);
+    expect(stored?.queue).toHaveLength(0);
+    expect(stored?.current?.videoId).toBe(VID_A);
+    await endQuiet(room, alice, bob);
+  });
+
+  it('advances on majority skip vote of seated humans; spectators cannot vote', async () => {
+    const room = 'room-music-skip';
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob');
+    const carol = await joined(room, 'carol', 'Carol');
+    const dave = await joined(room, 'dave', 'Dave'); // stays a spectator
+    alice.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(alice, 0);
+    bob.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(bob, 1);
+    carol.send({ t: 'sit', seat: 2 });
+    await welcomeViewer(carol, 2);
+
+    mockOEmbedOk(VID_A, 'Skippable');
+    mockOEmbedOk(VID_B, 'Next Up');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    await alice.next('music');
+    await bob.next('music');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_B}` });
+    await alice.next('music');
+    await bob.next('music');
+
+    // Spectators may listen and add, but not steer the skip.
+    dave.send({ t: 'music_skip_vote' });
+    expect((await dave.next('error')).code).toBe('NOT_SEATED');
+
+    // 3 seated humans → majority is 2. First vote: count moves, no advance.
+    alice.send({ t: 'music_skip_vote' });
+    const oneVote = (await alice.next('music')).state;
+    expect(oneVote.current?.videoId).toBe(VID_A);
+    expect(oneVote).toMatchObject({ skipVotes: 1, skipNeeded: 2, youVotedSkip: true });
+    const bobSees = (await bob.next('music')).state;
+    expect(bobSees.youVotedSkip).toBeUndefined();
+
+    // Second vote: threshold met → next track plays, votes reset.
+    bob.send({ t: 'music_skip_vote' });
+    const advanced = (await bob.next('music')).state;
+    expect(advanced.current?.videoId).toBe(VID_B);
+    expect(advanced.queue).toHaveLength(0);
+    expect(advanced.skipVotes).toBe(0);
+    expect(advanced.youVotedSkip).toBeUndefined();
+
+    await endQuiet(room, alice, bob, carol, dave);
+  });
+
+  it('music_ended advances exactly once, ignoring duplicates and stale ids', async () => {
+    const room = 'room-music-ended';
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob');
+    mockOEmbedOk(VID_A, 'Now');
+    mockOEmbedOk(VID_B, 'Later');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    const first = (await alice.next('music')).state;
+    await bob.next('music');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_B}` });
+    await alice.next('music');
+    await bob.next('music');
+    const playingId = first.current?.id;
+    if (playingId === undefined) throw new Error('nothing playing');
+
+    // A stale/unknown id does nothing.
+    alice.send({ t: 'music_ended', id: 'm999' });
+    // Both listeners report the real end — the second report finds a new
+    // current and no-ops, so exactly one advance happens.
+    alice.send({ t: 'music_ended', id: playingId });
+    bob.send({ t: 'music_ended', id: playingId });
+    const after = (await alice.next('music')).state;
+    expect(after.current?.videoId).toBe(VID_B);
+    expect(after.queue).toHaveLength(0);
+    const stored = await pollUntil(async () => {
+      const s = await musicSnapshot(room);
+      return s?.current?.videoId === VID_B && s.queue.length === 0 ? s : undefined;
+    }, 'exactly one ended-advance to settle');
+    expect(stored.current?.videoId).toBe(VID_B);
+    await endQuiet(room, alice, bob);
+  });
+
+  it("the adder's own error report advances immediately (broken link unsticks solo)", async () => {
+    const room = 'room-music-error';
+    const alice = await joined(room, 'alice', 'Alice');
+    mockOEmbedOk(VID_A, 'Broken');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    const state = (await alice.next('music')).state;
+    const id = state.current?.id;
+    if (id === undefined) throw new Error('nothing playing');
+    alice.send({ t: 'music_error', id });
+    const after = (await alice.next('music')).state;
+    expect(after.current).toBeNull();
+    await endQuiet(room, alice);
+  });
 });

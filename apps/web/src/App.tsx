@@ -31,6 +31,8 @@ import { Stats } from './screens/Stats.js';
 import { Table } from './screens/Table.js';
 import { Visitor } from './screens/Visitor.js';
 import { useGameStore } from './state/gameStore.js';
+import { useMusicStore } from './state/musicStore.js';
+import { MusicDock } from './music/MusicDock.js';
 
 type Route =
   | { kind: 'home' }
@@ -169,10 +171,12 @@ function AppRoutes() {
       setWatching(false);
       return () => {
         // Tear the voice mesh down at the room boundary — it persists across the
-        // lobby→table remount, so leaving from either must clean it up.
+        // lobby→table remount, so leaving from either must clean it up. Music
+        // follows the same rule: the dock outlives the screens, not the room.
         leaveVoice();
         disconnect();
         useGameStore.getState().reset();
+        useMusicStore.getState().reset();
       };
     }
     return undefined;
@@ -228,41 +232,48 @@ function AppRoutes() {
     // A spectator arriving at a room already underway (viewer is not a seated
     // number) lands on the Visitor screen first — take over a bot's seat or
     // keep watching — unless they've already chosen to watch.
-    if (started && typeof viewer !== 'number' && !watching) {
-      return (
+    // MusicDock wraps EVERY room screen from one mount point: the player
+    // iframe never remounts across Visitor→Lobby→Table, so the room's music
+    // plays on without a gap through seat picking and game start.
+    const screen =
+      started && typeof viewer !== 'number' && !watching ? (
         <Visitor
           code={route.code}
           onSit={(seat) => send({ t: 'sit', seat })}
           onWatch={() => setWatching(true)}
           onLeave={() => (location.hash = '')}
         />
+      ) : started ? (
+        <Table
+          online
+          dev
+          roomCode={route.code}
+          onAction={(action) => send({ t: 'action', action })}
+          onLeave={() => (location.hash = '')}
+          onLeaveTable={() => {
+            // Recap "Leave": give the seat up for good (the top-bar leave stays a
+            // soft hop — seat kept, resume from "Your tables").
+            send({ t: 'leave' });
+            forgetTable(route.code);
+            location.hash = '';
+          }}
+          onRematch={() => send({ t: 'start' })}
+          // One click: re-pair the teams AND deal the next game. The DO handles
+          // messages in order, so start sees the swapped seating.
+          onSwapSeats={() => {
+            send({ t: 'swap_seats' });
+            send({ t: 'start' });
+          }}
+          onToggleAutoPlay={(on) => send({ t: 'set_autoplay', on })}
+        />
+      ) : (
+        <Lobby code={route.code} onLeave={() => (location.hash = '')} />
       );
-    }
-    return started ? (
-      <Table
-        online
-        dev
-        roomCode={route.code}
-        onAction={(action) => send({ t: 'action', action })}
-        onLeave={() => (location.hash = '')}
-        onLeaveTable={() => {
-          // Recap "Leave": give the seat up for good (the top-bar leave stays a
-          // soft hop — seat kept, resume from "Your tables").
-          send({ t: 'leave' });
-          forgetTable(route.code);
-          location.hash = '';
-        }}
-        onRematch={() => send({ t: 'start' })}
-        // One click: re-pair the teams AND deal the next game. The DO handles
-        // messages in order, so start sees the swapped seating.
-        onSwapSeats={() => {
-          send({ t: 'swap_seats' });
-          send({ t: 'start' });
-        }}
-        onToggleAutoPlay={(on) => send({ t: 'set_autoplay', on })}
-      />
-    ) : (
-      <Lobby code={route.code} onLeave={() => (location.hash = '')} />
+    return (
+      <>
+        <MusicDock />
+        {screen}
+      </>
     );
   }
   return (

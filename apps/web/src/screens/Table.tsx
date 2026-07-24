@@ -5,9 +5,9 @@ import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
+import { RoomComms } from '../comms/RoomComms.js';
 import {
   BidOverlay,
-  Comms,
   ConnectionBanner,
   GameLogPanel,
   HandSortButton,
@@ -26,7 +26,6 @@ import {
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
-import { VoiceControls } from '../voice/VoiceControls.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
 
 export interface TableProps {
@@ -102,6 +101,7 @@ export function Table({
         view={view}
         contract={derived.contractDisplay}
         rounds={derived.scoreboardRounds}
+        names={roster.seats.map((s) => s?.name ?? '—')}
         trickCounts={derived.trickCounts}
         specials={derived.teamSpecials}
         action={derived.headerAction}
@@ -131,14 +131,14 @@ export function Table({
         roundIndex={view.roundIndex}
         coachTip={derived.coach?.tip ?? null}
         bidOverlay={
-          view.phase === 'bidding' &&
-          myTurn && (
+          view.phase === 'bidding' && (
             <BidOverlay
               options={derived.bidOptions}
               order={derived.auctionOrder}
               onAction={onAction}
               recommended={derived.coach?.bid ?? null}
               hailMary12={view.rules?.hailMary12 ?? false}
+              waiting={!myTurn}
             />
           )
         }
@@ -159,10 +159,7 @@ export function Table({
         defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
         comms={
           online && (
-            <Comms
-              defaultChatOpen={initialUi?.chatOpen ?? false}
-              voice={me !== null ? <VoiceControls me={me} /> : undefined}
-            />
+            <RoomComms variant="popover" me={me} defaultOpen={initialUi?.chatOpen ?? false} />
           )
         }
         autoPlay={
@@ -185,7 +182,15 @@ export function Table({
           cards={handSort.displayCards}
           legal={derived.legal}
           ledSuit={derived.ledSuit}
-          active={myTurn && view.phase === 'playing'}
+          // Hold-inactive: while a finished trick is held, taps queue your
+          // lead instead of playing it under the hold. Auto-play-inactive:
+          // the server is playing your turns (see useTableDerived).
+          active={
+            myTurn &&
+            view.phase === 'playing' &&
+            derived.heldBanner === null &&
+            !derived.autoPiloted
+          }
           onPlay={(card) => onAction({ type: 'play_card', card })}
           onReorder={handSort.setOrder}
           recommended={view.phase === 'playing' ? (derived.coach?.card ?? null) : null}

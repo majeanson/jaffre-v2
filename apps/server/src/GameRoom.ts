@@ -21,6 +21,8 @@ import type {
   ChatEntry,
   ClientAction,
   ClientMessage,
+  MusicState,
+  MusicTrack,
   Roster,
   RosterSeat,
   ServerMessage,
@@ -43,7 +45,11 @@ interface RatingWriteInfo {
   readonly delta: number;
 }
 
-const BOT_DELAY_MS = 700;
+const BOT_DELAY_MS = 300;
+/** How long an auto-play seat lingers on the round recap before the server
+ * readies it. Long enough to glimpse the scores; short enough that a table
+ * of auto-players keeps rolling. */
+const AUTOPLAY_READY_MS = 1500;
 /** After a completed trick the client holds the 4 cards on the table
  * (~2.2s hold + sweep) — bots must not play into that window. */
 export const TRICK_HOLD_MS = 2600;
@@ -64,6 +70,17 @@ const CHAT_CAP = 100;
  * CHAT_RATE_WINDOW_MS. */
 const CHAT_RATE_LIMIT = 5;
 const CHAT_RATE_WINDOW_MS = 10_000;
+/** Shared music queue: whole-room cap and one user's not-yet-played cap. */
+const MUSIC_QUEUE_CAP = 50;
+const MUSIC_USER_PENDING_CAP = 10;
+/** Sliding-window add rate limit, same shape as chat's. */
+const MUSIC_RATE_LIMIT = 5;
+const MUSIC_RATE_WINDOW_MS = 30_000;
+const OEMBED_TIMEOUT_MS = 5_000;
+/** No sane track outlasts this — a `current` older than 4h is a room that
+ * slept mid-track; advance past it before welcoming a joiner so their player
+ * doesn't chew through a wall of instant ENDED reports. */
+const MUSIC_STALE_MS = 4 * 3600_000;
 /** "Someone joined your public table" push to an absent host: at most one per
  * sitter uid per room within this window. */
 const JOIN_PUSH_THROTTLE_MS = 5 * 60_000;
@@ -87,7 +104,8 @@ interface Meta {
   /** userId → Date.now() of when their last socket closed mid-game. */
   disconnectedSince?: Record<string, number>;
   /** userId → true while that seated human has voluntary auto-play on. The
-   * server plays their turns at 'hard'; only turning it off returns control.
+   * server plays their turns at 'hard' until control returns: the toggle
+   * flips off, or they simply bid/play manually (onAction clears it).
    * Persists across disconnect/reconnect; cleared on leave and game_over. */
   autoPlay?: Record<string, boolean>;
   /** Optional per-room override of BOT_SWAP_MS (used by tests). */
@@ -152,6 +170,85 @@ interface LogEntry {
   ts?: number;
 }
 
+/** A queued/playing track as persisted. `addedById` is a userId kept for
+ * ownership checks only — it is NEVER sent on the wire (musicFor strips it). */
+interface StoredTrack {
+  id: string;
+  videoId: string;
+  title: string;
+  author: string;
+  thumb: string;
+  addedById: string;
+  addedByName: string;
+  addedBySeat?: number;
+}
+
+interface StoredMusic {
+  queue: StoredTrack[];
+  current: (StoredTrack & { startedAt: number }) | null;
+  /** Monotonic entry-id counter — persisted so ids never collide across wakes. */
+  nextId: number;
+}
+
+function emptyMusic(): StoredMusic {
+  return { queue: [], current: null, nextId: 1 };
+}
+
+const YT_ID = /^[A-Za-z0-9_-]{11}$/;
+
+/** Pull the 11-char video id out of a pasted YouTube URL. Accepts
+ * youtu.be/<id>, (www.|m.|music.)youtube.com/watch?v=, /shorts/<id>,
+ * /embed/<id>, /live/<id>. Exported for tests. */
+export function extractVideoId(raw: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  const host = u.hostname.toLowerCase();
+  if (host === 'youtu.be' || host === 'www.youtu.be') {
+    const id = u.pathname.split('/')[1] ?? '';
+    return YT_ID.test(id) ? id : null;
+  }
+  if (!/^(www\.|m\.|music\.)?youtube\.com$/.test(host)) return null;
+  const v = u.searchParams.get('v');
+  if (v !== null && YT_ID.test(v)) return v;
+  const m = /^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})(?:[/?]|$)/.exec(u.pathname);
+  return m?.[1] ?? null;
+}
+
+/** oEmbed lookup — no API key needed. Null means the video is private,
+ * removed, embed-blocked, or YouTube didn't answer in time; callers treat all
+ * of those as "unavailable". Always queries the canonical watch URL so
+ * music.youtube/shorts links normalize. */
+async function fetchOEmbed(
+  videoId: string,
+): Promise<{ title: string; author: string; thumb: string } | null> {
+  const target = `https://www.youtube.com/watch?v=${videoId}`;
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(target)}&format=json`,
+      { signal: AbortSignal.timeout(OEMBED_TIMEOUT_MS) },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      title?: string;
+      author_name?: string;
+      thumbnail_url?: string;
+    };
+    if (typeof j.title !== 'string') return null;
+    return {
+      title: j.title.slice(0, 120),
+      author: (j.author_name ?? '').slice(0, 80),
+      thumb: typeof j.thumbnail_url === 'string' ? j.thumbnail_url : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 function emptyMeta(): Meta {
   return {
     seats: [null, null, null, null],
@@ -176,6 +273,7 @@ export class GameRoom implements DurableObject {
   private game: GameState | null = null;
   private seq = 0;
   private chat: ChatEntry[] = [];
+  private music: StoredMusic = emptyMusic();
   private loaded = false;
   /** uid → recent chat send timestamps, for the sliding-window rate limit.
    * Deliberately IN-MEMORY, not persisted: hibernation resetting a spammer's
@@ -188,6 +286,13 @@ export class GameRoom implements DurableObject {
    * just risks one extra ping right after a wake, far cheaper than a storage
    * write on every seat change. */
   private readonly joinPushTimestamps = new Map<string, number>();
+  /** uids of seated humans who voted to skip the CURRENT track. IN-MEMORY like
+   * chatTimestamps: a hibernation wake resetting votes mid-track is cosmetic. */
+  private readonly skipVoters = new Set<string>();
+  /** uids that reported the current track unplayable — same tradeoff. */
+  private readonly errorReporters = new Set<string>();
+  /** uid → recent music_add timestamps, same sliding window as chat's. */
+  private readonly musicAddTimestamps = new Map<string, number[]>();
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -197,11 +302,12 @@ export class GameRoom implements DurableObject {
   /** Re-hydrate the in-memory cache from storage. Never trusted across wakes. */
   private async load(): Promise<void> {
     if (this.loaded) return;
-    const [meta, game, seq, chat] = await Promise.all([
+    const [meta, game, seq, chat, music] = await Promise.all([
       this.ctx.storage.get<Meta>('meta'),
       this.ctx.storage.get<string>('game'),
       this.ctx.storage.get<number>('seq'),
       this.ctx.storage.get<ChatEntry[]>('chat'),
+      this.ctx.storage.get<StoredMusic>('music'),
     ]);
     // Spread over emptyMeta() so legacy persisted metas (pre-seriesWins) still
     // satisfy the current shape without a migration.
@@ -209,6 +315,7 @@ export class GameRoom implements DurableObject {
     this.game = game !== undefined ? deserialize(game) : null;
     this.seq = seq ?? 0;
     this.chat = chat ?? [];
+    this.music = music ?? emptyMusic();
     this.loaded = true;
   }
 
@@ -313,6 +420,16 @@ export class GameRoom implements DurableObject {
         return this.onAction(ws, att, msg.action);
       case 'chat':
         return this.onChat(ws, att, msg.text);
+      case 'music_add':
+        return this.onMusicAdd(ws, att, msg.url);
+      case 'music_remove':
+        return this.onMusicRemove(att, msg.id);
+      case 'music_skip_vote':
+        return this.onMusicSkipVote(ws, att);
+      case 'music_ended':
+        return this.onMusicEnded(att, msg.id);
+      case 'music_error':
+        return this.onMusicError(att, msg.id);
       case 'rtc':
         this.onRtc(ws, att, msg.to, msg.payload);
         return;
@@ -347,7 +464,7 @@ export class GameRoom implements DurableObject {
         await this.ctx.storage.put('meta', this.meta);
         // Exclude the socket closing now: if it was the last human, this leaves
         // the table paused instead of arming a doomed bot-swap alarm.
-        await this.scheduleNextWake(false, ws);
+        await this.scheduleNextWake(ws);
         // If they left during their own turn, the table is now waiting on
         // someone who can't see it — ping their installed app.
         this.notifyTurnIfAbsent(ws);
@@ -374,6 +491,13 @@ export class GameRoom implements DurableObject {
         );
         await this.ctx.storage.setAlarm(soonest);
       }
+    }
+    // A departing seated human can LOWER the skip threshold below an
+    // already-cast vote count — resolve that now, and refresh everyone's
+    // skipNeeded either way.
+    if (this.music.current !== null) {
+      await this.maybeAdvanceBySkip(ws);
+      if (this.music.current !== null) this.broadcastMusic(ws);
     }
     // Recompute roster with this socket excluded so its seat shows
     // connected=false (plus botSwapAt when the clock was just started).
@@ -408,9 +532,10 @@ export class GameRoom implements DurableObject {
     // is re-armed. The game resumes when someone reconnects (onJoin re-wakes it).
     if (!this.hasConnectedHuman()) return;
     if (game.phase === 'round_over') {
-      // Rounds wait for readiness; the alarm only auto-readies humans whose
-      // disconnect deadline has passed so an absent player can't stall the
-      // table forever.
+      // Rounds wait for readiness; the alarm auto-readies humans whose
+      // disconnect deadline has passed (an absent player can't stall the
+      // table forever) and humans on voluntary auto-play (they asked the
+      // server to keep the game moving — that includes the round recap).
       const ready = this.readyState();
       let changed = false;
       for (const s of SEATS) {
@@ -418,7 +543,7 @@ export class GameRoom implements DurableObject {
         if (
           !ready[s] &&
           typeof owner === 'string' &&
-          this.disconnectDeadline(owner) <= Date.now()
+          (this.autoPlayOn(owner) || this.disconnectDeadline(owner) <= Date.now())
         ) {
           ready[s] = true;
           changed = true;
@@ -462,7 +587,20 @@ export class GameRoom implements DurableObject {
         ? 'hard'
         : 'normal';
     const action = chooseAction(viewFor(game, turnSeat), rng, difficulty);
-    if (action !== null) await this.applyEngineAction(action);
+    if (action === null) {
+      // Should be unreachable in bidding/playing. chooseAction is
+      // deterministic for a given (state, seq), so re-arming would only spin
+      // the alarm on the same null — log loudly instead; the next
+      // join/message re-kicks the table via scheduleNextWake.
+      console.error('[alarm] bot policy returned no action', {
+        seat: turnSeat,
+        phase: game.phase,
+        seq: this.seq,
+        difficulty,
+      });
+      return;
+    }
+    await this.applyEngineAction(action);
     // A bot's move can be the one that ends the game (game_over) or starts one
     // being watched — alarm() isn't followed by webSocketMessage's syncLobby,
     // so without this a bot-finished public game would never deregister.
@@ -522,6 +660,15 @@ export class GameRoom implements DurableObject {
       metaDirty = true;
     }
     if (metaDirty) await this.ctx.storage.put('meta', this.meta);
+    // A room that slept mid-track wakes with an ancient `current` — advance
+    // past it before welcoming, so the joiner's player doesn't have to grind
+    // through a backlog of instant ENDED reports.
+    while (
+      this.music.current !== null &&
+      Date.now() - this.music.current.startedAt > MUSIC_STALE_MS
+    ) {
+      await this.advanceTrack();
+    }
     this.sendWelcome(ws, att);
     this.broadcastRoster({ skip: ws });
     // A human is present again — resume a table that paused when the room
@@ -538,6 +685,7 @@ export class GameRoom implements DurableObject {
       seq: this.seq,
       roster: this.roster(),
       chatTail: this.chat,
+      music: this.musicFor(att),
     });
   }
 
@@ -571,13 +719,18 @@ export class GameRoom implements DurableObject {
       this.meta.started &&
       this.game !== null &&
       this.game.phase !== 'game_over';
+    // Between games (game_over, before a rematch) the table re-opens with
+    // pre-game seating semantics: a leaver's empty seat or a bot seat may be
+    // (re)claimed — this is what makes the lobby's between-games 'waiting'
+    // listing (and Quick Play claiming it) actually joinable.
+    const betweenGames = this.meta.started && this.game !== null && this.game.phase === 'game_over';
     // The sitter's current seat, if any — a seated player who moves onto an
     // occupied seat swaps with its owner; a spectator has none to swap back.
     const oldSeat = this.seatOf(att.userId);
 
-    // Once the game is live, the ONLY allowed seat change is a mid-game bot
-    // takeover. Everything else is fixed.
-    if (this.meta.started && !midGameTakeover) {
+    // While the game is LIVE, the ONLY allowed seat change is a mid-game bot
+    // takeover. Everything else is fixed until game_over.
+    if (this.meta.started && !midGameTakeover && !betweenGames) {
       this.send(
         ws,
         occupant !== null
@@ -613,6 +766,12 @@ export class GameRoom implements DurableObject {
     }
     this.meta.seats[seat] = att.userId;
     if (oldSeat !== null && displaced !== null) this.meta.seats[oldSeat] = displaced;
+    // A between-games claim inherits a seat whose recap rating line belonged
+    // to its previous owner — drop that line so the newcomer's chip doesn't
+    // wear someone else's "+12".
+    if (betweenGames && oldSeat === null && this.meta.lastRatings !== undefined) {
+      this.meta.lastRatings = this.meta.lastRatings.filter((r) => r.seat !== seat);
+    }
     this.meta.names[att.userId] = att.name;
     if (this.meta.disconnectedSince?.[att.userId] !== undefined) {
       this.meta.disconnectedSince = Object.fromEntries(
@@ -1122,6 +1281,17 @@ export class GameRoom implements DurableObject {
       await this.onReady(ws, att);
       return;
     }
+    // A manual bid/play is the player taking control back — flip auto-play
+    // off first so the alarm loop can't race their own moves. (The stock
+    // client goes quiet while auto-piloted, so this only fires for stale or
+    // modified clients — but it makes the auto-play contract true serverside.)
+    if (this.autoPlayOn(att.userId)) {
+      this.meta.autoPlay = Object.fromEntries(
+        Object.entries(this.meta.autoPlay ?? {}).filter(([id]) => id !== att.userId),
+      );
+      await this.ctx.storage.put('meta', this.meta);
+      this.broadcastRoster({});
+    }
     // Stamp the seat from the authenticated attachment — never from the wire.
     const action: Action =
       client.type === 'place_bid'
@@ -1209,6 +1379,192 @@ export class GameRoom implements DurableObject {
     }
   }
 
+  /* ── Shared music queue ────────────────────────────────────────────── */
+
+  private async onMusicAdd(ws: WebSocket, att: Attachment, url: string): Promise<void> {
+    if (!att.joined) {
+      this.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
+      return;
+    }
+    // Spectators may add — they listen too. Sliding-window rate limit, same
+    // in-memory tradeoff as chatTimestamps.
+    const now = Date.now();
+    const recent = (this.musicAddTimestamps.get(att.userId) ?? []).filter(
+      (t) => now - t < MUSIC_RATE_WINDOW_MS,
+    );
+    if (recent.length >= MUSIC_RATE_LIMIT) {
+      this.musicAddTimestamps.set(att.userId, recent);
+      this.send(ws, {
+        t: 'error',
+        code: 'MUSIC_RATE',
+        message: 'Easy — a few songs per moment.',
+      });
+      return;
+    }
+    // Count the ATTEMPT, not the success — a burst of bad or unavailable
+    // links must not get unlimited oEmbed fetches out of us.
+    recent.push(now);
+    this.musicAddTimestamps.set(att.userId, recent);
+    // Caps before the oEmbed fetch — no point burning a request on a full queue.
+    const pending = this.music.queue.filter((q) => q.addedById === att.userId).length;
+    if (this.music.queue.length >= MUSIC_QUEUE_CAP || pending >= MUSIC_USER_PENDING_CAP) {
+      this.send(ws, {
+        t: 'error',
+        code: 'MUSIC_QUEUE_FULL',
+        message: 'The queue is full — let it play down a bit.',
+      });
+      return;
+    }
+    const videoId = extractVideoId(url);
+    if (videoId === null) {
+      this.send(ws, {
+        t: 'error',
+        code: 'MUSIC_BAD_URL',
+        message: "That doesn't look like a YouTube link.",
+      });
+      return;
+    }
+    const meta = await fetchOEmbed(videoId);
+    if (meta === null) {
+      this.send(ws, {
+        t: 'error',
+        code: 'MUSIC_UNAVAILABLE',
+        message: 'That video is private or unavailable.',
+      });
+      return;
+    }
+    const seat = this.seatOf(att.userId);
+    const track: StoredTrack = {
+      id: `m${String(this.music.nextId++)}`,
+      videoId,
+      title: meta.title,
+      author: meta.author,
+      thumb: meta.thumb,
+      addedById: att.userId,
+      addedByName: att.name,
+      ...(seat !== null ? { addedBySeat: seat } : {}),
+    };
+    if (this.music.current === null) {
+      this.music.current = { ...track, startedAt: Date.now() };
+    } else {
+      this.music.queue.push(track);
+    }
+    await this.ctx.storage.put('music', this.music);
+    this.broadcastMusic();
+  }
+
+  /** Remove one of your own queued entries. Misses (already playing, already
+   * removed, someone else's) are silent no-ops — the remove button races the
+   * queue advancing, and an error toast for a double-click helps nobody. */
+  private async onMusicRemove(att: Attachment, id: string): Promise<void> {
+    const idx = this.music.queue.findIndex((q) => q.id === id && q.addedById === att.userId);
+    if (!att.joined || idx === -1) return;
+    this.music.queue.splice(idx, 1);
+    await this.ctx.storage.put('music', this.music);
+    this.broadcastMusic();
+  }
+
+  private async onMusicSkipVote(ws: WebSocket, att: Attachment): Promise<void> {
+    if (!att.joined || typeof att.viewer !== 'number') {
+      this.send(ws, {
+        t: 'error',
+        code: 'NOT_SEATED',
+        message: 'Only seated players can vote to skip',
+      });
+      return;
+    }
+    if (this.music.current === null) return;
+    this.skipVoters.add(att.userId);
+    if (this.skipVoters.size >= this.skipThreshold()) {
+      await this.advanceTrack();
+    } else {
+      this.broadcastMusic(); // the vote count changed even without an advance
+    }
+  }
+
+  /** A client's player reached ENDED. First report matching the current entry
+   * advances; later ones no longer match and fall through — idempotent. Any
+   * joined client could fake this, but that's the same trust level as chat at
+   * a friendly table; the skip VOTE exists for human disagreement, not
+   * adversarial clients. */
+  private async onMusicEnded(att: Attachment, id: string): Promise<void> {
+    if (!att.joined || this.music.current?.id !== id) return;
+    await this.advanceTrack();
+  }
+
+  /** A client's player errored on the current track (private/removed/embed-
+   * disabled). Advance when a majority agrees — or immediately when the
+   * reporter is the track's own adder: whoever pasted a broken link shouldn't
+   * need a majority to unstick the room. */
+  private async onMusicError(att: Attachment, id: string): Promise<void> {
+    const current = this.music.current;
+    if (!att.joined || current?.id !== id) return;
+    this.errorReporters.add(att.userId);
+    if (att.userId === current.addedById || this.errorReporters.size >= this.skipThreshold()) {
+      await this.advanceTrack();
+    }
+  }
+
+  /** Majority of CONNECTED seated humans (floor(n/2)+1, min 1). Connected —
+   * a player who closed their tab must not raise the bar for those present.
+   * `exclude` skips a socket that is closing right now. */
+  private skipThreshold(exclude?: WebSocket): number {
+    const uids = new Set<string>();
+    for (const s of this.ctx.getWebSockets()) {
+      if (s === exclude) continue;
+      const a = this.attachment(s);
+      if (a.joined && typeof a.viewer === 'number') uids.add(a.userId);
+    }
+    return Math.floor(uids.size / 2) + 1;
+  }
+
+  private async maybeAdvanceBySkip(exclude?: WebSocket): Promise<void> {
+    if (this.music.current !== null && this.skipVoters.size >= this.skipThreshold(exclude)) {
+      await this.advanceTrack(exclude);
+    }
+  }
+
+  /** Shift the queue into `current`, stamp a fresh startedAt, reset the vote
+   * sets, persist, broadcast. */
+  private async advanceTrack(exclude?: WebSocket): Promise<void> {
+    const next = this.music.queue.shift() ?? null;
+    this.music.current = next === null ? null : { ...next, startedAt: Date.now() };
+    this.skipVoters.clear();
+    this.errorReporters.clear();
+    await this.ctx.storage.put('music', this.music);
+    this.broadcastMusic(exclude);
+  }
+
+  /** Per-recipient music view: strips userIds, marks `mine`/`youVotedSkip`. */
+  private musicFor(att: Attachment, exclude?: WebSocket): MusicState {
+    const toWire = (t: StoredTrack): MusicTrack => ({
+      id: t.id,
+      videoId: t.videoId,
+      title: t.title,
+      author: t.author,
+      thumb: t.thumb,
+      addedBy: t.addedByName,
+      ...(t.addedBySeat !== undefined ? { addedBySeat: t.addedBySeat } : {}),
+      ...(t.addedById === att.userId ? { mine: true } : {}),
+    });
+    const current = this.music.current;
+    return {
+      current: current === null ? null : { ...toWire(current), startedAt: current.startedAt },
+      queue: this.music.queue.map(toWire),
+      skipVotes: this.skipVoters.size,
+      skipNeeded: this.skipThreshold(exclude),
+      ...(this.skipVoters.has(att.userId) ? { youVotedSkip: true } : {}),
+    };
+  }
+
+  private broadcastMusic(exclude?: WebSocket): void {
+    for (const socket of this.ctx.getWebSockets()) {
+      if (socket === exclude) continue;
+      const a = this.attachment(socket);
+      if (a.joined) this.send(socket, { t: 'music', state: this.musicFor(a, exclude) });
+    }
+  }
+
   private onRtc(ws: WebSocket, att: Attachment, to: Seat, payload: unknown): void {
     if (!att.joined || typeof att.viewer !== 'number') {
       this.send(ws, { t: 'error', code: 'NOT_SEATED', message: 'Only seated players can use RTC' });
@@ -1266,6 +1622,15 @@ export class GameRoom implements DurableObject {
       });
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
+    // On turn-timer tables the roster is the only carrier of the fresh turn's
+    // turnTimerAt deadline — without a roster per action the countdown nudge
+    // would only ever surface after an unrelated join/close/ready refresh.
+    if (
+      this.meta.rules?.turnTimer === true &&
+      (game.phase === 'bidding' || game.phase === 'playing')
+    ) {
+      this.broadcastRoster({});
+    }
     if (game.phase === 'game_over') {
       if (game.winner !== null) {
         const wins: [number, number] = [...this.meta.seriesWins] as [number, number];
@@ -1291,7 +1656,7 @@ export class GameRoom implements DurableObject {
       // standing-table tally without waiting for the next roster-triggering event.
       this.broadcastRoster({});
     }
-    await this.scheduleNextWake(result.events.some((e) => e.type === 'trick_won'));
+    await this.scheduleNextWake();
     this.notifyTurnIfAbsent();
   }
 
@@ -1306,6 +1671,11 @@ export class GameRoom implements DurableObject {
     const owner = this.meta.seats[game.turn];
     if (typeof owner !== 'string') return; // bot or empty seat
     if (this.autoPlayOn(owner)) return; // a bot is covering this turn — no nag
+    // Once the disconnect deadline has passed, a bot plays every turn of theirs
+    // moments after it starts — "It's your turn" would be false by the time it
+    // was read, and re-sent on each of their turns. The pushes that arm before
+    // the deadline are the real come-back nudges.
+    if (this.disconnectDeadline(owner) <= Date.now()) return;
     const connected = this.ctx.getWebSockets().some((s) => {
       if (s === exclude) return false;
       const a = this.attachment(s);
@@ -1539,7 +1909,12 @@ export class GameRoom implements DurableObject {
     if (typeof owner !== 'string' || this.autoPlayOn(owner) || !this.isConnected(owner)) {
       return Number.POSITIVE_INFINITY;
     }
-    const startedAt = this.meta.turnStartedAt ?? Date.now();
+    // No stamp (a game persisted before the rule shipped): no deadline. A
+    // Date.now() fallback here would recede forever — every re-evaluation
+    // would push the deadline another full timer out, so the client counts
+    // to zero while the alarm never finds it due.
+    const startedAt = this.meta.turnStartedAt;
+    if (startedAt === undefined) return Number.POSITIVE_INFINITY;
     return startedAt + (this.meta.turnTimerMs ?? TURN_TIMER_MS);
   }
 
@@ -1548,7 +1923,7 @@ export class GameRoom implements DurableObject {
    * and disconnected-human bot-swaps: compute the earliest wake we need and
    * set one alarm. Date.now() for scheduling only — the engine never sees time.
    */
-  private async scheduleNextWake(afterTrick = false, exclude?: WebSocket): Promise<void> {
+  private async scheduleNextWake(exclude?: WebSocket): Promise<void> {
     const game = this.game;
     if (game === null || game.phase === 'game_over') return;
     // No human present → don't arm an alarm; the table is paused until someone
@@ -1558,29 +1933,43 @@ export class GameRoom implements DurableObject {
     const now = Date.now();
     let wake: number | null = null;
     if (game.phase === 'round_over') {
-      // Waiting on readiness: wake only for disconnected humans' deadlines.
+      // Waiting on readiness: wake for disconnected humans' deadlines, and
+      // soon for auto-play seats — the alarm readies those (see alarm()), but
+      // only after a beat so the round recap is on screen before it advances.
       const ready = this.readyState();
       for (const s of SEATS) {
         const owner = this.meta.seats[s];
         if (ready[s] || typeof owner !== 'string') continue;
-        const deadline = this.disconnectDeadline(owner);
+        const deadline = this.autoPlayOn(owner)
+          ? now + AUTOPLAY_READY_MS
+          : this.disconnectDeadline(owner);
         if (Number.isFinite(deadline)) {
           wake = wake === null ? Math.max(now + 1, deadline) : Math.min(wake, deadline);
         }
       }
     } else {
+      // Pacing floor for ANY server-played move: the plain bot beat, or — when
+      // leading a fresh trick — the clients' ~2.2s hold+sweep window. Derived
+      // from game state and anchored on turnStartedAt, NOT a caller flag, so
+      // any re-arm mid-pause (a join, close, or ready/auto-play toggle) can
+      // never clobber the trick-hold pause down to the plain bot delay.
+      const afterTrick = game.currentTrick.length === 0 && game.capturedTricks.length > 0;
+      const turnStart = this.meta.turnStartedAt ?? now;
+      const paced = turnStart + (afterTrick ? TRICK_HOLD_MS : BOT_DELAY_MS);
       const owner = this.meta.seats[game.turn];
       if (isBotOwner(owner) || (typeof owner === 'string' && this.autoPlayOn(owner))) {
-        // A bot seat, or a human on voluntary auto-play — either way the server
-        // plays this turn. A trick just completed: the clients hold + sweep the
-        // 4 cards for ~2.2s, so we must wait out that animation window.
-        wake = now + (afterTrick ? TRICK_HOLD_MS : BOT_DELAY_MS);
+        // A bot seat, or a human on voluntary auto-play — either way the
+        // server plays this turn on the paced cadence.
+        wake = Math.max(now + BOT_DELAY_MS, paced);
       } else if (typeof owner === 'string') {
         // A connected human can only be covered by ONE of these at a time
         // (turnTimerDeadline requires connected, disconnectDeadline requires
         // not) — take whichever is finite, or the earlier if somehow both are.
+        // The pacing floor applies here too: a disconnect deadline that has
+        // long passed would otherwise fire every covered turn back-to-back
+        // (and straight into the trick hold) instead of on the bot cadence.
         const deadline = Math.min(this.disconnectDeadline(owner), this.turnTimerDeadline());
-        if (Number.isFinite(deadline)) wake = Math.max(now + 1, deadline);
+        if (Number.isFinite(deadline)) wake = Math.max(now + 1, deadline, paced);
       }
     }
     if (wake !== null) await this.ctx.storage.setAlarm(wake);
@@ -1625,31 +2014,39 @@ export class GameRoom implements DurableObject {
         };
       }
       const connected = attachments.some((a) => a.joined && a.viewer === i);
-      // A disconnected human mid-game is on the bot-swap clock; a connected
-      // human on turn, with the turnTimer house rule on, is on their per-turn
-      // clock instead — both expose the same absolute-deadline field so the
-      // client's existing countdown renders either with zero extra client
-      // code. Only one can ever apply to a given seat at a time (the second
-      // requires connected, the first requires the opposite), but take the
-      // earlier of the two regardless, to stay correct if that ever changes.
-      const swapActive = !connected && this.game !== null && this.game.phase !== 'game_over';
-      const turnActive = this.game !== null && this.game.turn === i;
-      const botSwapAt = Math.min(
-        swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY,
-        turnActive ? this.turnTimerDeadline() : Number.POSITIVE_INFINITY,
-      );
+      // A disconnected human mid-game is on the bot-swap clock (botSwapAt); a
+      // connected human on turn, with the turnTimer house rule on, is on their
+      // per-turn clock (turnTimerAt). Distinct fields — the client labels the
+      // first "Away" and the second as a late-turn nudge, so they must never
+      // be conflated. At most one is finite per seat (turnTimerDeadline
+      // requires connected, the swap clock requires the opposite).
+      // An auto-play seat never shows the swap clock: the bot is already
+      // playing their turns, so "Away — bot in 0:12" would promise a change
+      // that the deadline doesn't bring (the gold auto-play badge shows instead).
+      const swapActive =
+        !connected &&
+        !this.autoPlayOn(owner) &&
+        this.game !== null &&
+        this.game.phase !== 'game_over';
+      const swapAt = swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY;
+      const turnAt =
+        this.game !== null && this.game.turn === i
+          ? this.turnTimerDeadline()
+          : Number.POSITIVE_INFINITY;
       return {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,
         connected,
         ...(ready !== undefined ? { ready } : {}),
-        ...(Number.isFinite(botSwapAt) ? { botSwapAt } : {}),
+        ...(Number.isFinite(swapAt) ? { botSwapAt: swapAt } : {}),
+        ...(Number.isFinite(turnAt) ? { turnTimerAt: turnAt } : {}),
         ...(this.autoPlayOn(owner) ? { autoPlay: true } : {}),
       };
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;
     const hostSeat = this.meta.hostId !== undefined ? this.seatOf(this.meta.hostId) : null;
     return {
+      now: Date.now(),
       seats,
       spectators,
       started: this.meta.started,

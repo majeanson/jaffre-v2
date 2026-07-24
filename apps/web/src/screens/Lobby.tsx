@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { ChatPanel, Cta, useLang, type Lang } from '@jaffre/ui';
-import { useChatSend } from '../chat/useChatSend.js';
+import { Cta, useLang, type Lang } from '@jaffre/ui';
+import { RoomComms } from '../comms/RoomComms.js';
 import { LinkNudge } from '../components/LinkAccount.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { HelpButton } from '../help/HelpButton.js';
@@ -9,7 +9,6 @@ import { consumeMakePublic } from '../net/rooms.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
-import { VoiceControls } from '../voice/VoiceControls.js';
 
 /** A secondary arcade button as a class string — for HelpButton, which takes a
  * className rather than a variant. Mirrors the Cta secondary look. */
@@ -93,8 +92,7 @@ const T: Record<
 /** Pre-game room: pick a seat, fill the rest with bots, start. */
 export function Lobby({ code, onLeave }: LobbyProps) {
   const t = T[useLang()];
-  const { roster, viewer, connection, chat } = useGameStore();
-  const sendChat = useChatSend();
+  const { roster, viewer, connection } = useGameStore();
   const full = roster !== null && roster.seats.every((s) => s !== null);
   const seated = typeof viewer === 'number';
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
@@ -247,12 +245,9 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           {full ? t.start : t.waiting}
         </Cta>
 
-        {/* Voice sits inside the chat's send row — one comms surface. */}
-        <ChatPanel
-          entries={chat}
-          onSend={sendChat}
-          actions={typeof viewer === 'number' ? <VoiceControls me={viewer} /> : undefined}
-        />
+        {/* One comms surface for the whole room life: chat (voice in its send
+            row) and the shared music queue — same component the table uses. */}
+        <RoomComms variant="panel" me={typeof viewer === 'number' ? viewer : null} />
 
         {/* Quiet pre-game moment: about to start — one muted line about
             keeping your games. Gone once anything is linked. */}

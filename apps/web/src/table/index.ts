@@ -1,7 +1,6 @@
 /** Barrel for the table sections — one file per display section under src/table/. */
 export * from './BidOverlay.js';
 export * from './CoachHint.js';
-export * from './Comms.js';
 export * from './ConnectionBanner.js';
 export * from './Confetti.js';
 export * from './GameLogPanel.js';

@@ -86,6 +86,18 @@ export const clientMessageSchema = z.union([
   z.object({ t: z.literal('action'), action: clientActionSchema }),
   z.object({ t: z.literal('ready') }),
   z.object({ t: z.literal('chat'), text: z.string().min(1).max(500) }),
+  // Music: paste a YouTube link into the room's shared queue. The wire carries
+  // only the raw string — videoId extraction and oEmbed metadata happen
+  // server-side, and ids below are server-assigned queue-entry ids.
+  z.object({ t: z.literal('music_add'), url: z.string().min(10).max(300) }),
+  // Remove one of YOUR OWN not-yet-playing queue entries.
+  z.object({ t: z.literal('music_remove'), id: z.string().min(1).max(24) }),
+  // Vote to skip the current track — seated humans only, majority advances.
+  z.object({ t: z.literal('music_skip_vote') }),
+  // Your player reached ENDED for this entry — first matching report advances.
+  z.object({ t: z.literal('music_ended'), id: z.string().min(1).max(24) }),
+  // Your player errored on this entry (private/removed/embed-disabled).
+  z.object({ t: z.literal('music_error'), id: z.string().min(1).max(24) }),
   z.object({ t: z.literal('rtc'), to: seatSchema, payload: z.unknown() }),
   z.object({ t: z.literal('ping') }),
 ]);
@@ -104,13 +116,19 @@ export interface RosterSeat {
   /** Present only for bot seats — the difficulty this bot plays at. */
   readonly difficulty?: BotDifficulty;
   /**
-   * Epoch ms when this seat's human turn gets handed to a bot. Present while a
-   * seated human is disconnected mid-game (the bot-swap clock), OR — when the
-   * table's `turnTimer` house rule is on — while it's this CONNECTED human's
-   * turn to bid/play and their per-turn clock is running. Absolute (not
-   * remaining) so the client can tick it down locally between rosters.
+   * Epoch ms when this DISCONNECTED seated human's turns get handed to a bot
+   * (the mid-game disconnect clock). Absolute (not remaining) so the client
+   * can tick it down locally between rosters — correct it with `Roster.now`
+   * against local clock skew.
    */
   readonly botSwapAt?: number;
+  /**
+   * Epoch ms when the `turnTimer` house rule plays this CONNECTED human's
+   * current bid/play for them. Present only while it's their turn and the
+   * rule is on. Separate from botSwapAt: this seat is present, just idle —
+   * the client shows a late-turn nudge, never an "Away" label.
+   */
+  readonly turnTimerAt?: number;
   /** True when this seated human has voluntary auto-play on — the server is
    * playing their turns at 'hard' until they turn it off. */
   readonly autoPlay?: boolean;
@@ -120,6 +138,10 @@ export interface Roster {
   readonly seats: readonly (RosterSeat | null)[];
   readonly spectators: number;
   readonly started: boolean;
+  /** Server clock (epoch ms) when this roster was built. Clients diff it
+   * against their own Date.now() to skew-correct the absolute deadlines
+   * above — a device clock minutes off must not fire countdowns early. */
+  readonly now?: number;
   /** Seat of the table's host (first to sit, or whoever inherited it after
    * the previous host left), when that seat is occupied. Only the host may
    * kick. Absent when nobody has ever sat (or the host's seat somehow isn't
@@ -136,7 +158,7 @@ export interface Roster {
   readonly rules?: {
     readonly hailMary12: boolean;
     /** Idle-player turn timer (off unless a table opts in) — see
-     * RosterSeat.botSwapAt for the per-seat countdown it drives. */
+     * RosterSeat.turnTimerAt for the per-seat countdown it drives. */
     readonly turnTimer?: boolean;
   };
   /** Whether this table is listed for matchmaking (public lobby / Quick Play). */
@@ -160,6 +182,36 @@ export interface ChatEntry {
   readonly seat?: number;
 }
 
+export interface MusicTrack {
+  /** Server-assigned queue-entry id ("m17") — NOT the videoId: the same video
+   * may be queued twice, and ended/remove reports must be unambiguous. */
+  readonly id: string;
+  /** 11-char YouTube video id. */
+  readonly videoId: string;
+  /** Title/author/thumbnail from YouTube oEmbed, capped server-side. */
+  readonly title: string;
+  readonly author: string;
+  readonly thumb: string;
+  /** Adder's display name (like ChatEntry.from — never a userId). */
+  readonly addedBy: string;
+  /** Adder's seat, so the UI can felt-colour the name; absent for spectators. */
+  readonly addedBySeat?: number;
+  /** Per-recipient: this entry is yours (shows the remove affordance). */
+  readonly mine?: boolean;
+}
+
+export interface MusicState {
+  /** Now playing, with the server-epoch ms it started. Clients seek to
+   * (skew-corrected serverNow − startedAt)/1000. Null = silence. */
+  readonly current: (MusicTrack & { readonly startedAt: number }) | null;
+  readonly queue: readonly MusicTrack[];
+  /** Skip-vote progress on the current track (votes reset on every advance). */
+  readonly skipVotes: number;
+  readonly skipNeeded: number;
+  /** Per-recipient: you already voted to skip the current track. */
+  readonly youVotedSkip?: boolean;
+}
+
 export type ServerMessage =
   | {
       readonly t: 'welcome';
@@ -168,11 +220,14 @@ export type ServerMessage =
       readonly seq: number;
       readonly roster: Roster;
       readonly chatTail: readonly ChatEntry[];
+      /** Optional so older cached bundles keep parsing welcomes. */
+      readonly music?: MusicState;
     }
   | { readonly t: 'events'; readonly seq: number; readonly events: readonly GameEvent[] }
   | { readonly t: 'view'; readonly seq: number; readonly view: SeatView }
   | { readonly t: 'roster'; readonly roster: Roster }
   | { readonly t: 'chat'; readonly entry: ChatEntry }
+  | { readonly t: 'music'; readonly state: MusicState }
   | { readonly t: 'rtc'; readonly from: Seat; readonly payload: unknown }
   | { readonly t: 'pong' }
   | {
@@ -190,6 +245,10 @@ export type ServerMessage =
         | 'CARD_NOT_IN_HAND'
         | 'MUST_FOLLOW_SUIT'
         | 'CHAT_RATE'
+        | 'MUSIC_RATE'
+        | 'MUSIC_BAD_URL'
+        | 'MUSIC_UNAVAILABLE'
+        | 'MUSIC_QUEUE_FULL'
         | 'NOT_HOST'
         | 'KICKED';
       readonly message: string;

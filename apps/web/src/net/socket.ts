@@ -1,5 +1,6 @@
 import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
+import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken } from './auth.js';
 import { rememberTable } from './rooms.js';
 import { reportError } from './telemetry.js';
@@ -139,6 +140,7 @@ function handle(msg: ServerMessage): void {
       store.welcome(msg.viewer, msg.view, msg.seq, msg.roster, msg.chatTail);
       if (room !== null)
         rememberTable(room, msg.roster, typeof msg.viewer === 'number' ? msg.viewer : null);
+      if (msg.music !== undefined) useMusicStore.getState().setState(msg.music);
       break;
     case 'events':
       store.applyEvents(msg.events, msg.seq);
@@ -152,6 +154,9 @@ function handle(msg: ServerMessage): void {
       break;
     case 'chat':
       store.addChat(msg.entry);
+      break;
+    case 'music':
+      useMusicStore.getState().setState(msg.state);
       break;
     case 'rtc':
       rtcHandler?.(msg.from, msg.payload);
