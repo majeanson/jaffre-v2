@@ -9,7 +9,6 @@ export type SceneScreen =
   | 'home'
   | 'corner'
   | 'lobby'
-  | 'history'
   | 'stats'
   | 'replay'
   | 'visitor'
@@ -26,6 +25,7 @@ export interface SceneUi {
   readonly lastTrickOpen?: boolean;
   readonly chatOpen?: boolean;
   readonly helpOpen?: boolean;
+  readonly playOpen?: boolean;
 }
 
 export interface SceneMeta {
@@ -68,8 +68,9 @@ export const SCENE_METAS = [
   },
   {
     id: 'your-tables',
-    label: 'Your corner — tables (resume)',
-    screen: 'corner',
+    label: 'Home — your tables (resume)',
+    screen: 'home',
+    ui: { playOpen: true },
     probe: 'role=button[name="Resume"]',
   },
   {
@@ -255,16 +256,10 @@ export const SCENE_METAS = [
     probe: 'role=button[name="Rematch"]',
   },
   {
-    id: 'history',
-    label: 'Your games — history',
-    screen: 'history',
-    probe: 'role=heading[name="Your games"]',
-  },
-  {
-    id: 'history-empty',
-    label: 'Your games — empty',
-    screen: 'history',
-    probe: 'text=No finished games yet',
+    id: 'corner',
+    label: 'Your corner — overview',
+    screen: 'corner',
+    probe: 'text=Latest award',
   },
   {
     id: 'stats',
@@ -288,13 +283,19 @@ export const SCENE_METAS = [
     id: 'stats-veteran',
     label: 'Your record — veteran',
     screen: 'stats',
-    probe: 'text=Recent games',
+    probe: 'text=Your games',
   },
   {
     id: 'stats-loading',
     label: 'Your record — loading',
     screen: 'stats',
     probe: 'text=Dealing…',
+  },
+  {
+    id: 'stats-all-games',
+    label: 'Your record — all games',
+    screen: 'stats',
+    probe: 'a[href="#replay/demo-1"]',
   },
   {
     id: 'replay',

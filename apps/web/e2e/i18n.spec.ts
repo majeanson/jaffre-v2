@@ -12,10 +12,11 @@ test('a French browser gets the French home screen by default', async ({ browser
   const page = await context.newPage();
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Jouer', exact: true })).toBeVisible();
-  // The "Ton coin" door opens the full #corner sheet; "Ton record" is one of
-  // its subtabs.
-  await page.getByRole('button', { name: 'Ton coin' }).click();
+  // The LevelBadge is the Journey door on Home; its meta-nav strip links on to
+  // every other corner screen, including the relabelled "Ton coin" tab.
+  await page.getByTestId('level-badge').click();
   await expect(page.getByRole('link', { name: 'Ton record' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ton coin' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
   // Back to the title screen — the bots/friends split lives behind PLAY.
   await page.getByRole('button', { name: 'Accueil' }).click();

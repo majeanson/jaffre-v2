@@ -459,16 +459,16 @@ const LOADERS: Record<SceneId, () => void> = {
     roster: READY_ROSTER,
   }),
   'game-over': gameScene('game-over', (s) => s.phase === 'game_over'),
-  // History/Stats/Replay render their own screens from demo props (not the
+  // Corner/Stats/Replay render their own screens from demo props (not the
   // store), so their loaders are no-ops — resetting here would race Replay's
   // own frame injection (child effects run before this parent effect).
-  history: () => undefined,
-  'history-empty': () => undefined,
+  corner: () => undefined,
   stats: () => undefined,
   'stats-empty': () => undefined,
   'stats-new': () => undefined,
   'stats-veteran': () => undefined,
   'stats-loading': () => undefined,
+  'stats-all-games': () => undefined,
   replay: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.

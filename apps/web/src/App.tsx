@@ -21,7 +21,6 @@ import { Leaderboard } from './screens/Leaderboard.js';
 import { PublicLobby } from './screens/PublicLobby.js';
 import { Collection, collectionReturnHash } from './screens/Collection.js';
 import { Corner } from './screens/Corner.js';
-import { History } from './screens/History.js';
 import { Home } from './screens/Home.js';
 import { Journey } from './screens/Journey.js';
 import { Lobby } from './screens/Lobby.js';
@@ -41,7 +40,6 @@ type Route =
   | { kind: 'room'; code: string }
   | { kind: 'scenes'; id: string | null }
   | { kind: 'corner' }
-  | { kind: 'history' }
   | { kind: 'stats' }
   | { kind: 'awards' }
   | { kind: 'journey' }
@@ -63,7 +61,8 @@ function parseHash(): Route {
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#corner') return { kind: 'corner' };
-  if (h === '#history') return { kind: 'history' };
+  // Old links/bookmarks to '#history' land on the record — the games list lives there now.
+  if (h === '#history') return { kind: 'stats' };
   if (h === '#stats') return { kind: 'stats' };
   if (h === '#awards') return { kind: 'awards' };
   if (h === '#journey') return { kind: 'journey' };
@@ -202,9 +201,6 @@ function AppRoutes() {
   if (route.kind === 'corner') {
     return <Corner onLeave={() => (location.hash = '')} />;
   }
-  if (route.kind === 'history') {
-    return <History onLeave={() => (location.hash = '')} />;
-  }
   if (route.kind === 'stats') {
     return <Stats onLeave={() => (location.hash = '')} />;
   }
@@ -232,7 +228,7 @@ function AppRoutes() {
     return <PaintStudio onLeave={() => (location.hash = '')} />;
   }
   if (route.kind === 'replay') {
-    return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#history')} />;
+    return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
   }
   if (route.kind === 'room') {
     // A spectator arriving at a room already underway (viewer is not a seated

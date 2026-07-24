@@ -5,7 +5,9 @@ import { expect, test } from '@playwright/test';
  * real server (a fresh identity sees the empty state), Home links to it, and
  * the populated rendering is checked via the deterministic staged scene —
  * driving a full game to game_over in e2e is minutes of bot alarms, so the
- * data-in aggregation is covered by the server unit tests instead.
+ * data-in aggregation is covered by the server unit tests instead. The
+ * standalone History screen is gone — its games list now lives inside Your
+ * record behind a Recent | All toggle, and #history soft-redirects here.
  */
 
 test('#stats renders Your record with the fresh-identity empty state', async ({ browser }) => {
@@ -18,10 +20,11 @@ test('#stats renders Your record with the fresh-identity empty state', async ({ 
   await context.close();
 });
 
-test('home links to Your record', async ({ page }) => {
+test('home links to Your record via the Journey door', async ({ page }) => {
   await page.goto('/');
-  // Tables/games/record live behind the single "Your corner" door — open it.
-  await page.getByRole('button', { name: /Your corner/ }).click();
+  // The LevelBadge is the Journey door on Home; the meta-nav strip there links
+  // on to every other corner screen, including the record.
+  await page.getByTestId('level-badge').click();
   await page.getByRole('link', { name: 'Your record' }).click();
   await expect(page.getByRole('heading', { name: 'Your record' })).toBeVisible();
   expect(new URL(page.url()).hash).toBe('#stats');
@@ -51,9 +54,18 @@ test('staged stats scene shows the full aggregate record', async ({ page }) => {
   await expect(page.getByText('beats you 5 of 8')).toBeVisible();
 });
 
-test('the meta-nav strip links Your record to Your games', async ({ page }) => {
-  await page.goto('/#stats');
-  await page.getByRole('link', { name: 'Your games' }).click();
-  await expect(page.getByRole('heading', { name: 'Your games' })).toBeVisible();
-  expect(new URL(page.url()).hash).toBe('#history');
+test('the games section toggles Recent | All', async ({ page }) => {
+  await page.goto('/#scenes/stats');
+  await expect(page.getByText('Your games')).toBeVisible();
+  // Recent is the default view — a ruled scorepad table.
+  await expect(page.locator('table')).toBeVisible();
+  await page.getByRole('button', { name: 'All' }).click();
+  await expect(page.locator('a[href="#replay/demo-1"]')).toContainText('Won');
+  await page.getByRole('button', { name: 'Recent' }).click();
+  await expect(page.locator('table')).toBeVisible();
+});
+
+test('#history redirects into Your record', async ({ page }) => {
+  await page.goto('/#history');
+  await expect(page.getByRole('heading', { name: 'Your record' })).toBeVisible();
 });

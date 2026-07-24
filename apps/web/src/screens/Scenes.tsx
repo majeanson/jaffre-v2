@@ -17,7 +17,6 @@ import { ShareSheet } from '../components/ShareSheet.js';
 import { Collection } from './Collection.js';
 import { Corner } from './Corner.js';
 import { Journey } from './Journey.js';
-import { History } from './History.js';
 import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { PaintStudio } from './PaintStudio.js';
@@ -144,22 +143,25 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onPractice={noop}
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
+          playOpen={current.ui?.playOpen ?? false}
+          {...(current.id === 'your-tables' ? { demoTables: DEMO_TABLES } : {})}
           {...(IDENTITY_STAGES[current.id] !== undefined
             ? { identityStage: IDENTITY_STAGES[current.id] }
             : {})}
         />
       )}
       {current.screen === 'corner' && (
-        <Corner key={current.id} demoTables={DEMO_TABLES} onLeave={onLeave} />
-      )}
-      {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
-      {current.screen === 'history' && (
-        <History
+        <Corner
           key={current.id}
-          demoGames={current.id === 'history-empty' ? [] : DEMO_HISTORY}
+          demoStats={DEMO_STATS}
+          demoAwards={[
+            { id: 'first-win', grantedAt: 1_752_000_000_000 },
+            { id: 'first-game', grantedAt: 1_751_000_000_000 },
+          ]}
           onLeave={onLeave}
         />
       )}
+      {current.screen === 'lobby' && <Lobby key={current.id} code="scene" onLeave={onLeave} />}
       {current.screen === 'stats' &&
         (current.id === 'stats-loading' ? (
           <Stats key={current.id} demoLoading onLeave={onLeave} />
@@ -192,6 +194,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
                     ? DEMO_HISTORY_VETERAN
                     : DEMO_HISTORY
             }
+            {...(current.id === 'stats-all-games' ? { initialGamesView: 'all' as const } : {})}
             onLeave={onLeave}
           />
         ))}
