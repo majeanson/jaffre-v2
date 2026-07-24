@@ -1,8 +1,7 @@
 import { useLang, type Lang } from '@jaffre/ui';
 
 export interface MetaNavProps {
-  readonly current:
-    'corner' | 'journey' | 'collection' | 'awards' | 'stats' | 'history' | 'leaderboard';
+  readonly current: 'corner' | 'journey' | 'collection' | 'awards' | 'stats' | 'leaderboard';
 }
 
 const ITEMS = [
@@ -11,7 +10,6 @@ const ITEMS = [
   { id: 'collection', hash: '#collection' },
   { id: 'awards', hash: '#awards' },
   { id: 'stats', hash: '#stats' },
-  { id: 'history', hash: '#history' },
   { id: 'leaderboard', hash: '#leaderboard' },
 ] as const;
 
@@ -23,26 +21,23 @@ const T: Record<
     collection: string;
     awards: string;
     stats: string;
-    history: string;
     leaderboard: string;
   }
 > = {
   en: {
-    corner: 'Your tables',
+    corner: 'Your corner',
     journey: 'Journey',
     collection: 'Collection',
     awards: 'Awards',
     stats: 'Your record',
-    history: 'Your games',
     leaderboard: 'Leaderboard',
   },
   fr: {
-    corner: 'Tes tables',
+    corner: 'Ton coin',
     journey: 'Parcours',
     collection: 'Collection',
     awards: 'Récompenses',
     stats: 'Ton record',
-    history: 'Tes parties',
     leaderboard: 'Classement',
   },
 };
@@ -57,10 +52,10 @@ const CHIP_CLASS = `${TAB_BASE} border-(--color-ap-ink) bg-(--color-ap-ground) t
 const CURRENT_CLASS = `${TAB_BASE} border-(--color-ap-violet) bg-(--color-ap-panel) text-(--color-ap-violet-soft)`;
 
 /**
- * The subtab row of the "Your corner" sheet — every meta screen (tables,
- * journey, collection, awards, record, games, leaderboard) shows the same
- * strip, so the map never has to be relearned. Home stays the only place
- * with the big doors.
+ * The subtab row of the "Your corner" sheet — every meta screen (corner,
+ * journey, collection, awards, record, leaderboard) shows the same strip, so
+ * the map never has to be relearned. Home stays the only place with the big
+ * doors.
  */
 export function MetaNav({ current }: MetaNavProps) {
   const t = T[useLang()];

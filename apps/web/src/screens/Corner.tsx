@@ -1,15 +1,21 @@
-import { useState } from 'react';
-import { AvatarChip, Cta, useLang, type Lang } from '@jaffre/ui';
+import { useEffect, useState } from 'react';
+import { AvatarChip, Cta, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { MetaNav } from '../components/MetaNav.js';
-import { TableCard, useTableStatuses } from '../home/TableCards.js';
+import { fetchStats, type Stats } from '../net/history.js';
+import { fetchAwards, type EarnedAward } from '../net/awards.js';
+import { AWARDS } from '../awards.js';
+import { levelProgress, xpFromStats } from '../progression.js';
+import { CARD_SKINS, currentCardSkin } from '../cosmetics.js';
+import { THEMES, currentTheme } from '../theme.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
-import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
 
 export interface CornerProps {
   readonly onLeave: () => void;
-  /** Scene viewer: stage the standing tables (else they come from localStorage). */
-  readonly demoTables?: readonly TableEntry[];
+  /** Scene viewer: staged record so the screen renders without the network. */
+  readonly demoStats?: Stats;
+  /** Scene viewer: staged earned-awards list. */
+  readonly demoAwards?: readonly EarnedAward[];
 }
 
 const T: Record<
@@ -17,46 +23,86 @@ const T: Record<
   {
     title: string;
     home: string;
-    yourTables: string;
-    going: (n: number) => string;
-    noTables: string;
-    noTablesBody: string;
+    dealing: string;
+    level: (n: number) => string;
+    winRate: string;
+    wonOf: (wins: number, games: number) => string;
+    noGames: string;
+    latestAward: string;
+    noAwards: string;
+    equipped: string;
   }
 > = {
   en: {
     title: 'Your corner',
     home: 'Home',
-    yourTables: 'Your tables',
-    going: (n) => `${String(n)} going`,
-    noTables: 'No standing tables',
-    noTablesBody: 'Create a room from Play and it keeps a seat for you here.',
+    dealing: 'Loading…',
+    level: (n) => `Level ${String(n)}`,
+    winRate: 'Win rate',
+    wonOf: (wins, games) => `${String(wins)} of ${String(games)} won`,
+    noGames: 'No games yet',
+    latestAward: 'Latest award',
+    noAwards: 'No awards yet',
+    equipped: 'Equipped',
   },
   fr: {
     title: 'Ton coin',
     home: 'Accueil',
-    yourTables: 'Tes tables',
-    going: (n) => `${String(n)} en route`,
-    noTables: 'Pas de table en cours',
-    noTablesBody: 'Crée un salon depuis Jouer et ta place t’attend ici.',
+    dealing: 'Chargement…',
+    level: (n) => `Niveau ${String(n)}`,
+    winRate: 'Taux de victoires',
+    wonOf: (wins, games) => `${String(wins)} sur ${String(games)} gagnées`,
+    noGames: 'Pas encore de parties',
+    latestAward: 'Dernière récompense',
+    noAwards: 'Pas encore de récompense',
+    equipped: 'Équipé',
   },
 };
 
+const SHELL_NOTE =
+  'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui text-(--color-ap-muted) shadow-(--shadow-ap)';
+
+/** A muted uppercase micro-label — same idiom as Stats.tsx's section labels. */
+const MICRO_LABEL =
+  'font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)';
+
+const TILE_CLASS =
+  'flex flex-col gap-[0.5em] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) hover:bg-(--color-ap-panel-hover)';
+
 /**
  * "Your corner": the one full-screen sheet for everything that's yours. The
- * MetaNav strip on top is the subtab row (tables, games, record, awards,
- * journey, collection, leaderboard — each its own hash route sharing this
- * same header shape), and this screen's own body is the standing tables.
+ * MetaNav strip on top is the subtab row (corner, journey, collection,
+ * awards, record, leaderboard — each its own hash route sharing this same
+ * header shape), and this screen's own body is a snapshot of the four other
+ * meta screens — level, win rate, latest award, equipped cosmetics — each
+ * tile linking through to its full screen.
  */
-export function Corner({ onLeave, demoTables }: CornerProps) {
-  const t = T[useLang()];
-  // Stateful so quitting a table drops its card without a reload.
-  const [storedTables, setStoredTables] = useState<readonly TableEntry[]>(listTables);
-  const tables = demoTables ?? storedTables;
-  const statuses = useTableStatuses(tables);
-  const quitTable = (code: string) => {
-    void leaveTable(code); // forgets locally right away, frees the seat async
-    setStoredTables(listTables());
-  };
+export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
+  const lang = useLang();
+  const t = T[lang];
+  const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
+  const [earned, setEarned] = useState<readonly EarnedAward[]>(demoAwards ?? []);
+
+  useEffect(() => {
+    if (demoStats !== undefined) return;
+    let live = true;
+    fetchStats()
+      .then((s) => live && setStats(s))
+      .catch(() => live && setStats(null));
+    fetchAwards()
+      .then((a) => live && setEarned(a))
+      .catch(() => live && setEarned([]));
+    return () => {
+      live = false;
+    };
+  }, [demoStats]);
+
+  const latest =
+    earned.length === 0 ? null : earned.reduce((a, b) => (b.grantedAt > a.grantedAt ? b : a));
+  const latestAward = latest === null ? null : (AWARDS.find((a) => a.id === latest.id) ?? null);
+
+  const skinLabel = CARD_SKINS.find((c) => c.id === currentCardSkin())?.label ?? currentCardSkin();
+  const themeLabel = THEMES.find((c) => c.id === currentTheme())?.label ?? currentTheme();
 
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
@@ -75,40 +121,99 @@ export function Corner({ onLeave, demoTables }: CornerProps) {
 
         <MetaNav current="corner" />
 
-        {tables.length === 0 ? (
-          <div className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1.4em] text-center font-arcade-ui shadow-(--shadow-ap)">
-            <div className="font-arcade-display text-[1.3em] uppercase text-(--color-ap-gold)">
-              {t.noTables}
-            </div>
-            <p className="mt-[0.5em] text-(--color-ap-muted)">{t.noTablesBody}</p>
+        {stats === null ? (
+          <div className={SHELL_NOTE}>
+            <PixelWave label={t.dealing} />
           </div>
         ) : (
-          <section className="flex flex-col gap-3 font-arcade-ui">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h2 className="font-arcade-display text-[1.2em] uppercase text-(--color-ap-text)">
-                {t.yourTables}
-              </h2>
-              <span className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-                {t.going(tables.length)}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {tables.slice(0, 8).map((tbl) => (
-                <TableCard
-                  key={tbl.code}
-                  table={tbl}
-                  status={statuses[tbl.code] ?? null}
-                  onResume={() => (location.hash = `#room/${tbl.code}`)}
-                  // Staged scenes keep the ✕ too — the e2e overflow probe
-                  // checks it stays inside the card; quitting only mutates
-                  // local state, so a demo "leave" is harmless.
-                  onLeave={() => quitTable(tbl.code)}
-                />
-              ))}
-            </div>
-          </section>
+          <CornerTiles
+            lang={lang}
+            t={t}
+            stats={stats}
+            latestAward={latestAward}
+            skinLabel={skinLabel}
+            themeLabel={themeLabel}
+          />
         )}
       </div>
     </main>
+  );
+}
+
+/** The four snapshot tiles — split out so the level bar's progress calc only
+ * runs once `stats` is known non-null. */
+function CornerTiles({
+  lang,
+  t,
+  stats,
+  latestAward,
+  skinLabel,
+  themeLabel,
+}: {
+  readonly lang: Lang;
+  readonly t: (typeof T)['en'];
+  readonly stats: Stats;
+  readonly latestAward: (typeof AWARDS)[number] | null;
+  readonly skinLabel: string;
+  readonly themeLabel: string;
+}) {
+  const progress = levelProgress(xpFromStats(stats));
+  const barPct = progress.span === 0 ? 100 : (progress.into / progress.span) * 100;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <a href="#journey" className={TILE_CLASS}>
+        <span className={MICRO_LABEL}>{t.level(progress.level)}</span>
+        <span className="h-[0.55em] w-full overflow-hidden rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/20">
+          <span
+            className="block h-full bg-(--color-ap-violet)"
+            style={{ width: `${String(barPct)}%` }}
+          />
+        </span>
+      </a>
+
+      <a href="#stats" className={TILE_CLASS}>
+        <span className={MICRO_LABEL}>{t.winRate}</span>
+        {stats.games === 0 ? (
+          <span className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">
+            {t.noGames}
+          </span>
+        ) : (
+          <>
+            <span className="font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-gold)">
+              {Math.round(stats.winRate * 100)}%
+            </span>
+            <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+              {t.wonOf(stats.wins, stats.games)}
+            </span>
+          </>
+        )}
+      </a>
+
+      <a href="#awards" className={TILE_CLASS}>
+        <span className={MICRO_LABEL}>{t.latestAward}</span>
+        {latestAward === null ? (
+          <span className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">
+            {t.noAwards}
+          </span>
+        ) : (
+          <span className="flex items-center gap-[0.5em]">
+            <span className="text-[1.6em] leading-none" aria-hidden>
+              {latestAward.icon}
+            </span>
+            <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
+              {latestAward.name(lang)}
+            </span>
+          </span>
+        )}
+      </a>
+
+      <a href="#collection" className={TILE_CLASS}>
+        <span className={MICRO_LABEL}>{t.equipped}</span>
+        <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
+          {skinLabel} · {themeLabel}
+        </span>
+      </a>
+    </div>
   );
 }
