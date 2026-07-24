@@ -144,6 +144,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
           playOpen={current.ui?.playOpen ?? false}
+          {...(current.ui?.playStep !== undefined ? { playStep: current.ui.playStep } : {})}
           {...(current.id === 'your-tables' ? { demoTables: DEMO_TABLES } : {})}
           {...(IDENTITY_STAGES[current.id] !== undefined
             ? { identityStage: IDENTITY_STAGES[current.id] }

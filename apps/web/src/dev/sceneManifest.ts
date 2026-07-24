@@ -26,6 +26,7 @@ export interface SceneUi {
   readonly chatOpen?: boolean;
   readonly helpOpen?: boolean;
   readonly playOpen?: boolean;
+  readonly playStep?: 'create' | 'join';
 }
 
 export interface SceneMeta {
@@ -72,6 +73,20 @@ export const SCENE_METAS = [
     screen: 'home',
     ui: { playOpen: true },
     probe: 'role=button[name="Resume"]',
+  },
+  {
+    id: 'home-create',
+    label: 'Home — create step',
+    screen: 'home',
+    ui: { playOpen: true, playStep: 'create' },
+    probe: 'role=button[name="Play now"]',
+  },
+  {
+    id: 'home-join',
+    label: 'Home — join step',
+    screen: 'home',
+    ui: { playOpen: true, playStep: 'join' },
+    probe: 'role=button[name="Join room"]',
   },
   {
     id: 'identity',

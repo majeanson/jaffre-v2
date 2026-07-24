@@ -64,7 +64,8 @@ test('two sessions rename via the UI, share a table with 2 bots, and stay themse
 
   // ── A hosts ──────────────────────────────────────────────────────────────
   await a.getByRole('button', { name: 'Play', exact: true }).click();
-  await a.getByRole('button', { name: 'Create a room' }).click();
+  await a.getByRole('button', { name: 'Create', exact: true }).click();
+  await a.getByRole('button', { name: 'Public table' }).click();
   await expect.poll(() => a.evaluate(() => location.hash)).toMatch(/^#room\//);
   const code = await a.evaluate(() => location.hash.replace('#room/', ''));
   await a.getByRole('button', { name: 'Sit here' }).first().click();
@@ -81,6 +82,7 @@ test('two sessions rename via the UI, share a table with 2 bots, and stay themse
 
   // ── B joins from the live lobby and takes a BOT's place ──────────────────
   await b.getByRole('button', { name: 'Play', exact: true }).click();
+  await b.getByRole('button', { name: 'Join', exact: true }).click();
   await b.getByRole('button', { name: 'Join a public game' }).click();
   const card = b.getByRole('listitem').filter({ hasText: code });
   await expect(card).toContainText('Broski-A'); // host name on the card
