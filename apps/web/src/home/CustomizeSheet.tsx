@@ -1,12 +1,15 @@
-import { useState, type ReactNode } from 'react';
-import { AvatarChip, Collapsible, Cta, PlayerCard, useLang, type Lang } from '@jaffre/ui';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Cta, useLang, type Lang } from '@jaffre/ui';
+import { createPortal } from 'react-dom';
 import { IDENTITY_PALETTE } from '../paint/palette.js';
+import { useScrollLock } from '../components/useScrollLock.js';
 import { NameField } from './NameField.js';
 
 const T: Record<
   Lang,
   {
     customize: string;
+    close: string;
     yourColour: string;
     colour: (hex: string) => string;
     paint: string;
@@ -14,12 +17,14 @@ const T: Record<
 > = {
   en: {
     customize: 'Customize',
+    close: 'Close customize',
     yourColour: 'Your colour',
     colour: (hex) => `Colour ${hex}`,
     paint: 'Paint your card',
   },
   fr: {
     customize: 'Personnaliser',
+    close: 'Fermer la personnalisation',
     yourColour: 'Ta couleur',
     colour: (hex) => `Couleur ${hex}`,
     paint: 'Peins ta carte',
@@ -32,10 +37,9 @@ const PALETTE = IDENTITY_PALETTE;
 
 const noop = () => undefined;
 
-export interface ProfileCardProps {
+export interface CustomizeSheetProps {
   readonly name: string;
   readonly color: string | null;
-  readonly paint: string | null;
   /** Live screen: offer the colour swatches + paint entry. Scenes: static. */
   readonly editable?: boolean;
   /** A palette colour was chosen — persist it. */
@@ -48,24 +52,22 @@ export interface ProfileCardProps {
   readonly onNameCommit?: () => void;
   /** Error to surface under the name field (e.g. a taken name). */
   readonly nameError?: string | null;
-  /** Extra content at the foot of the Customize disclosure — the recovery card. */
+  /** Extra content at the foot of the sheet — the recovery card (scenes only). */
   readonly children?: ReactNode;
-  /** Open the disclosure on mount (scene viewer stages it open). */
-  readonly defaultOpen?: boolean;
+  readonly onClose: () => void;
 }
 
 /**
- * The identity row: by default a SMALL PlayerCard sits beside the "Customize"
- * disclosure (the JAFFRE wordmark above stays the highlight). Opening Customize
- * grows the card to full size for painting/renaming, with everything secondary
- * — name field, colour swatches, paint mode, recovery code — inside the
- * disclosure. Colour and painting are separate deliberate acts; both persist
- * through the parent so they follow the player across devices.
+ * The Customize sheet: name, colour palette, and the paint entry — the same
+ * overlay idiom as LoginSheet/HelpSheet (portaled to <body>, backdrop click +
+ * Escape + a header close button all dismiss it, focus lands on close). The
+ * scene viewer stages it open (identityStage !== undefined) so its probes
+ * still find the name field and, for the identity scenes, the recovery
+ * plates passed in as children.
  */
-export function ProfileCard({
+export function CustomizeSheet({
   name,
   color,
-  paint,
   editable = false,
   onColor,
   onPaint,
@@ -73,44 +75,50 @@ export function ProfileCard({
   onNameCommit,
   nameError = null,
   children,
-  defaultOpen = false,
-}: ProfileCardProps) {
+  onClose,
+}: CustomizeSheetProps) {
   const t = T[useLang()];
-  const [open, setOpen] = useState(defaultOpen);
-  const fill = color ?? undefined;
+  useScrollLock();
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  // exactOptionalPropertyTypes: only pass optional props when defined.
-  const cardProps = {
-    name,
-    ...(color !== null ? { color } : {}),
-    ...(paint !== null ? { paint } : {}),
-    // Inline rename lives on the card on the live screen (not the inert scenes).
-    ...(editable && onName !== undefined ? { onName, onNameCommit: onNameCommit ?? noop } : {}),
-  };
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
 
-  return (
-    // Always a centered column: your card over the Customize trigger. Closed,
-    // the card stays small (the hero fan above already shows it big) so the
-    // brand moment owns the screen; opening reveals colour + the paint entry.
-    // Full column width so the Customize trigger lines up edge-to-edge with
-    // the Level bar and the PLAY / "Ton coin" doors — every home button one
-    // width.
-    <div className="flex w-full flex-col items-center gap-[0.8em]">
-      <div className={open ? '' : 'text-[0.5em]'}>
-        <PlayerCard {...cardProps} />
-      </div>
-
-      <Collapsible
-        open={open}
-        onOpenChange={setOpen}
-        className="w-full"
-        summary={
-          <>
-            <AvatarChip name={name} color={fill} size="sm" />
-            {t.customize}
-          </>
-        }
+  // Portaled to <body>: the home screen's animated chrome bar is a stacking
+  // context, so an inline fixed overlay would slip under the hero fan.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.customize}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[92dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
       >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-arcade-display text-[1.5em] uppercase tracking-wide text-(--color-ap-gold)">
+            {t.customize}
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            aria-label={t.close}
+            onClick={onClose}
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+          >
+            ✕
+          </button>
+        </div>
+
         <NameField
           value={name}
           onChange={onName ?? noop}
@@ -151,7 +159,8 @@ export function ProfileCard({
         )}
 
         {children}
-      </Collapsible>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

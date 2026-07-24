@@ -28,9 +28,6 @@ async function newPage(context: BrowserContext): Promise<Page> {
   return page;
 }
 
-/** Rename through the real UI: type on the identity card itself, blur
- * commits. (A second "Your name" field lives in the Customize drawer — same
- * wiring; the card is the path players actually take.) */
 /** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
  * fill-bots shortcut is gone — house style is one control per seat). */
 async function fillWithBots(page: Page): Promise<void> {
@@ -42,10 +39,15 @@ async function fillWithBots(page: Page): Promise<void> {
   }
 }
 
+/** Rename through the real UI: the "Your name" field lives inside the
+ * Customize sheet — open it, type, blur to commit, then close the sheet
+ * again so its overlay doesn't block the PLAY door underneath. */
 async function renameVia(page: Page, name: string): Promise<void> {
+  await page.getByRole('button', { name: 'Customize' }).click();
   const field = page.getByRole('textbox', { name: 'Your name' }).first();
   await field.fill(name);
   await field.blur();
+  await page.getByRole('button', { name: 'Close customize' }).click();
 }
 
 test('two sessions rename via the UI, share a table with 2 bots, and stay themselves everywhere', async ({

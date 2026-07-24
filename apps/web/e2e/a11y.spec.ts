@@ -29,9 +29,15 @@ test('home screen has no serious axe violations', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
   await expectNoSeriousViolations(page, 'home');
 
-  // The two inputs are reachable by keyboard and properly named. Room code
-  // lives behind the single PLAY door — open it, then re-audit the open state.
+  // The name field lives inside the Customize sheet now — open it, check it's
+  // reachable by keyboard and properly named, then re-audit the open state and
+  // close it again before continuing.
+  await page.getByRole('button', { name: 'Customize' }).click();
   await expect(page.getByLabel('Your name')).toBeVisible();
+  await expectNoSeriousViolations(page, 'home customize open');
+  await page.getByRole('button', { name: 'Close customize' }).click();
+
+  // Room code lives behind the single PLAY door — open it, then re-audit.
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByRole('button', { name: 'Join', exact: true }).click();
   await expect(page.getByLabel('Room code')).toBeVisible();

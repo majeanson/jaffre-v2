@@ -183,8 +183,10 @@ test('a stale Join on an already-taken seat surfaces the seat-taken toast', asyn
   // Back online: the queued sit flushes on reconnect, the server answers
   // SEAT_TAKEN, and the toast tells C what happened.
   await contextC.setOffline(false);
+  // 30s: reconnect backoff + the queued flush can stack on a slow runner, and
+  // the toast only dwells a few seconds once it lands.
   await expect(c.getByRole('status').filter({ hasText: /taken/i })).toBeVisible({
-    timeout: 20_000,
+    timeout: 30_000,
   });
   // And her roster caught up: the seat belongs to Bruno, not her.
   await expect(c.getByTestId('seat-row-1')).toContainText('Bruno');

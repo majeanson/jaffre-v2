@@ -123,7 +123,7 @@ export const SCENE_METAS = [
     id: 'lobby-open',
     label: 'Lobby — seats open',
     screen: 'lobby',
-    probe: 'role=button[name="Waiting for players — add bots to fill the table"]',
+    probe: 'text=seats left — add bots',
   },
   {
     id: 'lobby-full',

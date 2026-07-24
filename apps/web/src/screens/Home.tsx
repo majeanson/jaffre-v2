@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from 'react';
-import { useLang, type Lang } from '@jaffre/ui';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { AvatarChip, PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
@@ -7,19 +7,20 @@ import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
+import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
+import { HomeNavRow } from '../home/HomeNavRow.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { PracticeNudge } from '../home/PracticeNudge.js';
 import { LevelBadge } from '../home/LevelBadge.js';
-import { ProfileCard } from '../home/ProfileCard.js';
 import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
 
-const T: Record<Lang, { corner: string }> = {
-  en: { corner: 'Your corner' },
-  fr: { corner: 'Ton coin' },
+const T: Record<Lang, { corner: string; customize: string }> = {
+  en: { corner: 'Your corner', customize: 'Customize' },
+  fr: { corner: 'Ton coin', customize: 'Personnaliser' },
 };
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
@@ -65,14 +66,27 @@ export function Home({
   // The standing tables feed the PLAY door's "your tables" row and its
   // closed-door count/your-turn pulse.
   const [tables, setTables] = useState<readonly TableEntry[]>(listTables);
+  // The Customize sheet: a scene stages an identity open on mount so its
+  // probes still find the name field/recovery plates without a click.
+  const [customizeOpen, setCustomizeOpen] = useState(staged);
+  const customizeTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Establish identity as soon as the home screen shows (not only once the
-  // recovery card mounts — it now lives inside the Customize disclosure) so a
+  // recovery card mounts — it now lives inside the Customize sheet) so a
   // brand-new browser has a token ready for profile saves and room joins.
   useEffect(() => {
     if (staged) return;
     void getGuestToken(playerName());
   }, [staged]);
+
+  // A table created or finished elsewhere in-session (another tab, another
+  // device) shouldn't stay a stale mount-time snapshot — re-read on return.
+  useEffect(() => {
+    if (demoTables !== undefined) return;
+    const refresh = () => setTables(listTables());
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [demoTables]);
 
   const saveName = () => setPlayerName(name.trim() === '' ? 'Player' : name.trim());
 
@@ -95,11 +109,11 @@ export function Home({
       {!staged && <AttractMode />}
 
       {/* Title console: one centered stack on mobile, two balanced rails on the
-          desktop. LEFT is the brand moment + your painted identity; RIGHT is the
-          play actions and the quiet chrome — kept full-width so PLAY, "Ton coin"
-          and the toolbar all share one edge. */}
+          desktop. LEFT is the brand moment + your painted identity card only;
+          RIGHT is the play actions, "Ton coin", and the quiet chrome — kept
+          full-width so PLAY, "Ton coin" and the toolbar all share one edge. */}
       <div className="grid w-full max-w-[min(92vw,44rem)] grid-cols-1 items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
-        {/* LEFT — brand fan + painted identity card */}
+        {/* LEFT — brand fan + your painted identity card, nothing else */}
         <div className="flex flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
           {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
           <HeroBanner
@@ -109,45 +123,19 @@ export function Home({
             {...(staged ? {} : { onCardClick: openPaint })}
           />
 
-          <ProfileCard
-            name={staged ? identityStage.name : name}
-            color={shownColor}
-            paint={shownPaint}
-            editable={!staged}
-            onColor={chooseColor}
-            onPaint={openPaint}
-            nameError={staged ? (identityStage.nameError ?? null) : null}
-            defaultOpen={staged}
-            {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
-          >
-            {/* Scene viewer still stages the recovery plates; live players reach
-                every login path (Google / email code / 3-word restore) through
-                the one "Log in" button in the chrome bar below. */}
-            {staged && <RecoveryCard stage={identityStage.recovery} />}
-          </ProfileCard>
-
-          {/* Your level + XP bar → the Journey. Live screen only. */}
-          {!staged && <LevelBadge />}
-
-          {/* Your corner: the profile overview + meta screens — one door, always available. */}
-          <button
-            type="button"
-            onClick={() => {
-              location.hash = '#corner';
-            }}
-            className="flex w-full items-center gap-[0.7em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.55em] text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
-          >
-            <span aria-hidden className="text-(--color-ap-gold)">
-              ★
-            </span>
-            <span className="font-arcade-display uppercase tracking-wide">{t.corner}</span>
-            <span aria-hidden className="ml-auto">
-              →
-            </span>
-          </button>
+          {/* A small display-only preview — editing (name, colour, paint) lives
+              in the Customize sheet, reached from the chrome bar below. */}
+          <div className="text-[0.5em]">
+            <PlayerCard
+              name={staged ? identityStage.name : name}
+              {...(shownColor !== null ? { color: shownColor } : {})}
+              {...(shownPaint !== null ? { paint: shownPaint } : {})}
+            />
+          </div>
         </div>
 
-        {/* RIGHT — play actions, then quiet chrome, all one column width */}
+        {/* RIGHT — play actions, "Ton coin", then the quiet chrome, all one
+            column width */}
         <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
           {/* First-visit pointer to the coached practice game. Standing tables
               mean the player already knows the way in — skip the tutorial hint. */}
@@ -181,12 +169,30 @@ export function Home({
               : {})}
           />
 
+          {/* Your corner: the profile overview + meta screens — one door,
+              directly under PLAY, always available. */}
+          <HomeNavRow
+            onClick={() => {
+              location.hash = '#corner';
+            }}
+          >
+            <span aria-hidden className="text-(--color-ap-gold)">
+              ★
+            </span>
+            <span className="font-arcade-display uppercase tracking-wide">{t.corner}</span>
+            <span aria-hidden className="ml-auto">
+              →
+            </span>
+          </HomeNavRow>
+
           {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
               how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
-              one thing everywhere. Full-width bar so it lines up under the play
-              actions; icons stay centered. Solid panel so axe reads the contrast.
-              Install + turn-alerts are one-time settings, not a door you need
-              every visit — they live at the bottom of the Help sheet instead. */}
+              one thing everywhere, plus the Customize trigger (your avatar chip)
+              and the Journey's level chip. Full-width bar so it lines up under
+              the play actions; icons stay centered. Solid panel so axe reads the
+              contrast. Install + turn-alerts are one-time settings, not a door
+              you need every visit — they live at the bottom of the Help sheet
+              instead. */}
           <div
             className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
             style={{ '--rise-delay': '280ms' } as CSSProperties}
@@ -194,12 +200,49 @@ export function Home({
             <HelpButton defaultOpen={helpOpen} className={ICON_BTN_NEUTRAL}>
               <IconQuestion />
             </HelpButton>
+            <button
+              ref={customizeTriggerRef}
+              type="button"
+              aria-label={t.customize}
+              title={t.customize}
+              onClick={() => setCustomizeOpen(true)}
+              className={ICON_BTN_NEUTRAL}
+            >
+              <AvatarChip
+                name={staged ? identityStage.name : name}
+                color={shownColor ?? undefined}
+                paint={shownPaint}
+                size="sm"
+              />
+            </button>
+            <LevelBadge />
             <SkinLink />
             <LangSwitcher />
             {!staged && <LoginButton />}
           </div>
         </div>
       </div>
+
+      {customizeOpen && (
+        <CustomizeSheet
+          name={staged ? identityStage.name : name}
+          color={shownColor}
+          editable={!staged}
+          onColor={chooseColor}
+          onPaint={openPaint}
+          nameError={staged ? (identityStage.nameError ?? null) : null}
+          {...(staged ? {} : { onName: setName, onNameCommit: saveName })}
+          onClose={() => {
+            setCustomizeOpen(false);
+            customizeTriggerRef.current?.focus();
+          }}
+        >
+          {/* Scene viewer still stages the recovery plates; live players reach
+              every login path (Google / email code / 3-word restore) through
+              the one "Log in" button in the chrome bar below. */}
+          {staged && <RecoveryCard stage={identityStage.recovery} />}
+        </CustomizeSheet>
+      )}
     </main>
   );
 }
