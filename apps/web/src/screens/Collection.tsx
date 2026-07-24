@@ -44,19 +44,6 @@ export interface CollectionProps {
   readonly demoStats?: Stats;
 }
 
-/** sessionStorage key holding the route to return to when the gallery closes —
- * set by SkinLink so opening Skins mid-game and going back lands you in the
- * game, not on Home. */
-export const COLLECTION_RETURN_KEY = 'jaffre-collection-return';
-
-/** Where the gallery's back button should go: the stashed route (a game in
- * progress), or Home when there isn't one. Consumes the stash. */
-export function collectionReturnHash(): string {
-  const back = sessionStorage.getItem(COLLECTION_RETURN_KEY);
-  sessionStorage.removeItem(COLLECTION_RETURN_KEY);
-  return back !== null && back !== '#collection' ? back : '';
-}
-
 const T: Record<
   Lang,
   {
@@ -193,6 +180,8 @@ function BonhommePreview({ id, paintHint }: { readonly id: string; readonly pain
           alt=""
           aria-hidden
           draggable={false}
+          width={440}
+          height={511}
           className="pointer-events-none w-[2.9em] select-none object-contain"
           style={{ mixBlendMode: 'darken' }}
         />

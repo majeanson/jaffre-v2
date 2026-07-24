@@ -74,12 +74,67 @@ export async function authedFetch(path: string, init?: RequestInit): Promise<Res
   return fetch(`${path}${sep}u=${encodeURIComponent(uid)}`, init);
 }
 
-export async function fetchHistory(): Promise<readonly HistoryGame[]> {
+/** How long a resolved stats/history fetch stays reusable. Home → Corner →
+ * Journey → Stats → Awards can each want the same read within seconds of one
+ * another; a game finishing on the felt (table/ hooks) is the only thing
+ * that makes a cached read stale sooner, and that path isn't wired to bust
+ * the cache yet (no obvious non-table hook) — the TTL alone bounds the
+ * staleness to this window. */
+const CACHE_TTL_MS = 30_000;
+
+/** The identity a cached read is scoped to — mirrors authedFetch's own rule
+ * (Bearer token, else the plain uid) so a login/guest-identity switch never
+ * serves someone else's cached record. */
+async function identityKey(): Promise<string> {
+  const token = await getGuestToken(playerName());
+  if (token !== null) return `t:${token.token}`;
+  const uid = localStorage.getItem('jaffre-uid');
+  return uid !== null ? `u:${uid}` : 'anon';
+}
+
+interface CacheEntry<T> {
+  readonly identity: string;
+  readonly at: number;
+  readonly promise: Promise<T>;
+}
+
+/** Wraps a fetcher with in-flight dedupe (two callers within the same tick
+ * share one request) AND a short TTL reuse of the resolved value, both keyed
+ * on the current identity. A rejected fetch clears the entry so the next
+ * call retries instead of caching the failure. */
+export function cached<T>(fetcher: () => Promise<T>): {
+  readonly run: () => Promise<T>;
+  readonly bust: () => void;
+} {
+  let entry: CacheEntry<T> | null = null;
+  const run = async (): Promise<T> => {
+    const identity = await identityKey();
+    const now = Date.now();
+    if (entry !== null && entry.identity === identity && now - entry.at < CACHE_TTL_MS) {
+      return entry.promise;
+    }
+    const promise = fetcher();
+    entry = { identity, at: now, promise };
+    promise.catch(() => {
+      if (entry?.promise === promise) entry = null;
+    });
+    return promise;
+  };
+  return { run, bust: () => (entry = null) };
+}
+
+async function fetchHistoryUncached(): Promise<readonly HistoryGame[]> {
   const res = await authedFetch('/api/history');
   if (res === null) return []; // no identity established yet → nothing to show
   if (!res.ok) throw new Error(`history ${String(res.status)}`);
   const data = (await res.json()) as { games: readonly HistoryGame[] };
   return data.games;
+}
+
+const historyCache = cached(fetchHistoryUncached);
+
+export function fetchHistory(): Promise<readonly HistoryGame[]> {
+  return historyCache.run();
 }
 
 export async function fetchReplay(gameId: string): Promise<ReplayData> {
@@ -100,11 +155,27 @@ const EMPTY_STATS: Stats = {
   streak: { current: 0, best: 0 },
 };
 
-export async function fetchStats(): Promise<Stats> {
+async function fetchStatsUncached(): Promise<Stats> {
   const res = await authedFetch('/api/stats');
   if (res === null) return EMPTY_STATS; // no identity established yet → nothing to show
   if (!res.ok) throw new Error(`stats ${String(res.status)}`);
   return (await res.json()) as Stats;
+}
+
+const statsCache = cached(fetchStatsUncached);
+
+export function fetchStats(): Promise<Stats> {
+  return statsCache.run();
+}
+
+/** Drop the cached stats/history reads — call this after something that
+ * changes them server-side (a finished game, a stat award grant) so the next
+ * fetch sees fresh numbers instead of waiting out the TTL. Not currently
+ * wired to a post-game trigger (that lives under table/, out of scope here);
+ * the 30s TTL bounds staleness in the meantime. */
+export function bustStatsCache(): void {
+  statsCache.bust();
+  historyCache.bust();
 }
 
 export interface LeaderboardRow {

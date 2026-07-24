@@ -1,6 +1,7 @@
 import { legalCards, sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { feedback } from '../audio/clicks.js';
 import { useGameStore } from '../state/gameStore.js';
 import { queueStillValid } from './queue.js';
@@ -19,7 +20,16 @@ const QUEUE_FIRE_DELAY_MS = 400;
  * it with a normal tap.
  */
 export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
-  const { view, viewer, roster, heldTrick, queued, setQueued } = useGameStore();
+  const { view, viewer, roster, heldTrick, queued, setQueued } = useGameStore(
+    useShallow((s) => ({
+      view: s.view,
+      viewer: s.viewer,
+      roster: s.roster,
+      heldTrick: s.heldTrick,
+      queued: s.queued,
+      setQueued: s.setQueued,
+    })),
+  );
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
   const myTurn = view !== null && me !== null && view.turn === me && view.phase !== 'game_over';

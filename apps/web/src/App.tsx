@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider } from '@jaffre/ui';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider, PixelWave } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
 import {
   BONHOMME_SKIN_EVENT,
@@ -16,23 +16,52 @@ import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGam
 import { connect, disconnect, send } from './net/socket.js';
 import { forgetTable } from './net/rooms.js';
 import { leaveVoice } from './voice/rtc.js';
-import { Awards } from './screens/Awards.js';
-import { Leaderboard } from './screens/Leaderboard.js';
-import { PublicLobby } from './screens/PublicLobby.js';
-import { Collection, collectionReturnHash } from './screens/Collection.js';
-import { Corner } from './screens/Corner.js';
+import { collectionReturnHash } from './screens/collectionReturn.js';
+// Home and the room/practice Table path are the critical path (first paint,
+// and the screen every join/create flow lands on next) and stay eager. Lobby
+// is the screen right after Create/Join, so it stays eager too. Every other
+// meta/gallery screen is a click or two away from Home — lazy them so their
+// weight (cosmetic pickers, replay viewer, dev scene rig, ...) only loads
+// when actually visited, instead of bloating the one index chunk every
+// visitor downloads.
 import { Home } from './screens/Home.js';
-import { Journey } from './screens/Journey.js';
 import { Lobby } from './screens/Lobby.js';
-import { PaintStudio } from './screens/PaintStudio.js';
-import { Replay } from './screens/Replay.js';
-import { Scenes } from './screens/Scenes.js';
-import { Stats } from './screens/Stats.js';
 import { Table } from './screens/Table.js';
-import { Visitor } from './screens/Visitor.js';
 import { useGameStore } from './state/gameStore.js';
 import { useMusicStore } from './state/musicStore.js';
 import { MusicDock } from './music/MusicDock.js';
+
+const Awards = lazy(() => import('./screens/Awards.js').then((m) => ({ default: m.Awards })));
+const Leaderboard = lazy(() =>
+  import('./screens/Leaderboard.js').then((m) => ({ default: m.Leaderboard })),
+);
+const PublicLobby = lazy(() =>
+  import('./screens/PublicLobby.js').then((m) => ({ default: m.PublicLobby })),
+);
+const Collection = lazy(() =>
+  import('./screens/Collection.js').then((m) => ({ default: m.Collection })),
+);
+const Corner = lazy(() => import('./screens/Corner.js').then((m) => ({ default: m.Corner })));
+const Journey = lazy(() => import('./screens/Journey.js').then((m) => ({ default: m.Journey })));
+const PaintStudio = lazy(() =>
+  import('./screens/PaintStudio.js').then((m) => ({ default: m.PaintStudio })),
+);
+const Replay = lazy(() => import('./screens/Replay.js').then((m) => ({ default: m.Replay })));
+const Scenes = lazy(() => import('./screens/Scenes.js').then((m) => ({ default: m.Scenes })));
+const Stats = lazy(() => import('./screens/Stats.js').then((m) => ({ default: m.Stats })));
+const Visitor = lazy(() => import('./screens/Visitor.js').then((m) => ({ default: m.Visitor })));
+
+/** Minimal Suspense fallback for a lazy route chunk still loading — the same
+ * loading idiom every meta screen uses for its own data fetch (PixelWave),
+ * just centered on an empty ground so there's no layout jump once the real
+ * screen mounts. */
+function RouteFallback() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-(--color-ap-ground)">
+      <PixelWave label="…" />
+    </div>
+  );
+}
 
 type Route =
   | { kind: 'home' }
@@ -115,11 +144,22 @@ export function App() {
     const h = location.hash;
     if (h.startsWith('#room') || h.startsWith('#practice') || h.startsWith('#scenes')) return;
     let live = true;
-    void reconcileCosmetics().then((fresh) => {
-      if (live && fresh.length > 0) setUnlocked(fresh.join(', '));
-    });
+    // Never blocks UI (it only ever surfaces an unlock toast) — defer it off
+    // the critical first-paint/hydration path onto idle time, with a
+    // setTimeout fallback for browsers without requestIdleCallback (Safari).
+    const runReconcile = () => {
+      void reconcileCosmetics().then((fresh) => {
+        if (live && fresh.length > 0) setUnlocked(fresh.join(', '));
+      });
+    };
+    const hasRic = typeof window.requestIdleCallback === 'function';
+    const handle = hasRic
+      ? window.requestIdleCallback(runReconcile)
+      : window.setTimeout(runReconcile, 1);
     return () => {
       live = false;
+      if (hasRic) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
     };
   }, []);
 
@@ -184,8 +224,9 @@ function AppRoutes() {
     return undefined;
   }, [route]);
 
+  let content: ReactElement;
   if (route.kind === 'practice') {
-    return (
+    content = (
       <Table
         dev
         tutorial
@@ -194,43 +235,32 @@ function AppRoutes() {
         onRematch={() => startLocalGame()}
       />
     );
-  }
-  if (route.kind === 'scenes') {
-    return <Scenes sceneId={route.id} onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'corner') {
-    return <Corner onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'stats') {
-    return <Stats onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'awards') {
-    return <Awards onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'journey') {
-    return <Journey onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'leaderboard') {
-    return <Leaderboard onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'lobby') {
-    return (
+  } else if (route.kind === 'scenes') {
+    content = <Scenes sceneId={route.id} onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'corner') {
+    content = <Corner onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'stats') {
+    content = <Stats onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'awards') {
+    content = <Awards onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'journey') {
+    content = <Journey onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'leaderboard') {
+    content = <Leaderboard onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'lobby') {
+    content = (
       <PublicLobby
         onLeave={() => (location.hash = '')}
         onJoin={(code) => (location.hash = `#room/${code}`)}
       />
     );
-  }
-  if (route.kind === 'collection') {
-    return <Collection onLeave={() => (location.hash = collectionReturnHash())} />;
-  }
-  if (route.kind === 'paint') {
-    return <PaintStudio onLeave={() => (location.hash = '')} />;
-  }
-  if (route.kind === 'replay') {
-    return <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
-  }
-  if (route.kind === 'room') {
+  } else if (route.kind === 'collection') {
+    content = <Collection onLeave={() => (location.hash = collectionReturnHash())} />;
+  } else if (route.kind === 'paint') {
+    content = <PaintStudio onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'replay') {
+    content = <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
+  } else if (route.kind === 'room') {
     // A spectator arriving at a room already underway (viewer is not a seated
     // number) lands on the Visitor screen first — take over a bot's seat or
     // keep watching — unless they've already chosen to watch.
@@ -271,17 +301,19 @@ function AppRoutes() {
       ) : (
         <Lobby code={route.code} onLeave={() => (location.hash = '')} />
       );
-    return (
+    content = (
       <>
         <MusicDock />
         {screen}
       </>
     );
+  } else {
+    content = (
+      <Home
+        onPractice={() => (location.hash = '#practice')}
+        onJoinRoom={(code) => (location.hash = `#room/${code}`)}
+      />
+    );
   }
-  return (
-    <Home
-      onPractice={() => (location.hash = '#practice')}
-      onJoinRoom={(code) => (location.hash = `#room/${code}`)}
-    />
-  );
+  return <Suspense fallback={<RouteFallback />}>{content}</Suspense>;
 }

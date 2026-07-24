@@ -1,4 +1,4 @@
-import { authedFetch } from './history.js';
+import { authedFetch, cached } from './history.js';
 import { AWARDS } from '../awards.js';
 import { currentLang } from '../lang.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -22,12 +22,20 @@ export interface EarnedAward {
   readonly grantedAt: number;
 }
 
-export async function fetchAwards(): Promise<readonly EarnedAward[]> {
+async function fetchAwardsUncached(): Promise<readonly EarnedAward[]> {
   const res = await authedFetch('/api/awards');
   if (res === null) return []; // no identity established yet → nothing earned
   if (!res.ok) throw new Error(`awards ${String(res.status)}`);
   const data = (await res.json()) as { awards: readonly EarnedAward[] };
   return data.awards;
+}
+
+// Same dedupe + ~30s TTL idiom as net/history.ts — GET /api/awards is one of
+// the calls Home fires alongside /api/stats on every meta-screen visit.
+const awardsCache = cached(fetchAwardsUncached);
+
+export function fetchAwards(): Promise<readonly EarnedAward[]> {
+  return awardsCache.run();
 }
 
 /** Grant a client-attested event award (e.g. tutorial-complete). Returns
@@ -43,7 +51,10 @@ export async function grantAward(awardId: string): Promise<boolean> {
       body: JSON.stringify({ awardId }),
     });
     const ok = res !== null && res.ok;
-    if (ok) announceGrant(awardId);
+    if (ok) {
+      announceGrant(awardId);
+      awardsCache.bust(); // a fresh grant just landed — don't serve the stale earned set
+    }
     return ok;
   } catch {
     return false;

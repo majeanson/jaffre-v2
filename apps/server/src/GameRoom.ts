@@ -2119,10 +2119,17 @@ export class GameRoom implements DurableObject {
   }
 
   private broadcastRoster(opts: { skip?: WebSocket; exclude?: WebSocket }): void {
-    const roster = this.roster(opts.exclude);
+    // One payload for every recipient — stringify once, send the shared string
+    // (same pattern as Lobby's broadcast).
+    const wire = JSON.stringify({ t: 'roster', roster: this.roster(opts.exclude) });
     for (const socket of this.ctx.getWebSockets()) {
       if (socket === opts.skip || socket === opts.exclude) continue;
-      if (this.attachment(socket).joined) this.send(socket, { t: 'roster', roster });
+      if (!this.attachment(socket).joined) continue;
+      try {
+        socket.send(wire);
+      } catch {
+        // Socket closed under us — the close handler will refresh the roster.
+      }
     }
   }
 

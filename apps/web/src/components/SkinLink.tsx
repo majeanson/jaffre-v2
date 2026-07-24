@@ -1,6 +1,6 @@
 import { useLang, type Lang } from '@jaffre/ui';
 import { CARD_SKINS, DEFAULT_CARD_SKIN, currentCardSkin } from '../cosmetics.js';
-import { COLLECTION_RETURN_KEY } from '../screens/Collection.js';
+import { COLLECTION_RETURN_KEY } from '../screens/collectionReturn.js';
 import { ICON_BTN_NEUTRAL } from './IconButton.js';
 import { IconPalette } from './icons.js';
 

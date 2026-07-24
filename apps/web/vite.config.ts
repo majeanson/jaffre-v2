@@ -74,7 +74,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /\/og-cards\/.*\.jpg$/,
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'og-cards',
               expiration: { maxEntries: 16, maxAgeSeconds: 30 * 24 * 3600 },

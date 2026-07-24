@@ -1,11 +1,18 @@
+// Fraunces and Instrument Sans already ship latin/latin-ext/vietnamese-only
+// stylesheets upstream (no arabic/cyrillic/hebrew glyphs exist for either
+// typeface), so their bare imports are already minimal.
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/instrument-sans';
 // Arcade shell type: Silkscreen (display — the compact-pixel stand-in for the
 // design's "Visitor" face; swap in the licensed Visitor TTF via the arcade
-// --font-arcade-display token later) + Rubik (UI).
+// --font-arcade-display token later) + Rubik (UI). Silkscreen's own default
+// stylesheet is already latin/latin-ext only (same reason as above).
 import '@fontsource/silkscreen';
 import '@fontsource/silkscreen/700.css';
-import '@fontsource-variable/rubik';
+// Rubik Variable's bare import pulls arabic/cyrillic/cyrillic-ext/hebrew
+// alongside latin/latin-ext (~50-60 KB of woff2 this en/fr app never uses,
+// bundled AND service-worker-precached). See src/fonts/rubik-latin.css.
+import './fonts/rubik-latin.css';
 import '@jaffre/ui/tokens.css';
 import { JaffreMotionConfig } from '@jaffre/ui';
 import { StrictMode } from 'react';

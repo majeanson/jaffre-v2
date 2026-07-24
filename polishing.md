@@ -18,20 +18,20 @@ i18n/copy, perf/tech). Line numbers drift — re-locate by the described element
 
 ## Pick of the litter (start here)
 
-- [ ] **(M) FR tutoiement pass on ALL unlock/requirement copy** — the single biggest
+- [x] **(M) FR tutoiement pass on ALL unlock/requirement copy** — the single biggest
       copy inconsistency: `cosmetics.ts`, `awards.ts`, `theme.ts`, `progression.ts:141`,
       `Leaderboard.tsx` all say "Gagnez/Atteignez/Réussissez/Jouez/Terminez" (vous) while every
       gameplay surface says _tu_. One coordinated pass → "Gagne / Atteins / Réussis / Joue /
       Termine / Peins ta carte". Smoking gun: `awards.ts:129` mixes both registers in ONE
       string ("Terminez le tutoriel. Débloque le bonhomme…").
-- [ ] **(S/M) Code-split routes with `React.lazy`** — all 13 screens are eagerly imported
+- [x] **(S/M) Code-split routes with `React.lazy`** — all 13 screens are eagerly imported
       in `App.tsx:19-32`; zero dynamic imports in the app → one 898 KB index chunk (the Vite
       warning in every build). Lazy every non-Home/non-Table route behind `Suspense`; hash
       navigation already implies a screen swap.
 - [ ] **(S) Error states that aren't infinite spinners** — `Corner.tsx` and `Journey.tsx`
       `catch` → `setStats(null)` which IS the loading state, so a failed fetch spins
       `PixelWave` forever. Add the error branch + CTA that `Stats.tsx` already has.
-- [ ] **(S) Roster broadcast stringifies once** — `GameRoom.ts` `broadcastRoster` calls
+- [x] **(S) Roster broadcast stringifies once** — `GameRoom.ts` `broadcastRoster` calls
       `JSON.stringify` per socket for an identical payload; `Lobby.ts:121` already does it
       right (stringify once, send the shared string). Make GameRoom match.
 - [ ] **(S) Seat-chip badge collision** — `SeatChip.tsx:146-169`: the turn-timer pill and
@@ -148,58 +148,63 @@ i18n/copy, perf/tech). Line numbers drift — re-locate by the described element
 
 ## i18n & copy
 
-- [ ] (M) **Tutoiement pass** on cosmetics/awards/theme/progression/Leaderboard unlock
+- [x] (M) **Tutoiement pass** on cosmetics/awards/theme/progression/Leaderboard unlock
       copy (see pick-of-litter; includes the mixed-register `awards.ts:129` and
       `Leaderboard.tsx` empty string).
-- [ ] (S) `GameRecap.tsx:119` — "Touchez une ronde…" → "Touche une ronde…" (vous leak in
+- [x] (S) `GameRecap.tsx:119` — "Touchez une ronde…" → "Touche une ronde…" (vous leak in
       gameplay).
-- [ ] (M) Team labels defined in ~7 files with real drift (`l'Équipe Soleil` vs `Équipe
+- [x] (M) Team labels defined in ~7 files with real drift (`l'Équipe Soleil` vs `Équipe
 Soleil`). Promote one bilingual `TEAM_LABELS` in `teams.ts` and import everywhere.
-- [ ] (S) EN oscillates "bid"/"bet" for the one FR "mise" (BidPanel vs BetCards vs
+- [x] (S) EN oscillates "bid"/"bet" for the one FR "mise" (BidPanel vs BetCards vs
       PlayerPeek vs RoundSummary). Standardize on "bid".
-- [ ] (S) `SeatPicker.tsx` — imperative tu ("Assis-toi ici") next to bare infinitives
+- [x] (S) `SeatPicker.tsx` — imperative tu ("Assis-toi ici") next to bare infinitives
       ("Échanger ici", "Joindre"). Align: "Échange ici", "Joins-toi".
-- [ ] (S) "Starting hands"/"Mains de départ" defined twice (GameRecap +
+- [x] (S) "Starting hands"/"Mains de départ" defined twice (GameRecap +
       StartingHandsPanel). Consolidate into StartingHandsPanel's table.
 - [ ] (M) `SeatPicker.tsx` — FR seat buttons ("Déplace-toi ici") are ~2× EN width in a
       horizontal row; verify wrap on narrow phones or shorten FR.
 - [ ] (S) `RoomComms.tsx` — "Clavardage et musique" is long for the collapsed toggle
       cell; verify truncation, shorten if it clips.
-- [ ] (S) `Stats.tsx:261` — date locale `'en'` → `'en-CA'` (FR already `fr-CA`).
-- [ ] (S) `ChatPanel.tsx:69-72` — timestamps hand-built `HH:MM`; use
+- [x] (S) `Stats.tsx:261` — date locale `'en'` → `'en-CA'` (FR already `fr-CA`).
+- [x] (S) `ChatPanel.tsx:69-72` — timestamps hand-built `HH:MM`; use
       `toLocaleTimeString(locale)` so EN gets 12h.
-- [ ] (S) `GameRecap.tsx:88` — personal Elo labelled FR "Classement" (= standings, and
+- [x] (S) `GameRecap.tsx:88` — personal Elo labelled FR "Classement" (= standings, and
       already the Leaderboard's title). Use "Cote".
-- [ ] (S) `PlayerPeek.tsx:93` — FR "Taux" is bare; "% victoires" is clearer and matches
+- [x] (S) `PlayerPeek.tsx:93` — FR "Taux" is bare; "% victoires" is clearer and matches
       existing cosmetic copy.
 
 ## Performance & tech
 
-- [ ] (S/M) **`React.lazy` the route screens** (see pick-of-litter; 898 KB index chunk).
-- [ ] (S/M) Lazy the heavy leaf deps: `qrcode-generator` (rides into the main chunk via
+- [x] (S/M) **`React.lazy` the route screens** (see pick-of-litter; 898 KB index chunk).
+- [x] (S/M) Lazy the heavy leaf deps: `qrcode-generator` (rides into the main chunk via
       ShareSheet) → dynamic import inside the component; paint editor covered by lazy routes.
-- [ ] (S) `GameRoom.ts` `broadcastRoster` — stringify once (see pick-of-litter).
-- [ ] (S) Home fires TWO concurrent `/api/stats` (LevelBadge + reconcileCosmetics).
+- [x] (S) `GameRoom.ts` `broadcastRoster` — stringify once (see pick-of-litter).
+- [x] (S) Home fires TWO concurrent `/api/stats` (LevelBadge + reconcileCosmetics).
       One-line in-flight promise dedupe in `net/history.ts`.
-- [ ] (M) No JS-layer cache for stats/awards/history: Home→Corner→Journey→Stats→Awards
+- [x] (M) No JS-layer cache for stats/awards/history: Home→Corner→Journey→Stats→Awards
       re-hits `/api/stats` 5+ times per session (9 fetchStats call sites). Add a ~30s TTL
       cache keyed on identity in `net/history.ts` / `net/awards.ts`. (Also fixes the
       PlayerPeek loading flash.)
-- [ ] (M) `useTableDerived.ts:205` + `useQueuedPlay.ts:22` — whole-store `useGameStore()`
+- [x] (M) `useTableDerived.ts:205` + `useQueuedPlay.ts:22` — whole-store `useGameStore()`
       subscriptions in the hot table render path; convert to `useShallow` selectors.
-- [ ] (S) `main.tsx` imports all `@fontsource-variable/rubik` subsets — ~80 KB of
+- [x] (S) `main.tsx` imports all `@fontsource-variable/rubik` subsets — ~80 KB of
       arabic/cyrillic/hebrew/vietnamese woff2 bundled + SW-precached for an en/fr app.
       Import the latin(-ext) entrypoints only.
 - [ ] (S) `index.html` — no font preload; @fontsource faces are discovered after JS
       parses → guaranteed FOUT on cold load. Preload the two primary latin woff2.
-- [ ] (S/M) `Collection.tsx:191` — 48 KB og-card JPG rendered at ~46px with no
+      SKIPPED 2026-07-24: fontsource woff2 filenames get a Vite content hash
+      (`rubik-latin-wght-normal-<hash>.woff2`) only known after build — index.html
+      can't reference a stable path without hardcoding a dist hash that'll rot on
+      the next build. Needs a build-time injection step (e.g. a small Vite plugin
+      reading the manifest) to do safely; out of scope for this pass.
+- [x] (S/M) `Collection.tsx:191` — 48 KB og-card JPG rendered at ~46px with no
       width/height (CLS). Thumbnail variant or at least intrinsic dimensions.
 - [ ] (M) `useTableStatuses` — N parallel status fetches per Home visit; candidate for a
       batched `/api/table-status?codes=` endpoint (needs a server route — only if N grows).
-- [ ] (S) `QrCode.tsx:18-30` — QR re-encoded on every render; `useMemo` on `value`.
-- [ ] (S) `App.tsx` reconcile effect — gate the unlock-toast fetch behind
+- [x] (S) `QrCode.tsx:18-30` — QR re-encoded on every render; `useMemo` on `value`.
+- [x] (S) `App.tsx` reconcile effect — gate the unlock-toast fetch behind
       `requestIdleCallback`; it never blocks UI.
-- [ ] (S) `vite.config.ts` og-cards cache `CacheFirst` 30d can pin stale art if a file is
+- [x] (S) `vite.config.ts` og-cards cache `CacheFirst` 30d can pin stale art if a file is
       ever replaced in place; switch to `StaleWhileRevalidate` (matches api-reads).
 
 ---

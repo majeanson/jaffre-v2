@@ -10,6 +10,7 @@ import type {
 } from '@jaffre/ui';
 import { useLang, type Lang } from '@jaffre/ui';
 import { type Advice, suggest } from '@jaffre/bots';
+import { useShallow } from 'zustand/react/shallow';
 import { toPosition, useGameStore } from '../state/gameStore.js';
 import { botAvatar } from '../paint/botAvatars.js';
 import { queueableCards } from './queue.js';
@@ -202,7 +203,16 @@ export interface TableDerived {
 export function useTableDerived(coachOn = false): TableDerived | null {
   const lang = useLang();
   const t = T[lang];
-  const { view, viewer, roster, sweepTo, heldTrick, queued } = useGameStore();
+  const { view, viewer, roster, sweepTo, heldTrick, queued } = useGameStore(
+    useShallow((s) => ({
+      view: s.view,
+      viewer: s.viewer,
+      roster: s.roster,
+      sweepTo: s.sweepTo,
+      heldTrick: s.heldTrick,
+      queued: s.queued,
+    })),
+  );
   if (view === null || roster === null) return null;
 
   const me = viewer === 'spectator' || viewer === null ? null : viewer;
