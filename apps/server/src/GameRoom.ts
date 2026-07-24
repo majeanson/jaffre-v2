@@ -585,6 +585,16 @@ export class GameRoom implements DurableObject {
       await this.scheduleNextWake();
       return;
     }
+    // A connected human idling past the turn timer flips their auto-play ON,
+    // not just this one turn: without it every later turn costs the table the
+    // full timer again. The flag shows as the gold badge / lit toggle on their
+    // client, and clears the moment they act (onAction) or toggle it off —
+    // same contract as flipping it themselves.
+    if (typeof owner === 'string' && !this.autoPlayOn(owner) && this.turnTimerDeadline() <= now) {
+      this.meta.autoPlay = { ...this.meta.autoPlay, [owner]: true };
+      await this.ctx.storage.put('meta', this.meta);
+      this.broadcastRoster({});
+    }
     const rng = mulberry32((game.seed ^ this.seq) >>> 0);
     // Bot seats play at their own level; a voluntary-AFK human is covered at
     // 'hard' (their choice); a disconnected human is covered at 'normal' — fair

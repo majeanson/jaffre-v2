@@ -1150,6 +1150,7 @@ describe('GameRoom', () => {
     async () => {
       interface StoredMeta {
         turnStartedAt?: number;
+        autoPlay?: Record<string, boolean>;
       }
       interface StoredLog {
         action: Action;
@@ -1193,6 +1194,15 @@ describe('GameRoom', () => {
       if (action?.type === 'place_bid' || action?.type === 'play_card') {
         expect(action.seat).toBe(0);
       }
+
+      // The FIRST timer expiry flips the idler's auto-play ON, so later turns
+      // play on the bot cadence instead of costing the table 60s each. It
+      // clears when they act or toggle it off, like the voluntary flag.
+      const flipped = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.autoPlay?.['alice'];
+      });
+      expect(flipped).toBe(true);
 
       await endQuiet(room, client);
     },
