@@ -119,8 +119,11 @@ export function Seat({
           compact ? (initial.length > 1 ? 'max-sm:text-[1.35em]' : 'max-sm:text-[1.8em]') : ''
         } ${
           // With the plate chrome gone on small screens, the avatar itself
-          // carries the turn indicator.
-          compact && isTurn ? 'max-sm:border-(--color-ap-violet)' : ''
+          // carries the turn indicator: a thicker ring + a soft static glow
+          // (no pulse — reduced-motion safe by construction).
+          compact && isTurn
+            ? 'max-sm:border-[3px] max-sm:border-(--color-ap-violet) seat-turn-glow-sm'
+            : ''
         } border-(--color-ap-ink)`}
       >
         {paint !== null ? (

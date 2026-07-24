@@ -46,6 +46,14 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
   3: { x: 260, y: 0 },
 };
 
+/** The won-trick sweep-away duration, in seconds — framer-motion transitions
+ * need a JS number, so this mirrors (rather than reads) the CSS
+ * `--duration-sweep: 560ms` token in tokens.css; keep the two in sync by hand
+ * if that token ever moves. Reduced motion still applies: `JaffreMotionConfig`
+ * (motion/config.tsx) sets `reducedMotion="user"`, which zeroes every
+ * framer-motion transition under `prefers-reduced-motion`, this one included. */
+const SWEEP_DURATION_S = 0.56;
+
 /**
  * The trick fills whatever box its parent gives it: each play sits toward its
  * player's edge, so on a tall phone the cards spread vertically and on a wide
@@ -84,7 +92,11 @@ export function TrickArea({
               className={`absolute ${SLOT[play.position]}`}
               initial={{ x: 0, y: 0, opacity: 1 }}
               animate={{ ...SWEEP_TO[sweepTo], opacity: 0, scale: 0.85 }}
-              transition={{ duration: 0.56, delay: i * 0.04, ease: [0.2, 0.9, 0.25, 1] }}
+              transition={{
+                duration: SWEEP_DURATION_S,
+                delay: i * 0.04,
+                ease: [0.2, 0.9, 0.25, 1],
+              }}
             >
               <PlayingCard card={play.card} size={size} />
             </motion.div>

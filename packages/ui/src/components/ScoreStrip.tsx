@@ -268,6 +268,22 @@ function TeamSide({
   testId: string;
 }) {
   const pct = Math.max(0, Math.min(100, (score / target) * 100));
+  // The flash used to key on the score VALUE alone, so a round that nets
+  // this team's score back to a total it already sat at (a push, or a
+  // round whose points went entirely to the other team) silently skipped
+  // the flash. Track a monotonic tick instead: it advances whenever this
+  // team's round tally moves at all — score, tricks, or points — so a
+  // repeat score still re-triggers the animation.
+  const flashTickRef = useRef(0);
+  const prevRef = useRef({ score, count, points });
+  if (
+    prevRef.current.score !== score ||
+    prevRef.current.count !== count ||
+    prevRef.current.points !== points
+  ) {
+    flashTickRef.current += 1;
+    prevRef.current = { score, count, points };
+  }
   return (
     <span
       className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''} ${
@@ -294,7 +310,7 @@ function TeamSide({
           className="font-arcade-display text-(length:--text-fluid-lg) tabular-nums"
           style={{ color: colorVar }}
         >
-          <span key={score} className="score-flash inline-block">
+          <span key={flashTickRef.current} className="score-flash inline-block">
             {score}
           </span>
         </span>
@@ -729,7 +745,7 @@ export function ScoreStrip({
           {/* Whose-turn line — the novice's anchor. On phones it shrinks
               instead of disappearing: turn state must survive there too. */}
           {action !== undefined && (
-            <span className="font-arcade-display text-[0.62em] tracking-[0.14em] whitespace-nowrap text-(--color-ap-violet-soft) uppercase max-sm:text-[0.55em] max-sm:tracking-[0.1em]">
+            <span className="font-arcade-display text-[0.62em] tracking-[0.14em] whitespace-nowrap text-(--color-ap-violet-soft) uppercase max-sm:text-[0.62em] max-sm:tracking-[0.1em]">
               {action}
             </span>
           )}

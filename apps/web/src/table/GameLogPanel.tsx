@@ -57,7 +57,7 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
               type="button"
               aria-label={t.close}
               onClick={onClose}
-              className="grid size-7 cursor-pointer place-items-center rounded-(--radius-ap-inner) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover)"
+              className="grid size-9 cursor-pointer place-items-center rounded-(--radius-ap-inner) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover)"
             >
               ✕
             </button>

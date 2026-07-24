@@ -586,10 +586,19 @@ export function GameRecap({
               <ul className="mt-[0.6em] flex justify-between gap-2">
                 {[0, 1, 2, 3].map((i) => {
                   const s = seats[i] ?? null;
+                  // Mirror RoundSummaryOverlay's readySeats derivation
+                  // (`ready ?? isBot`): a seat's per-seat `ready` flag, when
+                  // the server has one, is the true signal — merely being
+                  // `connected` doesn't mean they've confirmed they're still
+                  // around. The server only populates `ready` mid-game
+                  // (round_over), so at game-over it falls back to
+                  // `connected` — the best signal available for "still at
+                  // the table" once no explicit ready vote exists yet.
+                  const isReady = s?.ready ?? s?.isBot ?? s?.connected ?? false;
                   const status =
                     s === null
                       ? { word: t.left, tone: 'text-(--color-ap-muted)' }
-                      : s.connected
+                      : isReady
                         ? { word: t.ready, tone: 'text-(--color-ap-ok)' }
                         : { word: t.away, tone: 'text-(--color-ap-muted)' };
                   return (

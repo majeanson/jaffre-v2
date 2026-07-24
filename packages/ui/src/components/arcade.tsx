@@ -32,18 +32,18 @@ export const ARCADE = {
   inner: 'rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink)',
   /** Square icon-button box (no cursor/fill — compose those per state). */
   iconBtnBase:
-    'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
+    'grid size-[clamp(2.5rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
   /** Neutral (idle) fill + hover for an icon button. */
   iconBtnNeutral: 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)',
   /** Labeled variant of iconBtnBase: same height/chrome, but grows to fit an
    * icon + text title. Stays ≥ square (min-w) so it reads as a sibling of the
    * icon-only buttons when the title collapses on narrow screens. */
   iconBtnLabeled:
-    'inline-flex h-[clamp(2rem,4.8vmin,2.6rem)] min-w-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 items-center justify-center gap-[0.35em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.5em] shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
+    'inline-flex h-[clamp(2.5rem,4.8vmin,2.6rem)] min-w-[clamp(2.5rem,4.8vmin,2.6rem)] shrink-0 items-center justify-center gap-[0.35em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.5em] shadow-(--shadow-ap-sm) text-(length:--text-fluid-base) transition-colors',
   /** Borderless icon-button cell for controls grouped inside ONE shared bar —
    * same footprint as iconBtnBase, but the bar owns the border/shadow. */
   iconBtnCell:
-    'grid size-[clamp(2rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-inner) text-(length:--text-fluid-base) transition-colors',
+    'grid size-[clamp(2.5rem,4.8vmin,2.6rem)] shrink-0 place-items-center rounded-(--radius-ap-inner) text-(length:--text-fluid-base) transition-colors',
   /** The black bar separating bunched controls (give it a height). */
   divider: 'w-[2px] shrink-0 rounded-full bg-(--color-ap-ink)',
   /** The tactile press: shadow collapses as the control shifts into it. */

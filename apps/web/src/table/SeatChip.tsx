@@ -142,18 +142,23 @@ export function SeatChip({
         </span>
       )}
       {/* Turn-timer nudge: this human is PRESENT, just idle on their turn.
-          Hidden until the final stretch — never labeled "Away". */}
-      {secondsLeft === null && turnSecondsLeft !== null && turnSecondsLeft <= TURN_TIMER_WARN_S && (
-        <span
-          data-testid="turntimer-countdown"
-          role="status"
-          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${alignX} ${
-            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}
-        >
-          {turnSecondsLeft > 0 ? t.turnTimer(formatCountdown(turnSecondsLeft)) : t.botTakingOver}
-        </span>
-      )}
+          Hidden until the final stretch — never labeled "Away". Suppressed
+          when auto-play is on: the bot already covers this turn, so the
+          countdown pill would just stack with the auto-play badge below. */}
+      {secondsLeft === null &&
+        !info.autoPlay &&
+        turnSecondsLeft !== null &&
+        turnSecondsLeft <= TURN_TIMER_WARN_S && (
+          <span
+            data-testid="turntimer-countdown"
+            role="status"
+            className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${alignX} ${
+              peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+            }`}
+          >
+            {turnSecondsLeft > 0 ? t.turnTimer(formatCountdown(turnSecondsLeft)) : t.botTakingOver}
+          </span>
+        )}
       {/* Voluntary auto-play: a bot is covering this connected human's turns.
           Distinct from the disconnect countdown (which only shows when away). */}
       {secondsLeft === null && info.autoPlay && (

@@ -176,6 +176,7 @@ export function fetchStats(): Promise<Stats> {
 export function bustStatsCache(): void {
   statsCache.bust();
   historyCache.bust();
+  leaderboardCache.bust();
 }
 
 export interface LeaderboardRow {
@@ -192,10 +193,19 @@ export interface Leaderboard {
   readonly you: (LeaderboardRow & { readonly rank: number }) | null;
 }
 
-export async function fetchLeaderboard(): Promise<Leaderboard> {
+async function fetchLeaderboardUncached(): Promise<Leaderboard> {
   // Authed when possible (so the board can mark "you"), but the board is public
   // — fall back to an anonymous fetch when no identity exists yet.
   const res = (await authedFetch('/api/leaderboard')) ?? (await fetch('/api/leaderboard'));
   if (!res.ok) throw new Error(`leaderboard ${String(res.status)}`);
   return (await res.json()) as Leaderboard;
+}
+
+const leaderboardCache = cached(fetchLeaderboardUncached);
+
+/** Session-cached (30s TTL, in-flight-deduped) — PlayerPeek and every other
+ * caller (Leaderboard screen, Home) share one read instead of each refetching
+ * on open. See `cached()` above. */
+export function fetchLeaderboard(): Promise<Leaderboard> {
+  return leaderboardCache.run();
 }

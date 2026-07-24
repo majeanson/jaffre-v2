@@ -1123,6 +1123,20 @@
       0 0 0 3px rgb(122 111 240 / 0.5);
   }
 
+  /* Mobile whose-turn signal on the seat avatar: the plate chrome + "Playing"
+   * label hide on phones, so the avatar alone must read as "active" — a
+   * thicker ring plus a soft static glow (no pulse; safe under any motion
+   * preference, same violet as `.ap-glow`). Scoped to the same breakpoint as
+   * Tailwind's `max-sm:` so it only kicks in once the plate chrome is gone. */
+  @media (max-width: 639.98px) {
+    .seat-turn-glow-sm {
+      box-shadow:
+        var(--shadow-ap-sm),
+        0 0 0 3px rgb(122 111 240 / 0.6),
+        0 0 0.6em 0.05em rgb(122 111 240 / 0.4);
+    }
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .ap-wobble {
       animation: ap-wobble 4.4s ease-in-out infinite;

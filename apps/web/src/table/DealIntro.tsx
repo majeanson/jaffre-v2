@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { PlayingCard } from '@jaffre/ui';
 
 /** How long the fly-out itself takes before the layer starts fading. */
-const DEAL_MS = 1700;
+const DEAL_MS = 1000;
 /** The fade-to-nothing tail after the cards land. */
 const FADE_MS = 350;
 /** Cards dealt toward each seat — just enough to read as "a hand", not the
@@ -116,7 +116,7 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
     <div
       aria-hidden
       data-testid="deal-intro"
-      className={`pointer-events-none absolute inset-0 z-30 transition-opacity duration-[350ms] ${
+      className={`pointer-events-none absolute inset-0 z-10 transition-opacity duration-[350ms] ${
         phase === 'fading' ? 'opacity-0' : 'opacity-100'
       }`}
     >

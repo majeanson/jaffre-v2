@@ -213,15 +213,18 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
         />
         <span
           data-testid="replay-frame"
-          className="shrink-0 text-xs tabular-nums whitespace-nowrap text-white/80"
+          className="shrink-0 text-xs tabular-nums whitespace-nowrap text-white/80 max-sm:hidden"
         >
           {clamped + 1} / {frames.length}
         </span>
+        {/* "View as" seat selector — kept available on phones (compact:
+            tighter padding/text) instead of hidden; the frame counter yields
+            the room instead, since the position is already on the slider. */}
         <select
           aria-label={t.viewAs}
           value={viewer}
           onChange={(e) => setViewer(Number(e.target.value) as Viewer)}
-          className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-black/40 px-1.5 py-1 text-xs text-white max-sm:hidden"
+          className="w-[4.2em] shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-black/40 px-1.5 py-1 text-xs text-white max-sm:w-auto max-sm:px-1 max-sm:py-0.5 max-sm:text-[10px]"
         >
           {[0, 1, 2, 3].map((s) => (
             <option key={s} value={s} className="text-black">

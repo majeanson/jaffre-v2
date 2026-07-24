@@ -69,7 +69,7 @@ export function UtilityRow({
       </span>
       {/* No overflow-hidden here: the last-trick and chat popovers anchor to
           their cells and must escape the bar's box. */}
-      <span className="flex shrink-0 items-stretch rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm) sm:justify-self-end">
+      <span className="flex shrink-0 items-stretch gap-[2px] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm) sm:justify-self-end">
         <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
         {hasComms && <Divider />}
         {comms}
