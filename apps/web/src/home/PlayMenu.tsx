@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { markMakePublic, type TableEntry } from '../net/rooms.js';
+import { GHOST_BTN_SM } from '../components/buttonStyles.js';
 import { TableCard, useTableStatuses } from './TableCards.js';
 import { generateRoomCode } from './roomCode.js';
 import {
@@ -22,10 +23,9 @@ const T: Record<
   {
     play: string;
     yourTables: string;
-    practice: string;
+    playVsBots: string;
     botsChip: (label: string) => string;
     botDifficulty: string;
-    playNow: string;
     create: string;
     join: string;
     publicTable: string;
@@ -40,10 +40,9 @@ const T: Record<
   en: {
     play: 'Play',
     yourTables: 'Your tables',
-    practice: 'Practice vs bots',
+    playVsBots: 'Play vs bots',
     botsChip: (label) => `Bots: ${label}`,
     botDifficulty: 'Bot difficulty',
-    playNow: 'Play now',
     create: 'Create',
     join: 'Join',
     publicTable: 'Public table',
@@ -57,10 +56,9 @@ const T: Record<
   fr: {
     play: 'Jouer',
     yourTables: 'Tes tables',
-    practice: 'Pratique contre les bots',
+    playVsBots: 'Jouer contre les bots',
     botsChip: (label) => `Bots : ${label}`,
     botDifficulty: 'Difficulté des bots',
-    playNow: 'Jouer maintenant',
     create: 'Créer',
     join: 'Joindre',
     publicTable: 'Table publique',
@@ -237,26 +235,20 @@ export function PlayMenu({
 
             {step === 'create' && (
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3">
-                  <span className="font-arcade-display text-[clamp(1.2rem,2.4vmin,1.5rem)] uppercase">
-                    {t.practice}
-                  </span>
-                  {/* Tap to cycle the shared difficulty; "Play now" starts. */}
+                {/* Same row format as the two table Ctas below: the wide
+                    segment starts, the attached segment cycles the shared bot
+                    difficulty (two sibling buttons — never nested). */}
+                <div className="flex items-stretch gap-2">
+                  <Cta type="button" className="flex-1" onClick={onPractice}>
+                    {t.playVsBots}
+                  </Cta>
                   <button
                     type="button"
                     onClick={cycleSetting}
                     aria-label={t.botDifficulty}
-                    className="w-fit cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-0.5 text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                    className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
                   >
                     {t.botsChip(difficultyLabel[setting])}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onPractice}
-                    className="mt-auto inline-flex cursor-pointer items-center gap-2 self-start rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-display text-(length:--text-fluid-sm) uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-                  >
-                    {t.playNow}
-                    <span aria-hidden>→</span>
                   </button>
                 </div>
 
@@ -288,7 +280,7 @@ export function PlayMenu({
                 <button
                   type="button"
                   onClick={() => setStep('root')}
-                  className="w-fit cursor-pointer font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink) hover:underline"
+                  className={`w-fit ${GHOST_BTN_SM}`}
                 >
                   {t.back}
                 </button>
@@ -338,7 +330,7 @@ export function PlayMenu({
                 <button
                   type="button"
                   onClick={() => setStep('root')}
-                  className="w-fit cursor-pointer font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink) hover:underline"
+                  className={`w-fit ${GHOST_BTN_SM}`}
                 >
                   {t.back}
                 </button>

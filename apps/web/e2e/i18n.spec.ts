@@ -22,7 +22,7 @@ test('a French browser gets the French home screen by default', async ({ browser
   await page.getByRole('button', { name: 'Accueil' }).click();
   await page.getByRole('button', { name: 'Jouer', exact: true }).click();
   await page.getByRole('button', { name: 'Créer', exact: true }).click();
-  await expect(page.getByText('Pratique contre les bots')).toBeVisible();
+  await expect(page.getByText('Jouer contre les bots')).toBeVisible();
   await context.close();
 });
 

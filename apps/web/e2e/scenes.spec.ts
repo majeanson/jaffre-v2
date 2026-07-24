@@ -181,7 +181,7 @@ for (const width of MEDIA_WIDTHS) {
     await page.goto('/#scenes/home-create');
     for (const [name, what] of [
       ['Public table', 'Public table'],
-      ['Play now', 'Play now'],
+      ['Play vs bots', 'Play vs bots'],
     ] as const) {
       await fitsWithin(
         await page.getByRole('button', { name }).boundingBox(),

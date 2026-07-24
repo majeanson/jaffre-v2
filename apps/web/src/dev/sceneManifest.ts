@@ -79,7 +79,7 @@ export const SCENE_METAS = [
     label: 'Home — create step',
     screen: 'home',
     ui: { playOpen: true, playStep: 'create' },
-    probe: 'role=button[name="Play now"]',
+    probe: 'role=button[name="Play vs bots"]',
   },
   {
     id: 'home-join',
