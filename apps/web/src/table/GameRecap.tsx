@@ -15,6 +15,8 @@ const T: Record<
   Lang,
   {
     gameOver: string;
+    youWin: string;
+    youLose: string;
     wins: (winner: 0 | 1) => string;
     tonight: string;
     sun: string;
@@ -29,6 +31,9 @@ const T: Record<
     scoresCaption: string;
     game: string;
     gamesWon: string;
+    tricksWon: string;
+    tricksCaption: string;
+    total: string;
     roundByRound: string;
     startingHands: string;
     tapForHands: string;
@@ -50,6 +55,8 @@ const T: Record<
 > = {
   en: {
     gameOver: 'Game over',
+    youWin: 'You win!',
+    youLose: 'You lose',
     wins: (winner) => `${winner === 0 ? 'Team Sun' : 'Team Moon'} wins!`,
     tonight: 'Tonight:',
     sun: 'Sun',
@@ -61,9 +68,12 @@ const T: Record<
     away: 'Away',
     left: 'Left',
     empty: 'Empty',
-    scoresCaption: 'Scores by game, one column per player',
+    scoresCaption: 'Team scores by game',
     game: 'Game',
     gamesWon: 'Games won',
+    tricksWon: 'Tricks won',
+    tricksCaption: 'Tricks captured per player, one row per game',
+    total: 'Total',
     roundByRound: 'Round-by-round scores',
     startingHands: 'Starting hands',
     tapForHands: 'Tap a round to see its starting hands',
@@ -85,6 +95,8 @@ const T: Record<
   },
   fr: {
     gameOver: 'Partie terminée',
+    youWin: 'Tu gagnes!',
+    youLose: 'Tu perds',
     wins: (winner) => `L'Équipe ${winner === 0 ? 'Soleil' : 'Lune'} gagne!`,
     tonight: 'Ce soir :',
     sun: 'Soleil',
@@ -96,9 +108,12 @@ const T: Record<
     away: 'Absent',
     left: 'Parti',
     empty: 'Vide',
-    scoresCaption: 'Pointage par partie, une colonne par joueur',
+    scoresCaption: "Pointage d'équipe par partie",
     game: 'Partie',
     gamesWon: 'Parties gagnées',
+    tricksWon: 'Levées gagnées',
+    tricksCaption: 'Levées gagnées par joueur, une rangée par partie',
+    total: 'Total',
     roundByRound: 'Pointage ronde par ronde',
     startingHands: 'Mains de départ',
     tapForHands: 'Touchez une ronde pour voir les mains de départ',
@@ -133,6 +148,16 @@ export interface GameRecapProps {
   /** Final [Sun, Moon] scores of each finished game this sitting (oldest
    * first) — renders the per-game scorepad grid. */
   readonly seriesGames?: readonly (readonly [number, number])[] | undefined;
+  /** Per-seat tricks captured in each finished game (parallel to seriesGames;
+   * null for a game recorded before trick tallies existed) — the individual
+   * tricks scorecard. */
+  readonly seriesTricks?: readonly (readonly [number, number, number, number] | null)[] | undefined;
+  /** The viewer's seat (null/absent when spectating) — drives the personal
+   * "You win / You lose" headline over the team line. */
+  readonly mySeat?: number | null | undefined;
+  /** Per-seat pixel avatars (bot sprites; your own painting), null where a
+   * seat wears its plain initial chip. */
+  readonly avatars?: readonly (string | null)[] | undefined;
   readonly onRematch?: (() => void) | undefined;
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
@@ -147,60 +172,75 @@ export interface GameRecapProps {
 }
 
 /** Two small chips for a team pair, shown under a scorepad tally. */
-function PairChips({ names, a, b }: { names: readonly string[]; a: number; b: number }) {
+function PairChips({
+  names,
+  avatars,
+  a,
+  b,
+}: {
+  names: readonly string[];
+  avatars?: readonly (string | null)[] | undefined;
+  a: number;
+  b: number;
+}) {
   const color = TEAM_COLOR[a % 2];
   return (
     <span className="flex items-center gap-[0.35em]">
-      <AvatarChip name={names[a] ?? '—'} color={color} size="sm" />
-      <AvatarChip name={names[b] ?? '—'} color={color} size="sm" />
+      <AvatarChip name={names[a] ?? '—'} color={color} size="sm" paint={avatars?.[a] ?? null} />
+      <AvatarChip name={names[b] ?? '—'} color={color} size="sm" paint={avatars?.[b] ?? null} />
     </span>
   );
 }
 
-/** The ruled between-games scorepad: one row per game, a column per seat (team
- * scores land under both partners), and a "Games won" footer. Ivory card face,
- * so its text is ink (not the flipping --color-ap-text). */
+// On the ivory card face all text must be ink for AA; team identity rides on
+// a faint background tint instead (Sun warm, Moon cool).
+const TEAM_TINT = ['rgb(242 198 109 / 0.20)', 'rgb(130 199 220 / 0.24)'] as const;
+
+const PAD_CELL = 'px-[0.3em] py-[0.45em] text-center font-arcade-display tabular-nums';
+const PAD_HDR =
+  'px-[0.7em] py-[0.5em] text-left font-arcade-ui text-[0.62em] font-bold uppercase tracking-[0.12em] text-(--color-ap-ink)/60';
+const PAD_FRAME =
+  'overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap-lg)';
+
+/** The ruled between-games scorepad: one row per game, ONE column per team
+ * (scores are team scores — no duplicate per-partner columns), and a "Games
+ * won" footer. Ivory card face, so its text is ink (not the flipping
+ * --color-ap-text). */
 function Scorepad({
   games,
   names,
+  avatars,
   seriesWins,
 }: {
   readonly games: readonly (readonly [number, number])[];
   readonly names: readonly string[];
+  readonly avatars?: readonly (string | null)[] | undefined;
   readonly seriesWins: readonly [number, number] | undefined;
 }) {
   const t = T[useLang()];
-  const initial = (n: string) => (n.trim()[0] ?? '—').toUpperCase();
-  const cell = 'px-[0.3em] py-[0.45em] text-center font-arcade-display tabular-nums';
-  // Seats 0&2 are Sun (score index 0), 1&3 Moon (index 1). Literal-index the
-  // tuple so it stays a definite number under noUncheckedIndexedAccess.
-  const teamOf = (seat: number) => seat % 2;
-  const scoreFor = (pair: readonly [number, number], seat: number) =>
-    seat % 2 === 0 ? pair[0] : pair[1];
-  // On the ivory card face all text must be ink for AA; team identity rides on
-  // a faint per-column background tint instead (Sun warm, Moon cool).
-  const tint = (seat: number) =>
-    teamOf(seat) === 0 ? 'rgb(242 198 109 / 0.20)' : 'rgb(130 199 220 / 0.24)';
-  const [sunWins, moonWins] = seriesWins ?? [0, 0];
-  const hdr =
-    'px-[0.7em] py-[0.5em] text-left font-arcade-ui text-[0.62em] font-bold uppercase tracking-[0.12em] text-(--color-ap-ink)/60';
+  const wins = seriesWins ?? ([0, 0] as const);
   return (
-    <div className="overflow-hidden rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-paper) text-(--color-ap-ink) shadow-(--shadow-ap-lg)">
+    <div className={PAD_FRAME}>
       <table className="w-full border-collapse tabular-nums">
         <caption className="sr-only">{t.scoresCaption}</caption>
         <thead>
           <tr className="border-b-2 border-(--color-ap-ink)">
-            <th scope="col" className={hdr}>
+            <th scope="col" className={PAD_HDR}>
               {t.game}
             </th>
-            {[0, 1, 2, 3].map((seat) => (
+            {([0, 1] as const).map((team) => (
               <th
-                key={seat}
+                key={team}
                 scope="col"
-                className={`${cell} text-[0.95em]`}
-                style={{ background: tint(seat) }}
+                className={`${PAD_CELL} text-[0.78em]`}
+                style={{ background: TEAM_TINT[team] }}
               >
-                {initial(names[seat] ?? '—')}
+                <span className="flex flex-col items-center gap-[0.35em]">
+                  <span className="font-arcade-ui font-bold uppercase tracking-[0.1em]">
+                    {team === 0 ? t.sun : t.moon}
+                  </span>
+                  <PairChips names={names} avatars={avatars} a={team} b={team + 2} />
+                </span>
               </th>
             ))}
           </tr>
@@ -211,13 +251,13 @@ function Scorepad({
               <td className="px-[0.7em] py-[0.45em] text-left font-arcade-ui text-[0.8em] text-(--color-ap-ink)/65">
                 {i + 1}
               </td>
-              {[0, 1, 2, 3].map((seat) => (
+              {([0, 1] as const).map((team) => (
                 <td
-                  key={seat}
-                  className={`${cell} text-[0.95em]`}
-                  style={{ background: tint(seat) }}
+                  key={team}
+                  className={`${PAD_CELL} text-[0.95em]`}
+                  style={{ background: TEAM_TINT[team] }}
                 >
-                  {scoreFor(g, seat)}
+                  {g[team]}
                 </td>
               ))}
             </tr>
@@ -225,14 +265,18 @@ function Scorepad({
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-(--color-ap-ink)">
-            <th scope="row" className={hdr}>
+            <th scope="row" className={PAD_HDR}>
               {t.gamesWon}
             </th>
-            {[0, 1, 2, 3].map((seat) => {
-              const w = teamOf(seat) === 0 ? sunWins : moonWins;
-              const lead = w >= (teamOf(seat) === 0 ? moonWins : sunWins) && w > 0;
+            {([0, 1] as const).map((team) => {
+              const w = wins[team];
+              const lead = w >= wins[team === 0 ? 1 : 0] && w > 0;
               return (
-                <td key={seat} className={`${cell} text-[1em]`} style={{ background: tint(seat) }}>
+                <td
+                  key={team}
+                  className={`${PAD_CELL} text-[1em]`}
+                  style={{ background: TEAM_TINT[team] }}
+                >
                   <span
                     className={
                       lead
@@ -245,6 +289,103 @@ function Scorepad({
                 </td>
               );
             })}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+/** The individual tricks scorecard: one row per game, one column per PLAYER,
+ * with each player's real captured-trick count and an accumulated Total footer.
+ * Games recorded before trick tallies existed show an em dash. */
+function TricksPad({
+  tricks,
+  names,
+  avatars,
+}: {
+  readonly tricks: readonly (readonly [number, number, number, number] | null)[];
+  readonly names: readonly string[];
+  readonly avatars?: readonly (string | null)[] | undefined;
+}) {
+  const t = T[useLang()];
+  const totals = tricks.reduce<[number, number, number, number]>(
+    (acc, g) => {
+      if (g === null) return acc;
+      for (const seat of [0, 1, 2, 3] as const) acc[seat] += g[seat];
+      return acc;
+    },
+    [0, 0, 0, 0],
+  );
+  const best = Math.max(...totals);
+  return (
+    <div className={PAD_FRAME}>
+      <table className="w-full border-collapse tabular-nums">
+        <caption className="sr-only">{t.tricksCaption}</caption>
+        <thead>
+          <tr className="border-b-2 border-(--color-ap-ink)">
+            <th scope="col" className={PAD_HDR}>
+              {t.tricksWon}
+            </th>
+            {([0, 1, 2, 3] as const).map((seat) => (
+              <th
+                key={seat}
+                scope="col"
+                className={`${PAD_CELL}`}
+                style={{ background: TEAM_TINT[seat % 2] }}
+              >
+                <span className="flex justify-center">
+                  <AvatarChip
+                    name={names[seat] ?? '—'}
+                    color={TEAM_COLOR[seat % 2]}
+                    size="sm"
+                    paint={avatars?.[seat] ?? null}
+                  />
+                </span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tricks.map((g, i) => (
+            <tr key={i} className="border-b border-(--color-ap-ink)/12 last:border-b-0">
+              <td className="px-[0.7em] py-[0.45em] text-left font-arcade-ui text-[0.8em] text-(--color-ap-ink)/65">
+                {i + 1}
+              </td>
+              {([0, 1, 2, 3] as const).map((seat) => (
+                <td
+                  key={seat}
+                  className={`${PAD_CELL} text-[0.95em]`}
+                  style={{ background: TEAM_TINT[seat % 2] }}
+                >
+                  {g === null ? '—' : g[seat]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-(--color-ap-ink)">
+            <th scope="row" className={PAD_HDR}>
+              {t.total}
+            </th>
+            {([0, 1, 2, 3] as const).map((seat) => (
+              <td
+                key={seat}
+                className={`${PAD_CELL} text-[1em]`}
+                style={{ background: TEAM_TINT[seat % 2] }}
+              >
+                <span
+                  className={
+                    totals[seat] === best && best > 0
+                      ? 'inline-block rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) px-[0.4em] text-(--color-ap-ink)'
+                      : ''
+                  }
+                >
+                  {totals[seat]}
+                </span>
+              </td>
+            ))}
           </tr>
         </tfoot>
       </table>
@@ -266,6 +407,9 @@ export function GameRecap({
   seats,
   seriesWins,
   seriesGames,
+  seriesTricks,
+  mySeat = null,
+  avatars,
   onRematch,
   onSwapSeats,
   onLeave,
@@ -310,7 +454,7 @@ export function GameRecap({
       aria-label={t.gameOver}
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 outline-none"
     >
-      <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
+      <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
         <Confetti />
         {/* Scrollable body: on a short viewport (≈900px desktop) the recap is
             taller than the screen, so the middle scrolls while the action footer
@@ -328,15 +472,43 @@ export function GameRecap({
               </p>
             </div>
           )}
-          <p
-            className="font-arcade-display text-[1.9em] uppercase leading-none"
-            style={{ color: TEAM_COLOR[winner] }}
-          >
-            {t.wins(winner)}
-          </p>
+          {/* A seated player gets the personal verdict up top — the team line
+              becomes the subtitle. Spectators keep the team line as the hero. */}
+          {mySeat !== null ? (
+            <>
+              <p
+                className={`font-arcade-display text-[1.9em] uppercase leading-none ${
+                  mySeat % 2 === winner ? 'text-(--color-ap-ok)' : 'text-(--color-ap-danger-text)'
+                }`}
+              >
+                {mySeat % 2 === winner ? t.youWin : t.youLose}
+              </p>
+              <p
+                className="mt-[0.35em] font-arcade-display text-[1.1em] uppercase leading-none"
+                style={{ color: TEAM_COLOR[winner] }}
+              >
+                {t.wins(winner)}
+              </p>
+            </>
+          ) : (
+            <p
+              className="font-arcade-display text-[1.9em] uppercase leading-none"
+              style={{ color: TEAM_COLOR[winner] }}
+            >
+              {t.wins(winner)}
+            </p>
+          )}
           <div className="mt-[0.7em] flex items-center justify-center gap-[0.5em]">
-            <AvatarChip name={names[winner] ?? '—'} color={TEAM_COLOR[winner]} />
-            <AvatarChip name={names[winner + 2] ?? '—'} color={TEAM_COLOR[winner]} />
+            <AvatarChip
+              name={names[winner] ?? '—'}
+              color={TEAM_COLOR[winner]}
+              paint={avatars?.[winner] ?? null}
+            />
+            <AvatarChip
+              name={names[winner + 2] ?? '—'}
+              color={TEAM_COLOR[winner]}
+              paint={avatars?.[winner + 2] ?? null}
+            />
           </div>
           <p className="mt-[0.5em] font-arcade-ui text-[0.95em] text-(--color-ap-text)">
             {names[winner]} & {names[winner + 2]}
@@ -346,12 +518,12 @@ export function GameRecap({
           </p>
           {myRating !== undefined && (
             <p className="mt-[0.3em] font-arcade-ui text-[0.8em] tabular-nums text-(--color-ap-text)">
-              {t.rating}: {myRating.rating}{' '}
+              {t.rating}: {Math.round(myRating.rating)}{' '}
               <span
                 className={myRating.delta >= 0 ? 'text-(--color-ap-ok)' : 'text-(--color-suit-red)'}
               >
                 ({myRating.delta >= 0 ? '+' : ''}
-                {myRating.delta})
+                {Math.round(myRating.delta)})
               </span>
             </p>
           )}
@@ -374,8 +546,18 @@ export function GameRecap({
               {seriesGames !== undefined && seriesGames.length > 0 ? (
                 // Per-game scorepad — the richer standing-table view once games
                 // have accumulated this sitting.
-                <div className="mt-[0.6em]">
-                  <Scorepad games={seriesGames} names={names} seriesWins={seriesWins} />
+                <div className="mt-[0.6em] flex flex-col gap-3">
+                  <Scorepad
+                    games={seriesGames}
+                    names={names}
+                    avatars={avatars}
+                    seriesWins={seriesWins}
+                  />
+                  {/* Individual tally: each player's real captured tricks — the
+                      team pad above stays the simple game 1/2/3 tab. */}
+                  {seriesTricks !== undefined && seriesTricks.some((g) => g !== null) && (
+                    <TricksPad tricks={seriesTricks} names={names} avatars={avatars} />
+                  )}
                 </div>
               ) : (
                 // Fallback (first game, or a pre-scorepad room): the aggregate tally.
@@ -421,7 +603,11 @@ export function GameRecap({
                           —
                         </span>
                       ) : (
-                        <AvatarChip name={s.name} color={TEAM_COLOR[i % 2]} />
+                        <AvatarChip
+                          name={s.name}
+                          color={TEAM_COLOR[i % 2]}
+                          paint={avatars?.[i] ?? null}
+                        />
                       )}
                       <span className="max-w-[5rem] truncate font-arcade-ui text-[0.78em] font-semibold text-(--color-ap-text)">
                         {s?.name ?? t.empty}
@@ -444,7 +630,11 @@ export function GameRecap({
               tabIndex={0}
               role="region"
               aria-label={t.roundByRound}
-              className="mt-5 max-h-56 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
+              className={`mt-5 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap) ${
+                // With a round's hands open, the cap comes off so all four
+                // hands show at once (the modal body scrolls instead).
+                openRound === null ? 'max-h-56' : ''
+              }`}
             >
               {rounds.some((r) => r?.startingHands !== undefined) && (
                 <p className="mb-1 px-1.5 text-[0.85em] text-(--color-ap-muted)">{t.tapForHands}</p>

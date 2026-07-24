@@ -192,6 +192,13 @@ function scoreRound(state: GameState, events: GameEvent[]): Result {
     // Every card has been played by now, so `state.hands` are empty — recover
     // this round's deal deterministically from (seed, round) for the recap.
     startingHands: deal(state.seed, state.roundIndex),
+    trickCounts: state.capturedTricks.reduce<[number, number, number, number]>(
+      (counts, trick) => {
+        counts[trick.winner] += 1;
+        return counts;
+      },
+      [0, 0, 0, 0],
+    ),
   };
   events.push({ type: 'round_scored', summary });
 

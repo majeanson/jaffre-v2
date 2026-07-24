@@ -34,9 +34,12 @@ function sortHand(cards: readonly Card[]): readonly Card[] {
 
 /**
  * The four seats' starting hands as compact rows — one row per player: their
- * name, then their 8 cards fanned tight (overlapping so a full hand fits even
- * on a phone). Read-only; no toggle of its own — {@link StartingHandsPanel}
- * wraps it with an expander, or a caller can drop it straight in already-open.
+ * name on its own small line, then their 8 cards fanned across the FULL row
+ * width. The fan is fluid: all cards but the last sit in equal shrinkable
+ * slots, so the overlap adapts to whatever width is available and a complete
+ * hand always fits with no horizontal scroll — phone or desktop. Read-only;
+ * no toggle of its own — {@link StartingHandsPanel} wraps it with an expander,
+ * or a caller can drop it straight in already-open.
  */
 export function StartingHandsRows({
   hands,
@@ -46,21 +49,30 @@ export function StartingHandsRows({
   readonly names: readonly string[];
 }) {
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="flex w-full flex-col gap-2">
       {[0, 1, 2, 3].map((seat) => (
-        <li key={seat} className="flex items-center gap-2">
+        <li key={seat} className="min-w-0">
           <span
-            className="w-[3.5rem] shrink-0 truncate font-arcade-ui text-[0.72em] font-semibold"
+            className="block truncate font-arcade-ui text-[0.72em] font-semibold"
             style={{ color: TEAM_COLOR[seat % 2] }}
             title={names[seat] ?? '—'}
           >
             {names[seat] ?? '—'}
           </span>
-          {/* Overlap every card after the first so a full 8-card hand stays
-              inside the modal width; each card's top-left rank stays visible. */}
-          <span className="flex [&>*:not(:first-child)]:-ml-[0.95rem]">
-            {sortHand(hands[seat] ?? []).map((card) => (
-              <PlayingCard key={cardId(card)} card={card} size="sm" />
+          <span className="mt-1 flex w-full">
+            {sortHand(hands[seat] ?? []).map((card, i, arr) => (
+              <span
+                key={cardId(card)}
+                className={
+                  // Last card keeps its full width; the rest share the leftover
+                  // evenly (capped so a roomy row doesn't gap the fan apart).
+                  i === arr.length - 1
+                    ? 'relative shrink-0'
+                    : 'relative max-w-[2.6rem] min-w-0 flex-1'
+                }
+              >
+                <PlayingCard card={card} size="sm" />
+              </span>
             ))}
           </span>
         </li>

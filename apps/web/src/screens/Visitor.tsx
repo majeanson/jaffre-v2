@@ -2,6 +2,7 @@ import { AvatarChip, Cta, useLang, type Lang } from '@jaffre/ui';
 import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getProfile } from '../net/auth.js';
+import { botAvatar } from '../paint/botAvatars.js';
 import { playerName } from '../net/socket.js';
 import { RoomComms } from '../comms/RoomComms.js';
 
@@ -138,6 +139,9 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
           name={displayName}
           color={takeable ? myColor : undefined}
           highlight={takeable}
+          // The seat you'd take previews YOUR painting; bot seats wear their
+          // in-game sprite, same as on the felt.
+          paint={takeable ? getProfile().paint : info?.isBot === true ? botAvatar(seat) : null}
         />
         <span className="max-w-[7rem] truncate font-arcade-ui text-[0.9em] font-semibold text-(--color-ap-text)">
           {displayName}

@@ -75,6 +75,12 @@ export interface RoundSummary {
    * reveal nothing about the current or any future round.
    */
   readonly startingHands?: readonly (readonly Card[])[];
+  /**
+   * How many of the round's 8 tricks each SEAT captured, seat-indexed — the
+   * individual tally behind the team trickPoints. Absent on summaries scored
+   * before this field existed (legacy states/history rows).
+   */
+  readonly trickCounts?: readonly [number, number, number, number];
 }
 
 export interface GameState {

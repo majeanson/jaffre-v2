@@ -124,6 +124,10 @@ interface Meta {
    * first — the between-games scorepad. Appended at each game_over,
    * alongside seriesWins; reset only with the DO. */
   seriesGames: [number, number][];
+  /** Per-seat trick totals of each finished game, parallel to seriesGames
+   * (null for games scored before the engine recorded trickCounts). Optional:
+   * legacy persisted metas predate it. */
+  seriesTricks?: ([number, number, number, number] | null)[];
   /** House rules chosen in the lobby before the game starts. */
   rules?: { hailMary12: boolean; turnTimer?: boolean };
   /** Epoch ms when the seat currently on turn (game.turn) became active —
@@ -1638,6 +1642,17 @@ export class GameRoom implements DurableObject {
         this.meta.seriesWins = wins;
         // Record this game's final scores for the between-games scorepad.
         this.meta.seriesGames = [...this.meta.seriesGames, [game.scores[0], game.scores[1]]];
+        // And its per-seat trick totals for the individual tricks scorecard.
+        // Rounds scored before trickCounts existed contribute nothing; if the
+        // whole game predates it, record null so rows stay aligned to games.
+        const tricks: [number, number, number, number] = [0, 0, 0, 0];
+        let hasTricks = false;
+        for (const summary of game.roundSummaries) {
+          if (summary.trickCounts === undefined) continue;
+          hasTricks = true;
+          for (const seat of [0, 1, 2, 3] as const) tricks[seat] += summary.trickCounts[seat];
+        }
+        this.meta.seriesTricks = [...(this.meta.seriesTricks ?? []), hasTricks ? tricks : null];
       }
       // Auto-play is a mid-game convenience; clear it so the next game starts
       // with everyone in manual control.
@@ -2052,6 +2067,7 @@ export class GameRoom implements DurableObject {
       started: this.meta.started,
       seriesWins: this.meta.seriesWins,
       seriesGames: this.meta.seriesGames,
+      ...(this.meta.seriesTricks !== undefined ? { seriesTricks: this.meta.seriesTricks } : {}),
       rules: this.meta.rules ?? { hailMary12: true },
       public: this.meta.public ?? false,
       ...(hostSeat !== null ? { hostSeat } : {}),

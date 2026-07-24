@@ -35,6 +35,12 @@ const ROSTER: Roster = {
     [30, 90],
     [70, 55],
   ],
+  // Parallel per-seat trick tallies (a ~5-round game captures 40 tricks).
+  seriesTricks: [
+    [14, 8, 12, 6],
+    [7, 15, 6, 12],
+    [12, 9, 11, 8],
+  ],
 };
 
 /** You are ready, one human is not — the summary shows the waiting state. */

@@ -7,6 +7,7 @@ import {
   type TableEntry,
   type TableStatus,
 } from '../net/rooms.js';
+import { botAvatar } from '../paint/botAvatars.js';
 import { generateRoomCode } from './roomCode.js';
 import {
   loadPracticeBots,
@@ -240,6 +241,7 @@ function TableCard({
                 name={s.name}
                 color={s.isBot ? BOT_TINTS[i % BOT_TINTS.length] : undefined}
                 size="sm"
+                paint={s.isBot ? botAvatar(i) : null}
               />
             </span>
           ))}

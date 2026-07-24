@@ -134,17 +134,31 @@ export interface AvatarChipProps {
   /** Mark this chip as the actionable one (the seat you can take) — a violet
    * glow pulse in place of the flat shadow. */
   readonly highlight?: boolean;
+  /** Pixel-art avatar (data URL) — bot sprite or the viewer's own painting.
+   * Fills the chip in place of the initial. */
+  readonly paint?: string | null | undefined;
 }
 
-/** Square rounded chip with the player's initial in the display face. */
-export function AvatarChip({ name, color, size = 'md', highlight = false }: AvatarChipProps) {
+/** Square rounded chip with the player's initial (or pixel avatar) in the
+ * display face. */
+export function AvatarChip({
+  name,
+  color,
+  size = 'md',
+  highlight = false,
+  paint = null,
+}: AvatarChipProps) {
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display leading-none text-(--color-ap-ink) ${highlight ? 'ap-glow' : 'shadow-(--shadow-ap-sm)'} ${AVATAR_SIZES[size]}`}
+      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) font-arcade-display leading-none text-(--color-ap-ink) ${highlight ? 'ap-glow' : 'shadow-(--shadow-ap-sm)'} ${AVATAR_SIZES[size]}`}
       style={{ background: color ?? 'var(--color-ap-violet)' }}
     >
-      <span aria-hidden>{initial}</span>
+      {paint !== null && paint !== undefined && paint !== '' ? (
+        <img src={paint} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        <span aria-hidden>{initial}</span>
+      )}
       <span className="sr-only">{name}</span>
     </span>
   );

@@ -154,6 +154,10 @@ export interface Roster {
   /** Final [Sun, Moon] scores of each finished game this sitting, oldest
    * first — powers the between-games scorepad. Reset with the room. */
   readonly seriesGames?: readonly (readonly [number, number])[];
+  /** Per-SEAT tricks captured across each finished game this sitting, oldest
+   * first (parallel to seriesGames) — powers the individual tricks scorecard.
+   * A game may be absent trick data (played pre-upgrade): entry is null. */
+  readonly seriesTricks?: readonly (readonly [number, number, number, number] | null)[];
   /** House rules chosen in the lobby, echoed so every seat sees the toggle. */
   readonly rules?: {
     readonly hailMary12: boolean;

@@ -1,6 +1,8 @@
 import type { SeatView } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 import type { ScoreboardRound } from '@jaffre/ui';
+import { getProfile } from '../net/auth.js';
+import { botAvatar } from '../paint/botAvatars.js';
 import { GameRecap } from './GameRecap.js';
 import { RoundSummaryOverlay } from './RoundSummaryOverlay.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -56,6 +58,13 @@ export function Overlays({
           seats={roster.seats}
           seriesWins={roster.seriesWins}
           seriesGames={roster.seriesGames}
+          seriesTricks={roster.seriesTricks}
+          mySeat={me}
+          // Same per-seat art as the felt: bot sprites, your own painting;
+          // other humans stay on their initial (the roster carries no paint).
+          avatars={roster.seats.map((s, i) =>
+            s?.isBot === true ? botAvatar(i) : i === me ? getProfile().paint : null,
+          )}
           myRating={roster.ratings?.find((r) => r.seat === me)}
           endReason={view.endReason}
           showXp={me !== null}
