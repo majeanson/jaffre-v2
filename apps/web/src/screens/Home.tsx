@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { AvatarChip, PlayerCard, useLang, type Lang } from '@jaffre/ui';
+import { PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
@@ -9,7 +9,6 @@ import { HelpButton } from '../help/HelpButton.js';
 import { AttractMode } from '../home/AttractMode.js';
 import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
-import { HomeNavRow } from '../home/HomeNavRow.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { PracticeNudge } from '../home/PracticeNudge.js';
 import { LevelBadge } from '../home/LevelBadge.js';
@@ -169,21 +168,26 @@ export function Home({
               : {})}
           />
 
-          {/* Your corner: the profile overview + meta screens — one door,
-              directly under PLAY, always available. */}
-          <HomeNavRow
+          {/* Your corner: the profile overview + meta screens — a smaller
+              sibling of the PLAY door (same violet panel chrome). */}
+          <button
+            type="button"
             onClick={() => {
               location.hash = '#corner';
             }}
+            className="group/corner flex w-full cursor-pointer items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-5 py-[clamp(0.6rem,1.8vmin,1rem)] font-arcade-display text-[clamp(1rem,2.2vmin,1.3rem)] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap) transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             <span aria-hidden className="text-(--color-ap-gold)">
               ★
             </span>
-            <span className="font-arcade-display uppercase tracking-wide">{t.corner}</span>
-            <span aria-hidden className="ml-auto">
+            {t.corner}
+            <span
+              aria-hidden
+              className="transition-transform duration-(--duration-flick) group-hover/corner:translate-x-1"
+            >
               →
             </span>
-          </HomeNavRow>
+          </button>
 
           {/* Quiet chrome — the SAME icon buttons as the in-game toolbar (? for
               how-to-play, cards for Collection, EN/FR toggle) so the symbols mean
@@ -206,14 +210,25 @@ export function Home({
               aria-label={t.customize}
               title={t.customize}
               onClick={() => setCustomizeOpen(true)}
-              className={ICON_BTN_NEUTRAL}
+              className={`${ICON_BTN_NEUTRAL} relative overflow-hidden p-0`}
             >
-              <AvatarChip
-                name={staged ? identityStage.name : name}
-                color={shownColor ?? undefined}
-                paint={shownPaint}
-                size="sm"
-              />
+              {/* The avatar IS the button face — edge to edge, no inner chip
+                  border (the button's own square provides the frame). */}
+              <span
+                aria-hidden
+                className="absolute inset-0 grid place-items-center font-arcade-display text-(--color-ap-ink)"
+                style={{ background: shownColor ?? 'var(--color-ap-violet)' }}
+              >
+                {shownPaint !== null && shownPaint !== undefined && shownPaint !== '' ? (
+                  <img
+                    src={shownPaint}
+                    alt=""
+                    className="absolute inset-0 size-full object-cover"
+                  />
+                ) : (
+                  ((staged ? identityStage.name : name).trim()[0] ?? '?').toUpperCase()
+                )}
+              </span>
             </button>
             <LevelBadge />
             <SkinLink />
