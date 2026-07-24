@@ -14,8 +14,12 @@ export interface TableEntry {
   readonly updatedAt: number;
   readonly started: boolean;
   readonly seriesWins?: readonly [number, number];
-  /** Last-known seats (name + bot flag), for the avatar stack. */
-  readonly seats: readonly { readonly name: string; readonly isBot: boolean }[];
+  /** Last-known seats (name + bot flag + pixel avatar), for the avatar stack. */
+  readonly seats: readonly {
+    readonly name: string;
+    readonly isBot: boolean;
+    readonly paint?: string;
+  }[];
   /** Your absolute seat in this room, or null if you were spectating. */
   readonly yourSeat?: number | null;
 }
@@ -59,7 +63,11 @@ export function rememberTable(code: string, roster: Roster, yourSeat?: number | 
     ...(roster.seriesWins !== undefined ? { seriesWins: roster.seriesWins } : {}),
     seats: roster.seats
       .filter((s): s is NonNullable<typeof s> => s !== null)
-      .map((s) => ({ name: s.name, isBot: s.isBot })),
+      .map((s) => ({
+        name: s.name,
+        isBot: s.isBot,
+        ...(s.paint !== undefined ? { paint: s.paint } : {}),
+      })),
     yourSeat: seat,
   };
   const next = [entry, ...listTables().filter((t) => t.code !== code)].slice(0, MAX);

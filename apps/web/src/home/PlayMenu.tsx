@@ -241,7 +241,7 @@ function TableCard({
                 name={s.name}
                 color={s.isBot ? BOT_TINTS[i % BOT_TINTS.length] : undefined}
                 size="sm"
-                paint={s.isBot ? botAvatar(i) : null}
+                paint={s.isBot ? botAvatar(i) : (s.paint ?? null)}
               />
             </span>
           ))}

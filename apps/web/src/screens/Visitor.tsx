@@ -140,8 +140,14 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
           color={takeable ? myColor : undefined}
           highlight={takeable}
           // The seat you'd take previews YOUR painting; bot seats wear their
-          // in-game sprite, same as on the felt.
-          paint={takeable ? getProfile().paint : info?.isBot === true ? botAvatar(seat) : null}
+          // in-game sprite and seated humans their own paint, same as on the felt.
+          paint={
+            takeable
+              ? getProfile().paint
+              : info?.isBot === true
+                ? botAvatar(seat)
+                : (info?.paint ?? null)
+          }
         />
         <span className="max-w-[7rem] truncate font-arcade-ui text-[0.9em] font-semibold text-(--color-ap-text)">
           {displayName}

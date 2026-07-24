@@ -1,7 +1,7 @@
 import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
-import { getGuestToken } from './auth.js';
+import { getGuestToken, getProfile } from './auth.js';
 import { rememberTable } from './rooms.js';
 import { reportError } from './telemetry.js';
 
@@ -90,7 +90,15 @@ async function open(): Promise<void> {
   ws.onopen = () => {
     attempts = 0;
     startPing();
-    send({ t: 'join' });
+    // Announce your pixel avatar so other players' tables show it. Pixel-SVG
+    // only, size-capped — matches the server's join schema; a legacy freehand
+    // PNG painting is simply not broadcast (it stays local-only).
+    const paint = getProfile().paint;
+    const sharablePaint =
+      paint !== null && paint.startsWith('data:image/svg+xml,') && paint.length <= 16_384
+        ? paint
+        : undefined;
+    send({ t: 'join', ...(sharablePaint !== undefined ? { paint: sharablePaint } : {}) });
     // Replay anything the player did while we were still connecting.
     const queued = pending;
     pending = [];

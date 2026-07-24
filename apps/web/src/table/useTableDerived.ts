@@ -384,7 +384,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       isDealer: view.dealer === seat,
       isBot: info.isBot,
       difficulty: info.difficulty ?? null,
-      avatar: info.isBot ? botAvatar(seat) : null,
+      avatar: info.isBot ? botAvatar(seat) : (info.paint ?? null),
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
       // Rosters can outlive the turn they described — only surface the

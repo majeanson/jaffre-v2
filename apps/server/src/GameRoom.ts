@@ -124,6 +124,10 @@ interface Meta {
    * first — the between-games scorepad. Appended at each game_over,
    * alongside seriesWins; reset only with the DO. */
   seriesGames: [number, number][];
+  /** Each user's pixel avatar (pixel-SVG data URL) as sent on their latest
+   * join — echoed on their RosterSeat so other players see it. Optional:
+   * legacy persisted metas predate it. */
+  paints?: Record<string, string>;
   /** Per-seat trick totals of each finished game, parallel to seriesGames
    * (null for games scored before the engine recorded trickCounts). Optional:
    * legacy persisted metas predate it. */
@@ -397,7 +401,7 @@ export class GameRoom implements DurableObject {
   private async dispatch(ws: WebSocket, att: Attachment, msg: ClientMessage): Promise<void> {
     switch (msg.t) {
       case 'join':
-        return this.onJoin(ws, att);
+        return this.onJoin(ws, att, msg.paint);
       case 'sit':
         return this.onSit(ws, att, msg.seat);
       case 'add_bot':
@@ -646,7 +650,7 @@ export class GameRoom implements DurableObject {
 
   /* ── Message handlers ──────────────────────────────────────────────── */
 
-  private async onJoin(ws: WebSocket, att: Attachment): Promise<void> {
+  private async onJoin(ws: WebSocket, att: Attachment, paint?: string): Promise<void> {
     const seat = this.seatOf(att.userId);
     att.viewer = seat ?? 'spectator';
     att.joined = true;
@@ -654,6 +658,15 @@ export class GameRoom implements DurableObject {
     let metaDirty = false;
     if (this.meta.names[att.userId] !== att.name) {
       this.meta.names[att.userId] = att.name;
+      metaDirty = true;
+    }
+    // The join carries the player's current avatar painting (or nothing when
+    // they have none / erased it) — keep the stored copy in sync either way.
+    if ((this.meta.paints?.[att.userId] ?? undefined) !== paint) {
+      const others = Object.fromEntries(
+        Object.entries(this.meta.paints ?? {}).filter(([id]) => id !== att.userId),
+      );
+      this.meta.paints = paint === undefined ? others : { ...others, [att.userId]: paint };
       metaDirty = true;
     }
     // Rejoining stops the disconnect clock — the human resumes control.
@@ -1128,6 +1141,13 @@ export class GameRoom implements DurableObject {
     if (this.meta.autoPlay?.[userId] !== undefined) {
       this.meta.autoPlay = Object.fromEntries(
         Object.entries(this.meta.autoPlay).filter(([id]) => id !== userId),
+      );
+    }
+    // Paints are the meta's only bulky per-user entries — drop a leaver's so a
+    // long-lived room doesn't accumulate avatars of everyone who ever sat.
+    if (this.meta.paints?.[userId] !== undefined) {
+      this.meta.paints = Object.fromEntries(
+        Object.entries(this.meta.paints).filter(([id]) => id !== userId),
       );
     }
   }
@@ -2048,10 +2068,12 @@ export class GameRoom implements DurableObject {
         this.game !== null && this.game.turn === i
           ? this.turnTimerDeadline()
           : Number.POSITIVE_INFINITY;
+      const paint = this.meta.paints?.[owner];
       return {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,
         connected,
+        ...(paint !== undefined ? { paint } : {}),
         ...(ready !== undefined ? { ready } : {}),
         ...(Number.isFinite(swapAt) ? { botSwapAt: swapAt } : {}),
         ...(Number.isFinite(turnAt) ? { turnTimerAt: turnAt } : {}),

@@ -60,10 +60,10 @@ export function Overlays({
           seriesGames={roster.seriesGames}
           seriesTricks={roster.seriesTricks}
           mySeat={me}
-          // Same per-seat art as the felt: bot sprites, your own painting;
-          // other humans stay on their initial (the roster carries no paint).
+          // Same per-seat art as the felt: bot sprites, your own painting
+          // (local copy is freshest), other humans' paint from the roster.
           avatars={roster.seats.map((s, i) =>
-            s?.isBot === true ? botAvatar(i) : i === me ? getProfile().paint : null,
+            s?.isBot === true ? botAvatar(i) : i === me ? getProfile().paint : (s?.paint ?? null),
           )}
           myRating={roster.ratings?.find((r) => r.seat === me)}
           endReason={view.endReason}

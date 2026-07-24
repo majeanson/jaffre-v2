@@ -381,6 +381,27 @@ describe('GameRoom', () => {
     expect(await empty.json()).toEqual({ games: [] });
   });
 
+  it('echoes a joiner’s pixel avatar on their roster seat, and clears it on a paintless rejoin', async () => {
+    const paint = 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E';
+    const alice = await Client.connect('room-paint', 'alice', 'Alice');
+    alice.send({ t: 'join', paint });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    const seated = await alice.next('roster');
+    expect(seated.roster.seats[0]).toMatchObject({ name: 'Alice', paint });
+
+    // Rejoining without paint (the player erased their painting) clears it.
+    // Watched from a second client: the rejoin's roster broadcast skips the
+    // rejoiner's own socket.
+    const bob = await Client.connect('room-paint', 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    alice.send({ t: 'join' });
+    const cleared = await bob.next('roster');
+    expect(cleared.roster.seats[0]?.paint).toBeUndefined();
+    await endQuiet('room-paint', alice, bob);
+  });
+
   it('joins, seats a human and three bots, and starts the game', async () => {
     const client = await Client.connect('room-start', 'alice', 'Alice');
     client.send({ t: 'join' });

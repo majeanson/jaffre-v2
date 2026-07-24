@@ -3,6 +3,7 @@ import type { BotDifficulty, Roster } from '@jaffre/protocol';
 import { Cta, Seat, TeamGlyph, useLang, type Lang } from '@jaffre/ui';
 import { IconButton } from '../components/IconButton.js';
 import { IconSwap, IconX } from '../components/icons.js';
+import { getProfile } from '../net/auth.js';
 import { botAvatar } from '../paint/botAvatars.js';
 
 /** Difficulty chips are colour-coded so the table reads at a glance: green
@@ -132,7 +133,13 @@ export function SeatPicker({
                   team={(seat % 2) as 0 | 1}
                   isBot={info.isBot}
                   connected={info.connected}
-                  paint={info.isBot ? botAvatar(seat) : null}
+                  paint={
+                    info.isBot
+                      ? botAvatar(seat)
+                      : isSelf
+                        ? getProfile().paint
+                        : (info.paint ?? null)
+                  }
                 />
                 {info.isBot && !started && (
                   <button

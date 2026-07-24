@@ -625,16 +625,13 @@ export function GameRecap({
           )}
 
           {rounds.length > 0 && (
-            // Keyboard-focusable so the overflow can be scrolled without a mouse.
+            // Deliberately NOT its own scroller: the modal body is the single
+            // scroll surface, so the wheel behaves the same over the rounds /
+            // starting hands as it does over the rest of the recap.
             <div
-              tabIndex={0}
               role="region"
               aria-label={t.roundByRound}
-              className={`mt-5 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap) ${
-                // With a round's hands open, the cap comes off so all four
-                // hands show at once (the modal body scrolls instead).
-                openRound === null ? 'max-h-56' : ''
-              }`}
+              className="mt-5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.6em] text-left text-[0.8em] shadow-(--shadow-ap)"
             >
               {rounds.some((r) => r?.startingHands !== undefined) && (
                 <p className="mb-1 px-1.5 text-[0.85em] text-(--color-ap-muted)">{t.tapForHands}</p>

@@ -48,7 +48,14 @@ const clientActionSchema = z.union([
 ]);
 
 export const clientMessageSchema = z.union([
-  z.object({ t: z.literal('join'), resumeSeq: z.number().int().nonnegative().optional() }),
+  z.object({
+    t: z.literal('join'),
+    resumeSeq: z.number().int().nonnegative().optional(),
+    // The joiner's pixel avatar so other players see it (RosterSeat.paint).
+    // Pixel-SVG data URLs only, size-capped — legacy freehand PNG paintings
+    // (up to ~512 KB) must never ride every roster broadcast.
+    paint: z.string().startsWith('data:image/svg+xml,').max(16384).optional(),
+  }),
   z.object({ t: z.literal('sit'), seat: seatSchema }),
   z.object({
     t: z.literal('add_bot'),
@@ -111,6 +118,9 @@ export interface RosterSeat {
   readonly name: string;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** This human's pixel avatar (pixel-SVG data URL), as sent on their join —
+   * lets every client render painted avatars for OTHER players too. */
+  readonly paint?: string;
   /** Ready for the next round (round_over phase only; bots are always ready). */
   readonly ready?: boolean;
   /** Present only for bot seats — the difficulty this bot plays at. */
