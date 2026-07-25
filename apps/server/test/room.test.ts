@@ -1247,6 +1247,56 @@ describe('GameRoom', () => {
   );
 
   it(
+    "im_here restarts the on-turn clock — and ignores anyone who isn't on turn",
+    { timeout: 30_000 },
+    async () => {
+      interface StoredMeta {
+        turnStartedAt?: number;
+      }
+      const room = 'room-imhere';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGameWithTurnTimer(alice);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      await driveToHumanTurnWithTimer(stub, alice);
+
+      const readTurnStart = () =>
+        runInDurableObject(stub, async (_instance, state) => {
+          const meta = await state.storage.get<StoredMeta>('meta');
+          return meta?.turnStartedAt;
+        });
+      const before = await readTurnStart();
+      expect(before).toBeTypeOf('number');
+
+      // Someone NOT on turn (an unseated joiner) taps "I'm here": no-op.
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+      carol.send({ t: 'im_here' });
+      await sleep(100);
+      expect(await readTurnStart()).toBe(before);
+
+      // The on-turn human taps it: the clock restarts (strictly later stamp).
+      // Poll storage rather than the broadcast stream — alice's queue holds
+      // stale rosters from setup, so "the next roster" isn't the im_here one.
+      await sleep(30); // Date.now() must be able to exceed `before`
+      alice.send({ t: 'im_here' });
+      const after = await pollUntil(async () => {
+        const v = await readTurnStart();
+        return v !== undefined && v > (before ?? 0) ? v : undefined;
+      }, 'turnStartedAt reset by im_here');
+
+      // A fresh joiner's welcome snapshots the roster as it stands now: the
+      // seat-0 deadline rides the RESET stamp (a full timer from `after`).
+      const dave = await Client.connect(room, 'dave', 'Dave');
+      dave.send({ t: 'join' });
+      const w = await dave.next('welcome');
+      expect(w.roster.seats[0]?.turnTimerAt).toBe(after + TURN_TIMER_MS);
+
+      await endQuiet(room, alice, carol, dave);
+    },
+  );
+
+  it(
     'leaves a connected, idle human turn alone with the turn-timer rule OFF',
     { timeout: 20_000 },
     async () => {

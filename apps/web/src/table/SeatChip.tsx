@@ -1,6 +1,7 @@
 import { Seat, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { getProfile } from '../net/auth.js';
+import { send } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
 import { PlayerPeek } from './PlayerPeek.js';
 import { formatCountdown, useCountdown } from './useCountdown.js';
@@ -17,6 +18,7 @@ const T: Record<
     empty: string;
     away: (countdown: string) => string;
     turnTimer: (countdown: string) => string;
+    imHere: string;
     botTakingOver: string;
     autoPlay: string;
     peek: (name: string) => string;
@@ -26,6 +28,7 @@ const T: Record<
     empty: 'empty',
     away: (countdown) => `Away — bot in ${countdown}`,
     turnTimer: (countdown) => `Bot plays in ${countdown}`,
+    imHere: "— I'm here",
     botTakingOver: 'Bot taking over…',
     autoPlay: 'Auto-play — bot playing',
     peek: (name) => `Show ${name}'s info`,
@@ -34,6 +37,7 @@ const T: Record<
     empty: 'libre',
     away: (countdown) => `Absent — bot dans ${countdown}`,
     turnTimer: (countdown) => `Le bot joue dans ${countdown}`,
+    imHere: '— je suis là',
     botTakingOver: 'Le bot prend la relève…',
     autoPlay: 'Jeu auto — le bot joue',
     peek: (name) => `Voir les infos de ${name}`,
@@ -67,6 +71,9 @@ export function SeatChip({
   const clockSkew = useGameStore((s) => s.clockSkew);
   const secondsLeft = useCountdown(info?.botSwapAt ?? null, clockSkew);
   const turnSecondsLeft = useCountdown(info?.turnTimerAt ?? null, clockSkew);
+  // "I'm here" tapped for THIS deadline: hide the nudge immediately instead
+  // of waiting the round-trip for the roster's reset turnTimerAt.
+  const [dismissedFor, setDismissedFor] = useState<number | null>(null);
   const [open, setOpen] = useState(defaultPeekOpen);
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -144,11 +151,30 @@ export function SeatChip({
       {/* Turn-timer nudge: this human is PRESENT, just idle on their turn.
           Hidden until the final stretch — never labeled "Away". Suppressed
           when auto-play is on: the bot already covers this turn, so the
-          countdown pill would just stack with the auto-play badge below. */}
+          countdown pill would just stack with the auto-play badge below.
+          YOUR OWN nudge is a button — tapping "I'm here" restarts the turn
+          clock server-side and hides the pill on the spot. */}
       {secondsLeft === null &&
         !info.autoPlay &&
         turnSecondsLeft !== null &&
-        turnSecondsLeft <= TURN_TIMER_WARN_S && (
+        turnSecondsLeft <= TURN_TIMER_WARN_S &&
+        (info.turnTimerAt ?? null) !== dismissedFor &&
+        (info.isYou && turnSecondsLeft > 0 ? (
+          <button
+            type="button"
+            data-testid="turntimer-countdown"
+            onClick={() => {
+              setDismissedFor(info.turnTimerAt ?? null);
+              send({ t: 'im_here' });
+            }}
+            className={`absolute z-30 w-max max-w-[min(13rem,56vw)] cursor-pointer rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover) ${alignX} ${
+              peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+            }`}
+          >
+            {t.turnTimer(formatCountdown(turnSecondsLeft))}{' '}
+            <span className="text-(--color-ap-ok)">{t.imHere}</span>
+          </button>
+        ) : (
           <span
             data-testid="turntimer-countdown"
             role="status"
@@ -158,7 +184,7 @@ export function SeatChip({
           >
             {turnSecondsLeft > 0 ? t.turnTimer(formatCountdown(turnSecondsLeft)) : t.botTakingOver}
           </span>
-        )}
+        ))}
       {/* Voluntary auto-play: a bot is covering this connected human's turns.
           Distinct from the disconnect countdown (which only shows when away). */}
       {secondsLeft === null && info.autoPlay && (

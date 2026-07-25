@@ -137,12 +137,18 @@ i18n/copy, perf/tech). Line numbers drift — re-locate by the described element
 - [x] (M) SKIPPED: `PlayerPeek.tsx:214` — public standing matched by display NAME;
       duplicate names show the wrong Elo. Needs a stable id on the leaderboard payload —
       a server-side change (LeaderboardRow/roster), out of scope for a surgical client pass.
-- [x] (M) SKIPPED: `RoundSummaryOverlay.tsx` — the who-are-we-waiting-on list is
-      undifferentiated tiny text. Avatar chips / team colors is a visual redesign of that
-      list, not a small surgical fix — deferred.
-- [x] (M) SKIPPED: `SeatChip.tsx` — your own "Bot plays in 0:15" pill offers no
-      tap-to-dismiss "I'm here". Tap-to-reset is a new interaction (needs a client→server
-      message + server handling to actually push the clock back) — deferred.
+- [x] (M) `RoundSummaryOverlay.tsx` — the who-are-we-waiting-on list is
+      undifferentiated tiny text. DONE (2026-07-25): team-coloured chips — ready seats
+      fill solid in their team colour with a ✓, pending ones stay a muted outline with a
+      team dot. Verified at 390px (all four chips on one row) and in light theme.
+- [x] (M) `SeatChip.tsx` — your own "Bot plays in 0:15" pill offers no
+      tap-to-dismiss "I'm here". DONE (2026-07-25): new `im_here` protocol message;
+      `GameRoom.onImHere` restarts `meta.turnStartedAt` (on-turn, connected, rule-on,
+      not-autoplay senders only — anything else is a quiet no-op), broadcasts the pushed
+      deadline and re-arms the alarm. Your own nudge pill is now a button
+      ("Bot plays in 0:14 — I'm here"), hides instantly on tap, and there's a
+      `seat-turntimer-you` scene covering it. Server test asserts the reset stamp +
+      new deadline and that off-turn senders can't touch the clock.
 - [x] (S) `TrickBanner.tsx` / `CoachHint.tsx` — both anchor `bottom-[4%] left-1/2`,
       possibly crowding the bottom-left seat chip on narrow phones. Verify + nudge on max-sm.
       DONE: nudged `TrickBanner` up on phones (`max-sm:bottom-[12%]`) — the trick-won moment
@@ -353,8 +359,23 @@ overflow/top-bar warnings — everything below is judgment-call layout quality.
       not a default fake one.
 - [x] `identity-light` scene — VERIFIED staging-correct: the page behind IS
       light-themed; the "dark page" read is the sheet's `bg-black/60` scrim.
-- [ ] Home chrome bar packs 6 controls at 390px — tight but not colliding; keep
-      an eye on it if another entry is ever added.
+- [x] Home chrome bar packs 6 controls at 390px — tight but not colliding; keep
+      an eye on it if another entry is ever added. UPDATE (2026-07-25): it DID
+      collide in production — a linked account printed "✓ Linked · <full email>"
+      and pushed the bar 35px past both viewport edges at 390px. The sweep never
+      saw it because staged scenes skipped `LoginButton` entirely. Fixed: the
+      chip is now just "✓ Linked" (full email stays inside the sheet; `truncate`
+      backstop), `LoginButton` renders in staged scenes too, scenes.spec now
+      asserts every chrome-bar control stays inside the bar (with a long linked
+      email seeded) across all 8 media widths, and the gallery sanity check
+      gained clip-aware "spills past viewport" detection (scrollWidth can't see
+      spills hidden by `overflow-x-clip`).
+- [x] (2026-07-25) `PlayingCard.tsx` +5/−2 token placement: under the top-left
+      rank it sat on the bonhomme's hat whenever the card was fully visible
+      (home hero fan, table plays). Now beside the rank — reads "0 +5" along the
+      top strip: clear of the art, never viewport-clipped in the phone hand
+      (bottom corners hang off-screen there), still on the exposed left half in
+      the fan. Bottom-left and mid-left were tried and rejected via shots.
 
 ---
 

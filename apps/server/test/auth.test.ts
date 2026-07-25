@@ -259,3 +259,35 @@ describe('POST /api/profile — cosmetics (card skin + theme) persistence', () =
     expect((await saveProfile(minted.token, { theme: 'A B' })).status).toBe(400);
   });
 });
+
+describe('token mode never trusts ?u= (private-stats hardening)', () => {
+  it('401s a stats/history read that offers only ?u=, with or without junk auth', async () => {
+    const minted = (await (await guest('Zoe')).json()) as GuestResponse;
+    // No Bearer at all: the ?u= fallback must NOT kick in while a secret is set.
+    for (const path of ['/api/stats', '/api/history', '/api/awards']) {
+      const bare = await fetchAs(
+        new Request(`https://example.com${path}?u=${encodeURIComponent(minted.userId)}`),
+        authEnv(),
+      );
+      expect(bare.status, `${path} without Bearer`).toBe(401);
+      const junk = await fetchAs(
+        new Request(`https://example.com${path}?u=${encodeURIComponent(minted.userId)}`, {
+          headers: { Authorization: 'Bearer not-a-real-token' },
+        }),
+        authEnv(),
+      );
+      expect(junk.status, `${path} with junk Bearer`).toBe(401);
+    }
+  });
+
+  it('still serves the same read with a valid Bearer token', async () => {
+    const minted = (await (await guest('Yan')).json()) as GuestResponse;
+    const ok = await fetchAs(
+      new Request('https://example.com/api/history', {
+        headers: { Authorization: `Bearer ${minted.token}` },
+      }),
+      authEnv(),
+    );
+    expect(ok.status).toBe(200);
+  });
+});

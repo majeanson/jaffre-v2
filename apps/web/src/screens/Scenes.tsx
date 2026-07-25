@@ -14,7 +14,7 @@ import {
   SCENES,
 } from '../dev/scenes.js';
 import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
-import { applyLang, currentLang } from '../lang.js';
+import { overrideLang } from '../lang.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
 import { Awards } from './Awards.js';
@@ -105,10 +105,12 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     const root = document.documentElement;
     const prevTheme = root.dataset['theme'];
     const prevSkin = currentCardSkin();
-    const prevLang = currentLang();
     if (current?.theme === 'light') root.dataset['theme'] = 'light';
     if (current?.cardSkin !== undefined) applyCardSkin(current.cardSkin);
-    if (current?.lang !== undefined && current.lang !== prevLang) applyLang(current.lang);
+    // Language rides an in-memory override, NEVER localStorage: a full
+    // navigation out of a fr scene (shot sweep's page.goto, hard refresh)
+    // skips this cleanup, and a persisted 'fr' left the whole app French.
+    if (current?.lang !== undefined) overrideLang(current.lang);
     // Some scenes force a painted-card cosmetic so the personalised avatar +
     // own 0-cards render. It lives in the same 'jaffre-profile' localStorage
     // key net/auth.ts reads; save the raw value and restore it on exit so a
@@ -127,7 +129,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       if (prevTheme === undefined) delete root.dataset['theme'];
       else root.dataset['theme'] = prevTheme;
       if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
-      if (current?.lang !== undefined && current.lang !== prevLang) applyLang(prevLang);
+      if (current?.lang !== undefined) overrideLang(null);
       if (current?.paint !== undefined) {
         if (prevProfile === null) localStorage.removeItem(PROFILE_KEY);
         else localStorage.setItem(PROFILE_KEY, prevProfile);

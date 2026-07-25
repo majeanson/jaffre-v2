@@ -22,6 +22,7 @@ const T: Record<
     login: string;
     close: string;
     optional: string;
+    linked: string;
     linkedTo: (what: string) => string;
     linkedNote: string;
     done: string;
@@ -57,6 +58,7 @@ const T: Record<
     close: 'Close login',
     optional:
       "Optional — you're already playing as a guest. Logging in just keeps your name, stats and card skins on any device.",
+    linked: 'Linked',
     linkedTo: (what) => `Linked · ${what}`,
     linkedNote: 'Your games follow you — log in with the same account on any device.',
     done: 'Done',
@@ -93,6 +95,7 @@ const T: Record<
     close: 'Fermer la connexion',
     optional:
       'Facultatif — tu joues déjà comme invité. Te connecter garde simplement ton nom, tes stats et tes habillages sur tous tes appareils.',
+    linked: 'Lié',
     linkedTo: (what) => `Lié · ${what}`,
     linkedNote: 'Tes parties te suivent — connecte-toi avec le même compte sur tous tes appareils.',
     done: 'Terminé',
@@ -410,15 +413,20 @@ export function LoginButton({ defaultOpen = false }: { readonly defaultOpen?: bo
   const links = getLinks();
   return (
     <>
+      {/* Linked state keeps the chip SHORT — "✓ Linked" only. The full
+          email lives inside the sheet; printing it here blew the phone
+          chrome bar 35px past both edges. Truncate is the backstop for
+          any future long label. */}
       <button
         ref={triggerRef}
         type="button"
+        title={isLinked() ? t.linkedTo(links.email ?? 'Google') : t.login}
         onClick={() => setOpen(true)}
-        className={`px-3 py-1.5 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide ${
+        className={`max-w-[9rem] truncate px-3 py-1.5 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide ${
           isLinked() ? 'text-(--color-ap-ok)' : 'text-(--color-ap-text)'
         } ${GHOST_BTN}`}
       >
-        {isLinked() ? `✓ ${t.linkedTo(links.email ?? 'Google')}` : t.login}
+        {isLinked() ? `✓ ${t.linked}` : t.login}
       </button>
       {open && (
         <LoginSheet

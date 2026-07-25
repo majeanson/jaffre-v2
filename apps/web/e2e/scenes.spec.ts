@@ -165,8 +165,28 @@ for (const width of MEDIA_WIDTHS) {
     // salon" label used to squish the code input to a sliver in a side-by-side
     // row (now stacked).
     await page.setViewportSize({ width, height: 900 });
+    // Worst-case chrome-bar density: a linked account (the chip must stay
+    // "✓ Linked" — printing the email here once pushed the bar 35px past
+    // both viewport edges at 390px).
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        'jaffre-links',
+        JSON.stringify({ email: 'marc.jeanson92@gmail.com', google: true }),
+      ),
+    );
     await page.goto('/#scenes/home');
     await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
+
+    // Every chrome-bar control stays inside the bar, and the bar in the
+    // viewport — the bar is where a new chip overflows first on phones.
+    const bar = page.getByTestId('chrome-bar');
+    const barBox = await bar.boundingBox();
+    await fitsWithin(barBox, width, 0, 'chrome bar', width);
+    if (barBox === null) throw new Error('missing chrome bar');
+    for (const child of await bar.locator('> *').all()) {
+      const b = await child.boundingBox();
+      await fitsWithin(b, barBox.x + barBox.width, barBox.x, 'chrome-bar control', width);
+    }
 
     await fitsWithin(
       await page.getByRole('region', { name: 'Play', exact: true }).boundingBox(),

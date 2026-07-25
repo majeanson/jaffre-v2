@@ -62,9 +62,15 @@ function warn(line: string): void {
 }
 
 /**
- * Two cheap layout smells, reported (never asserted):
+ * Three cheap layout smells, reported (never asserted):
  *  1. horizontal page overflow;
- *  2. anything poking into the top bar's box from below (top-chip regression).
+ *  2. any element VISIBLY crossing the viewport's left/right edge — this is
+ *     what a scrollWidth check can't see when an ancestor uses overflow-clip
+ *     (the home `main` does): the runaway control is simply cut off. An
+ *     element whose spill is clipped away by an overflow-hidden ancestor
+ *     (decorative bleeds like the PLAY door's spade) is NOT reported — we
+ *     intersect with every clipping ancestor first;
+ *  3. anything poking into the top bar's box from below (top-chip regression).
  */
 async function sanityChecks(page: Page, label: string): Promise<void> {
   const findings = await page.evaluate(() => {
@@ -74,6 +80,42 @@ async function sanityChecks(page: Page, label: string): Promise<void> {
       out.push(
         `horizontal overflow: scrollWidth ${scroller.scrollWidth} > innerWidth ${window.innerWidth}`,
       );
+    }
+    const vw = document.documentElement.clientWidth;
+    let spills = 0;
+    const flagged = new Set<Element>();
+    for (const el of Array.from(document.querySelectorAll('body *'))) {
+      if (spills >= 8) break;
+      if (!(el instanceof HTMLElement)) continue; // SVG internals re-report their <svg>
+      // One report per spilling subtree — the children of a flagged element
+      // cross the same edge for the same reason.
+      if (el.parentElement !== null && flagged.has(el.parentElement)) {
+        flagged.add(el);
+        continue;
+      }
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.right <= vw + 1.5 && r.left >= -1.5) continue;
+      // Clip the rect by every overflow-clipping ancestor: only what would
+      // actually PAINT outside the viewport counts.
+      let left = r.left;
+      let right = r.right;
+      for (let a = el.parentElement; a !== null; a = a.parentElement) {
+        const o = getComputedStyle(a).overflowX;
+        if (o !== 'visible') {
+          const ar = a.getBoundingClientRect();
+          left = Math.max(left, ar.left);
+          right = Math.min(right, ar.right);
+        }
+      }
+      if (right <= vw + 1.5 && left >= -1.5) continue;
+      const cls = (el.getAttribute('class') ?? '').slice(0, 60);
+      out.push(
+        `spills past viewport: <${el.tagName.toLowerCase()} class="${cls}"> ` +
+          `left=${Math.round(left)} right=${Math.round(right)} vw=${vw}`,
+      );
+      flagged.add(el);
+      spills++;
     }
     const bar = document.querySelector('[data-testid="score-strip"]')?.parentElement ?? null;
     if (bar !== null) {

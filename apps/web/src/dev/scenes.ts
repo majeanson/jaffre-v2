@@ -525,6 +525,25 @@ const LOADERS: Record<SceneId, () => void> = {
     };
     inject(cached('mid-trick', midTrick), { roster });
   },
+  'seat-turntimer-you': () => {
+    // YOUR OWN nudge: same warn window, but on the viewer's seat — the pill
+    // becomes the tappable "I'm here" button. Needs a state where seat 0 is
+    // actually ON TURN (the derived roster only surfaces the clock then).
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true, turnTimerAt: Date.now() + 15_000 },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: true },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+    };
+    inject(
+      cached('your-lead', (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0),
+      { roster },
+    );
+  },
   'seat-autoplay-badge': () => {
     const roster: Roster = {
       seats: [

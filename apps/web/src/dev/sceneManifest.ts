@@ -251,6 +251,12 @@ export const SCENE_METAS = [
     probe: '[data-testid="turntimer-countdown"]',
   },
   {
+    id: 'seat-turntimer-you',
+    label: 'Your turn idle — I’m-here nudge',
+    screen: 'table',
+    probe: 'button[data-testid="turntimer-countdown"]',
+  },
+  {
     id: 'seat-autoplay-badge',
     label: 'Opponent on auto-play — bot playing',
     screen: 'table',

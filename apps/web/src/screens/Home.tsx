@@ -207,6 +207,7 @@ export function Home({
               you need every visit — they live at the bottom of the Help sheet
               instead. */}
           <div
+            data-testid="chrome-bar"
             className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
             style={{ '--rise-delay': '280ms' } as CSSProperties}
           >
@@ -241,8 +242,11 @@ export function Home({
             </button>
             <LevelBadge />
             <SkinLink />
+            {/* Rendered in staged scenes too: the shot sweep must see the
+                bar at its real density — hiding the login chip is exactly
+                how the linked-email overflow slipped past 505 screenshots. */}
             <LangSwitcher />
-            {!staged && <LoginButton defaultOpen={loginOpen} />}
+            <LoginButton defaultOpen={loginOpen} />
           </div>
         </div>
       </div>

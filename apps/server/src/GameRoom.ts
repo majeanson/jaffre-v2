@@ -422,6 +422,8 @@ export class GameRoom implements DurableObject {
         return this.onLeave(ws, att);
       case 'set_autoplay':
         return this.onSetAutoPlay(ws, att, msg.on);
+      case 'im_here':
+        return this.onImHere(att);
       case 'set_public':
         return this.onSetPublic(ws, att, msg.on);
       case 'ready':
@@ -1028,6 +1030,31 @@ export class GameRoom implements DurableObject {
     this.broadcastRoster({});
     // If it's their turn right now, arm the alarm so the auto-move plays promptly.
     if (on) await this.scheduleNextWake();
+  }
+
+  /** "I'm here" — the on-turn human tapped their own turn-timer nudge:
+   * restart the current turn's clock so they get a fresh full timer. Every
+   * guard is a QUIET no-op, not an error: the tap can race the turn advancing
+   * (or the round ending) and a late arrival simply no longer applies. */
+  private async onImHere(att: Attachment): Promise<void> {
+    const game = this.game;
+    if (
+      !att.joined ||
+      game === null ||
+      (game.phase !== 'bidding' && game.phase !== 'playing') ||
+      !this.turnTimerRuleOn() ||
+      this.meta.seats[game.turn] !== att.userId ||
+      this.autoPlayOn(att.userId) ||
+      this.meta.turnStartedAt === undefined
+    ) {
+      return;
+    }
+    this.meta.turnStartedAt = Date.now();
+    await this.ctx.storage.put('meta', this.meta);
+    // The roster's turnTimerAt moves out with the reset, hiding the nudge;
+    // re-arm the alarm so the (earlier) armed wake is followed by the real one.
+    this.broadcastRoster({});
+    await this.scheduleNextWake();
   }
 
   /** Host toggles whether this table is listed for matchmaking. Any seated

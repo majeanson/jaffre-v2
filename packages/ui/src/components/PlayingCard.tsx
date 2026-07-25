@@ -153,13 +153,18 @@ export function PlayingCard({
         )}
       </span>
 
-      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). Under the
-          top-LEFT rank corner: the fan overlaps each card's right side, so a
-          top-right token was half-buried under the neighbour in every hand
-          shot — the left strip is the card's one always-exposed edge. */}
+      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). BOTTOM-left
+          corner: the fan overlaps each card's right side, so the left strip is
+          the card's one always-exposed edge — but tucked under the top rank the
+          token sat right on the bonhomme's hat whenever the card was fully
+          visible (home fan, table plays), the bottom corner hangs off the
+          viewport in the phone hand, and mid-left lands on the art's centre.
+          Beside the top-left rank it reads as "0 +5" — the top strip is empty
+          on every face, never viewport-clipped, and still inside the exposed
+          left half in the hand fan. */}
       {bonus !== null && size !== 'sm' && (
         <span
-          className={`absolute top-[19%] left-[6%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
+          className={`absolute top-[6%] left-[21%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
             isRedZero ? 'bg-(--color-ap-ok) text-(--color-ap-ink)' : 'bg-[#7a2230] text-white'
           }`}
         >

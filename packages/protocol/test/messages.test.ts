@@ -94,3 +94,9 @@ describe('set_autoplay', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'set_autoplay', on: 'yes' }))).toBeNull();
   });
 });
+
+describe('im_here', () => {
+  it('parses the bare tap (seat comes from the sender, never the wire)', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'im_here' }))).toEqual({ t: 'im_here' });
+  });
+});

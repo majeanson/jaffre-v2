@@ -83,6 +83,10 @@ export const clientMessageSchema = z.union([
   // stays yours; turning it off returns control. Seat is inferred from the
   // sender — never from the wire.
   z.object({ t: z.literal('set_autoplay'), on: z.boolean() }),
+  // Tap-to-dismiss on your own turn-timer nudge: "I'm here" restarts the
+  // current turn's clock (a fresh full timer). Seat inferred from the sender;
+  // a stale tap racing the turn advancing is a quiet no-op.
+  z.object({ t: z.literal('im_here') }),
   // Host toggles whether this pre-game table is listed in the public lobby /
   // eligible for Quick Play. Only meaningful before the game starts.
   z.object({ t: z.literal('set_public'), on: z.boolean() }),

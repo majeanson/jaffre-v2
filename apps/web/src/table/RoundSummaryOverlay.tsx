@@ -265,13 +265,39 @@ export function RoundSummaryOverlay({
           <Cta type="button" onClick={onReady} disabled={youReady} className="w-full">
             {youReady ? tr.waiting : tr.ready}
           </Cta>
-          <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-            {names.map((n, seat) => (
-              <span key={seat} className={readySeats[seat] ? 'text-(--color-ap-text)' : ''}>
-                {readySeats[seat] ? '✓' : '…'} {n}
-              </span>
-            ))}
-          </p>
+          {/* Who we're waiting on: one chip per seat in team colours — ready
+              seats fill solid with a ✓, pending ones stay a quiet outline
+              (their team shows as a dot, so the two sides still read). */}
+          <ul className="flex flex-wrap justify-center gap-1.5">
+            {names.map((n, seat) => {
+              const ready = readySeats[seat] ?? false;
+              const team = (seat % 2) as 0 | 1;
+              return (
+                <li
+                  key={seat}
+                  className={`flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-(length:--text-fluid-xs) font-semibold ${
+                    ready
+                      ? 'border-(--color-ap-ink) text-(--color-ap-ink) shadow-(--shadow-ap-sm)'
+                      : 'border-(--color-ap-muted)/40 text-(--color-ap-muted)'
+                  }`}
+                  style={ready ? { background: teamColor(team) } : undefined}
+                >
+                  {!ready && (
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full border border-(--color-ap-ink)/40"
+                      style={{ background: teamColor(team) }}
+                    />
+                  )}
+                  <span>
+                    {ready ? '✓ ' : ''}
+                    {n}
+                    {!ready && <span aria-hidden>…</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
     </div>

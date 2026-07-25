@@ -701,20 +701,23 @@ async function handleProfile(request: Request, env: Env): Promise<Response> {
 }
 
 /**
- * The uid a history/stats request is scoped to: a verified Bearer token when
- * one is present, else the `?u=` fallback (mirrors the WS no-secret path).
- * Returns `undefined` on an explicitly invalid token (caller should 401),
- * `null` when no identity was supplied at all (caller should 400).
+ * The uid a history/stats request is scoped to. TOKEN MODE (secret set — i.e.
+ * prod): a verified Bearer token is REQUIRED; `?u=` is credential-shaped and
+ * is never trusted, with or without a token attached — before this, omitting
+ * the Bearer let anyone read any uid's private stats. The `?u=` fallback
+ * survives only in no-secret mode (local dev / tests), mirroring the WS path.
+ * Returns `undefined` on a missing-or-invalid token in token mode (caller
+ * should 401), `null` when no identity was supplied at all (caller: 400).
  */
 async function resolveUserId(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<string | null | undefined> {
-  const token = bearerToken(request);
-  if (token !== null && isUsableSecret(env.SESSION_SECRET)) {
-    const uid = (await verifyToken(token, env.SESSION_SECRET))?.uid ?? null;
-    return uid ?? undefined;
+  if (isUsableSecret(env.SESSION_SECRET)) {
+    const token = bearerToken(request);
+    if (token === null) return undefined;
+    return (await verifyToken(token, env.SESSION_SECRET))?.uid ?? undefined;
   }
   return url.searchParams.get('u');
 }
