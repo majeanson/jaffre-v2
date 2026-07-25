@@ -276,13 +276,12 @@ Soleil`). Promote one bilingual `TEAM_LABELS` in `teams.ts` and import everywher
 - [x] (S) `main.tsx` imports all `@fontsource-variable/rubik` subsets — ~80 KB of
       arabic/cyrillic/hebrew/vietnamese woff2 bundled + SW-precached for an en/fr app.
       Import the latin(-ext) entrypoints only.
-- [ ] (S) `index.html` — no font preload; @fontsource faces are discovered after JS
-      parses → guaranteed FOUT on cold load. Preload the two primary latin woff2.
-      SKIPPED 2026-07-24: fontsource woff2 filenames get a Vite content hash
-      (`rubik-latin-wght-normal-<hash>.woff2`) only known after build — index.html
-      can't reference a stable path without hardcoding a dist hash that'll rot on
-      the next build. Needs a build-time injection step (e.g. a small Vite plugin
-      reading the manifest) to do safely; out of scope for this pass.
+- [x] (S) `index.html` — no font preload; @fontsource faces are discovered after JS
+      parses → guaranteed FOUT on cold load. DONE 2026-07-24 (commit 204af76): the
+      hashed-filename blocker was solved with a build-time Vite plugin
+      (`fontPreload` in vite.config.ts) that reads the final bundle and injects
+      `<link rel="preload">` for the two first-paint woff2 (Silkscreen latin +
+      Rubik latin); verified in dist/index.html.
 - [x] (S/M) `Collection.tsx:191` — 48 KB og-card JPG rendered at ~46px with no
       width/height (CLS). Thumbnail variant or at least intrinsic dimensions.
 - [ ] (M) `useTableStatuses` — N parallel status fetches per Home visit; candidate for a
