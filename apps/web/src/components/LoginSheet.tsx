@@ -403,9 +403,9 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
  * bar so first-timers can ignore it entirely. Once linked it turns into a
  * green check + what's linked (still tappable to see the linked state).
  */
-export function LoginButton() {
+export function LoginButton({ defaultOpen = false }: { readonly defaultOpen?: boolean }) {
   const t = T[useLang()];
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const links = getLinks();
   return (

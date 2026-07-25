@@ -198,7 +198,7 @@ export function StatPanel({ value, label, tone = 'default', sub }: StatPanelProp
   return (
     <div className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
       <div
-        className={`font-arcade-display text-[2.2em] leading-none tabular-nums ${STAT_TONE[tone]}`}
+        className={`min-w-0 font-arcade-display text-[2.2em] leading-none tabular-nums max-sm:text-[1.7em] ${STAT_TONE[tone]}`}
       >
         {value}
       </div>

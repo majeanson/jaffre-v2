@@ -45,6 +45,11 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
       <div aria-live="polite" className="sr-only">
         {latest}
       </div>
+      {/* Soft scrim: the panel floats over live controls (seat chips, sort);
+          dimming them signals they're behind it, and a tap anywhere dismisses. */}
+      {visible && (
+        <div aria-hidden className="fixed inset-0 z-[39] bg-black/30" onClick={onClose} />
+      )}
       {visible && (
         <div
           className={`${ARCADE.popover} fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 overflow-hidden font-arcade-ui`}

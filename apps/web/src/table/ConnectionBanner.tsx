@@ -16,7 +16,7 @@ const T: Record<Lang, { reconnecting: string }> = {
  * everyone is waiting) but below the z-50+ sheets, whose own surfaces — and
  * the expanded score popover — would otherwise be overlapped at this offset.
  */
-export function ConnectionBanner() {
+export function ConnectionBanner({ inline = false }: { readonly inline?: boolean }) {
   const t = T[useLang()];
   const connection = useGameStore((s) => s.connection);
   if (connection !== 'reconnecting') return null;
@@ -24,7 +24,11 @@ export function ConnectionBanner() {
     <div
       data-testid="connection-banner"
       role="status"
-      className="fixed top-[calc(9rem+env(safe-area-inset-top))] left-1/2 z-[48] -translate-x-1/2 rounded-(--radius-ap-control) border-2 border-(--color-ap-danger) bg-(--color-ap-ink) px-4 py-1.5 font-arcade-ui text-sm font-semibold text-white shadow-(--shadow-ap)"
+      className={`rounded-(--radius-ap-control) border-2 border-(--color-ap-danger) bg-(--color-ap-ink) px-4 py-1.5 font-arcade-ui text-sm font-semibold text-white shadow-(--shadow-ap) ${
+        inline
+          ? 'self-center'
+          : 'fixed top-[calc(9rem+env(safe-area-inset-top))] left-1/2 z-[48] -translate-x-1/2'
+      }`}
     >
       <span className="mr-2 inline-block size-2 animate-pulse rounded-full bg-(--color-ap-danger)" />
       {t.reconnecting}

@@ -102,7 +102,7 @@ export function CustomizeSheet({
         aria-modal="true"
         aria-label={t.customize}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
+        className="flex max-h-[92dvh] w-full max-w-sm sm:max-w-md flex-col gap-4 overflow-y-auto overscroll-contain rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-5 font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-lg)"
       >
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-arcade-display text-[1.5em] uppercase tracking-wide text-(--color-ap-gold)">

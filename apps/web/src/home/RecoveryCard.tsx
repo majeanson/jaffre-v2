@@ -150,7 +150,7 @@ export function RecoveryCard({ stage }: RecoveryCardProps) {
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className="h-[2em] w-[4.5em] animate-pulse rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel-hover)"
+                className="h-[2em] w-[4.5em] animate-pulse rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/15"
               />
             ))}
           </div>

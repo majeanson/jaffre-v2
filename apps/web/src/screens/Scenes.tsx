@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import {
+  DEMO_EARNED_AWARDS,
   DEMO_HISTORY,
   DEMO_HISTORY_NEW,
   DEMO_HISTORY_VETERAN,
+  DEMO_LEADERBOARD,
   DEMO_PUBLIC_ROOMS,
   DEMO_REPLAY,
   DEMO_STATS,
@@ -12,9 +14,12 @@ import {
   SCENES,
 } from '../dev/scenes.js';
 import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
+import { applyLang, currentLang } from '../lang.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
+import { Awards } from './Awards.js';
 import { Collection } from './Collection.js';
+import { Leaderboard } from './Leaderboard.js';
 import { Corner } from './Corner.js';
 import { Journey } from './Journey.js';
 import { Home, type IdentityStage } from './Home.js';
@@ -100,8 +105,10 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     const root = document.documentElement;
     const prevTheme = root.dataset['theme'];
     const prevSkin = currentCardSkin();
+    const prevLang = currentLang();
     if (current?.theme === 'light') root.dataset['theme'] = 'light';
     if (current?.cardSkin !== undefined) applyCardSkin(current.cardSkin);
+    if (current?.lang !== undefined && current.lang !== prevLang) applyLang(current.lang);
     // Some scenes force a painted-card cosmetic so the personalised avatar +
     // own 0-cards render. It lives in the same 'jaffre-profile' localStorage
     // key net/auth.ts reads; save the raw value and restore it on exit so a
@@ -120,6 +127,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       if (prevTheme === undefined) delete root.dataset['theme'];
       else root.dataset['theme'] = prevTheme;
       if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
+      if (current?.lang !== undefined && current.lang !== prevLang) applyLang(prevLang);
       if (current?.paint !== undefined) {
         if (prevProfile === null) localStorage.removeItem(PROFILE_KEY);
         else localStorage.setItem(PROFILE_KEY, prevProfile);
@@ -144,6 +152,8 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           onJoinRoom={noop}
           helpOpen={current.ui?.helpOpen ?? false}
           playOpen={current.ui?.playOpen ?? false}
+          customizeOpen={current.ui?.customizeOpen ?? false}
+          loginOpen={current.ui?.loginOpen ?? false}
           {...(current.ui?.playStep !== undefined ? { playStep: current.ui.playStep } : {})}
           {...(current.id === 'your-tables' ? { demoTables: DEMO_TABLES } : {})}
           {...(IDENTITY_STAGES[current.id] !== undefined
@@ -151,14 +161,58 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
             : {})}
         />
       )}
-      {current.screen === 'corner' && (
-        <Corner
+      {current.screen === 'corner' &&
+        (current.id === 'corner-empty' ? (
+          <Corner
+            key={current.id}
+            demoStats={{
+              ...DEMO_STATS_NEW,
+              games: 0,
+              wins: 0,
+              winRate: 0,
+              netPoints: 0,
+              streak: { current: 0, best: 0 },
+            }}
+            demoAwards={[]}
+            onLeave={onLeave}
+          />
+        ) : (
+          <Corner
+            key={current.id}
+            demoStats={DEMO_STATS}
+            demoAwards={[
+              { id: 'first-win', grantedAt: 1_752_000_000_000 },
+              { id: 'first-game', grantedAt: 1_751_000_000_000 },
+            ]}
+            onLeave={onLeave}
+          />
+        ))}
+      {current.screen === 'awards' && (
+        <Awards
           key={current.id}
-          demoStats={DEMO_STATS}
-          demoAwards={[
-            { id: 'first-win', grantedAt: 1_752_000_000_000 },
-            { id: 'first-game', grantedAt: 1_751_000_000_000 },
-          ]}
+          // Fresh = a TRUE zero record: with DEMO_STATS_NEW (2 games, 1 win)
+          // the "0/9 earned" header sat above full 1/1 progress bars — the
+          // server would have granted those, so the state was contradictory.
+          demoStats={
+            current.id === 'awards-fresh'
+              ? {
+                  ...DEMO_STATS_NEW,
+                  games: 0,
+                  wins: 0,
+                  winRate: 0,
+                  netPoints: 0,
+                  streak: { current: 0, best: 0 },
+                }
+              : DEMO_STATS
+          }
+          demoEarned={current.id === 'awards-fresh' ? [] : DEMO_EARNED_AWARDS}
+          onLeave={onLeave}
+        />
+      )}
+      {current.screen === 'leaderboard' && (
+        <Leaderboard
+          key={current.id}
+          demo={current.id === 'leaderboard-empty' ? { top: [], you: null } : DEMO_LEADERBOARD}
           onLeave={onLeave}
         />
       )}
@@ -209,7 +263,11 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <Collection key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
       )}
       {current.screen === 'journey' && (
-        <Journey key={current.id} demoStats={DEMO_STATS} onLeave={onLeave} />
+        <Journey
+          key={current.id}
+          demoStats={current.id === 'journey-new' ? DEMO_STATS_NEW : DEMO_STATS}
+          onLeave={onLeave}
+        />
       )}
       {current.screen === 'paint' && <PaintStudio key={current.id} onLeave={onLeave} />}
       {current.screen === 'public-lobby' && (
@@ -217,7 +275,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           key={current.id}
           onLeave={onLeave}
           onJoin={noop}
-          demoRooms={DEMO_PUBLIC_ROOMS}
+          demoRooms={current.id === 'public-lobby-empty' ? [] : DEMO_PUBLIC_ROOMS}
         />
       )}
       {current.screen === 'share' && (

@@ -130,6 +130,7 @@ export function Table({
         seatInfo={seatInfo}
         roundIndex={view.roundIndex}
         coachTip={derived.coach?.tip ?? null}
+        capHeight={me === null}
         bidOverlay={
           view.phase === 'bidding' && (
             <BidOverlay
@@ -159,7 +160,12 @@ export function Table({
         defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
         comms={
           online && (
-            <RoomComms variant="popover" me={me} defaultOpen={initialUi?.chatOpen ?? false} />
+            <RoomComms
+              variant="popover"
+              me={me}
+              defaultOpen={initialUi?.chatOpen ?? false}
+              defaultTab={initialUi?.commsTab ?? 'chat'}
+            />
           )
         }
         autoPlay={

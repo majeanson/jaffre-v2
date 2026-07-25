@@ -45,6 +45,10 @@ export interface HomeProps {
   readonly playOpen?: boolean;
   /** Scene viewer: stage the PLAY door's initial step (create/join) once open. */
   readonly playStep?: 'create' | 'join';
+  /** Scene viewer: mount with the (editable) Customize sheet open. */
+  readonly customizeOpen?: boolean;
+  /** Scene viewer: mount with the Login sheet open. */
+  readonly loginOpen?: boolean;
 }
 
 /** The title screen in the arcade shell: brand moment on top, your painted
@@ -57,6 +61,8 @@ export function Home({
   demoTables,
   playOpen,
   playStep,
+  customizeOpen: customizeOpenProp = false,
+  loginOpen = false,
 }: HomeProps) {
   const t = T[useLang()];
   const staged = identityStage !== undefined;
@@ -67,7 +73,7 @@ export function Home({
   const [tables, setTables] = useState<readonly TableEntry[]>(listTables);
   // The Customize sheet: a scene stages an identity open on mount so its
   // probes still find the name field/recovery plates without a click.
-  const [customizeOpen, setCustomizeOpen] = useState(staged);
+  const [customizeOpen, setCustomizeOpen] = useState(staged || customizeOpenProp);
   const customizeTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Establish identity as soon as the home screen shows (not only once the
@@ -111,7 +117,10 @@ export function Home({
           desktop. LEFT is the brand moment + your painted identity card only;
           RIGHT is the play actions, "Ton coin", and the quiet chrome — kept
           full-width so PLAY, "Ton coin" and the toolbar all share one edge. */}
-      <div className="grid w-full max-w-[min(92vw,44rem)] grid-cols-1 items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
+      {/* Single-column cap 30rem: on portrait tablet the old 44rem cap let the
+          CREATE/JOIN/PLAY rows stretch ~700px edge-to-edge for one word — 30rem
+          matches the per-rail width the lg two-column layout gives them. */}
+      <div className="grid w-full max-w-[min(92vw,30rem)] grid-cols-1 items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
         {/* LEFT — brand fan + your painted identity card, nothing else */}
         <div className="flex flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
           {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
@@ -233,7 +242,7 @@ export function Home({
             <LevelBadge />
             <SkinLink />
             <LangSwitcher />
-            {!staged && <LoginButton />}
+            {!staged && <LoginButton defaultOpen={loginOpen} />}
           </div>
         </div>
       </div>

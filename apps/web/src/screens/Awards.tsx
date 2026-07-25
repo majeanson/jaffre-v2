@@ -72,7 +72,7 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
   const earnedCount = earned === null ? 0 : AWARDS.filter((a) => earned.has(a.id)).length;
 
   return (
-    <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
+    <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 pt-[min(11vh,7rem)] text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 
@@ -97,11 +97,13 @@ export function Awards({ onLeave, demoStats, demoEarned }: AwardsProps) {
                   <div
                     key={a.id}
                     className={`flex flex-col items-center gap-[0.35em] rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) p-[0.8em] text-center shadow-(--shadow-ap-sm) ${
-                      has ? 'bg-(--color-ap-panel)' : 'bg-(--color-ap-panel) opacity-60'
+                      /* Locked = ground fill + dimmed icon only: a whole-tile
+                         opacity took the requirement text below AA contrast. */
+                      has ? 'bg-(--color-ap-panel)' : 'bg-(--color-ap-ground)'
                     }`}
                   >
                     <span
-                      className={`text-[2em] leading-none ${has ? '' : 'grayscale'}`}
+                      className={`text-[2em] leading-none ${has ? '' : 'opacity-60 grayscale'}`}
                       aria-hidden
                     >
                       {a.icon}

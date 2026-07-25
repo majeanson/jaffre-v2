@@ -122,7 +122,6 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   return (
     <main className="table-felt grid min-h-full place-items-center p-6">
       <NoticeToast />
-      <ConnectionBanner />
       <div className="flex w-full max-w-md flex-col gap-5">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">
@@ -141,6 +140,10 @@ export function Lobby({ code, onLeave }: LobbyProps) {
             {connection === 'connecting' ? t.connecting : t.share}
           </p>
         </header>
+
+        {/* In-flow (its own row): the table's fixed variant lands on the seat
+            rows at phone heights. */}
+        <ConnectionBanner inline />
 
         <SeatPicker
           roster={roster}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLang, type Lang } from '@jaffre/ui';
+import { PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { GHOST_BTN_SM, GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { buildFrames, type ReplayFrame } from '../replay/buildFrames.js';
 import { fetchReplay, type ReplayData } from '../net/history.js';
@@ -161,9 +161,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
   if (frames.length === 0) {
     return (
       <main className="table-felt grid min-h-full place-items-center">
-        <p className="animate-pulse font-arcade-display uppercase tracking-wide text-(--color-ap-muted)">
-          {t.loading}
-        </p>
+        <PixelWave label={t.loading} />
       </main>
     );
   }

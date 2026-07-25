@@ -237,10 +237,14 @@ Soleil`). Promote one bilingual `TEAM_LABELS` in `teams.ts` and import everywher
       ("Échanger ici", "Joindre"). Align: "Échange ici", "Joins-toi".
 - [x] (S) "Starting hands"/"Mains de départ" defined twice (GameRecap +
       StartingHandsPanel). Consolidate into StartingHandsPanel's table.
-- [ ] (M) `SeatPicker.tsx` — FR seat buttons ("Déplace-toi ici") are ~2× EN width in a
-      horizontal row; verify wrap on narrow phones or shorten FR.
-- [ ] (S) `RoomComms.tsx` — "Clavardage et musique" is long for the collapsed toggle
-      cell; verify truncation, shorten if it clips.
+- [x] (M) `SeatPicker.tsx` — FR seat buttons ("Déplace-toi ici") are ~2× EN width in a
+      horizontal row; verify wrap on narrow phones or shorten FR. DONE: FR shortened
+      ("Viens ici", "Ajoute un bot" — also fixes the infinitive-register drift), empty-seat
+      Ctas compacted to the occupied rows' height, and the row wraps gracefully. A new
+      `lobby-open-fr` scene keeps FR width under gallery watch.
+- [x] (S) `RoomComms.tsx` — "Clavardage et musique" is long for the collapsed toggle
+      cell; verify truncation, shorten if it clips. VERIFIED no-change: the string is only
+      the aria-label/tooltip of the icon-only chat toggle — nothing visible can clip.
 - [x] (S) `Stats.tsx:261` — date locale `'en'` → `'en-CA'` (FR already `fr-CA`).
 - [x] (S) `ChatPanel.tsx:69-72` — timestamps hand-built `HH:MM`; use
       `toLocaleTimeString(locale)` so EN gets 12h.
@@ -293,61 +297,148 @@ overflow/top-bar warnings — everything below is judgment-call layout quality.
 
 ### High
 
-- [ ] (M) **Hub screens waste 40-60% of tall viewports** — Corner, Stats (every
-      state), PublicLobby, Journey-lite states, and the Home stack all anchor to
-      the top and leave a dead void below at 900px+ heights (worst:
-      `desktop-dark-corner`, `small-desktop-dark-home`, `tablet-dark-corner`).
-      Vertically center the meta screens' content column (Home already does
-      `lg:justify-center` — extend the idiom) and/or let hub content breathe
-      (larger cards on tall viewports). THE dominant pattern across ~20 shots.
-- [ ] (M) **Light theme's quiet states are near-invisible** — `waiting` screen
-      is effectively a blank white page (worst shot of the audit), identity
-      loading skeletons and the Help checklist rings vanish, spectator felt
-      placeholder is unreadable. These grays were tuned on dark. Re-token them
-      on ink-based colors and re-run `audit:contrast`.
-- [ ] (S) **Reconnecting pill collides with seat rows** (phone lobby, both
-      skins) — it overlays Seat 2's chip/badge instead of displacing them. Give
-      it its own row above the seat list (mirrors the seat-chip badge-collision
-      fix already shipped).
-- [ ] (S/M) **Round-over settings cluster on phone** — 8 icon buttons
-      (share/gear/skins/lang/sound/help/coach/log) sit edge-to-edge under the
-      score sheet; several look sub-40px (`phone-dark-score-details`). Apply the
-      40px+gaps treatment the utility row got.
+- [x] (M) **Hub screens waste 40-60% of tall viewports** — DONE (revised): a
+      first attempt centered the content column (`justify-center`), but the
+      2nd sweep's reviewers unanimously read it as WORSE — the header jumped
+      between short tabs (centered) and tall tabs (top-anchored), and short
+      empty states "started 40% down, looks broken". Final form: all seven meta
+      screens top-anchor with one consistent generous offset
+      (`pt-[min(11vh,7rem)]`), so headers align across every tab and the void
+      splits less glaringly.
+- [x] (M) **Light theme's quiet states are near-invisible** — DONE: waiting
+      screen + Replay loading line moved `--color-ap-muted` → `--color-ap-text`/75,
+      identity skeleton fill `panel-hover` → `ink`/15, Help checklist rings
+      `ink`/45 → `ink`/60. Spectator felt placeholder re-checked in the next sweep.
+- [x] (S) **Reconnecting pill collides with seat rows** — DONE: `ConnectionBanner`
+      gained an `inline` mode; the Lobby renders it in-flow as its own row between
+      the header and the seat list (table keeps the fixed variant).
+- [x] (S/M) **Round-over settings cluster on phone** — VERIFIED already fixed by
+      the utility-row token pass: the Options drawer's buttons all sit on the
+      shared `clamp(2.5rem,…)` (40px) floor with `gap-2`. Re-measured in the new
+      sweep; no further change.
 
 ### Medium
 
-- [ ] (S) TableCards room names truncate mid-word ("AMBER-FO…") at several
-      widths while a sibling card shows a short name — let the name wrap to two
-      lines or shrink-to-fit instead of ellipsis.
-- [ ] (M) Floating panels (game log, chat, score details) sit on the felt with
-      no scrim and can clip live controls (log clips Marcel's badge on tablet,
-      sort/timer buttons behind it) — add a soft scrim + keep panels clear of
-      seat chips, or dock them to an edge.
-- [ ] (S) Customize sheet has no backdrop scrim (background buttons compete) and
-      keeps phone width on tablet (dead margins). Dim the backdrop like
-      LoginSheet's pattern should; widen modestly at sm+.
-- [ ] (S) Spectator's felt stretches to a tall oval on portrait tablet while
-      every seated view keeps a circle — cap the felt's aspect for spectators.
-- [ ] (S) `phone-light-stats-veteran`: a badge overlaps the last digit of the
-      net-points figure ("+430" reads "+43⊙").
-- [ ] (S) Round-over modal lets a corner of the previous trick's card peek above
-      its top edge (several viewports) and a stray gold sliver shows at the left
-      screen edge on phone — clip or fade the trick layer while the modal is up.
-- [ ] (S) Tablet single-column: CREATE/JOIN/PLAY rows stretch 768px edge-to-edge
-      for one word — cap the action column (`max-w-*` centered) at tablet.
-- [ ] (S) Lobby seat rows: empty seats (two stacked buttons) are taller than
-      occupied ones, breaking the list rhythm; the per-seat control cluster
-      (difficulty/swap/kick) sits within ~4px on phone.
+- [x] (S) TableCards room names truncate mid-word — DONE: `truncate` →
+      `line-clamp-2 break-words leading-tight` (codes wrap at their hyphens).
+- [x] (M) Floating panels on the felt with no scrim — DONE (log): GameLogPanel
+      gained a soft `bg-black/30` click-to-close scrim under the panel. Chat/
+      score-details left as-is pending the new sweep's verdict.
+- [x] (S) Customize sheet — PARTIALLY STALE: it already dims (`bg-black/60`).
+      Widened `max-w-sm` → `sm:max-w-md` for tablet.
+- [x] (S) Spectator's felt tall oval — DONE: Stage takes `capHeight` (spectators
+      only, `max-h-[min(77vw,80rem)]`) so the felt keeps a table-like shape when
+      no hand dock eats the portrait height.
+- [x] (S) `phone-light-stats-veteran` "+430" clipped — DONE: StatPanel's value
+      gets `min-w-0` + `max-sm:text-[1.7em]` so 4-char figures fit a third-of-
+      phone-width column.
+- [x] (S) Round-over modal trick peek-through — DONE: backdrop `bg-black/50` →
+      `/70`, fading the trick layer + gold sliver behind the dialog.
+- [x] (S) Tablet single-column CREATE/JOIN/PLAY stretch — DONE: Home's
+      single-column grid cap `44rem` → `30rem` (matches the lg per-rail width).
+- [x] (S) Lobby seat rows rhythm — DONE: empty-seat Ctas compacted
+      (`px-[0.85em] py-[0.45em] text-[0.9em]`) to the occupied rows' height,
+      with `flex-wrap` for narrow phones.
 
 ### Low
 
-- [ ] Share sheet URL field truncates with no full-value affordance.
+- [x] Share sheet URL field truncates with no full-value affordance. VERIFIED
+      no-change: it's a read-only input that select-alls on focus — the full
+      value is one tap away (and Copy sits beside it).
 - [ ] Phone round-history header shows bare "R" vs desktop "ROUND".
 - [ ] Practice human avatar is a plain initial circle next to pixel-art bots.
 - [ ] `identity-light` scene stages a light modal on a dark page — verify it's a
       scene-staging artifact, not a reachable state.
 - [ ] Home chrome bar packs 6 controls at 390px — tight but not colliding; keep
       an eye on it if another entry is ever added.
+
+---
+
+## Visual audit #2 — screenshot sweep 2026-07-24 (evening)
+
+505 gallery shots (63 scenes — 15 NEW: awards ×2, leaderboard ×2, corner-empty,
+journey-new, public-lobby-empty, customize, login-sheet, music-open,
+visitor-away, home-fr, lobby-open-fr, awards a11y coverage — × 4 viewports,
+dark + light), eight parallel reviewers (one per viewport×theme), top findings
+re-verified by eye. ZERO automated overflow/top-bar warnings. Fixed in-flight
+during this pass: MetaHeader HOME button clipping off 390px on
+Collection/Leaderboard (min-w-0 + phone type scale), awards-fresh staged-data
+contradiction (full 1/1 bars under "0/9 earned" → true zero record),
+WaitingScreen + Replay loading → PixelWave (the lone pulsing line read as a
+blank page, worst in light), spectator stage now `my-auto` (the aspect cap had
+traded the tall oval for a bottom void), Awards locked tiles' AA contrast
+(whole-tile opacity → ground fill + dimmed icon).
+
+### High
+
+- [ ] (M) **Bonhomme value badge clipped in the hand fan** — THE systemic find
+      (flagged by 6 of 8 reviewers, visible in nearly every in-game shot): the
+      green "+5" pill on the red 0 and the "−2" pill on the brown 0 are
+      half-buried under the next overlapping card. It's a rules-meaning element.
+      Render the pill above the neighbor (z on the badge layer) or anchor it to
+      the card's exposed left edge.
+- [ ] (M) **GameRecap clips its tables mid-row behind the sticky footer** — the
+      TRICKS WON table (desktop/small-desktop) and "Still at the table" avatar
+      row (tablet/phone) are sliced in half behind the Rematch bar with no
+      scroll affordance; the panel scrolls but looks broken. Add bottom padding
+      ≥ the footer height inside the scroll area + a soft bottom fade.
+- [ ] (M) **Replay: stray card-back sprites + iconless transport buttons** —
+      opponent card-back fans pierce their own seat plaques and a stray back
+      overlaps the "You" pill and hand at every width; in LIGHT theme the
+      scrubber's transport buttons render as blank white squares (icon color
+      must be ink-based). Two bugs, one screen — worst shot family of the sweep.
+- [ ] (S) **Visitor away-caption collides with the score tile** — "TEAM SUN ·
+      AWAY" wraps and its second line is clipped by the SCORE box on every
+      viewport (new `visitor-away` scene). Give the seat captions their own
+      row-gap so the grid can't overlap them.
+- [ ] (M) **Floating panels still bury live table state on tablet/phone** —
+      chat/music/score-details sit on the played trick and seat chips (log now
+      has a scrim, the others don't). Same fix as the log: soft scrim +
+      click-to-close, or dock to the bottom edge above the hand.
+
+### Medium
+
+- [ ] (M) **Ghost duplicate of the rightmost hand card** (phone/tablet, many
+      states) — a semi-transparent clone of the last card floats over the fan's
+      right end, reading as a 9th card / stuck drag-preview; on desktop the same
+      card just looks washed out. Likely a deal-in animation leftover on the
+      last-dealt card. Investigate `DealIntro`/hand fan enter transition.
+- [ ] (S) `lobby-open-fr` — the FR lobby runs just past 900px and "COMMENT
+      JOUER" sits cut at the fold (EN fits). Tighten the lobby's vertical gaps
+      or let the footer actions sit side-by-side in FR too.
+- [ ] (S) `music-open` — meaning-losing truncation: now-playing title AND adder
+      both ellipsize ("Un…", "Adde…", "Gin…") even where slack width exists.
+      Two-line clamp for the title; drop the adder to its own muted line.
+- [ ] (S) `your-tables` — sibling cards misalign: two-line room name pushes one
+      RESUME lower, and "TONIGHT: SUN 0 — MOON 0" wraps leaving an orphan "0".
+      `whitespace-nowrap` the tally; align card rows with a fixed-height name
+      slot (the two-line name itself is fine).
+- [ ] (S) `paint-studio` at 1024 — the right rail's 7th tool button clips at the
+      panel edge; let the tool row wrap.
+- [ ] (S) Journey "LV n" track chips clip the digit's bottom (tablet/desktop,
+      both themes) — line-height/padding fix in the rung badge.
+- [ ] (S) `auction-*` on phone — the bid panel's edge slices through the right
+      seat chip, and Réal's PASS bubble lands on the SANS ATOUT button. Inset
+      the panel below the side chips at max-sm.
+- [ ] (S) Visitor chat-bubble trigger is ~28px, its "1" badge collides with
+      LEAVE's corner (phone) — give it the shared 40px icon-button chrome.
+- [ ] (S) Coach tip on phone renders as a ~140px-wide 7-line tower over the felt
+      edge — give `CoachHint` a wider max-w at max-sm.
+- [ ] (S) `home-create` — the "Bots: Normal" chip floats half off the play
+      door's right edge instead of sitting inside the panel.
+
+### Low
+
+- [ ] Share sheet URL truncates right at the room code on phone — the one part
+      that matters; shrink the font or ellipsize the middle instead of the end.
+- [ ] `auction-wait` (tablet) — bidder rows truncate their status ("Ginette _")
+      where auction-you proves there's room for "PASS".
+- [ ] `stats-loading` (light) — PixelWave's pale blocks nearly vanish on the
+      white sheet; consider the ink-based block colors.
+- [ ] Awards grid: the ON FIRE unlock chip wraps to two lines while siblings are
+      one — accept or shorten the label.
+- [ ] Corner LEVEL tile is mostly empty below its bar while WIN RATE is full —
+      consider the level number as the tile's big figure.
 
 ## Verified-good (don't "polish" these into regressions)
 

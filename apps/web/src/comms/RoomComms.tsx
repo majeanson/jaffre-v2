@@ -21,6 +21,8 @@ export interface RoomCommsProps {
   readonly variant: 'popover' | 'panel';
   /** Popover only: mount already open (scene viewer parity). */
   readonly defaultOpen?: boolean;
+  /** Which tab starts active (scene viewer parity; default 'chat'). */
+  readonly defaultTab?: Tab;
 }
 
 /**
@@ -30,9 +32,14 @@ export interface RoomCommsProps {
  * YouTube player lives in the App-level MusicDock; the music tab only drives
  * the shared store.
  */
-export function RoomComms({ me, variant, defaultOpen = false }: RoomCommsProps) {
+export function RoomComms({
+  me,
+  variant,
+  defaultOpen = false,
+  defaultTab = 'chat',
+}: RoomCommsProps) {
   const t = T[useLang()];
-  const [tab, setTab] = useState<Tab>('chat');
+  const [tab, setTab] = useState<Tab>(defaultTab);
   const [open, setOpen] = useState(variant === 'panel' || defaultOpen);
   const chat = useGameStore((s) => s.chat);
   const sendChat = useChatSend();

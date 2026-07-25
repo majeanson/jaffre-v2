@@ -1,11 +1,12 @@
 import { chooseAction } from '@jaffre/bots';
 import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
-import type { ChatEntry, Roster } from '@jaffre/protocol';
-import type { HistoryGame, ReplayData, Stats } from '../net/history.js';
+import type { ChatEntry, MusicState, Roster } from '@jaffre/protocol';
+import type { HistoryGame, Leaderboard, ReplayData, Stats } from '../net/history.js';
 import type { PublicRoom, TableEntry } from '../net/rooms.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
+import { useMusicStore } from '../state/musicStore.js';
 import type { SceneId, SceneMeta } from './sceneManifest.js';
 import { SCENE_METAS } from './sceneManifest.js';
 
@@ -73,6 +74,18 @@ const VISITOR_ROSTER: Roster = {
     { name: 'Alice', isBot: false, connected: true },
     { name: 'Marcel', isBot: true, connected: true },
     { name: 'Bob', isBot: false, connected: true },
+    { name: 'Réal', isBot: true, connected: true },
+  ],
+  spectators: 1,
+  started: true,
+};
+
+/** Same room, but a seated human dropped — the visitor's away-seat hint. */
+const VISITOR_AWAY_ROSTER: Roster = {
+  seats: [
+    { name: 'Alice', isBot: false, connected: true },
+    { name: 'Marcel', isBot: true, connected: true },
+    { name: 'Bob', isBot: false, connected: false },
     { name: 'Réal', isBot: true, connected: true },
   ],
   spectators: 1,
@@ -307,6 +320,72 @@ export const DEMO_HISTORY_NEW: readonly HistoryGame[] = [
   demoGameRow(1, 'kitchen', 2, false),
 ];
 
+/** Staged skill ladder — a full top 10 plus the viewer pinned outside it. */
+export const DEMO_LEADERBOARD: Leaderboard = {
+  top: [
+    { id: 'u1', name: 'Ginette', color: '#f2b712', rating: 1592, ratingGames: 64 },
+    { id: 'u2', name: 'Marcel', color: '#e05252', rating: 1571, ratingGames: 58 },
+    { id: 'u3', name: 'Réal', color: '#3f8bff', rating: 1544, ratingGames: 41 },
+    { id: 'u4', name: 'Lise', color: '#1e7a52', rating: 1502, ratingGames: 37 },
+    { id: 'u5', name: 'Alix', color: '#7a6ff0', rating: 1488, ratingGames: 52 },
+    { id: 'u6', name: 'Bob', color: null, rating: 1463, ratingGames: 19 },
+    { id: 'u7', name: 'Chantal', color: '#d97800', rating: 1440, ratingGames: 28 },
+    { id: 'u8', name: 'Marco', color: '#0f9c72', rating: 1421, ratingGames: 22 },
+    { id: 'u9', name: 'Suzanne', color: '#ff4d7d', rating: 1397, ratingGames: 33 },
+    { id: 'u10', name: 'Ti-Guy', color: '#4fd8ff', rating: 1355, ratingGames: 12 },
+  ],
+  you: { id: 'me', name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
+};
+
+/** Awards ids staged as already earned (must exist in awards.ts's AWARDS). */
+export const DEMO_EARNED_AWARDS: readonly string[] = [
+  'first-game',
+  'first-win',
+  'tutorial-complete',
+];
+
+/** A tiny inline SVG thumb so staged music rows never show a broken image. */
+const MUSIC_THUMB =
+  'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2036%22%3E%3Crect%20width%3D%2248%22%20height%3D%2236%22%20fill%3D%22%233a1f7a%22%2F%3E%3Ctext%20x%3D%2224%22%20y%3D%2224%22%20font-size%3D%2216%22%20text-anchor%3D%22middle%22%20fill%3D%22%23f2b712%22%3E%E2%99%AA%3C%2Ftext%3E%3C%2Fsvg%3E';
+
+/** Staged room music: one track playing, two queued (built at load time so the
+ * "started a minute ago" seek math stays sane). */
+function demoMusic(): MusicState {
+  const base = { videoId: 'dQw4w9WgXcQ', thumb: MUSIC_THUMB };
+  return {
+    current: {
+      ...base,
+      id: 'm1',
+      title: 'Ginette Reno — Un peu plus haut',
+      author: 'Ginette Reno',
+      addedBy: 'Marcel',
+      addedBySeat: 1,
+      startedAt: Date.now() - 63_000,
+    },
+    queue: [
+      {
+        ...base,
+        id: 'm2',
+        title: 'Beau Dommage — La complainte du phoque en Alaska',
+        author: 'Beau Dommage',
+        addedBy: 'You',
+        addedBySeat: 0,
+        mine: true,
+      },
+      {
+        ...base,
+        id: 'm3',
+        title: 'Les Colocs — Tassez-vous de d’là',
+        author: 'Les Colocs',
+        addedBy: 'Ginette',
+        addedBySeat: 2,
+      },
+    ],
+    skipVotes: 1,
+    skipNeeded: 2,
+  };
+}
+
 export type Scene = SceneMeta & { readonly load: () => void };
 
 const cache = new Map<string, Snapshot>();
@@ -497,9 +576,37 @@ const LOADERS: Record<SceneId, () => void> = {
   'paint-studio': () => undefined,
   // Public lobby renders from its own demoRooms prop (like history/stats) — no-op.
   'public-lobby': () => undefined,
+  'public-lobby-empty': () => undefined,
+  // Awards/Leaderboard/Corner/Journey variants render from demo props — no-op.
+  awards: () => undefined,
+  'awards-fresh': () => undefined,
+  leaderboard: () => undefined,
+  'leaderboard-empty': () => undefined,
+  'corner-empty': () => undefined,
+  'journey-new': () => undefined,
+  // Home overlays (sheet open flags travel via SceneUi) — plain home states.
+  customize: () => useGameStore.getState().reset(),
+  'login-sheet': () => useGameStore.getState().reset(),
+  'music-open': () => {
+    inject(cached('music-open', midTrick));
+    useMusicStore.getState().setState(demoMusic());
+  },
+  'visitor-away': gameScene('visitor-away', midTrick, {
+    viewer: 'spectator',
+    roster: VISITOR_AWAY_ROSTER,
+  }),
+  // FR variants of existing scenes (lang applied by the Scenes shell).
+  'home-fr': () => useGameStore.getState().reset(),
+  'lobby-open-fr': () => injectLobby(LOBBY_OPEN, 'open'),
 };
 
 export const SCENES: readonly Scene[] = SCENE_METAS.map((meta) => ({
   ...meta,
-  load: LOADERS[meta.id],
+  load: () => {
+    // Staged music is per-scene state: clear it first so a scene visited after
+    // 'music-open' (the picker walks the catalog in order) doesn't keep the
+    // now-playing badge; the music scene then re-sets it inside its loader.
+    useMusicStore.getState().reset();
+    LOADERS[meta.id]();
+  },
 }));

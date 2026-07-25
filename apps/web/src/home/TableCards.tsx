@@ -141,7 +141,9 @@ export function TableCard({
         </span>
       )}
       <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate font-arcade-display text-[0.95em] uppercase tracking-wide text-(--color-ap-gold) tabular-nums">
+        {/* Wrap (≤2 lines) instead of mid-word ellipsis — room codes like
+            "amber-fox-3k" were truncating while sibling cards showed short names. */}
+        <span className="line-clamp-2 min-w-0 break-words font-arcade-display text-[0.95em] uppercase leading-tight tracking-wide text-(--color-ap-gold) tabular-nums">
           {table.code}
         </span>
         <div className="flex shrink-0 items-center gap-1.5">

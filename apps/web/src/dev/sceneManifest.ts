@@ -16,7 +16,9 @@ export type SceneScreen =
   | 'collection'
   | 'journey'
   | 'paint'
-  | 'public-lobby';
+  | 'public-lobby'
+  | 'awards'
+  | 'leaderboard';
 
 /** UI panels a scene wants open on mount (applied as initial state). */
 export interface SceneUi {
@@ -27,6 +29,12 @@ export interface SceneUi {
   readonly helpOpen?: boolean;
   readonly playOpen?: boolean;
   readonly playStep?: 'create' | 'join';
+  /** Home only: mount with the Customize sheet open (live/editable variant). */
+  readonly customizeOpen?: boolean;
+  /** Home only: mount with the Login sheet open. */
+  readonly loginOpen?: boolean;
+  /** Table comms popover: which tab starts active (default 'chat'). */
+  readonly commsTab?: 'music';
 }
 
 export interface SceneMeta {
@@ -42,6 +50,9 @@ export interface SceneMeta {
   readonly ui?: SceneUi;
   /** Force a skin for this scene (default: the stored theme, i.e. dark). */
   readonly theme?: 'light';
+  /** Force a language for this scene (default: the stored one, i.e. EN);
+   * applied on mount and restored on exit — for FR width/wrap coverage. */
+  readonly lang?: 'fr';
   /** Force a card skin for this scene (default: the stored one, i.e. arcade). */
   readonly cardSkin?: string;
   /** Seed the viewer's painted-card cosmetic (data URL) for this scene, so the
@@ -377,6 +388,91 @@ export const SCENE_METAS = [
     label: 'Public lobby — open tables',
     screen: 'public-lobby',
     probe: 'role=heading[name="Public tables"]',
+  },
+  {
+    id: 'public-lobby-empty',
+    label: 'Public lobby — no tables',
+    screen: 'public-lobby',
+    probe: 'role=heading[name="Public tables"]',
+    absent: 'role=button[name="Join"]',
+  },
+  {
+    id: 'awards',
+    label: 'Awards — some earned',
+    screen: 'awards',
+    probe: 'role=heading[name="Awards"]',
+  },
+  {
+    id: 'awards-fresh',
+    label: 'Awards — all locked (progress bars)',
+    screen: 'awards',
+    probe: 'role=heading[name="Awards"]',
+  },
+  {
+    id: 'leaderboard',
+    label: 'Leaderboard — top 10 + you pinned',
+    screen: 'leaderboard',
+    probe: 'role=heading[name="Leaderboard"]',
+  },
+  {
+    id: 'leaderboard-empty',
+    label: 'Leaderboard — no ranked players',
+    screen: 'leaderboard',
+    probe: 'text=No ranked players yet',
+  },
+  {
+    id: 'corner-empty',
+    label: 'Your corner — brand new player',
+    screen: 'corner',
+    probe: 'text=No awards yet',
+  },
+  {
+    id: 'journey-new',
+    label: 'Journey — brand new player',
+    screen: 'journey',
+    probe: 'role=heading[name="Journey"]',
+  },
+  {
+    id: 'customize',
+    label: 'Customize sheet — palette + paint',
+    screen: 'home',
+    ui: { customizeOpen: true },
+    probe: 'role=dialog[name="Customize"]',
+  },
+  {
+    id: 'login-sheet',
+    label: 'Login sheet — keep your games',
+    screen: 'home',
+    ui: { loginOpen: true },
+    probe: 'role=dialog[name="Log in"]',
+  },
+  {
+    id: 'music-open',
+    label: 'Online table — music queue open',
+    screen: 'table',
+    online: true,
+    ui: { chatOpen: true, commsTab: 'music' },
+    probe: '[data-testid="comms-tab-music"][aria-pressed="true"]',
+  },
+  {
+    id: 'visitor-away',
+    label: 'Visitor — away human seat (hint)',
+    screen: 'visitor',
+    probe: 'text=Away seats free up',
+  },
+  {
+    id: 'home-fr',
+    label: 'Home — français',
+    screen: 'home',
+    lang: 'fr',
+    probe: 'role=heading[name="Jaffre"]',
+  },
+  {
+    id: 'lobby-open-fr',
+    label: 'Lobby — sièges libres (français)',
+    screen: 'lobby',
+    lang: 'fr',
+    probe: 'text=sièges à remplir',
   },
 ] as const satisfies readonly SceneMeta[];
 

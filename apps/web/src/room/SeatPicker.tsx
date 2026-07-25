@@ -66,11 +66,13 @@ const T: Record<
     you: 'Toi',
     host: 'Hôte',
     cycleBot: 'Touche pour changer la difficulté du bot',
-    moveHere: 'Déplace-toi ici',
+    // Short forms: the FR seat buttons ran ~2× the EN width and wrapped the
+    // empty-seat row into a two-line stack on narrow phones.
+    moveHere: 'Viens ici',
     sitHere: 'Assis-toi ici',
     swapHere: 'Échange ici',
     joinHere: 'Joins-toi',
-    addBot: 'Ajouter un bot',
+    addBot: 'Ajoute un bot',
     removeBot: 'Retirer le bot',
     kickPlayer: 'Retirer ce joueur de la table',
   },
@@ -195,12 +197,19 @@ export function SeatPicker({
                 )}
               </span>
             ) : (
-              <span className="flex gap-2">
-                <Cta onClick={() => onSit(seat)} disabled={started}>
+              /* Compact Ctas: sized down to the occupied rows' seat-chip height
+                 so empty rows keep the list rhythm instead of standing taller. */
+              <span className="flex flex-wrap gap-2">
+                <Cta
+                  className="px-[0.85em] py-[0.45em] text-[0.9em]"
+                  onClick={() => onSit(seat)}
+                  disabled={started}
+                >
                   {seated ? t.moveHere : t.sitHere}
                 </Cta>
                 <Cta
                   variant="secondary"
+                  className="px-[0.85em] py-[0.45em] text-[0.9em]"
                   disabled={started}
                   onClick={() => onAddBot(seat, 'normal')}
                 >

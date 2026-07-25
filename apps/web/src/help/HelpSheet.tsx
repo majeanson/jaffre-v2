@@ -527,7 +527,7 @@ function LearningChecklist({
                 className={`grid size-5 shrink-0 place-items-center rounded-(--radius-ap-control) border-2 text-(length:--text-fluid-xs) ${
                   isDone
                     ? 'border-(--color-ap-gold) bg-(--color-ap-gold) text-(--color-ap-ink)'
-                    : 'border-(--color-ap-ink)/45 text-transparent'
+                    : 'border-(--color-ap-ink)/60 text-transparent'
                 }`}
               >
                 ✓

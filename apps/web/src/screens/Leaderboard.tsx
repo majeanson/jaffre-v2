@@ -69,7 +69,7 @@ export function Leaderboard({ onLeave, demo }: LeaderboardProps) {
   const topHasYou = meId !== null && (board?.top.some((r) => r.id === meId) ?? false);
 
   return (
-    <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 text-(--color-ap-text) max-sm:p-4">
+    <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 pt-[min(11vh,7rem)] text-(--color-ap-text) max-sm:p-4">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
         <MetaHeader title={t.title} homeLabel={t.home} onLeave={onLeave} />
 

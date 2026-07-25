@@ -20,6 +20,10 @@ export interface StageProps {
   readonly bidOverlay?: ReactNode;
   /** The Coach's one-line tip, shown when a trick result isn't already up. */
   readonly coachTip?: string | null;
+  /** Spectator view: no hand dock below, so the stage would absorb the whole
+   * portrait height and stretch the felt into a tall oval — cap its height
+   * relative to its width so the felt keeps a table-like shape. */
+  readonly capHeight?: boolean;
 }
 
 /** Owns the center stage: trick area, opponents' seat chips, trick banner, bid overlay. */
@@ -32,9 +36,14 @@ export function Stage({
   roundIndex,
   bidOverlay,
   coachTip = null,
+  capHeight = false,
 }: StageProps) {
   return (
-    <div className="relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1">
+    <div
+      className={`relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1 ${
+        capHeight ? 'my-auto max-h-[min(77vw,80rem)]' : ''
+      }`}
+    >
       {/* The green felt playing surface — a discrete oval on the arcade ground.
           On a phone it swells to nearly the whole stage so no space is wasted;
           on desktop, where there's room to breathe, it keeps its margins. */}

@@ -17,14 +17,16 @@ export interface MetaHeaderProps {
  */
 export function MetaHeader({ title, homeLabel, onLeave }: MetaHeaderProps) {
   return (
-    <header className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-[0.5em]">
+    <header className="flex items-center justify-between gap-4 max-sm:gap-2">
+      {/* min-w-0 + phone type scale: long titles (COLLECTION, LEADERBOARD) were
+          pushing the Home Cta off the 390px viewport's right edge. */}
+      <div className="flex min-w-0 items-center gap-[0.5em]">
         <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
-        <h1 className="font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold)">
+        <h1 className="min-w-0 break-words font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold) max-sm:text-[1.5em]">
           {title}
         </h1>
       </div>
-      <Cta variant="secondary" onClick={onLeave}>
+      <Cta variant="secondary" className="shrink-0" onClick={onLeave}>
         {homeLabel}
       </Cta>
     </header>
