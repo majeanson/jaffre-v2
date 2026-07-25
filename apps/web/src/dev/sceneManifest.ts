@@ -440,8 +440,10 @@ export const SCENE_METAS = [
     probe: 'role=dialog[name="Customize"]',
   },
   {
+    // "link your account", not "keep your games": the picker option's label
+    // otherwise collides with stats.spec's getByText('Your games').
     id: 'login-sheet',
-    label: 'Login sheet — keep your games',
+    label: 'Login sheet — link your account',
     screen: 'home',
     ui: { loginOpen: true },
     probe: 'role=dialog[name="Log in"]',
