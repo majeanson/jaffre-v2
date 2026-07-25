@@ -118,6 +118,10 @@ export interface RosterSeat {
   readonly name: string;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** This human's opaque PUBLIC id (a one-way hash of their uid, never the
+   * uid itself) — the same value the leaderboard rows carry, so the client
+   * can match a seat to its ladder row without guessing by display name. */
+  readonly pid?: string;
   /** This human's pixel avatar (pixel-SVG data URL), as sent on their join —
    * lets every client render painted avatars for OTHER players too. */
   readonly paint?: string;

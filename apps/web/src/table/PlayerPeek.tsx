@@ -184,10 +184,12 @@ function OwnRecord() {
   );
 }
 
-/** Another human's PUBLIC standing — their Elo line off the public leaderboard,
- * matched by display name (the roster carries no uid, by design). Full records
- * stay private; the board is the one thing everyone can already see. */
-function PublicStanding({ name }: { name: string }) {
+/** Another human's PUBLIC standing — their Elo line off the public leaderboard.
+ * Matched by the roster seat's opaque public id (same hash the board rows
+ * carry); display name is only the fallback for a roster without pids, where
+ * duplicate names may show the wrong row. Full records stay private; the
+ * board is the one thing everyone can already see. */
+function PublicStanding({ name, pid }: { name: string; pid: string | null }) {
   const t = T[useLang()];
   const [board, setBoard] = useState<Leaderboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -212,7 +214,10 @@ function PublicStanding({ name }: { name: string }) {
 
   if (loading) return <p className="text-(--color-ap-muted)">{t.loading}</p>;
   if (board === null) return <p className="text-(--color-ap-muted)">{t.unranked}</p>;
-  const rankIndex = board.top.findIndex((r) => r.name === name);
+  const rankIndex =
+    pid !== null
+      ? board.top.findIndex((r) => r.id === pid)
+      : board.top.findIndex((r) => r.name === name);
   const row = board.top[rankIndex];
   if (row === undefined) return <p className="text-(--color-ap-muted)">{t.unranked}</p>;
 
@@ -434,7 +439,7 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
           <OwnRecord />
         </div>
       ) : (
-        <PublicStanding name={info.name} />
+        <PublicStanding name={info.name} pid={info.pid} />
       )}
     </section>
   );

@@ -32,6 +32,7 @@ import { notifyUser } from './push.js';
 import { gameRecordFrom } from './history.js';
 import { DEFAULT_RATING, ratingUpdates, type CurrentRating } from './rating.js';
 import { lobbyStub } from './Lobby.js';
+import { publicId } from './publicId.js';
 
 /** Everything needed to (re)apply one user's rating move: the guarded UPDATE's
  * bound values plus `delta`, kept separately so a cross-room-race retry can
@@ -2089,6 +2090,7 @@ export class GameRoom implements DurableObject {
         name: this.meta.names[owner] ?? 'Player',
         isBot: false,
         connected,
+        pid: publicId(owner),
         ...(paint !== undefined ? { paint } : {}),
         ...(ready !== undefined ? { ready } : {}),
         ...(Number.isFinite(swapAt) ? { botSwapAt: swapAt } : {}),

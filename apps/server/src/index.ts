@@ -18,6 +18,7 @@ import {
 } from './auth/login.js';
 import { isUsableSecret, mintToken, verifyToken } from './auth/session.js';
 import type { Env } from './env.js';
+import { publicId } from './publicId.js';
 import { pushEnabled } from './push.js';
 
 export { GameRoom, Lobby };
@@ -1085,7 +1086,17 @@ async function handleLeaderboard(request: Request, env: Env, url: URL): Promise<
     color: string | null;
     rating: number;
     rating_games: number;
-  }) => ({ id: r.id, name: r.name, color: r.color, rating: r.rating, ratingGames: r.rating_games });
+  }) => ({
+    // OPAQUE public id, never the raw uid: the `?u=` / X-User-Id fallbacks
+    // trust a bare uid, so exposing users.id here let anyone on the ladder be
+    // read (and worse) by strangers. The same hash rides on roster seats, so
+    // PlayerPeek matches seat↔row by id instead of by display name.
+    id: publicId(r.id),
+    name: r.name,
+    color: r.color,
+    rating: r.rating,
+    ratingGames: r.rating_games,
+  });
 
   // The caller's own standing (best-effort — never fails the public board).
   let you: (ReturnType<typeof rowOut> & { rank: number }) | null = null;

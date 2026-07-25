@@ -22,7 +22,8 @@
     "verify:deploy": "tsx scripts/verify-deploy.ts",
     "audit:contrast": "node scripts/contrast-audit.mjs packages/ui/src/tokens.css",
     "devkit": "npm run devkit -w packages/ui",
-    "dev": "npm run dev -w apps/server"
+    "dev": "npm run dev -w apps/server",
+    "shots:sweep": "playwright test -c apps/web/playwright.shots.config.ts --grep \"desktop-dark|desktop-light|small-desktop-dark|small-desktop-light|tablet-dark|tablet-light|phone-dark|phone-light\""
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

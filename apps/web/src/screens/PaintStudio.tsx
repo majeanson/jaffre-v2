@@ -32,6 +32,8 @@ const T: Record<
     discardQ: string;
     discard: string;
     keep: string;
+    removeQ: string;
+    removeYes: string;
     legacyQ: string;
     import: string;
     fresh: string;
@@ -48,6 +50,8 @@ const T: Record<
     discardQ: 'Discard your changes?',
     discard: 'Discard',
     keep: 'Keep editing',
+    removeQ: 'Remove your painting?',
+    removeYes: 'Remove it',
     legacyQ: 'You have an older painting. Bring it in as pixels, or start fresh?',
     import: 'Import it',
     fresh: 'Start fresh',
@@ -63,6 +67,8 @@ const T: Record<
     discardQ: 'Abandonner tes changements ?',
     discard: 'Abandonner',
     keep: 'Continuer',
+    removeQ: 'Retirer ta peinture ?',
+    removeYes: 'Retire-la',
     legacyQ: 'Tu as un ancien dessin. On le convertit en pixels, ou on repart à neuf ?',
     import: 'Le convertir',
     fresh: 'Repartir à neuf',
@@ -88,6 +94,9 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
   const legacyPaint = parsed === null && profile.paint !== null ? profile.paint : null;
   const [showLegacy, setShowLegacy] = useState(legacyPaint !== null);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // Remove deletes the SAVED painting (not just this session's edits) — it
+  // gets the same inline confirm the dirty back-guard uses.
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const chooseBg = (hex: string) => {
     setBaseColor(hex);
@@ -133,9 +142,21 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
               {t.keep}
             </Cta>
           </div>
+        ) : confirmRemove ? (
+          <div className="flex items-center gap-[0.5em]">
+            <span className="text-(length:--text-fluid-sm) text-(--color-ap-muted)">
+              {t.removeQ}
+            </span>
+            <Cta type="button" variant="secondary" onClick={remove}>
+              {t.removeYes}
+            </Cta>
+            <Cta type="button" onClick={() => setConfirmRemove(false)}>
+              {t.keep}
+            </Cta>
+          </div>
         ) : (
           <div className="flex items-center gap-[0.5em]">
-            <Cta type="button" variant="secondary" onClick={remove}>
+            <Cta type="button" variant="secondary" onClick={() => setConfirmRemove(true)}>
               {t.remove}
             </Cta>
             <Cta type="button" variant="secondary" onClick={back}>

@@ -94,6 +94,10 @@ export interface GamePeekInfo {
 /** Everything a seat chip needs to render, already resolved from game state. */
 export interface SeatChipInfo {
   readonly name: string;
+  /** Opaque public id from the roster (humans only) — matches the id on the
+   * leaderboard rows, so the peek can find this player's ladder row without
+   * guessing by display name. Null for bots / older servers. */
+  readonly pid: string | null;
   /** This is the viewer's own seat — the chip marks it "(toi)" without hiding
    * the real name. */
   readonly isYou: boolean;
@@ -388,6 +392,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
     if (info == null) return null;
     return {
       name: info.name,
+      pid: info.pid ?? null,
       isYou: seat === me,
       team: (seat % 2) as 0 | 1,
       isTurn: view.turn === seat && view.phase !== 'game_over',

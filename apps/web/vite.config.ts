@@ -26,11 +26,49 @@ function versionStamp(): Plugin {
   };
 }
 
+/** Which built woff2 files carry the first paint: the pixel display face
+ * (title, buttons) and the UI face's latin subset. Their filenames get a Vite
+ * content hash only known at build time — this plugin reads the final bundle
+ * and injects `<link rel="preload">` tags, so the browser fetches them
+ * alongside the JS instead of discovering them after CSS parses (the
+ * guaranteed cold-load FOUT polishing.md flagged). */
+const PRELOAD_FONTS = [
+  /^assets\/silkscreen-latin-400-normal-.*\.woff2$/,
+  /^assets\/rubik-latin-wght-normal-.*\.woff2$/,
+];
+
+function fontPreload(): Plugin {
+  return {
+    name: 'font-preload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        const files = Object.keys(ctx.bundle ?? {}).filter((f) =>
+          PRELOAD_FONTS.some((re) => re.test(f)),
+        );
+        return files.map((href) => ({
+          tag: 'link',
+          attrs: {
+            rel: 'preload',
+            as: 'font',
+            type: 'font/woff2',
+            href: `/${href}`,
+            crossorigin: '',
+          },
+          injectTo: 'head-prepend' as const,
+        }));
+      },
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     versionStamp(),
+    fontPreload(),
     VitePWA({
       // 'prompt' keeps the update under app control — UpdateToast then applies
       // a waiting deploy automatically (flash a notice, then reload) and polls
