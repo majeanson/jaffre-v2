@@ -153,11 +153,13 @@ export function PlayingCard({
         )}
       </span>
 
-      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). Top-right,
-          mirroring the rank corner, so the bonhomme keeps the centre. */}
+      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). Under the
+          top-LEFT rank corner: the fan overlaps each card's right side, so a
+          top-right token was half-buried under the neighbour in every hand
+          shot — the left strip is the card's one always-exposed edge. */}
       {bonus !== null && size !== 'sm' && (
         <span
-          className={`absolute top-[4%] right-[5%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
+          className={`absolute top-[19%] left-[6%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
             isRedZero ? 'bg-(--color-ap-ok) text-(--color-ap-ink)' : 'bg-[#7a2230] text-white'
           }`}
         >

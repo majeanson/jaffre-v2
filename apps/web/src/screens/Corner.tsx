@@ -27,6 +27,8 @@ const T: Record<
     dealing: string;
     error: string;
     level: (n: number) => string;
+    maxLevel: string;
+    xp: (into: number, span: number) => string;
     winRate: string;
     wonOf: (wins: number, games: number) => string;
     noGames: string;
@@ -41,6 +43,8 @@ const T: Record<
     dealing: 'Loading…',
     error: 'Your corner needs the online server. Try again shortly.',
     level: (n) => `Level ${String(n)}`,
+    maxLevel: 'Max level',
+    xp: (into, span) => `${String(into)} / ${String(span)} XP to next level`,
     winRate: 'Win rate',
     wonOf: (wins, games) => `${String(wins)} of ${String(games)} won`,
     noGames: 'No games yet',
@@ -54,6 +58,8 @@ const T: Record<
     dealing: 'Chargement…',
     error: 'Ton coin a besoin du serveur en ligne. Réessaie bientôt.',
     level: (n) => `Niveau ${String(n)}`,
+    maxLevel: 'Niveau max',
+    xp: (into, span) => `${String(into)} / ${String(span)} XP vers le prochain niveau`,
     winRate: 'Taux de victoires',
     wonOf: (wins, games) => `${String(wins)} sur ${String(games)} gagnées`,
     noGames: 'Pas encore de parties',
@@ -159,6 +165,11 @@ function CornerTiles({
       <a href="#journey" className={TILE_CLASS}>
         <span className={MICRO_LABEL}>{t.level(progress.level)}</span>
         <ProgressBar pct={barPct} />
+        {/* The XP line fills the tile to its win-rate sibling's weight — bare,
+            the tile was mostly empty space below the bar. */}
+        <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+          {progress.span === 0 ? t.maxLevel : t.xp(progress.into, progress.span)}
+        </span>
       </a>
 
       <a href="#stats" className={TILE_CLASS}>

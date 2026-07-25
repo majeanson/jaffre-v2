@@ -166,7 +166,10 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-[clamp(0.6rem,2vw,1.25rem)] px-[clamp(0.75rem,3vw,1.5rem)] pb-[clamp(0.75rem,2vw,1.5rem)] lg:flex-row lg:items-stretch">
         {/* Grid — square, capped by both width and height so nothing scrolls. */}
         <div className="flex shrink-0 items-center justify-center lg:min-w-0 lg:flex-1">
-          <div className="aspect-square w-[min(92vw,46vh)] shrink-0 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) p-[0.3em] shadow-(--shadow-ap-lg) lg:h-[min(78vh,40rem)] lg:w-auto">
+          {/* The lg height cap also minds the width budget: at the 1024 rail a
+              78vh square + the fixed 22rem controls column overflowed the
+              viewport and clipped the toolbar's last button. */}
+          <div className="aspect-square w-[min(92vw,46vh)] shrink-0 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) p-[0.3em] shadow-(--shadow-ap-lg) lg:h-[min(78vh,40rem,calc(100vw-27rem))] lg:w-auto">
             <PixelGrid state={state} dispatch={dispatch} label={t.surface} />
           </div>
         </div>

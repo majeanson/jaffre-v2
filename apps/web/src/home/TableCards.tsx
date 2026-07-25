@@ -181,12 +181,17 @@ export function TableCard({
       )}
       {seriesWins !== undefined && (
         <span className="font-arcade-ui text-(length:--text-fluid-xs) font-semibold uppercase tracking-[0.12em] text-(--color-ap-muted) tabular-nums">
-          {t.tonight} <span style={{ color: 'var(--color-team-a)' }}>{t.sun(seriesWins[0])}</span>
-          {' — '}
-          <span style={{ color: 'var(--color-team-b)' }}>{t.moon(seriesWins[1])}</span>
+          {t.tonight} {/* The tally never splits mid-score (an orphaned "0" wrapped alone). */}
+          <span className="whitespace-nowrap">
+            <span style={{ color: 'var(--color-team-a)' }}>{t.sun(seriesWins[0])}</span>
+            {' — '}
+            <span style={{ color: 'var(--color-team-b)' }}>{t.moon(seriesWins[1])}</span>
+          </span>
         </span>
       )}
-      <Cta type="button" onClick={onResume} className="w-full">
+      {/* mt-auto: sibling cards in the grid keep Resume on one shared baseline
+          even when one card's room name wraps to two lines. */}
+      <Cta type="button" onClick={onResume} className="mt-auto w-full">
         {t.resume}
       </Cta>
     </div>

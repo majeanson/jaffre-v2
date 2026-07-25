@@ -171,6 +171,15 @@ export function RoomComms({
         )}
       </button>
       {open && (
+        // Soft scrim (same treatment as the game log): the popover floats over
+        // the live trick and seat chips — dim them and let a tap dismiss.
+        <div
+          aria-hidden
+          className="fixed inset-0 z-20 bg-black/30"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      {open && (
         // Desktop: popover above the toggle. Narrow screens: a bottom sheet
         // pinned to the viewport so it never overflows the 390px layout.
         <div className="absolute right-0 bottom-full z-30 mb-2 w-72 max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto">

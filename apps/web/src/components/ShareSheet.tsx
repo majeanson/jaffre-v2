@@ -132,7 +132,9 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
               aria-label={t.roomLink}
               value={url}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 font-arcade-ui text-[0.9em] text-(--color-ap-text) shadow-(--shadow-ap-sm)"
+              // 0.78em: at 0.9em the phone-width field cut the URL exactly at
+              // the room code — the one part that matters.
+              className="min-w-0 flex-1 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 font-arcade-ui text-[0.78em] text-(--color-ap-text) shadow-(--shadow-ap-sm)"
             />
             <Cta type="button" onClick={onCopy}>
               {t.copy}

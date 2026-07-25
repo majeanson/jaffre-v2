@@ -167,7 +167,7 @@ export function BetCards({
   const hailMaryArmed = hailMary12 && sansAtout && !waiting;
 
   return (
-    <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg)">
+    <div className="inline-flex max-w-full flex-col items-center gap-[1.4vmin] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[clamp(0.6rem,1.8vmin,1.1rem)] font-arcade-ui shadow-(--shadow-ap-lg) max-sm:max-w-[92vw]">
       <div className="flex w-full items-center justify-between gap-4">
         <span className="font-arcade-display text-(length:--text-fluid-lg) uppercase text-(--color-ap-gold)">
           {waiting ? tt.bidding : tt.playABet}

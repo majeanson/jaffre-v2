@@ -70,7 +70,10 @@ const T: Record<
     start: 'Commencer la partie',
     waitingHelper: (n) =>
       `${String(n)} siège${n === 1 ? '' : 's'} à remplir — ajoute des bots ou partage le code`,
-    back: "← Retour à l'accueil",
+    // "Accueil" (the meta screens' home label), not "Retour à l'accueil": the
+    // long form wrapped the footer pair into a stack and pushed "Comment
+    // jouer" below the 900px fold.
+    back: '← Accueil',
     howToPlay: 'Comment jouer',
     hailMary: 'Hail-Mary 12 sans atout — tout ou rien',
     hailMaryHint: 'Réussis 12 sans atout pour gagner la partie — rate et tu la perds.',
@@ -122,7 +125,7 @@ export function Lobby({ code, onLeave }: LobbyProps) {
   return (
     <main className="table-felt grid min-h-full place-items-center p-6">
       <NoticeToast />
-      <div className="flex w-full max-w-md flex-col gap-5">
+      <div className="flex w-full max-w-md flex-col gap-4">
         <header className="text-center">
           <div className="flex items-center justify-center gap-2">
             <h1 className="font-arcade-display text-3xl uppercase text-(--color-ap-gold)">

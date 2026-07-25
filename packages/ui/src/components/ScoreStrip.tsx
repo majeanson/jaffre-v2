@@ -803,13 +803,15 @@ export function ScoreStrip({
       {open && (
         <>
           {/* Dismiss layer: a tap anywhere off the panel collapses it. Sits
-              below the panel + header (z-40) so both stay interactive. */}
+              below the panel + header (z-40) so both stay interactive. Tinted
+              (soft scrim, like the game log's): the dropdown floats over the
+              live trick and seat chips, and dimming them reads as "behind". */}
           <button
             type="button"
             aria-label={t.dismissScore}
             tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 cursor-default"
+            className="fixed inset-0 z-30 cursor-default bg-black/30"
           />
           {/* The full details float as a dropdown over the table instead of
               displacing it — the collapsed strip keeps its place in flow. */}

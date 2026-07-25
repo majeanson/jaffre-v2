@@ -24,6 +24,8 @@ export interface StageProps {
    * portrait height and stretch the felt into a tall oval — cap its height
    * relative to its width so the felt keeps a table-like shape. */
   readonly capHeight?: boolean;
+  /** Replay: skip the decorative deal fly-out (see TableProps.noDealIntro). */
+  readonly noDealIntro?: boolean;
 }
 
 /** Owns the center stage: trick area, opponents' seat chips, trick banner, bid overlay. */
@@ -37,6 +39,7 @@ export function Stage({
   bidOverlay,
   coachTip = null,
   capHeight = false,
+  noDealIntro = false,
 }: StageProps) {
   return (
     <div
@@ -54,7 +57,7 @@ export function Stage({
       {/* One-shot deal animation, anchored to the felt's own positioning
           context (not persistent — see DealIntro). Sits under the seat chips
           (z-20) but over the felt so the flung cards read as on-table. */}
-      <DealIntro roundIndex={roundIndex} />
+      {!noDealIntro && <DealIntro roundIndex={roundIndex} />}
       {/* Trick insets keep cards clear of the seat chips. On phones the box
           widens with the felt so the bigger cards use the space. */}
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[15%] max-sm:inset-y-[10%]">
@@ -95,7 +98,10 @@ export function Stage({
       </div>
       <div
         data-deal-target="3"
-        className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 max-sm:right-[2%] max-sm:top-[34%]"
+        // Phone: 22% (not 34%) keeps this chip above the vertically-centered
+        // bid panel's band — at 34% its avatar and PASS bubble sat right on
+        // the panel's Sans-atout corner through every auction.
+        className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-center gap-1 max-sm:right-[2%] max-sm:top-[22%]"
       >
         <SeatChip info={seatInfo(3)} compact peekAlign="end" />
       </div>

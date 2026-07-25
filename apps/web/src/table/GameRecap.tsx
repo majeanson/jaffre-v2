@@ -734,6 +734,14 @@ export function GameRecap({
             </div>
           )}
         </div>
+        {/* Scroll affordance: a soft fade over the body's last 2rem, so a
+            table row cut at the fold reads as "scrolls" — reviewers saw the
+            bare mid-row slice behind the footer as broken. */}
+        <div
+          aria-hidden
+          className="pointer-events-none relative z-10 -mt-8 h-8 shrink-0"
+          style={{ background: 'linear-gradient(to top, var(--color-ap-ground), transparent)' }}
+        />
         {/* Pinned action footer — stays visible when the body scrolls. */}
         <div className="flex flex-col items-center gap-2 border-t-2 border-(--color-ap-ink)/35 p-4">
           {onRematch !== undefined && (

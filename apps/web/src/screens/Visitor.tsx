@@ -166,7 +166,9 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
       {/* Visitors can chat with the table before they sit — the popover opens
           upward from the bottom-right toggle. Extra bottom padding on main
           reserves the corner so the fixed toggle never sits on the Leave button. */}
-      <div className="fixed right-4 bottom-4 z-40">
+      {/* Same bar chrome as the table's utility cells: bare, the toggle read
+          as a ~28px glyph lost in the corner (2nd visual sweep). */}
+      <div className="fixed right-4 bottom-4 z-40 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm)">
         <RoomComms variant="popover" me={null} />
       </div>
       {/* my-auto centres the card when it fits and lets it scroll (instead of
@@ -199,7 +201,11 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
         <div
           role="group"
           aria-label={t.whoAtTable}
-          className="mx-auto grid aspect-square w-full max-w-[19rem] grid-cols-3 grid-rows-3 items-center gap-2"
+          // Content-sized rows (not aspect-square thirds): a caption that
+          // wraps ("TEAM SUN · AWAY") used to overflow its fixed row and get
+          // clipped by the score tile below. The centre tile keeps its own
+          // aspect-square, so the diagram still reads as a table.
+          className="mx-auto grid w-full max-w-[19rem] grid-cols-3 grid-rows-[auto_auto_auto] items-center gap-2"
         >
           <div className="col-start-2 row-start-1">{seatCell(2)}</div>
           <div className="col-start-1 row-start-2">{seatCell(1)}</div>

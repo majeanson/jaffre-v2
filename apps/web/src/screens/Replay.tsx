@@ -168,7 +168,7 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
 
   return (
     <>
-      <Table key="replay" onAction={() => undefined} onLeave={onLeave} bottomInset />
+      <Table key="replay" onAction={() => undefined} onLeave={onLeave} bottomInset noDealIntro />
       <div
         data-testid="replay-controls"
         className="fixed bottom-2 left-1/2 z-[60] flex w-[min(94vw,40rem)] -translate-x-1/2 items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-ui text-white shadow-(--shadow-ap) max-sm:gap-2 max-sm:px-3"

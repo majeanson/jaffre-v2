@@ -50,6 +50,10 @@ export interface TableProps {
   /** Reserve space at the bottom so a fixed overlay (e.g. the replay transport
    * bar) sits clear of the hand instead of covering it. */
   readonly bottomInset?: boolean;
+  /** Replay: skip the decorative round-start deal fly-out — scrubbing across
+   * round boundaries replayed it constantly, and its landed card-backs sat on
+   * the seat plaques/hand in every paused frame. */
+  readonly noDealIntro?: boolean;
   /** Real play (App) → show the dev console; scenes/replay leave it off. */
   readonly dev?: boolean;
   /** Practice only: run the one-time first-practice tutorial over the felt. */
@@ -66,6 +70,7 @@ export function Table({
   onToggleAutoPlay,
   online = false,
   bottomInset = false,
+  noDealIntro = false,
   dev = false,
   tutorial = false,
   roomCode,
@@ -131,6 +136,7 @@ export function Table({
         roundIndex={view.roundIndex}
         coachTip={derived.coach?.tip ?? null}
         capHeight={me === null}
+        noDealIntro={noDealIntro}
         bidOverlay={
           view.phase === 'bidding' && (
             <BidOverlay

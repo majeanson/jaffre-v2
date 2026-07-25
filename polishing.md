@@ -345,10 +345,14 @@ overflow/top-bar warnings — everything below is judgment-call layout quality.
 - [x] Share sheet URL field truncates with no full-value affordance. VERIFIED
       no-change: it's a read-only input that select-alls on focus — the full
       value is one tap away (and Copy sits beside it).
-- [ ] Phone round-history header shows bare "R" vs desktop "ROUND".
-- [ ] Practice human avatar is a plain initial circle next to pixel-art bots.
-- [ ] `identity-light` scene stages a light modal on a dark page — verify it's a
-      scene-staging artifact, not a reachable state.
+- [x] Phone round-history header shows bare "R" — VERIFIED deliberate: the
+      fixed first column can't fit the word on a phone; "R" pairs with the
+      R1/R2 row labels and an sr-only span keeps the full word for a11y.
+- [x] Practice human avatar plain initial circle — BY DESIGN: that's a player
+      who hasn't painted a card yet; the Paint Studio is the path to a sprite,
+      not a default fake one.
+- [x] `identity-light` scene — VERIFIED staging-correct: the page behind IS
+      light-themed; the "dark page" read is the sheet's `bg-black/60` scrim.
 - [ ] Home chrome bar packs 6 controls at 390px — tight but not colliding; keep
       an eye on it if another entry is ever added.
 
@@ -371,74 +375,75 @@ traded the tall oval for a bottom void), Awards locked tiles' AA contrast
 
 ### High
 
-- [ ] (M) **Bonhomme value badge clipped in the hand fan** — THE systemic find
-      (flagged by 6 of 8 reviewers, visible in nearly every in-game shot): the
-      green "+5" pill on the red 0 and the "−2" pill on the brown 0 are
-      half-buried under the next overlapping card. It's a rules-meaning element.
-      Render the pill above the neighbor (z on the badge layer) or anchor it to
-      the card's exposed left edge.
-- [ ] (M) **GameRecap clips its tables mid-row behind the sticky footer** — the
-      TRICKS WON table (desktop/small-desktop) and "Still at the table" avatar
-      row (tablet/phone) are sliced in half behind the Rematch bar with no
-      scroll affordance; the panel scrolls but looks broken. Add bottom padding
-      ≥ the footer height inside the scroll area + a soft bottom fade.
-- [ ] (M) **Replay: stray card-back sprites + iconless transport buttons** —
-      opponent card-back fans pierce their own seat plaques and a stray back
-      overlaps the "You" pill and hand at every width; in LIGHT theme the
-      scrubber's transport buttons render as blank white squares (icon color
-      must be ink-based). Two bugs, one screen — worst shot family of the sweep.
-- [ ] (S) **Visitor away-caption collides with the score tile** — "TEAM SUN ·
-      AWAY" wraps and its second line is clipped by the SCORE box on every
-      viewport (new `visitor-away` scene). Give the seat captions their own
-      row-gap so the grid can't overlap them.
-- [ ] (M) **Floating panels still bury live table state on tablet/phone** —
-      chat/music/score-details sit on the played trick and seat chips (log now
-      has a scrim, the others don't). Same fix as the log: soft scrim +
-      click-to-close, or dock to the bottom edge above the hand.
+- [x] (M) **Bonhomme value badge clipped in the hand fan** — DONE: the +5/−2
+      pill moved to under the top-LEFT rank corner (`top-[19%] left-[6%]`), the
+      card's one always-exposed strip in the right-overlapping fan.
+- [x] (M) **GameRecap clips its tables mid-row behind the sticky footer** —
+      DONE: a soft ground-colored fade overlays the scroll body's last 2rem
+      above the pinned footer, so a mid-row cut reads as "scrolls".
+- [x] (M) **Replay: stray card-back sprites + iconless transport buttons** —
+      DONE ×2: (a) the sprites were the DealIntro fly-out re-firing on every
+      scrubbed round boundary — replay now passes `noDealIntro` through
+      Table→Stage; (b) `GHOST_BTN_SM_DARK` used `--color-ap-panel` (#fff in
+      light) under white glyphs — now fixed white-on-translucent chrome
+      (`border-white/25 bg-white/10`).
+- [x] (S) **Visitor away-caption collides with the score tile** — DONE: the
+      seat diagram's rows are content-sized (`grid-rows-[auto_auto_auto]`, not
+      aspect-square thirds); the centre tile keeps its own aspect-square.
+- [x] (M) **Floating panels still bury live table state on tablet/phone** —
+      DONE: RoomComms' popover gained the log's soft `bg-black/30`
+      click-to-close scrim, and ScoreStrip's existing invisible dismiss layer
+      is now tinted the same way.
 
 ### Medium
 
-- [ ] (M) **Ghost duplicate of the rightmost hand card** (phone/tablet, many
-      states) — a semi-transparent clone of the last card floats over the fan's
-      right end, reading as a 9th card / stuck drag-preview; on desktop the same
-      card just looks washed out. Likely a deal-in animation leftover on the
-      last-dealt card. Investigate `DealIntro`/hand fan enter transition.
-- [ ] (S) `lobby-open-fr` — the FR lobby runs just past 900px and "COMMENT
-      JOUER" sits cut at the fold (EN fits). Tighten the lobby's vertical gaps
-      or let the footer actions sit side-by-side in FR too.
-- [ ] (S) `music-open` — meaning-losing truncation: now-playing title AND adder
-      both ellipsize ("Un…", "Adde…", "Gin…") even where slack width exists.
-      Two-line clamp for the title; drop the adder to its own muted line.
-- [ ] (S) `your-tables` — sibling cards misalign: two-line room name pushes one
-      RESUME lower, and "TONIGHT: SUN 0 — MOON 0" wraps leaving an orphan "0".
-      `whitespace-nowrap` the tally; align card rows with a fixed-height name
-      slot (the two-line name itself is fine).
-- [ ] (S) `paint-studio` at 1024 — the right rail's 7th tool button clips at the
-      panel edge; let the tool row wrap.
-- [ ] (S) Journey "LV n" track chips clip the digit's bottom (tablet/desktop,
-      both themes) — line-height/padding fix in the rung badge.
-- [ ] (S) `auction-*` on phone — the bid panel's edge slices through the right
-      seat chip, and Réal's PASS bubble lands on the SANS ATOUT button. Inset
-      the panel below the side chips at max-sm.
-- [ ] (S) Visitor chat-bubble trigger is ~28px, its "1" badge collides with
-      LEAVE's corner (phone) — give it the shared 40px icon-button chrome.
-- [ ] (S) Coach tip on phone renders as a ~140px-wide 7-line tower over the felt
-      edge — give `CoachHint` a wider max-w at max-sm.
-- [ ] (S) `home-create` — the "Bots: Normal" chip floats half off the play
-      door's right edge instead of sitting inside the panel.
+- [x] (M) **Ghost duplicate of the rightmost hand card** — DIAGNOSED as a
+      screenshot-timing artifact, not a product bug: the fan's deal-in staggers
+      90ms/card, so the 8th card (starts 630ms, runs ~400ms) was mid-flight at
+      the gallery's 700ms settle. Gallery wait bumped to 1250ms.
+- [x] (S) `lobby-open-fr` below the fold — DONE: FR back label shortened to
+      "← Accueil" (matches the meta screens) so the footer pair stays
+      side-by-side, and the lobby column's gap tightened 5 → 4.
+- [x] (S) `music-open` truncation — DONE: now-playing title clamps to two
+      lines with the adder on its own line; queue rows clamp the title and keep
+      the adder outside the clamp.
+- [x] (S) `your-tables` misalignment — DONE: the tonight tally is one
+      `whitespace-nowrap` unit (no orphan "0") and Resume gets `mt-auto` so
+      sibling cards share one button baseline.
+- [x] (S) `paint-studio` at 1024 — DONE: the lg grid cap now also minds the
+      width budget (`min(78vh,40rem,calc(100vw-27rem))`) so the square + the
+      22rem controls column can't overflow the rail.
+- [x] (S) Journey "LV n" chips — DONE: `leading-none` → `leading-[1.15]` +
+      text-center; the wrapped two-line label fits the square.
+- [x] (S) `auction-*` on phone — DONE: the right seat chip sits at
+      `max-sm:top-[22%]` (above the centered panel's band, was 34%) and
+      BetCards caps at `max-sm:max-w-[92vw]`.
+- [x] (S) Visitor chat-bubble — DONE: the fixed corner toggle now wears the
+      shared bar chrome (ink border + panel fill + 2px pad), reading as a real
+      ≥40px button.
+- [x] (S) Coach tip tower — DONE: root cause was `left-1/2` shrink-to-fit
+      (the abs box laid out against half the container) — `w-max max-w-full`
+      fixes it (TrickBanner already had w-max).
+- [x] (S) `home-create` bots chip — DONE: the row wraps (`flex-wrap`, Cta
+      `min-w-0`) so the nowrap chip drops to its own line instead of escaping
+      the door; chip gained matching vertical padding.
 
 ### Low
 
-- [ ] Share sheet URL truncates right at the room code on phone — the one part
-      that matters; shrink the font or ellipsize the middle instead of the end.
-- [ ] `auction-wait` (tablet) — bidder rows truncate their status ("Ginette _")
-      where auction-you proves there's room for "PASS".
-- [ ] `stats-loading` (light) — PixelWave's pale blocks nearly vanish on the
-      white sheet; consider the ink-based block colors.
-- [ ] Awards grid: the ON FIRE unlock chip wraps to two lines while siblings are
-      one — accept or shorten the label.
-- [ ] Corner LEVEL tile is mostly empty below its bar while WIN RATE is full —
-      consider the level number as the tile's big figure.
+- [x] Share sheet URL truncation — DONE: field font 0.9em → 0.78em; the room
+      code now fits at phone width (select-all-on-focus + Copy remain).
+- [x] `auction-wait` bidder "status" — VERIFIED by design: the "_" the
+      reviewer saw is the deliberate muted "…" still-to-bid marker
+      (aria-label'd); seats that bid show their bid.
+- [x] `stats-loading` (light) — the top-void half was fixed by the uniform
+      meta top offset; PixelWave's blocks are violet/gold tokens (visible in
+      light) — the "pale" read was the bob animation mid-frame. No change.
+- [x] Awards ON FIRE chip wrap — ACCEPTED: the reward label is data
+      ("Lamplight Foil"); a two-line chip is fine, the grid rows already size
+      per-row.
+- [x] Corner LEVEL tile — DONE: the tile gains the Journey hero's XP line
+      ("N / M XP to next level" / "Max level"), filling it to its win-rate
+      sibling's weight.
 
 ## Verified-good (don't "polish" these into regressions)
 

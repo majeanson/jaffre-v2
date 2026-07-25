@@ -289,7 +289,10 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                       } ${done || isNext ? '' : 'opacity-60'}`}
                     >
                       <span
-                        className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) font-arcade-display text-[0.78em] leading-none ${
+                        // leading fits TWO lines: "Lv 12"/"Niv 12" wraps in
+                        // the square, and leading-none clipped the digits'
+                        // bottom row (2nd visual sweep, "LV" + digit slivers).
+                        className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-center font-arcade-display text-[0.78em] leading-[1.15] ${
                           done
                             ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
                             : 'bg-(--color-ap-ground) text-(--color-ap-text)'

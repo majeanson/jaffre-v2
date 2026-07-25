@@ -131,8 +131,11 @@ for (const vp of VIEWPORTS) {
         for (const scene of SCENE_METAS) {
           await page.goto(`/#scenes/${scene.id}`);
           await expect(page.locator(scene.probe).first()).toBeVisible({ timeout: 15_000 });
-          // Let entrance animations (deal-in, card fly-in) settle.
-          await page.waitForTimeout(700);
+          // Let entrance animations settle. 1250ms, not 700: the hand fan's
+          // deal-in staggers 90ms/card — the 8th card starts at 630ms and runs
+          // ~400ms more, and a snapshot mid-flight showed it as a translucent
+          // rotated "ghost" over the fan's right end in every phone/tablet shot.
+          await page.waitForTimeout(1250);
           await snap(page, combo, scene.id);
         }
 

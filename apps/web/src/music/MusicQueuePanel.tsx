@@ -153,11 +153,12 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
           {current.thumb !== '' && (
             <img src={current.thumb} alt="" className="h-9 w-12 shrink-0 rounded object-cover" />
           )}
+          {/* Title clamps to two lines and the adder gets its own line — the
+              one-line truncate lost the whole track identity ("Un…" · "Adde…"). */}
           <span className="flex min-w-0 flex-1 flex-col text-xs leading-tight">
-            <span className="truncate font-bold text-(--color-ap-text)">{current.title}</span>
+            <span className="line-clamp-2 font-bold text-(--color-ap-text)">{current.title}</span>
             <span className="truncate text-(--color-ap-muted)">
-              {current.author} · {t.addedByLabel}{' '}
-              <AdderName name={current.addedBy} seat={current.addedBySeat} />
+              {t.addedByLabel} <AdderName name={current.addedBy} seat={current.addedBySeat} />
             </span>
           </span>
           {me !== null && (
@@ -196,8 +197,13 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
                 {track.thumb !== '' && (
                   <img src={track.thumb} alt="" className="h-6 w-8 shrink-0 rounded object-cover" />
                 )}
-                <span className="min-w-0 flex-1 truncate text-(--color-ap-text)">
-                  {track.title} <AdderName name={track.addedBy} seat={track.addedBySeat} />
+                {/* Title clamps (2 lines) and the adder sits outside the clamp,
+                    so neither swallows the other mid-word ("…de d'là Gin…"). */}
+                <span className="line-clamp-2 min-w-0 flex-1 text-(--color-ap-text)">
+                  {track.title}
+                </span>
+                <span className="shrink-0">
+                  <AdderName name={track.addedBy} seat={track.addedBySeat} />
                 </span>
                 {track.mine === true && (
                   <button

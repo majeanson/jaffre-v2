@@ -238,15 +238,18 @@ export function PlayMenu({
                 {/* Same row format as the two table Ctas below: the wide
                     segment starts, the attached segment cycles the shared bot
                     difficulty (two sibling buttons — never nested). */}
-                <div className="flex items-stretch gap-2">
-                  <Cta type="button" className="flex-1" onClick={onPractice}>
+                {/* flex-wrap + min-w-0: the nowrap difficulty chip could push
+                    past the door's right edge when the pair outgrew the rail —
+                    now it drops to its own row instead of overflowing. */}
+                <div className="flex flex-wrap items-stretch gap-2">
+                  <Cta type="button" className="min-w-0 flex-1" onClick={onPractice}>
                     {t.playVsBots}
                   </Cta>
                   <button
                     type="button"
                     onClick={cycleSetting}
                     aria-label={t.botDifficulty}
-                    className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+                    className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.5em] font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
                   >
                     {t.botsChip(difficultyLabel[setting])}
                   </button>
