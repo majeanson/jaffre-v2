@@ -540,7 +540,10 @@ const LOADERS: Record<SceneId, () => void> = {
       started: true,
     };
     inject(
-      cached('your-lead', (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0),
+      cached(
+        'your-lead',
+        (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
+      ),
       { roster },
     );
   },
