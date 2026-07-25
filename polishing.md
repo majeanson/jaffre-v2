@@ -445,6 +445,30 @@ traded the tall oval for a bottom void), Awards locked tiles' AA contrast
       ("N / M XP to next level" / "Max level"), filling it to its win-rate
       sibling's weight.
 
+## Confirmation sweep 2026-07-25
+
+Full 8-combo re-run (504 shots), one regression reviewer per combo, several
+verifying the scrim/fade fixes by pixel sampling: **every shipped fix HOLDS on
+every viewport×theme; zero regressions.** Follow-ups landed from the review:
+
+- Round/game-over modal now WAITS for the final trick's held moment
+  (`Overlays` gates on `heldTrick === null`) — fixes the modal popping over
+  the RED 0! banner (and the audit-1 "card corner peeks past the modal" nit);
+  the `trick-red-zero` scene now captures its banner instead of the summary.
+- Awards demo staging made coherent (earned list now includes everything
+  DEMO_STATS satisfies: win-streak-5, century, nemesis-born) — no more
+  full-bar-but-locked tiles.
+- Visitor's chat toggle sits in-flow under the actions on phones (fixed, it
+  stacked on the Leave/Take-over corners); still floats bottom-right at sm+.
+- `stats-all-games` stages 11 games so the "all" view differs from recent.
+- Replay/scene-bar ghost buttons: text-white and border-white/30 (the ‹ ›
+  glyphs read faint on the dark bar).
+
+Known acceptable: floating panels occluding plaques is intended layering (now
+scrim-dimmed); the FR "AMBER-FOX-" hyphen break reads fine; the share-link
+field may still clip a long prod-domain URL right at the code (Copy + QR +
+select-all remain the real affordances).
+
 ## Verified-good (don't "polish" these into regressions)
 
 - Felt layering/theming is coherent post-revert; BidOverlay's `z-[15]` is deliberate.

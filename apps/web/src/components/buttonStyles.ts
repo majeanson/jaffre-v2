@@ -12,4 +12,4 @@ export const GHOST_BTN_SM = `${GHOST_BTN} bg-(--color-ap-panel) px-[1em] py-[0.6
  * flips to #fff in the light skin, which rendered these as blank white
  * squares under their white glyphs (2nd visual sweep, replay scrubber). */
 export const GHOST_BTN_SM_DARK =
-  'rounded-(--radius-ap-control) border-2 border-white/25 bg-white/10 shadow-(--shadow-ap-sm) hover:bg-white/20 cursor-pointer px-[1em] py-[0.66em] text-(length:--text-fluid-xs) font-arcade-display uppercase tracking-wide text-white/85';
+  'rounded-(--radius-ap-control) border-2 border-white/30 bg-white/10 shadow-(--shadow-ap-sm) hover:bg-white/20 cursor-pointer px-[1em] py-[0.66em] text-(length:--text-fluid-xs) font-arcade-display uppercase tracking-wide text-white';

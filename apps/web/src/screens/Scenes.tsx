@@ -247,7 +247,12 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
                   ? DEMO_HISTORY_NEW
                   : current.id === 'stats-veteran'
                     ? DEMO_HISTORY_VETERAN
-                    : DEMO_HISTORY
+                    : current.id === 'stats-all-games'
+                      ? // Long list so the "all games" view actually differs
+                        // from the default recent slice (kept demo-1 first —
+                        // the scene's probe links to its replay).
+                        [...DEMO_HISTORY, ...DEMO_HISTORY_VETERAN]
+                      : DEMO_HISTORY
             }
             {...(current.id === 'stats-all-games' ? { initialGamesView: 'all' as const } : {})}
             onLeave={onLeave}

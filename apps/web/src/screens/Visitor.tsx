@@ -167,8 +167,10 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
           upward from the bottom-right toggle. Extra bottom padding on main
           reserves the corner so the fixed toggle never sits on the Leave button. */}
       {/* Same bar chrome as the table's utility cells: bare, the toggle read
-          as a ~28px glyph lost in the corner (2nd visual sweep). */}
-      <div className="fixed right-4 bottom-4 z-40 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm)">
+          as a ~28px glyph lost in the corner (2nd visual sweep). Phones keep
+          it IN FLOW under the actions (fixed, it stacked on the Leave/Take-
+          over buttons' corner); sm+ floats it in the bottom-right as before. */}
+      <div className="z-40 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm) max-sm:order-last max-sm:self-end sm:fixed sm:right-4 sm:bottom-4">
         <RoomComms variant="popover" me={null} />
       </div>
       {/* my-auto centres the card when it fits and lets it scroll (instead of

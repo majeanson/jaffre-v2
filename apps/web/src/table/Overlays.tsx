@@ -3,6 +3,7 @@ import type { Roster } from '@jaffre/protocol';
 import type { ScoreboardRound } from '@jaffre/ui';
 import { getProfile } from '../net/auth.js';
 import { botAvatar } from '../paint/botAvatars.js';
+import { useGameStore } from '../state/gameStore.js';
 import { GameRecap } from './GameRecap.js';
 import { RoundSummaryOverlay } from './RoundSummaryOverlay.js';
 import { teamSpecialsFrom } from './specials.js';
@@ -33,9 +34,15 @@ export function Overlays({
   onLeave,
 }: OverlaysProps) {
   const readySeats = roster.seats.map((s) => s?.ready ?? s?.isBot ?? false);
+  // The round/game modal waits for the final trick's held moment (banner +
+  // face-up cards, ~2.2s) to finish: it used to pop instantly over the hold,
+  // stealing the RED 0! beat and leaving a card corner poking past the
+  // modal's dim (2nd visual sweep). Scenes freeze the hold, so their summary
+  // scenes stage `round_over` without a held trick and still render.
+  const heldTrick = useGameStore((s) => s.heldTrick);
   return (
     <>
-      {view.phase === 'round_over' && view.lastRoundSummary !== null && (
+      {heldTrick === null && view.phase === 'round_over' && view.lastRoundSummary !== null && (
         <RoundSummaryOverlay
           summary={view.lastRoundSummary}
           contractName={roster.seats[view.lastRoundSummary.contract.seat]?.name ?? 'Player'}
@@ -49,7 +56,7 @@ export function Overlays({
           myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         />
       )}
-      {view.phase === 'game_over' && (
+      {heldTrick === null && view.phase === 'game_over' && (
         <GameRecap
           winner={view.winner as 0 | 1}
           scores={view.scores}

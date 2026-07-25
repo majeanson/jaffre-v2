@@ -337,10 +337,17 @@ export const DEMO_LEADERBOARD: Leaderboard = {
   you: { id: 'me', name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
 };
 
-/** Awards ids staged as already earned (must exist in awards.ts's AWARDS). */
+/** Awards ids staged as already earned (must exist in awards.ts's AWARDS).
+ * Coherent with DEMO_STATS: every award whose requirement those stats meet is
+ * in this list — a full progress bar on an unearned tile read as a broken
+ * grant. Left locked with partial bars: ten-wins (9/10), sans-atout-master
+ * (1/3), veteran (14/50). */
 export const DEMO_EARNED_AWARDS: readonly string[] = [
   'first-game',
   'first-win',
+  'win-streak-5',
+  'century',
+  'nemesis-born',
   'tutorial-complete',
 ];
 
