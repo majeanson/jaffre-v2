@@ -87,7 +87,7 @@ function defaultCenter(card: CardData, size: string): ReactNode {
  * reuse it, e.g. the 'og' bonhomme-skin mode in PlayingCard, which forces
  * this art on every 0-card regardless of the active card skin. Emblems (1–7)
  * and the blue/green bonhommes sit at the same footprint as any other card;
- * only the two scoring specials (red = Joffre +5, brown = −2) get a slightly
+ * only the two scoring specials (red = Joffre +5, brown = −3) get a slightly
  * larger portrait to stand out.
  */
 export function ogBonhomme(card: CardData): ReactNode {

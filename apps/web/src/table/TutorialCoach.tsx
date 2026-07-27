@@ -39,13 +39,13 @@ const INTRO: Record<Lang, { title: string; body: string; start: string; skip: st
 const ONLINE_INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
   en: {
     title: 'First time at a table?',
-    body: 'Bids are points, not tricks — 11 in play each round. Trump is whatever suit the declarer leads first. The Coach can suggest bids and cards while you learn.',
+    body: 'Bids are points, not tricks — 10 in play each round. Trump is whatever suit the declarer leads first. The Coach can suggest bids and cards while you learn.',
     start: 'Turn Coach on',
     skip: 'Got it',
   },
   fr: {
     title: 'Première fois à une table?',
-    body: 'Les mises sont des points, pas des levées — 11 en jeu par ronde. L’atout, c’est la couleur que le déclarant joue en premier. Le Coach peut te suggérer mises et cartes pendant que tu apprends.',
+    body: 'Les mises sont des points, pas des levées — 10 en jeu par ronde. L’atout, c’est la couleur que le preneur joue en premier. Le Coach peut te suggérer des mises et des cartes pendant que tu apprends.',
     start: 'Activer le Coach',
     skip: 'Compris',
   },
@@ -62,7 +62,7 @@ const UI: Record<Lang, { learn: string; close: string; learning: string; complet
     learn: 'En savoir plus',
     close: 'Fermer le conseil',
     learning: 'Apprentissage',
-    complete: 'Terminé !',
+    complete: 'Terminé!',
   },
 };
 

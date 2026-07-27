@@ -17,14 +17,14 @@ const T: Record<
     takes: (name) => `${name} takes the trick`,
     forTeam: 'for',
     redBadge: 'RED 0 +5',
-    brownBadge: 'BROWN 0 −2',
+    brownBadge: 'BROWN 0 −3',
   },
   fr: {
     youTake: 'Tu prends la levée!',
     takes: (name) => `${name} prend la levée`,
     forTeam: 'pour',
     redBadge: 'ROUGE 0 +5',
-    brownBadge: 'BRUN 0 −2',
+    brownBadge: 'BRUN 0 −3',
   },
 };
 

@@ -44,7 +44,11 @@ function randomAction(state: GameState, rng: Rng): Action {
   if (state.phase === 'bidding') {
     const bidsOnly = legalBidChoices(state.bids).filter((c) => c.kind === 'bid');
     const choice: BidChoice =
-      rng() < 0.8 || bidsOnly.length === 0
+      // 0.85, matching the engine test driver — see its comment: below this the
+      // random model stops converging now that a round holds 10 points, not 11.
+      // NOTE this simulator is a random-play model, NOT the real bots; use
+      // `npm run botbench` for anything about how the shipped AI behaves.
+      rng() < 0.85 || bidsOnly.length === 0
         ? { kind: 'pass' }
         : (bidsOnly[Math.floor(rng() ** 2 * bidsOnly.length)] as BidChoice);
     return { type: 'place_bid', seat: state.turn, choice };
@@ -111,7 +115,7 @@ function narrateGame(seed: number, maxRounds: number): void {
           break;
         case 'trick_won': {
           const tags = event.specials
-            .map((s) => (s === 'red_zero' ? '+5 red zero!' : '−2 brown zero!'))
+            .map((s) => (s === 'red_zero' ? '+5 red zero!' : '−3 brown zero!'))
             .join(' ');
           log(
             `    ⤷ ${PLAYER_NAMES[event.winner]} takes the trick (${event.points} pt${tags ? ', ' + tags : ''})`,

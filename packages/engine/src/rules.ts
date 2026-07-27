@@ -10,8 +10,11 @@
  * trump at all). Highest trump wins a trick, else highest card of the led suit;
  * you must follow the led suit when you can.
  *
- * POINTS (per round, 11 total): each trick is worth 1, +5 if it contains the
- * red 0 (the prize), −2 if it contains the brown 0 (the trap). 8 + 5 − 2 = 11.
+ * POINTS (per round, 10 total): each trick is worth 1, +5 if it contains the
+ * red 0 (the prize), −3 if it contains the brown 0 (the trap). 8 + 5 − 3 = 10.
+ * The round total is NOT one team's ceiling: taking 7 tricks WITH the red 0
+ * while the brown 0 falls to the opponents scores 7 + 5 = 12, which is why the
+ * bid ladder runs to 12 even though a clean sweep of all eight is only 10.
  *
  * BIDDING: one round, dealer last. A bid of 7-12 promises the contract team
  * captures at least that many points; sans-atout doubles the stake. If all four
@@ -59,7 +62,7 @@ export function trickWinner(trick: readonly TrickPlay[], trump: Suit | null): Tr
   return best;
 }
 
-/** Trick value: 1, +5 if it contains the red 0, −2 if it contains the brown 0. */
+/** Trick value: 1, +5 if it contains the red 0, −3 if it contains the brown 0. */
 export function trickPoints(cards: readonly Card[]): {
   points: number;
   specials: ('red_zero' | 'brown_zero')[];
@@ -71,14 +74,15 @@ export function trickPoints(cards: readonly Card[]): {
     specials.push('red_zero');
   }
   if (cards.some((c) => sameCard(c, BROWN_ZERO))) {
-    points -= 2;
+    points -= 3;
     specials.push('brown_zero');
   }
   return { points, specials };
 }
 
-/** Total trick points in a round is invariant: 8 tricks + 5 (red 0) − 2 (brown 0). */
-export const ROUND_TOTAL_POINTS = 11;
+/** Total trick points in a round is invariant: 8 tricks + 5 (red 0) − 3 (brown 0).
+ * This is the sum ACROSS both teams, never a per-team maximum (see the header). */
+export const ROUND_TOTAL_POINTS = 10;
 
 /** First team to reach this score wins. */
 export const TARGET_SCORE = 41;

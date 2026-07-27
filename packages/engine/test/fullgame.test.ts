@@ -6,7 +6,11 @@ import { playFullGame } from './helpers/driver.js';
 describe('full games', () => {
   it(
     '1000 seeded games all run to completion with a legitimate winner',
-    { timeout: 120_000 },
+    // 240s, up from 120s: a round holds 10 points instead of 11, so games need
+    // more rounds to reach 41 (~26 vs ~21 under the driver's random model) and
+    // the loop got proportionally longer. Still a hard termination guarantee —
+    // the per-game MAX_ACTIONS cap in the driver is what proves convergence.
+    { timeout: 240_000 },
     async () => {
       let totalActions = 0;
       for (let seed = 0; seed < 1000; seed++) {

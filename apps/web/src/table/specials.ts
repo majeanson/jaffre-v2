@@ -2,7 +2,7 @@ import type { CapturedTrick } from '@jaffre/engine';
 import type { TeamSpecials } from '@jaffre/ui';
 
 /**
- * Which scoring specials (red 0 → +5, brown 0 → −2) each team has captured,
+ * Which scoring specials (red 0 → +5, brown 0 → −3) each team has captured,
  * derived from the cards in their won tricks. Shared by the score header and
  * the round summary so both call the same cards out the same way.
  */

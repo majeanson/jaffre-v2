@@ -41,8 +41,8 @@ export function cardLabel(card: CardData, lang: 'en' | 'fr' = 'en'): string {
         : ', bonus +5'
       : card.suit === 'brown' && card.value === 0
         ? lang === 'fr'
-          ? ', pénalité −2'
-          : ', penalty −2'
+          ? ', pénalité −3'
+          : ', penalty −3'
         : '';
   return `${CARD_LABEL_SUITS[lang][card.suit]} ${card.value}${special}`;
 }

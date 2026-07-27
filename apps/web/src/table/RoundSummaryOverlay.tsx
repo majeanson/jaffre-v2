@@ -89,7 +89,7 @@ export interface RoundSummaryOverlayProps {
   readonly contractName: string;
   /** Player names by absolute seat (team t = seats t and t+2). */
   readonly names: readonly string[];
-  /** Specials captured per team this round (red 0 → +5, brown 0 → −2). */
+  /** Specials captured per team this round (red 0 → +5, brown 0 → −3). */
   readonly specials: readonly [TeamSpecials, TeamSpecials];
   /** Per-seat readiness for the next round (bots always ready). */
   readonly readySeats: readonly boolean[];

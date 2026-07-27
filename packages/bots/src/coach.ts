@@ -128,14 +128,14 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
         : `Forced to 7 — name your longest suit trump (${SUIT_NAME.en[card.suit]}), lean on your partner, and dump the brown 0 on their tricks.`;
     }
     return fr
-      ? `Ouvre en ${SUIT_NAME.fr[card.suit]} — ta première carte nomme l'atout, et ouvrir haut commence à faire sortir les leurs.`
+      ? `Entame en ${SUIT_NAME.fr[card.suit]} — ta première carte nomme l'atout, et entamer haut commence à faire sortir les leurs.`
       : `Lead ${SUIT_NAME.en[card.suit]} — your first card names it trump, and leading high starts drawing theirs.`;
   }
 
   if (ctx.position === 0) {
     if (view.trump !== null && card.suit === view.trump && declaring) {
       return fr
-        ? `Ouvre atout (${n}) pour vider les atouts des défenseurs.`
+        ? `Entame atout (${n}) pour vider les atouts des défenseurs.`
         : `Lead trump (${n}) to strip the defenders of theirs.`;
     }
     if (isBoss(card, view, true)) {
@@ -143,7 +143,7 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
       // to follow — it falls under our winner.
       if (card.suit === 'red' && redZeroLive(view) && !isRedZero(card)) {
         return fr
-          ? `Ouvre rouge avec ton ${n} — le 0 rouge est encore en jeu, et celui qui le tient doit fournir : il peut tomber sous ta gagnante pour +5.`
+          ? `Entame rouge avec ton ${n} — le 0 rouge est encore en jeu, et celui qui le tient doit fournir : il peut tomber sous ta gagnante pour +5.`
           : `Lead red with your ${n} — the Red 0 is still out, and whoever holds it must follow: it can fall under your winner for +5.`;
       }
       if (concealedBy(card, view)) {
@@ -156,7 +156,7 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
         : `Cash your ${n} — nothing out can beat it.`;
     }
     return fr
-      ? `Ouvre bas avec le ${n}; garde tes grosses cartes pour plus tard.`
+      ? `Entame petit avec le ${n}; garde tes grosses cartes pour plus tard.`
       : `Lead low with ${n}; save your strong cards for later.`;
   }
 
@@ -190,7 +190,7 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
     }
     if (view.trump !== null && card.suit === view.trump && card.suit !== ctx.ledSuit) {
       return fr
-        ? `Coupe avec le ${n} pour prendre la levée — tu n'as plus de la couleur demandée.`
+        ? `Coupe avec le ${n} pour prendre la levée — tu n'as plus la couleur demandée.`
         : `Ruff with ${n} to take the trick — you're out of the led suit.`;
     }
     return fr
@@ -200,10 +200,10 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
 
   if (isBrownZero(card))
     return fr
-      ? 'Tu ne peux pas gagner celle-là — donne-leur le 0 brun pour le −2.'
-      : "You can't win this — dump the Brown 0 on them for −2.";
+      ? 'Tu ne peux pas gagner celle-là — donne-leur le 0 brun pour le −3.'
+      : "You can't win this — dump the Brown 0 on them for −3.";
 
-  // Ducking with the low brown while the −2 is still ours: the escape card.
+  // Ducking with the low brown while the −3 is still ours: the escape card.
   if (card.suit === 'brown' && !isBrownZero(card) && view.hand.some(isBrownZero)) {
     return fr
       ? `Fournis le ${n} et perds la levée — ne gagne jamais celle où ton 0 brun devra atterrir.`
@@ -211,7 +211,7 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
   }
   if (view.trump !== null && card.suit === view.trump) {
     return fr
-      ? `Impossible de gagner à bon compte — garde tes atouts et jette le ${n} seulement s'il n'y a rien d'autre.`
+      ? `Pas moyen de gagner à bon compte — garde tes atouts et ne jette le ${n} que s'il n'y a rien d'autre.`
       : `Can't win cheaply — hold your trumps and throw ${n} only if nothing else.`;
   }
 

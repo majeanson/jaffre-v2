@@ -564,13 +564,21 @@ export function GameRecap({
               data-testid="recap-takeaway"
               className="mt-4 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-paper-shade) px-3 py-2 text-left"
             >
-              <p className={label('')}>{t.takeaway}</p>
+              {/* Ink, not --color-ap-muted: this panel sits on the recap's
+                  PAPER shade, where the muted grey fails AA (axe caught it on
+                  the game-over scene). The card's other labels sit on lighter
+                  paper, which is why they can stay muted. */}
+              <p
+                className={`font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-ink)/80`}
+              >
+                {t.takeaway}
+              </p>
               <p className="mt-1 text-[0.85em] leading-snug text-(--color-ap-ink)">
                 {takeaway.text}
               </p>
               <a
                 href="#stats"
-                className="mt-1.5 inline-block text-[0.8em] text-(--color-ap-ink)/75 underline decoration-dotted underline-offset-2 hover:text-(--color-ap-ink)"
+                className="mt-1.5 inline-block text-[0.8em] text-(--color-ap-ink) underline decoration-dotted underline-offset-2 hover:opacity-80"
               >
                 {t.seeRecord}
               </a>

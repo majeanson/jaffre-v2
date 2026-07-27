@@ -69,16 +69,16 @@ describe('trickPoints', () => {
     });
   });
 
-  it('brown 0 subtracts 2', () => {
+  it('brown 0 subtracts 3, taking the trick negative', () => {
     expect(trickPoints([BROWN_ZERO, c('red', 2), c('blue', 3), c('green', 4)])).toEqual({
-      points: -1,
+      points: -2,
       specials: ['brown_zero'],
     });
   });
 
-  it('both specials combine to +4', () => {
+  it('both specials in one trick combine to +3', () => {
     expect(trickPoints([RED_ZERO, BROWN_ZERO, c('blue', 3), c('green', 4)])).toEqual({
-      points: 4,
+      points: 3,
       specials: ['red_zero', 'brown_zero'],
     });
   });

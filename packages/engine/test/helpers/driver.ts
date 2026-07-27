@@ -12,11 +12,18 @@ export function randomAction(state: GameState, rng: Rng): Action {
   if (state.phase === 'bidding') {
     // Realistic auction: mostly pass, and prefer low bids. Uniformly random
     // bidding overbids (12s) so heavily that scores drift negative and games
-    // never reach 41 — real players pass ~80% of the time.
+    // never reach 41 — real players pass most of the time.
+    //
+    // The rate is calibrated to the scoring, not decorative: a missed contract
+    // costs the bidders `stake` while the defenders bank what they took, so
+    // when the pool shrank from 11 points to 10 (brown 0 went −2 → −3), 0.8
+    // tipped past the convergence threshold — 11 of 1000 seeds then blew past
+    // MAX_ACTIONS. At 0.85 the model settles at ~26 rounds/game and a worst
+    // case of ~9.6k actions, comfortably inside the cap. Measured, not guessed.
     const choices = legalBidChoices(state.bids);
     const bidsOnly = choices.filter((c) => c.kind === 'bid');
     const choice: BidChoice =
-      rng() < 0.8 || bidsOnly.length === 0
+      rng() < 0.85 || bidsOnly.length === 0
         ? { kind: 'pass' }
         : (bidsOnly[Math.floor(rng() ** 2 * bidsOnly.length)] as BidChoice);
     return { type: 'place_bid', seat: state.turn, choice };

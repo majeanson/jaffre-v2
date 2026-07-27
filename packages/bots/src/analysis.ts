@@ -128,7 +128,7 @@ export function redZeroLive(view: SeatView): boolean {
   return !redZeroCaptured(view) && !view.currentTrick.some((p) => isRedZero(p.card));
 }
 
-/** The brown 0 is still unplayed this round (its −2 hasn't landed yet). */
+/** The brown 0 is still unplayed this round (its −3 hasn't landed yet). */
 export function brownZeroLive(view: SeatView): boolean {
   return (
     !view.capturedTricks.some((t) => t.cards.some(isBrownZero)) &&

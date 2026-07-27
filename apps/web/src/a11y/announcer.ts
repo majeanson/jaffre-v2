@@ -47,19 +47,19 @@ export function announce(event: GameEvent, names: readonly string[], lang: Lang 
       return event.trump === null ? 'No trump this round.' : `Trump is ${suits[event.trump]}.`;
     case 'card_played':
       return lang === 'fr'
-        ? `${name(event.seat)} joue ${suits[event.card.suit]} ${event.card.value}.`
+        ? `${name(event.seat)} joue le ${event.card.value} ${suits[event.card.suit]}.`
         : `${name(event.seat)} plays ${suits[event.card.suit]} ${event.card.value}.`;
     case 'trick_won': {
       if (lang === 'fr') {
         const extras = event.specials
-          .map((s) => (s === 'red_zero' ? 'le zéro rouge, plus cinq' : 'le zéro brun, moins deux'))
+          .map((s) => (s === 'red_zero' ? 'le zéro rouge, plus cinq' : 'le zéro brun, moins trois'))
           .join(' et ');
         return `${name(event.winner)} prend la levée pour ${event.points} point${
           Math.abs(event.points) === 1 ? '' : 's'
         }${extras ? `, avec ${extras}` : ''}.`;
       }
       const extras = event.specials
-        .map((s) => (s === 'red_zero' ? 'the red zero, plus five' : 'the brown zero, minus two'))
+        .map((s) => (s === 'red_zero' ? 'the red zero, plus five' : 'the brown zero, minus three'))
         .join(' and ');
       return `${name(event.winner)} takes the trick for ${event.points} point${
         Math.abs(event.points) === 1 ? '' : 's'

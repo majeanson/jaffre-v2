@@ -79,25 +79,25 @@ export const MARKS: Record<MarkStep, Record<Lang, MarkCopy>> = {
   },
   brownZero: {
     en: {
-      title: 'The brown 0 (−2)',
-      body: 'The trick it lands in costs its winner 2 points. Best handed to a trick the other team is already winning.',
+      title: 'The brown 0 (−3)',
+      body: 'The trick it lands in costs its winner 3 points. Best handed to a trick the other team is already winning.',
       concept: 'brown0',
     },
     fr: {
-      title: 'Le 0 brun (−2)',
-      body: 'La levée où il tombe coûte 2 points à qui la gagne. Le mieux, c’est de le refiler sur une levée que l’autre équipe est déjà en train de gagner.',
+      title: 'Le 0 brun (−3)',
+      body: 'La levée où il tombe coûte 3 points à qui la gagne. Le mieux, c’est de le refiler sur une levée que l’autre équipe est déjà en train de gagner.',
       concept: 'brown0',
     },
   },
   firstTrick: {
     en: {
       title: 'First trick (levée)',
-      body: 'One card from each seat; the highest trump takes it, or the highest card of the led suit if no trump was played. Each trick is 1 point — 8 tricks plus the two 0s make 11 a round.',
+      body: 'One card from each seat; the highest trump takes it, or the highest card of the led suit if no trump was played. Each trick is 1 point — 8 tricks plus the two 0s (+5 and −3) make 10 a round.',
       concept: 'levee',
     },
     fr: {
       title: 'Première levée',
-      body: 'Une carte de chaque siège; l’atout le plus haut la remporte, sinon la plus haute carte de la couleur demandée. Chaque levée vaut 1 point — 8 levées plus les deux 0 font 11 par ronde.',
+      body: 'Une carte de chaque siège; l’atout le plus haut la remporte, sinon la plus haute carte de la couleur demandée. Chaque levée vaut 1 point — 8 levées plus les deux 0 (+5 et −3) font 10 par ronde.',
       concept: 'levee',
     },
   },
@@ -109,7 +109,7 @@ export const MARKS: Record<MarkStep, Record<Lang, MarkCopy>> = {
     },
     fr: {
       title: 'Ronde comptée',
-      body: 'Fais ta mise et ton équipe marque +la mise (×2 sans atout); rate-la et tu marques −la mise. Les défenseurs gardent toujours les points de levées qu’ils ont pris. Première équipe à 41 gagne.',
+      body: 'Réussis ta mise et ton équipe marque ce montant (×2 sans atout); rate-la et elle le perd. Les défenseurs gardent toujours les points de levées qu’ils ont pris. Première équipe à 41 gagne.',
       concept: 'mise',
     },
   },

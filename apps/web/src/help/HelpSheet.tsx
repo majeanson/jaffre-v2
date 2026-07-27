@@ -195,8 +195,8 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     color: BROWN,
     term: { en: 'The brown 0', fr: 'Le 0 brun' },
     def: {
-      en: 'The −2 bonhomme: the trick it lands in costs its winner 2 points. A gift you re-gift — discard it on a trick the opponents are winning.',
-      fr: 'Le bonhomme à −2 : la levée où il tombe coûte 2 points à qui la gagne. Un cadeau que tu refiles — défausse-le sur une levée que les adversaires sont en train de gagner.',
+      en: 'The −3 bonhomme: the trick it lands in costs its winner 3 points. A gift you re-gift — discard it on a trick the opponents are winning.',
+      fr: 'Le bonhomme à −3 : la levée où il tombe coûte 3 points à qui la gagne. Un cadeau que tu refiles — défausse-le sur une levée que les adversaires sont en train de gagner.',
     },
     see: ['red0', 'chute'],
   },
@@ -204,8 +204,8 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     color: GOLD,
     term: { en: 'Trick (levée)', fr: 'La levée' },
     def: {
-      en: 'One card from each of the four players. The highest trump takes it — no trump played, the highest card of the led suit. Each trick is 1 point; 8 tricks plus the two 0s make 11 points a round.',
-      fr: "Une carte de chacun des quatre joueurs. L'atout le plus haut la remporte — pas d'atout joué, c'est la plus haute carte de la couleur demandée. Chaque levée vaut 1 point; 8 levées plus les deux 0, ça fait 11 points par ronde.",
+      en: 'One card from each of the four players. The highest trump takes it — no trump played, the highest card of the led suit. Each trick is 1 point; 8 tricks plus the two 0s make 10 points a round.',
+      fr: "Une carte de chacun des quatre joueurs. L'atout le plus haut la remporte — pas d'atout joué, c'est la plus haute carte de la couleur demandée. Chaque levée vaut 1 point; 8 levées plus les deux 0, ça fait 10 points par ronde.",
     },
     see: ['maitre', 'atout', 'red0'],
   },
@@ -232,7 +232,7 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     term: { en: 'Ruff (coupe)', fr: 'La coupe' },
     def: {
       en: "Winning a trick with a trump because you're void in the led suit. The cheap way to steal big tricks — including the one carrying the red 0.",
-      fr: 'Gagner une levée avec un atout parce que tu es en chute dans la couleur demandée. Le moyen pas cher de voler les grosses levées — y compris celle qui transporte le 0 rouge.',
+      fr: "Gagner une levée avec un atout parce que tu n'as plus de cartes de la couleur demandée. Le moyen pas cher de voler les grosses levées — y compris celle qui transporte le 0 rouge.",
     },
     see: ['chute', 'atout', 'red0'],
   },
@@ -250,7 +250,7 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     term: { en: 'The bid (mise)', fr: 'La mise' },
     def: {
       en: 'Your contract: 7 to 12 trick points, one round of bidding, dealer last. Make it and score +bid; miss it and score −bid — and the defenders keep every point they take either way, so a missed bid is a double gift. Bid the number your hand can really make (a made 9 beats a made 7); when it can’t, pass and bank points on defence.',
-      fr: 'Ton contrat : 7 à 12 points de levées, une seule ronde de mises, le brasseur en dernier. Fais-la et tu marques +la mise; rate-la et tu marques −la mise — et les défenseurs gardent tous leurs points quoi qu’il arrive, alors une mise ratée est un cadeau double. Mise le nombre que ta main peut vraiment faire (une mise de 9 réussie vaut plus qu’un 7); sinon, passe et marque en défense.',
+      fr: 'Ton contrat : 7 à 12 points de levées, une seule ronde de mises, le brasseur en dernier. Réussis-la et ton équipe marque ce montant; rate-la et elle le perd — et les défenseurs gardent leurs points dans les deux cas, alors une mise ratée est un cadeau double. Mise le nombre que ta main peut vraiment faire (un 9 réussi vaut mieux qu’un 7); sinon, passe et marque en défense.',
     },
     see: ['sansatout', 'brasseur', 'levee'],
   },
@@ -267,8 +267,8 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     color: BLUE,
     term: { en: '12 sans atout (hail-mary)', fr: '12 sans atout (tout ou rien)' },
     def: {
-      en: 'An optional table rule: call 12 sans atout and make it to win the whole game on the spot — miss it and you lose the game outright. The comeback gamble when you are far behind. Making 12 means taking every trick but the one carrying the brown 0 (a clean sweep is only 11).',
-      fr: "Une règle de table optionnelle : demande 12 sans atout et réussis-la pour gagner toute la partie d'un coup — rate-la et tu perds la partie sur-le-champ. Le pari de remontée quand tu tires de l'arrière. Réussir 12, c'est prendre toutes les levées sauf celle du 0 brun (ramasser les huit n'en fait que 11).",
+      en: 'An optional table rule: call 12 sans atout and make it to win the whole game on the spot — miss it and you lose the game outright. The comeback gamble when you are far behind. Making 12 means taking every trick but the one carrying the brown 0 (a clean sweep is only 10).',
+      fr: "Une règle de table optionnelle : demande 12 sans atout et réussis-la pour gagner toute la partie d'un coup — rate-la et tu perds la partie sur-le-champ. Le pari de remontée quand tu tires de l'arrière. Réussir 12, c'est prendre toutes les levées sauf celle du 0 brun (ramasser les huit n'en fait que 10).",
     },
     see: ['sansatout', 'mise'],
   },
@@ -623,12 +623,12 @@ function RulesEn() {
             <PlayingCard card={{ suit: 'brown', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
               <G id="brown0">Brown 0</G> ·{' '}
-              <span className="font-semibold text-(--color-suit-red)">−2 points</span>
+              <span className="font-semibold text-(--color-suit-red)">−3 points</span>
             </figcaption>
           </figure>
         </div>
         <p>
-          8 tricks + 5 − 2 means a round always totals <Strong>11 points</Strong>.
+          8 tricks + 5 − 3 means a round always totals <Strong>10 points</Strong>.
         </p>
       </Rule>
 
@@ -651,7 +651,7 @@ function RulesEn() {
         </p>
         <p>
           Making 12 means <Strong>12 trick points</Strong>: take every trick but hand the{' '}
-          <G id="brown0">brown 0</G> to the other team — a clean sweep of all eight is only 11.
+          <G id="brown0">brown 0</G> to the other team — a clean sweep of all eight is only 10.
         </p>
       </Rule>
 
@@ -730,7 +730,7 @@ function TipsEn() {
             caption="You lead the red 7 — the red 0 must follow, and falls under your winner: +5."
           />
         </Tip>
-        <Tip label="The brown 0 is a gift you re-gift (−2).">
+        <Tip label="The brown 0 is a gift you re-gift (−3).">
           Hand it to a trick the <Strong>opponents</Strong> are winning — best of all when you
           can&rsquo;t follow suit and would waste a card anyway. Never dump it on your partner.
           <TipExample
@@ -739,12 +739,12 @@ function TipsEn() {
               { suit: 'green', value: 4 },
             ]}
             you={{ suit: 'brown', value: 0 }}
-            caption="Their green 7 has the trick — your brown 0 hitches a ride: −2 for them."
+            caption="Their green 7 has the trick — your brown 0 hitches a ride: −3 for them."
           />
         </Tip>
         <Tip label="Keep a low brown as your escape hatch.">
           While the brown 0 is in your hand, <Strong>keep a low brown beside it</Strong>. When brown
-          is led at you, duck with the low one — never win the very trick your −2 has to land in.
+          is led at you, duck with the low one — never win the very trick your −3 has to land in.
           The brown 0 only leaves on tricks the opponents are winning.
           <TipExample
             trick={[{ suit: 'brown', value: 6 }]}
@@ -867,7 +867,7 @@ function TipsEn() {
 
       <TipSection title="Playing to 41">
         <Tip label="Count to your number, then change gears.">
-          A round holds <Strong>11 points</Strong>. Declaring, count what you&rsquo;ve captured
+          A round holds <Strong>10 points</Strong>. Declaring, count what you&rsquo;ve captured
           toward your bid — the moment it&rsquo;s home, stop spending winners and start shedding
           losers safely. Defending, run the same count: once the contract is decided either way,{' '}
           <Strong>stop paying to fight it and grab every point in reach</Strong> — defenders keep
@@ -911,9 +911,9 @@ function RulesFr() {
           Une seule ronde de mises — chaque joueur parle une fois, le brasseur en dernier :{' '}
           <Strong>mise de 7 à 12 points de levées</Strong>, ou passe. Miser{' '}
           <G id="sansatout">sans atout</G> veut dire jouer sans couleur d'atout et{' '}
-          <Strong>double la mise (mise ×2)</Strong> — et une mise égale jouée sans atout l'emporte
-          sur la mise ordinaire. Si les quatre joueurs passent, le <G id="brasseur">brasseur</G> est
-          forcé de miser 7.
+          <Strong>double les points en jeu (×2)</Strong> — et une mise égale jouée sans atout
+          l'emporte sur la mise ordinaire. Si les quatre joueurs passent, le{' '}
+          <G id="brasseur">brasseur</G> est forcé de miser 7.
         </p>
       </Rule>
 
@@ -950,19 +950,19 @@ function RulesFr() {
             <PlayingCard card={{ suit: 'brown', value: 0 }} />
             <figcaption className="text-(length:--text-fluid-xs) text-(--color-ap-muted)">
               <G id="brown0">Brun 0</G> ·{' '}
-              <span className="font-semibold text-(--color-suit-red)">−2 points</span>
+              <span className="font-semibold text-(--color-suit-red)">−3 points</span>
             </figcaption>
           </figure>
         </div>
         <p>
-          8 levées + 5 − 2 : une ronde totalise toujours <Strong>11 points</Strong>.
+          8 levées + 5 − 3 : une ronde totalise toujours <Strong>10 points</Strong>.
         </p>
       </Rule>
 
       <Rule title="Le pointage">
         <p>
-          Fais ton contrat et ton équipe marque <Strong>+la mise</Strong> (×2 sans atout); rate-le
-          et tu marques <Strong>−la mise</Strong> (×2 sans atout). Les défenseurs gardent toujours
+          Réussis ton contrat et ton équipe marque <Strong>le montant misé</Strong> (×2 sans atout);
+          rate-le et elle <Strong>le perd</Strong> (×2 sans atout). Les défenseurs gardent toujours
           les points de levées qu'ils ont pris. La première équipe à <Strong>41</Strong> gagne la
           partie — si les deux équipes passent 41 dans la même ronde, le plus haut total l'emporte
           (l'équipe du contrat en cas d'égalité parfaite).
@@ -980,7 +980,7 @@ function RulesFr() {
         <p>
           Réussir 12, ça veut dire <Strong>12 points de levées</Strong> : prends toutes les levées
           mais refile le <G id="brown0">0 brun</G> à l'autre équipe — ramasser les huit levées n'en
-          fait que 11.
+          fait que 10.
         </p>
       </Rule>
 
@@ -1062,7 +1062,7 @@ function TipsFr() {
             caption="Tu entames le 7 rouge — le 0 rouge doit fournir et tombe sous ta gagnante : +5."
           />
         </Tip>
-        <Tip label="Le zéro brun, c'est un cadeau que tu refiles (−2).">
+        <Tip label="Le zéro brun, c'est un cadeau que tu refiles (−3).">
           Donne-le sur une levée que les <Strong>adversaires</Strong> sont en train de gagner —
           encore mieux quand tu ne peux pas fournir et que tu gaspillerais une carte de toute façon.
           Ne le refile jamais à ton partenaire.
@@ -1072,13 +1072,13 @@ function TipsFr() {
               { suit: 'green', value: 4 },
             ]}
             you={{ suit: 'brown', value: 0 }}
-            caption="Le 7 vert adverse tient la levée — ton 0 brun embarque dessus : −2 pour eux."
+            caption="Le 7 vert adverse tient la levée — ton 0 brun embarque dessus : −3 pour eux."
           />
         </Tip>
         <Tip label="Garde un petit brun comme porte de sortie.">
           Tant que le 0 brun est dans ta main, <Strong>garde un petit brun à côté</Strong>. Quand on
           entame brun vers toi, fournis le petit et perds la levée — ne gagne jamais la levée où ton
-          −2 doit atterrir. Le 0 brun sort seulement sur une levée que les adversaires gagnent.
+          −3 doit atterrir. Le 0 brun sort seulement sur une levée que les adversaires gagnent.
           <TipExample
             trick={[{ suit: 'brown', value: 6 }]}
             you={{ suit: 'brown', value: 2 }}
@@ -1088,7 +1088,7 @@ function TipsFr() {
         <Tip label="Jette le zéro brun au lieu de couper.">
           Quand une levée est déjà perdue — ou que la gagner ne te donne rien — ne dépense pas un
           atout dessus. <Strong>Défausse le 0 brun à la place</Strong> : tu perds la levée de toute
-          façon, et maintenant elle leur coûte 2.
+          façon, et maintenant elle leur coûte 3.
           <TipExample
             trick={[
               { suit: 'blue', value: 7 },
@@ -1106,21 +1106,21 @@ function TipsFr() {
         </Tip>
       </TipSection>
 
-      <TipSection title="Mener le contrat">
+      <TipSection title="Jouer le contrat">
         <Tip label="Quand tu gagnes la mise, c'est toi qui choisis l'atout.">
           Ta <Strong>première carte nomme la couleur d'atout</Strong> — entame ta meilleure couleur,
           et joue tes atouts hauts pour les enlever aux défenseurs. Une fois ta mise atteinte,
           arrête de pousser; les levées en trop ne te donnent rien.
         </Tip>
         <Tip label="Dépense tes atouts comme de l'argent.">
-          <Strong>Arrête de tirer les atouts dès qu'il ne reste que le maître dehors</Strong> — il
+          <Strong>Arrête de tirer les atouts dès qu'il ne reste que le maître en jeu</Strong> — il
           gagnera quand il voudra, et le chasser échange deux des tiens contre un des leurs. Choisis
           ta première entame pareil : avec un atout solide, ouvre le 7 et tire; avec un atout mince,
           entame petit et garde les gros pour couper.
         </Tip>
         <Tip label="Fais-toi une chute pendant que c'est pas cher.">
           Une carte seule dans une couleur, c'est une coupe qui attend.{' '}
-          <Strong>Jette-la sur la levée de quelqu'un d'autre avant la levée 3 ou 4</Strong>, et à
+          <Strong>Jette-la sur la levée de quelqu'un d'autre d'ici la levée 3 ou 4</Strong>, et à
           partir de là tu coupes cette couleur au lieu de fournir. Cinq bleus et un rouge tout seul?
           Jette le rouge de bonne heure — ensuite chaque levée rouge, 0 rouge inclus, peut être à
           toi pour un atout.
@@ -1167,22 +1167,22 @@ function TipsFr() {
         </Tip>
         <Tip label="Deuxième joue petit, troisième joue gros.">
           Deuxième à jouer sur une petite entame adverse? <Strong>Joue petit</Strong> — ton
-          partenaire parle encore après eux. Troisième, et la carte de ton partenaire est en train
-          de perdre? <Strong>Monte</Strong> : tu es la dernière chance pas chère de gagner la levée
+          partenaire joue encore après eux. Troisième, et la carte de ton partenaire est en train de
+          perdre? <Strong>Monte</Strong> : tu es la dernière chance pas chère de gagner la levée
           pour ton camp.
         </Tip>
-        <Tip label="Fais couper le meneur, encore et encore.">
-          <Strong>Quatre atouts derrière le meneur, c'est une arme.</Strong> Chaque fois que tu
+        <Tip label="Fais couper le preneur, encore et encore.">
+          <Strong>Quatre atouts derrière le preneur, c'est une arme.</Strong> Chaque fois que tu
           prends la main, entame la couleur où il est en <G id="chute">chute</G> et force-le à
           couper. Chaque <G id="coupe">coupe</G> rapproche ses atouts des tiens — jusqu'à la ronde
           où c'est toi qui en as le plus.
         </Tip>
         <Tip label="Lis la première carte — avec un grain de sel.">
-          La première carte du meneur nomme l'atout, alors c'est aussi une déclaration :{' '}
+          La première carte du preneur nomme l'atout, alors c'est aussi une déclaration :{' '}
           <Strong>le 7 dit « couleur solide, je tire »</Strong>; une petite carte dit « atouts
-          minces, je les garde pour couper ». Lis-la — puis rappelle-toi qu'un bon meneur sait que
+          minces, je les garde pour couper ». Lis-la — puis rappelle-toi qu'un bon preneur sait que
           tu la lis, et va <Strong>ouvrir petit avec du gros jeu</Strong> pour te laisser deviner.
-          Quand c'est toi qui mènes, fais exactement ça.
+          Quand c'est toi qui prends, fais exactement ça.
         </Tip>
         <Tip label="Ce qu'ils n'ont pas fait parle aussi.">
           Un joueur qui <Strong>n'a pas coupé</Strong> ta gagnante a encore de la couleur. Celui qui{' '}
@@ -1205,7 +1205,7 @@ function TipsFr() {
 
       <TipSection title="Jouer pour le 41">
         <Tip label="Compte jusqu'à ton nombre, puis change de vitesse.">
-          Une ronde contient <Strong>11 points</Strong>. En attaque, compte ce que tu as ramassé
+          Une ronde contient <Strong>10 points</Strong>. En attaque, compte ce que tu as ramassé
           vers ta mise — dès qu'elle est faite, arrête de dépenser tes gagnantes et mets tes
           perdantes en sécurité. En défense, fais le même compte : dès que le contrat est décidé
           d'un bord ou de l'autre,{' '}
@@ -1217,7 +1217,7 @@ function TipsFr() {
           à 35 ou plus, un petit contrat leur donne la partie — <Strong>mise pour bloquer</Strong>,
           même un cran au-dessus de ton confort. Loin derrière? <G id="sansatout">Le sans atout</G>{' '}
           <Strong>double la mise</Strong> — l'arme de rattrapage naturelle, et un risque inutile
-          quand c'est toi qui mènes.
+          quand c'est ton équipe qui mène au pointage.
         </Tip>
       </TipSection>
     </>

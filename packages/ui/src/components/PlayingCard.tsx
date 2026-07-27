@@ -76,7 +76,7 @@ export function PlayingCard({
   const suit = SUIT_STYLES[card.suit];
   const isRedZero = card.suit === 'red' && card.value === 0;
   const isBrownZero = card.suit === 'brown' && card.value === 0;
-  const bonus = isRedZero ? '+5' : isBrownZero ? '−2' : null;
+  const bonus = isRedZero ? '+5' : isBrownZero ? '−3' : null;
 
   return (
     <div
@@ -153,7 +153,7 @@ export function PlayingCard({
         )}
       </span>
 
-      {/* Special tokens: red 0 = +5 (ok), brown 0 = −2 (dark red). BOTTOM-left
+      {/* Special tokens: red 0 = +5 (ok), brown 0 = −3 (dark red). BOTTOM-left
           corner: the fan overlaps each card's right side, so the left strip is
           the card's one always-exposed edge — but tucked under the top rank the
           token sat right on the bonhomme's hat whenever the card was fully

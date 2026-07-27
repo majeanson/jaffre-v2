@@ -1,7 +1,7 @@
 /**
  * The "bonhommes" — the character portraits from the OG Jaffré card skins.
  * Only the two scoring specials carry one: red 0 (+5) is General Joffre
- * (kepi, pixel shades, mustache — France in the OG deck) and brown 0 (−2)
+ * (kepi, pixel shades, mustache — France in the OG deck) and brown 0 (−3)
  * is the dark top-hat figure (Allemagne). Redrawn as grid pixel-art SVG so
  * they stay crisp at any card size, with body tones derived from the suit
  * CSS variables so every skin recolours them automatically.

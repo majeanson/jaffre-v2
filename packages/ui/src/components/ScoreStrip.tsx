@@ -34,11 +34,11 @@ const T: Record<
 > = {
   en: {
     redChip: 'Red 0 captured · +5',
-    brownChip: 'Brown 0 captured · −2',
+    brownChip: 'Brown 0 captured · −3',
     pile: (label, count, points, red, brown) =>
       `${label}: ${count} trick${count === 1 ? '' : 's'}, ${points} points this round${
         red ? ', captured the red 0 for +5' : ''
-      }${brown ? ', captured the brown 0 for −2' : ''}`,
+      }${brown ? ', captured the brown 0 for −3' : ''}`,
     betMade: 'Bid made',
     betMissed: 'Bid missed',
     scoreboard: 'Round-by-round scoreboard',
@@ -61,11 +61,11 @@ const T: Record<
   },
   fr: {
     redChip: 'Zéro rouge capturé · +5',
-    brownChip: 'Zéro brun capturé · −2',
+    brownChip: 'Zéro brun capturé · −3',
     pile: (label, count, points, red, brown) =>
       `${label} : ${count} levée${count === 1 ? '' : 's'}, ${points} points cette ronde${
         red ? ', a capturé le zéro rouge pour +5' : ''
-      }${brown ? ', a capturé le zéro brun pour −2' : ''}`,
+      }${brown ? ', a capturé le zéro brun pour −3' : ''}`,
     betMade: 'Mise réussie',
     betMissed: 'Mise ratée',
     scoreboard: 'Pointage ronde par ronde',
@@ -91,7 +91,7 @@ const T: Record<
 /** Which scoring specials a team has captured this round. */
 export interface TeamSpecials {
   readonly red: boolean; // the red 0 (+5)
-  readonly brown: boolean; // the brown 0 (−2)
+  readonly brown: boolean; // the brown 0 (−3)
 }
 
 /** One finished round on the written scoreboard. */
@@ -161,7 +161,7 @@ const TEAM_VARS = ['var(--color-team-a)', 'var(--color-team-b)'] as const;
 // --color-ap-paper-shade (the header band), not just the default cream.
 const TEAM_INK = ['#6e4a00', '#1c5f78'] as const;
 
-/** A captured special: the +5 red 0 or the −2 brown 0, in its suit color. */
+/** A captured special: the +5 red 0 or the −3 brown 0, in its suit color. */
 export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
   const t = T[useLang()];
   const isRed = kind === 'red';
@@ -172,7 +172,7 @@ export function SpecialChip({ kind }: { kind: 'red' | 'brown' }) {
         isRed ? 'border-(--color-suit-red)' : 'border-(--color-suit-brown)'
       }`}
     >
-      {isRed ? '+5' : '−2'}
+      {isRed ? '+5' : '−3'}
     </span>
   );
 }

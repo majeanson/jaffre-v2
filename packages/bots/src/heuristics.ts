@@ -144,7 +144,7 @@ function supportPartner(view: SeatView, legal: readonly Card[], ctx: TrickCtx): 
 /**
  * How willingly we part with a card when not fighting for the trick — lower is
  * shed first. `brownHold` prices holding the brown 0 (higher when partner is
- * winning: never gift our own side the −2).
+ * winning: never gift our own side the −3).
  */
 function sheddingRank(view: SeatView, c: Card, brownHold: number): number {
   const trump = view.trump;

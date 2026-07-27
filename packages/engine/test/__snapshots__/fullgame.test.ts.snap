@@ -2,24 +2,24 @@
 
 exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 1`] = `
 {
-  "actionCount": 1590,
-  "rounds": 43,
+  "actionCount": 1183,
+  "rounds": 32,
   "scores": [
-    20,
-    41,
+    42,
+    -71,
   ],
   "seed": 1,
-  "winner": 1,
+  "winner": 0,
 }
 `;
 
 exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 2`] = `
 {
-  "actionCount": 591,
-  "rounds": 16,
+  "actionCount": 517,
+  "rounds": 14,
   "scores": [
-    42,
-    -2,
+    41,
+    -18,
   ],
   "seed": 2,
   "winner": 0,
@@ -28,11 +28,11 @@ exports[`full games > golden seeds replay to a stable final state (canon frozen 
 
 exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 3`] = `
 {
-  "actionCount": 480,
-  "rounds": 13,
+  "actionCount": 258,
+  "rounds": 7,
   "scores": [
-    2,
-    47,
+    -33,
+    42,
   ],
   "seed": 3,
   "winner": 1,

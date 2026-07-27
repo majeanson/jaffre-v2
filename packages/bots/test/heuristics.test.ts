@@ -71,7 +71,7 @@ describe('play heuristics', () => {
   });
 
   it('dumps the brown 0 onto a trick the opponents have won', () => {
-    // Seat 0 last, void in led red, no trump — cannot win, sheds the −2.
+    // Seat 0 last, void in led red, no trump — cannot win, sheds the −3.
     const v = view({
       trump: 'green',
       trickLeader: 1,
