@@ -101,15 +101,15 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
   const hasRed0 = view.hand.some(isRedZero);
   const hasBrown0 = view.hand.some(isBrownZero);
 
-  // The +5 / −2 zeros, tucked onto the plan as a single short tail.
+  // The +5 / −3 zeros, tucked onto the plan as a single short tail.
   const assetTail = hasRed0
     ? fr
       ? ', et le 0 rouge te vaut +5'
       : ', and the red 0 banks +5'
     : hasBrown0
       ? fr
-        ? ', et refile le 0 brun (−2) au plus vite'
-        : ', and shed the brown 0 (−2) early'
+        ? ', et refile le 0 brun (−3) au plus vite'
+        : ', and shed the brown 0 (−3) early'
       : '';
 
   if (bid.kind === 'pass') {
