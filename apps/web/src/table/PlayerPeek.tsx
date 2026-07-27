@@ -43,6 +43,7 @@ const T: Record<
     toPlay: string;
     holdsBet: string;
     autoPlay: string;
+    botPlaying: string;
     bidThisRound: string;
   }
 > = {
@@ -79,6 +80,7 @@ const T: Record<
     toPlay: 'To play',
     holdsBet: 'Bid holder',
     autoPlay: 'Auto-play',
+    botPlaying: 'Bot playing',
     bidThisRound: 'Bid this round',
   },
   fr: {
@@ -114,6 +116,7 @@ const T: Record<
     toPlay: 'À jouer',
     holdsBet: 'Preneur',
     autoPlay: 'Jeu auto',
+    botPlaying: 'Le bot joue',
     bidThisRound: 'Mise cette ronde',
   },
 };
@@ -383,6 +386,12 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
       key: 'auto',
       label: t.autoPlay,
       tone: 'border-(--color-ap-gold) text-(--color-ap-gold)',
+    });
+  if (info.botPlaying)
+    badges.push({
+      key: 'covered',
+      label: t.botPlaying,
+      tone: 'border-(--color-ap-ink)/40 text-(--color-ap-muted)',
     });
 
   return (

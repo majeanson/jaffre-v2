@@ -489,6 +489,29 @@ scrim-dimmed); the FR "AMBER-FOX-" hyphen break reads fine; the share-link
 field may still clip a long prod-domain URL right at the code (Copy + QR +
 select-all remain the real affordances).
 
+## Presence / bot-takeover hardening 2026-07-27
+
+Full audit of the pause / disconnect / auto-play / turn-timer flows (server
+alarm loop + client badges). Shipped:
+
+- **Stuck "Bot taking over…" pill fixed** (the user-visible bug): rosters now
+  send `botSwapAt` only while the deadline is in the future; once passed the
+  seat carries `botPlaying: true` and the client shows a steady "Away — bot
+  playing" badge (new `seat-away-bot-playing` scene + peek badge).
+- Rosters broadcast per action in ALL rooms (was turn-timer rooms only), so
+  away/covering state can't go stale in rule-opt-out rooms.
+- `start` re-stamps lingering disconnect clocks — a rematch (or a pre-game
+  drop) can no longer bot-cover an absent player from the very first bid.
+- All-bots tables (humans left, spectators watching) no longer freeze at
+  round_over: the alarm now always attempts continue, and a recap-beat wake
+  is armed when everyone is already ready.
+- With the turnTimer rule on, a connected human idling the recap out is
+  auto-readied after the same 60s (ready only — never flips their auto-play).
+
+Open follow-up: surface the recap ready-timeout on the Ready button (a quiet
+countdown ring in the last ~20s) so the auto-ready never feels like a ghost
+click; today it's server-silent by design.
+
 ## Verified-good (don't "polish" these into regressions)
 
 - Felt layering/theming is coherent post-revert; BidOverlay's `z-[15]` is deliberate.

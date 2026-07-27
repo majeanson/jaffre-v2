@@ -510,6 +510,21 @@ const LOADERS: Record<SceneId, () => void> = {
     };
     inject(cached('mid-trick', midTrick), { roster });
   },
+  'seat-away-bot-playing': () => {
+    // Past the swap deadline: the server has dropped botSwapAt and sends the
+    // steady botPlaying flag instead — no countdown, just the covering badge.
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: false, botPlaying: true },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+    };
+    inject(cached('mid-trick', midTrick), { roster });
+  },
   'seat-turntimer-nudge': () => {
     // Inside the warn window (≤20s) so the nudge is visible; computed at load
     // time so it never starts expired.

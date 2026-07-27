@@ -17,6 +17,7 @@ const T: Record<
   {
     empty: string;
     away: (countdown: string) => string;
+    awayBotPlaying: string;
     turnTimer: (countdown: string) => string;
     imHere: string;
     botTakingOver: string;
@@ -27,6 +28,7 @@ const T: Record<
   en: {
     empty: 'empty',
     away: (countdown) => `Away — bot in ${countdown}`,
+    awayBotPlaying: 'Away — bot playing',
     turnTimer: (countdown) => `Bot plays in ${countdown}`,
     imHere: "— I'm here",
     botTakingOver: 'Bot taking over…',
@@ -36,6 +38,7 @@ const T: Record<
   fr: {
     empty: 'libre',
     away: (countdown) => `Absent — bot dans ${countdown}`,
+    awayBotPlaying: 'Absent — le bot joue',
     turnTimer: (countdown) => `Le bot joue dans ${countdown}`,
     imHere: '— je suis là',
     botTakingOver: 'Le bot prend la relève…',
@@ -145,7 +148,23 @@ export function SeatChip({
             peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
-          {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.botTakingOver}
+          {/* At zero the deadline has passed — the bot IS playing now (the
+              next roster replaces this with the steady botPlaying badge). */}
+          {secondsLeft > 0 ? t.away(formatCountdown(secondsLeft)) : t.awayBotPlaying}
+        </span>
+      )}
+      {/* Steady state after the swap deadline: the seat's human is away and a
+          bot is covering their turns until they return. No countdown — a
+          count pinned at zero ("Bot taking over…" forever) was a bug. */}
+      {secondsLeft === null && info.botPlaying && (
+        <span
+          data-testid="botplaying-badge"
+          role="status"
+          className={`pointer-events-none absolute z-20 w-max max-w-[min(11rem,44vw)] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.2em] text-center text-(length:--text-fluid-xs) font-arcade-ui font-semibold text-(--color-ap-text) shadow-(--shadow-ap-sm) ${alignX} ${
+            peekPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
+          {t.awayBotPlaying}
         </span>
       )}
       {/* Turn-timer nudge: this human is PRESENT, just idle on their turn.
@@ -155,6 +174,7 @@ export function SeatChip({
           YOUR OWN nudge is a button — tapping "I'm here" restarts the turn
           clock server-side and hides the pill on the spot. */}
       {secondsLeft === null &&
+        !info.botPlaying &&
         !info.autoPlay &&
         turnSecondsLeft !== null &&
         turnSecondsLeft <= TURN_TIMER_WARN_S &&
@@ -187,7 +207,7 @@ export function SeatChip({
         ))}
       {/* Voluntary auto-play: a bot is covering this connected human's turns.
           Distinct from the disconnect countdown (which only shows when away). */}
-      {secondsLeft === null && info.autoPlay && (
+      {secondsLeft === null && !info.botPlaying && info.autoPlay && (
         <span
           data-testid="autoplay-badge"
           role="status"

@@ -1601,6 +1601,250 @@ describe('GameRoom', () => {
   );
 
   it(
+    'flips a past-deadline away seat to botPlaying — never a countdown pinned at zero',
+    { timeout: 45_000 },
+    async () => {
+      interface StoredMeta {
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-botplaying';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(alice);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // A spectator observes the rosters; alice's socket is about to close.
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+
+      await driveToQuiescentHumanTurn(stub, alice);
+      alice.ws.close(1000, 'bye');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the disconnect clock',
+      );
+
+      // Rewind past the deadline and let the alarm cover her turn. The roster
+      // that rides that action must advertise the STEADY state: botPlaying,
+      // with the (now expired) botSwapAt gone — a client left ticking a past
+      // deadline showed "Bot taking over…" forever, which is the bug.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+      let seat0: Roster['seats'][number] | undefined;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && seat0?.botPlaying !== true) {
+        const r = await carol.next('roster');
+        seat0 = r.roster.seats[0];
+        // No roster may ever carry a deadline that is already in the past.
+        if (seat0?.botSwapAt !== undefined) {
+          expect(seat0.botSwapAt).toBeGreaterThan(Date.now() - 1000);
+        }
+      }
+      expect(seat0?.botPlaying).toBe(true);
+      expect(seat0?.botSwapAt).toBeUndefined();
+      expect(seat0?.isBot).toBe(false); // still her seat — covered, not replaced
+
+      // A fresh joiner's welcome snapshot says the same thing.
+      const dave = await Client.connect(room, 'dave', 'Dave');
+      dave.send({ t: 'join' });
+      const w = await dave.next('welcome');
+      expect(w.roster.seats[0]?.botPlaying).toBe(true);
+      expect(w.roster.seats[0]?.botSwapAt).toBeUndefined();
+
+      await endQuiet(room, alice, carol, dave);
+    },
+  );
+
+  it(
+    'a game start restarts a lingering disconnect clock — no instant bot coverage',
+    { timeout: 30_000 },
+    async () => {
+      interface StoredMeta {
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-start-restamp';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      alice.send({ t: 'join' });
+      await alice.next('welcome');
+      alice.send({ t: 'sit', seat: 0 });
+      await alice.next('roster');
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      await bob.next('welcome');
+      bob.send({ t: 'sit', seat: 1 });
+      await bob.next('roster');
+      for (const seat of [2, 3] as const) {
+        alice.send({ t: 'add_bot', seat });
+        await alice.next('roster');
+      }
+
+      // Bob vanishes pre-game; age his stamp PAST the mid-game swap deadline
+      // (but inside the pre-game vacate grace, so his seat is still his).
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      bob.ws.close(1000, 'tab closed');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['bob'];
+          }),
+        'the pre-game disconnect clock',
+      );
+      const aged = Date.now() - BOT_SWAP_MS - 5000;
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { bob: aged };
+        await state.storage.put('meta', meta);
+      });
+
+      // Starting the game must hand bob a FULL fresh grace — not bot-cover him
+      // from the very first bid because his stamp predates the game.
+      const startBefore = Date.now();
+      alice.send({ t: 'start' });
+      await alice.next('view');
+      const since = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.disconnectedSince?.['bob'];
+      });
+      expect(since).toBeTypeOf('number');
+      expect(since ?? 0).toBeGreaterThanOrEqual(startBefore);
+
+      // And the roster shows a future countdown, never the covered state.
+      let seat1: Roster['seats'][number] | undefined;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline && seat1?.botSwapAt === undefined) {
+        const r = await alice.next('roster');
+        seat1 = r.roster.seats[1];
+        expect(seat1?.botPlaying).toBeUndefined();
+      }
+      expect((seat1?.botSwapAt ?? 0) - Date.now()).toBeGreaterThan(BOT_SWAP_MS - 5000);
+
+      await endQuiet(room, alice, bob);
+    },
+  );
+
+  it(
+    'an all-bots table advances past round_over on its own (spectators keep watching)',
+    { timeout: 120_000 },
+    async () => {
+      const room = 'room-allbots-recap';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(alice); // rule OFF — the fix must not depend on it
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Alice gives up her seat for good: all four seats are now bots, and her
+      // socket stays connected as a spectator (a "Watch live games" viewer).
+      alice.send({ t: 'leave' });
+      await welcomeViewer(alice, 'spectator');
+
+      // Drive the alarms: the bots must play through round_over WITHOUT any
+      // human ever sending `ready` — the recap-beat wake + the alarm's
+      // unconditional continueIfAllReady carry it into the next round.
+      let sawRoundOver = false;
+      let advanced = false;
+      const deadline = Date.now() + 90_000;
+      while (!advanced && Date.now() < deadline) {
+        const g = await runInDurableObject(stub, async (_instance, state) => {
+          const stored = await state.storage.get<string>('game');
+          return stored !== undefined ? deserialize(stored) : null;
+        });
+        if (g?.phase === 'round_over') sawRoundOver = true;
+        if (sawRoundOver && g !== null && g.phase !== 'round_over') {
+          advanced = true;
+          break;
+        }
+        const ran = await runDurableObjectAlarm(stub);
+        if (!ran) await sleep(25);
+      }
+      expect(sawRoundOver).toBe(true);
+      expect(advanced).toBe(true);
+
+      await endQuiet(room, alice);
+    },
+  );
+
+  it(
+    'with the turn-timer rule ON, an idle connected human is auto-readied after the recap timeout',
+    { timeout: 60_000 },
+    async () => {
+      interface StoredMeta {
+        turnStartedAt?: number;
+        autoPlay?: Record<string, boolean>;
+      }
+      const room = 'room-recap-timeout';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      const startView = await setupStartedGameWithTurnTimer(alice);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // Play the first round out (alice via the bot policy, bots via alarms),
+      // stopping the moment the recap appears — alice never sends `ready`.
+      const rng = mulberry32(7);
+      let view = startView;
+      const driveDeadline = Date.now() + 45_000;
+      while (view.phase !== 'round_over') {
+        if (Date.now() > driveDeadline) throw new Error('never reached round_over');
+        view = alice.latestView() ?? view;
+        if (view.phase === 'round_over') break;
+        if ((view.phase === 'bidding' || view.phase === 'playing') && view.turn === 0) {
+          const action = chooseAction(view, rng);
+          if (action === null) throw new Error('bot policy returned no action');
+          alice.send({ t: 'action', action: toWire(action) });
+          const reply = await alice.nextAny(['view', 'error']);
+          if (reply.t === 'view') view = reply.view;
+        } else {
+          const ran = await runDurableObjectAlarm(stub);
+          if (ran) view = (await alice.next('view')).view;
+          else await sleep(20);
+        }
+      }
+
+      // The recap stamped its start and armed the ready-timeout alarm.
+      const stamped = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return { turnStartedAt: meta?.turnStartedAt, alarm: await state.storage.getAlarm() };
+      });
+      expect(stamped.turnStartedAt).toBeTypeOf('number');
+      expect(stamped.alarm).not.toBeNull();
+
+      // BEFORE the deadline a forced wake must leave her un-readied.
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const still = await snapshot(stub);
+      expect(still.phase).toBe('round_over');
+
+      // Rewind the recap start past the timer: the wake readies her (everyone
+      // else is a bot), which deals the next round — WITHOUT flipping her
+      // auto-play (idling a recap isn't playing badly).
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.turnStartedAt = Date.now() - TURN_TIMER_MS - 1000;
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const after = await snapshot(stub);
+      expect(after.phase === 'bidding' || after.phase === 'playing').toBe(true);
+      const flipped = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.autoPlay?.['alice'];
+      });
+      expect(flipped).toBeUndefined();
+
+      await endQuiet(room, alice);
+    },
+  );
+
+  it(
     'voluntary auto-play plays the seat while on, carries the roster flag, and toggling off returns control',
     { timeout: 30_000 },
     async () => {

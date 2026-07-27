@@ -546,16 +546,22 @@ export class GameRoom implements DurableObject {
     if (game.phase === 'round_over') {
       // Rounds wait for readiness; the alarm auto-readies humans whose
       // disconnect deadline has passed (an absent player can't stall the
-      // table forever) and humans on voluntary auto-play (they asked the
-      // server to keep the game moving — that includes the round recap).
+      // table forever), humans on voluntary auto-play (they asked the
+      // server to keep the game moving — that includes the round recap),
+      // and — with the turnTimer rule on — connected humans who idled the
+      // whole recap out (recapReadyDeadline; same spirit as their per-turn
+      // timer, but readying only, never flipping auto-play).
       const ready = this.readyState();
+      const now = Date.now();
       let changed = false;
       for (const s of SEATS) {
         const owner = this.meta.seats[s];
         if (
           !ready[s] &&
           typeof owner === 'string' &&
-          (this.autoPlayOn(owner) || this.disconnectDeadline(owner) <= Date.now())
+          (this.autoPlayOn(owner) ||
+            this.disconnectDeadline(owner) <= now ||
+            this.recapReadyDeadline(owner) <= now)
         ) {
           ready[s] = true;
           changed = true;
@@ -565,13 +571,21 @@ export class GameRoom implements DurableObject {
         this.meta.readyNextRound = ready;
         await this.ctx.storage.put('meta', this.meta);
         this.broadcastRoster({});
-        await this.continueIfAllReady();
-        // continueIfAllReady can deal the final round of the game — unlike the
-        // webSocketMessage path, alarm() has no trailing syncLobby of its own,
-        // so a bots-driven game_over would otherwise linger listed forever.
+      }
+      // Attempted even when nothing changed above: a table run entirely by
+      // bots (every human left mid-game, spectators still watching) is
+      // all-ready without any auto-ready — this call is what advances it
+      // past the recap instead of freezing there forever.
+      await this.continueIfAllReady();
+      if (this.game?.phase === 'round_over') {
+        await this.scheduleNextWake();
+      } else {
+        // continueIfAllReady dealt the next round — possibly the game's last
+        // (game_over). Unlike the webSocketMessage path, alarm() has no
+        // trailing syncLobby of its own, so a bots-driven game_over would
+        // otherwise linger listed forever.
         await this.syncLobby();
       }
-      if (this.game?.phase === 'round_over') await this.scheduleNextWake();
       return;
     }
     const turnSeat = game.turn;
@@ -1310,11 +1324,22 @@ export class GameRoom implements DurableObject {
     const seed = buf[0] ?? 0;
     const game = createGame(seed, this.meta.rules ?? { hailMary12: true });
     this.game = game;
+    const startedAt = Date.now();
     this.meta.started = true;
-    this.meta.startedAt = Date.now();
+    this.meta.startedAt = startedAt;
     // The freshly-dealt hand's bidding starts right now — the first turn's
     // turn-timer clock (if the rule is on) begins here too.
-    this.meta.turnStartedAt = this.meta.startedAt;
+    this.meta.turnStartedAt = startedAt;
+    // A seat can enter a game already wearing an OLD disconnect stamp (a
+    // pre-game drop inside the vacate grace, or a player who went absent
+    // during the previous game of a rematch). Left alone, a stamp older than
+    // BOT_SWAP_MS would bot-cover them from the very first turn — restart
+    // every absent player's clock so a new game always grants the full grace.
+    if (this.meta.disconnectedSince !== undefined) {
+      this.meta.disconnectedSince = Object.fromEntries(
+        Object.keys(this.meta.disconnectedSince).map((uid) => [uid, startedAt]),
+      );
+    }
     // Rematch: the previous game's rating movement no longer applies to the
     // recap that hasn't happened yet.
     delete this.meta.lastRatings;
@@ -1661,13 +1686,15 @@ export class GameRoom implements DurableObject {
     this.seq += 1;
     const log: LogEntry = { seq: this.seq, action };
     // Every successful action hands control to whoever is next to act (or
-    // ends the round/game) — that's a fresh decision point, so restart the
-    // turn-timer clock for it. Only meaningful in bidding/playing; cleared
-    // otherwise so a stale timestamp can't leak into round_over/game_over.
-    if (game.phase === 'bidding' || game.phase === 'playing') {
-      this.meta.turnStartedAt = Date.now();
-    } else {
+    // ends the round) — that's a fresh decision point, so restart the
+    // decision clock for it. round_over gets a stamp too: it anchors the
+    // recap's ready-timeout (a connected human idling on the recap must not
+    // stall the table forever — see alarm()). Cleared at game_over so a
+    // stale timestamp can't leak into the next game.
+    if (game.phase === 'game_over') {
       delete this.meta.turnStartedAt;
+    } else {
+      this.meta.turnStartedAt = Date.now();
     }
     await this.ctx.storage.put({
       meta: this.meta,
@@ -1685,10 +1712,12 @@ export class GameRoom implements DurableObject {
       });
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
-    // On turn-timer tables the roster is the only carrier of the fresh turn's
-    // turnTimerAt deadline — without a roster per action the countdown nudge
-    // would only ever surface after an unrelated join/close/ready refresh.
-    if (this.turnTimerRuleOn() && (game.phase === 'bidding' || game.phase === 'playing')) {
+    // The roster is the only carrier of the per-seat clocks (turnTimerAt, a
+    // disconnected seat's botSwapAt → botPlaying flip) — without a roster per
+    // action those would only surface after an unrelated join/close/ready
+    // refresh. Every table gets it, not just turn-timer ones: rule-opt-out
+    // rooms still show the away countdown and its bot-playing steady state.
+    if (game.phase === 'bidding' || game.phase === 'playing') {
       this.broadcastRoster({});
     }
     if (game.phase === 'game_over') {
@@ -1998,6 +2027,23 @@ export class GameRoom implements DurableObject {
   }
 
   /**
+   * When the round_over recap auto-readies this CONNECTED human (turnTimer
+   * rule): recap start (turnStartedAt — stamped when the round ended) + the
+   * same timer as a turn. +Infinity when the rule is off, the phase isn't
+   * round_over, they're disconnected (the shorter disconnect clock covers
+   * that), or the recap predates the stamp. Ready-only — unlike the per-turn
+   * timer this never flips auto-play; idling a recap isn't playing badly.
+   */
+  private recapReadyDeadline(userId: string): number {
+    if (!this.turnTimerRuleOn()) return Number.POSITIVE_INFINITY;
+    if (this.game?.phase !== 'round_over') return Number.POSITIVE_INFINITY;
+    if (!this.isConnected(userId)) return Number.POSITIVE_INFINITY;
+    const startedAt = this.meta.turnStartedAt;
+    if (startedAt === undefined) return Number.POSITIVE_INFINITY;
+    return startedAt + (this.meta.turnTimerMs ?? TURN_TIMER_MS);
+  }
+
+  /**
    * The single alarm slot is shared by bot turns, round_over auto-continue,
    * and disconnected-human bot-swaps: compute the earliest wake we need and
    * set one alarm. Date.now() for scheduling only — the engine never sees time.
@@ -2012,18 +2058,27 @@ export class GameRoom implements DurableObject {
     const now = Date.now();
     let wake: number | null = null;
     if (game.phase === 'round_over') {
-      // Waiting on readiness: wake for disconnected humans' deadlines, and
-      // soon for auto-play seats — the alarm readies those (see alarm()), but
-      // only after a beat so the round recap is on screen before it advances.
+      // Waiting on readiness: wake for disconnected humans' deadlines, the
+      // recap ready-timeout of connected-but-idle humans (turnTimer rule),
+      // and soon for auto-play seats — the alarm readies those (see alarm()),
+      // but only after a beat so the recap is on screen before it advances.
       const ready = this.readyState();
+      if (ready.every(Boolean)) {
+        // Everyone is already ready yet the phase is still round_over — an
+        // all-bots table (every human left mid-game, spectators watching).
+        // Nothing else will ever call continueIfAllReady for it, so arm a
+        // recap-beat wake; the alarm's round_over branch advances it.
+        wake = now + AUTOPLAY_READY_MS;
+      }
       for (const s of SEATS) {
         const owner = this.meta.seats[s];
         if (ready[s] || typeof owner !== 'string') continue;
         const deadline = this.autoPlayOn(owner)
           ? now + AUTOPLAY_READY_MS
-          : this.disconnectDeadline(owner);
+          : Math.min(this.disconnectDeadline(owner), this.recapReadyDeadline(owner));
         if (Number.isFinite(deadline)) {
-          wake = wake === null ? Math.max(now + 1, deadline) : Math.min(wake, deadline);
+          const clamped = Math.max(now + 1, deadline);
+          wake = wake === null ? clamped : Math.min(wake, clamped);
         }
       }
     } else {
@@ -2107,7 +2162,13 @@ export class GameRoom implements DurableObject {
         !this.autoPlayOn(owner) &&
         this.game !== null &&
         this.game.phase !== 'game_over';
-      const swapAt = swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY;
+      const swapDeadline = swapActive ? this.disconnectDeadline(owner) : Number.POSITIVE_INFINITY;
+      // The countdown is only worth sending while it's still counting; once the
+      // deadline passes, the state is steady ("a bot is playing their turns")
+      // and rides botPlaying instead — a client pinning a countdown at zero
+      // ("Bot taking over…" forever) was exactly the bug this split fixes.
+      const swapAt = swapDeadline > Date.now() ? swapDeadline : Number.POSITIVE_INFINITY;
+      const botPlaying = Number.isFinite(swapDeadline) && !Number.isFinite(swapAt);
       const turnAt =
         this.game !== null && this.game.turn === i
           ? this.turnTimerDeadline()
@@ -2121,6 +2182,7 @@ export class GameRoom implements DurableObject {
         ...(paint !== undefined ? { paint } : {}),
         ...(ready !== undefined ? { ready } : {}),
         ...(Number.isFinite(swapAt) ? { botSwapAt: swapAt } : {}),
+        ...(botPlaying ? { botPlaying: true } : {}),
         ...(Number.isFinite(turnAt) ? { turnTimerAt: turnAt } : {}),
         ...(this.autoPlayOn(owner) ? { autoPlay: true } : {}),
       };

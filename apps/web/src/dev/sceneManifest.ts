@@ -245,6 +245,12 @@ export const SCENE_METAS = [
     probe: '[data-testid="botswap-countdown"]',
   },
   {
+    id: 'seat-away-bot-playing',
+    label: 'Opponent away past the deadline — bot playing',
+    screen: 'table',
+    probe: '[data-testid="botplaying-badge"]',
+  },
+  {
     id: 'seat-turntimer-nudge',
     label: 'Opponent idle on turn — turn-timer nudge',
     screen: 'table',

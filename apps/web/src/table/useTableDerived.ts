@@ -111,8 +111,13 @@ export interface SeatChipInfo {
    * viewer's own paint is applied separately). Null → fall back to the initial. */
   readonly avatar: string | null;
   readonly connected: boolean;
-  /** Epoch ms when a disconnected human's seat becomes a bot, else null. */
+  /** Epoch ms when a disconnected human's seat becomes a bot, else null.
+   * Only ever a FUTURE deadline — once it passes the server sends botPlaying
+   * instead. */
   readonly botSwapAt: number | null;
+  /** True once a disconnected human's swap deadline has passed — a bot is
+   * playing their turns until they return (steady state, no countdown). */
+  readonly botPlaying: boolean;
   /** Epoch ms when the turn-timer house rule plays this CONNECTED human's
    * current turn for them, else null. Shown as a late-turn nudge — never as
    * the "Away" disconnect countdown. */
@@ -402,6 +407,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       avatar: info.isBot ? botAvatar(seat) : (info.paint ?? null),
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
+      botPlaying: info.botPlaying ?? false,
       // Rosters can outlive the turn they described — only surface the
       // per-turn clock while this seat is actually still on turn.
       turnTimerAt: view.turn === seat ? (info.turnTimerAt ?? null) : null,

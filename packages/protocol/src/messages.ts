@@ -138,8 +138,14 @@ export interface RosterSeat {
    * (the mid-game disconnect clock). Absolute (not remaining) so the client
    * can tick it down locally between rosters — correct it with `Roster.now`
    * against local clock skew.
+   * Present only while the deadline is still in the FUTURE — once it passes,
+   * `botPlaying` replaces it (a countdown pinned at zero helps nobody).
    */
   readonly botSwapAt?: number;
+  /** True once a DISCONNECTED human's swap deadline has passed: a bot is
+   * playing their turns until they return. The steady-state successor of
+   * botSwapAt — never present alongside it, and never for actual bot seats. */
+  readonly botPlaying?: boolean;
   /**
    * Epoch ms when the `turnTimer` house rule plays this CONNECTED human's
    * current bid/play for them. Present only while it's their turn and the
