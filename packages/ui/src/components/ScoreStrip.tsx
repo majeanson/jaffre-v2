@@ -141,6 +141,9 @@ export interface ScoreStripProps {
   readonly action?: string;
   /** App controls (leave, skin, log…) shown only while expanded. */
   readonly actions?: ReactNode;
+  /** Optional extra panel inside the expanded view, above the controls —
+   * used for the "cards seen so far" tracker. */
+  readonly aside?: ReactNode;
   /** The viewer's own team (seat parity), highlighted so you know your side. */
   readonly myTeam?: 0 | 1 | null;
   /** Mount with the details panel already expanded (scene viewer). */
@@ -707,6 +710,7 @@ export function ScoreStrip({
   currentRound,
   action,
   actions,
+  aside,
   myTeam = null,
   defaultDetailsOpen = false,
 }: ScoreStripProps) {
@@ -839,6 +843,7 @@ export function ScoreStrip({
                 {contract.sansAtout ? t.noTrumpStake : ''}
               </p>
             )}
+            {aside}
             {actions !== undefined && (
               <div className="flex flex-wrap items-center justify-center gap-2">{actions}</div>
             )}

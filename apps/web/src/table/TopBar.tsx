@@ -12,6 +12,7 @@ import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { IconButton, ICON_BTN_LABELED } from '../components/IconButton.js';
 import {
+  IconEye,
   IconGear,
   IconList,
   IconPalette,
@@ -21,6 +22,8 @@ import {
 } from '../components/icons.js';
 import { CollectionSheet } from '../components/CollectionSheet.js';
 import { SettingsSheet } from '../components/SettingsSheet.js';
+import { SeenCards } from './SeenCards.js';
+import { loadSeenPref, saveSeenPref } from './seenPref.js';
 import { StartingHandsInset } from './StartingHandsPanel.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
@@ -37,6 +40,8 @@ const T: Record<
     coachTitle: string;
     gameLog: string;
     log: string;
+    seen: string;
+    seenTitle: string;
   }
 > = {
   en: {
@@ -52,6 +57,8 @@ const T: Record<
     coachTitle: 'Coach',
     gameLog: 'Game log',
     log: 'Log',
+    seen: 'Cards seen — track which values are already played',
+    seenTitle: 'Seen',
   },
   fr: {
     leave: 'Retour à l’accueil — ton siège est gardé',
@@ -64,6 +71,8 @@ const T: Record<
     coachTitle: 'Coach',
     gameLog: 'Journal de partie',
     log: 'Journal',
+    seen: 'Cartes vues — suis les valeurs déjà jouées',
+    seenTitle: 'Vues',
   },
 };
 
@@ -120,6 +129,7 @@ export function TopBar({
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
   const [skinsOpen, setSkinsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [seenOn, setSeenOn] = useState(loadSeenPref);
 
   // Tapping a finished round's R-row on the scorepad unfolds that round's
   // starting hands — the same reveal the round summary offers, available for
@@ -153,6 +163,7 @@ export function TopBar({
         specials={specials}
         rounds={rounds}
         renderRoundDetail={renderRoundDetail}
+        aside={seenOn ? <SeenCards view={view} /> : undefined}
         currentRound={view.phase === 'game_over' ? undefined : view.roundIndex + 1}
         action={action}
         myTeam={myTeam}
@@ -197,6 +208,20 @@ export function TopBar({
                   onClick={onToggleCoach}
                 >
                   <IconSparkle />
+                </IconButton>
+                <IconButton
+                  label={t.seen}
+                  text={t.seenTitle}
+                  aria-pressed={seenOn}
+                  active={seenOn}
+                  onClick={() =>
+                    setSeenOn((on) => {
+                      saveSeenPref(!on);
+                      return !on;
+                    })
+                  }
+                >
+                  <IconEye />
                 </IconButton>
                 <IconButton
                   label={t.gameLog}
