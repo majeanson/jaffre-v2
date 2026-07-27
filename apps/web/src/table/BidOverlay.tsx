@@ -2,6 +2,7 @@ import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { BetCards, type AuctionTurn, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
+import { reportFunnel } from '../net/telemetry.js';
 
 export interface BidOverlayProps {
   readonly options: readonly BidOption[];
@@ -45,10 +46,12 @@ export function BidOverlay({
         waiting={waiting}
         onPass={() => {
           feedback('play');
+          reportFunnel('bid', 'pass');
           onAction({ type: 'place_bid', choice: { kind: 'pass' } });
         }}
         onBid={(o) => {
           feedback('play');
+          reportFunnel('bid', 'bid');
           onAction({
             type: 'place_bid',
             choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },

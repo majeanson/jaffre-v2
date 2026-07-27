@@ -1,7 +1,9 @@
 import type { SeatView } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 import type { ScoreboardRound } from '@jaffre/ui';
+import { useEffect } from 'react';
 import { getProfile } from '../net/auth.js';
+import { reportFunnel } from '../net/telemetry.js';
 import { botAvatar } from '../paint/botAvatars.js';
 import { useGameStore } from '../state/gameStore.js';
 import { GameRecap } from './GameRecap.js';
@@ -43,6 +45,11 @@ export function Overlays({
   // modal's dim (2nd visual sweep). Scenes freeze the hold, so their summary
   // scenes stage `round_over` without a held trick and still render.
   const heldTrick = useGameStore((s) => s.heldTrick);
+  // The funnel's last step: a first game actually played to the end.
+  const over = view.phase === 'game_over';
+  useEffect(() => {
+    if (over) reportFunnel('finish');
+  }, [over]);
   return (
     <>
       {heldTrick === null && view.phase === 'round_over' && view.lastRoundSummary !== null && (

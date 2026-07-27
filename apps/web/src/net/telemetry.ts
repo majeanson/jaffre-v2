@@ -6,11 +6,15 @@
  */
 
 const MAX_REPORTS_PER_SESSION = 10;
+/** Funnel milestones get their own small budget: they're latched one-shot per
+ * browser, and they must not be crowded out by (or crowd out) error reports. */
+const MAX_FUNNEL_PER_SESSION = 8;
 const MESSAGE_CAP = 300;
 const STACK_CAP = 600;
 const STACK_LINES = 3;
 
 let reportCount = 0;
+let funnelCount = 0;
 
 interface TelemetryReport {
   readonly kind: string;
@@ -33,8 +37,14 @@ function stackHead(stack: string | undefined): string | undefined {
 function send(kind: string, message: string, stack?: string): void {
   try {
     if (import.meta.env.DEV) return; // never report from localhost/dev
-    if (reportCount >= MAX_REPORTS_PER_SESSION) return;
-    reportCount += 1;
+    const isFunnel = kind.startsWith('funnel:');
+    if (isFunnel) {
+      if (funnelCount >= MAX_FUNNEL_PER_SESSION) return;
+      funnelCount += 1;
+    } else {
+      if (reportCount >= MAX_REPORTS_PER_SESSION) return;
+      reportCount += 1;
+    }
     const head = stackHead(stack);
     const report: TelemetryReport = {
       kind,
@@ -68,6 +78,55 @@ export function reportError(error: unknown, componentStack?: string, kind = 'rea
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
   send(kind, message, stack ?? componentStack);
+}
+
+/**
+ * The first-session funnel: the handful of moments that say whether a new
+ * player actually got into a game. Each fires at most ONCE per browser (a
+ * localStorage latch), so this measures first-run drop-off, not usage — and
+ * the volume is a few beacons per install, ever.
+ *
+ * Deliberately anonymous: the kind is the only payload, so nothing here
+ * identifies anyone. The server already buckets unknown kinds by name, so
+ * they land in /api/telemetry/summary with no schema change.
+ */
+export type FunnelStep =
+  | 'home' // first paint of the title screen
+  | 'play' // opened the PLAY door
+  | 'start' // first game started (mode in the message)
+  | 'bid' // first bid ever placed
+  | 'finish' // first game played to the end
+  | 'tutorial'; // finished the practice tutorial
+
+const FUNNEL_KEY = 'jaffre:funnel';
+
+function funnelSeen(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FUNNEL_KEY);
+    return new Set(raw === null ? [] : (JSON.parse(raw) as string[]));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Report a first-session milestone, once per browser. `detail` adds context
+ * (e.g. which mode the first game was) and is never identifying. */
+export function reportFunnel(step: FunnelStep, detail = ''): void {
+  try {
+    // Automation would skew the counters with a fresh funnel every run.
+    if (navigator.webdriver === true) return;
+    const seen = funnelSeen();
+    if (seen.has(step)) return;
+    seen.add(step);
+    try {
+      localStorage.setItem(FUNNEL_KEY, JSON.stringify([...seen]));
+    } catch {
+      // Storage unavailable — at worst the step reports again next session.
+    }
+    send(`funnel:${step}`, detail === '' ? step : detail);
+  } catch {
+    // Telemetry must never itself be a source of errors.
+  }
 }
 
 /** Installs window-level error and unhandled-rejection listeners. Call once

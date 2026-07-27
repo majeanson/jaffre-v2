@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { markMakePublic, quickPlay, type TableEntry } from '../net/rooms.js';
+import { reportFunnel } from '../net/telemetry.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
 import { TableCard, useTableStatuses } from './TableCards.js';
 import { generateRoomCode } from './roomCode.js';
@@ -163,7 +164,10 @@ export function PlayMenu({
         {!open ? (
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+              reportFunnel('play');
+            }}
             className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             {t.play}

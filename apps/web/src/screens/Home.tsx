@@ -17,6 +17,7 @@ import type { RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
+import { reportFunnel } from '../net/telemetry.js';
 
 /** Only the scene viewer's staged identity renders this (live players reach
  * recovery through the Log-in sheet), so it has no business in the eager Home
@@ -92,6 +93,7 @@ export function Home({
   useEffect(() => {
     if (staged) return;
     void getGuestToken(playerName());
+    reportFunnel('home');
   }, [staged]);
 
   // A table created or finished elsewhere in-session (another tab, another

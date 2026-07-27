@@ -16,6 +16,7 @@ import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
 import { forgetTable } from './net/rooms.js';
+import { reportFunnel } from './net/telemetry.js';
 import { leaveVoice } from './voice/rtc.js';
 // Home and the room/practice Table path are the critical path (first paint,
 // and the screen every join/create flow lands on next) and stay eager. Lobby
@@ -255,12 +256,14 @@ function AppRoutes() {
   useEffect(() => {
     if (!inPractice) return undefined;
     startLocalGame(practiceSeed ?? undefined);
+    reportFunnel('start', 'practice');
     return () => stopLocalGame();
   }, [inPractice, practiceSeed]);
 
   useEffect(() => {
     if (roomCode === null) return undefined;
     connect(roomCode);
+    reportFunnel('start', 'online');
     return () => {
       // Tear the voice mesh down at the room boundary — it persists across the
       // lobby→table remount, so leaving from either must clean it up. Music

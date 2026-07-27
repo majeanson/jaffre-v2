@@ -1213,13 +1213,17 @@ async function handleTelemetry(request: Request, env: Env): Promise<Response> {
   if (typeof b.kind !== 'string' || typeof b.message !== 'string') {
     return Response.json({ error: 'kind and message must be strings' }, { status: 400 });
   }
-  console.error('[client]', {
+  // Funnel milestones are not failures — logging them at error level would
+  // bury real client errors in Workers Logs. Same counter bucket either way.
+  const line = {
     kind: b.kind,
     message: b.message,
     stack: typeof b.stack === 'string' ? b.stack : undefined,
     url: typeof b.url === 'string' ? b.url : undefined,
     ua: typeof b.ua === 'string' ? b.ua : undefined,
-  });
+  };
+  if (b.kind.startsWith('funnel:')) console.log('[client]', line);
+  else console.error('[client]', line);
   // Best-effort daily counter — a missing DB or a failed write must never
   // change this endpoint's behavior; it still always answers 204.
   if (env.DB !== undefined) {

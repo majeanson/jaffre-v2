@@ -18,6 +18,7 @@ import {
 } from './tutorialPref.js';
 import { MARK_ORDER, MARKS, type MarkCopy, type MarkStep } from './tutorialSteps.js';
 import { grantAward } from '../net/awards.js';
+import { reportFunnel } from '../net/telemetry.js';
 
 const INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
   en: {
@@ -220,6 +221,7 @@ export function TutorialCoach({
   // idempotent server-side, so a retry never double-grants).
   useEffect(() => {
     if (progress < total || tutorialRewardGranted()) return;
+    reportFunnel('tutorial');
     void grantAward('tutorial-complete').then((ok) => {
       if (ok) markTutorialRewardGranted();
     });
