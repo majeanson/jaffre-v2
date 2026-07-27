@@ -24,6 +24,9 @@ import {
   useTrickHold,
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { HelpButton } from '../help/HelpButton.js';
+import { ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
+import { IconQuestion } from '../components/icons.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
@@ -183,6 +186,11 @@ export function Table({
             : undefined
         }
         sort={me !== null && <HandSortButton sort={handSort} disabled={view.hand.length < 2} />}
+        help={
+          <HelpButton className={ICON_BTN_CELL_NEUTRAL}>
+            <IconQuestion />
+          </HelpButton>
+        }
       />
       <GameLogPanel
         lines={log.map((l) => l.text)}

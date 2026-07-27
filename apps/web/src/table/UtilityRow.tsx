@@ -35,6 +35,9 @@ export interface UtilityRowProps {
   readonly autoPlay?: { readonly on: boolean; readonly onToggle: () => void } | undefined;
   /** Sort-hand button — grouped with chat at the row's end. */
   readonly sort?: ReactNode;
+  /** Always-visible help trigger — the rules one tap from the felt, not two
+   * taps behind the score strip's Options drawer. */
+  readonly help?: ReactNode;
 }
 
 /** A full-height ink separator between the bar's cells. */
@@ -52,9 +55,11 @@ export function UtilityRow({
   comms,
   autoPlay,
   sort,
+  help,
 }: UtilityRowProps) {
   const hasComms = comms !== undefined && comms !== null && comms !== false;
   const hasSort = sort !== undefined && sort !== null && sort !== false;
+  const hasHelp = help !== undefined && help !== null && help !== false;
   return (
     <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center justify-end gap-2 py-1 sm:grid sm:grid-cols-[1fr_auto_1fr]">
       <span aria-hidden className="max-sm:hidden" />
@@ -77,6 +82,8 @@ export function UtilityRow({
         {autoPlay && <AutoPlayCell on={autoPlay.on} onToggle={autoPlay.onToggle} />}
         {hasSort && <Divider />}
         {sort}
+        {hasHelp && <Divider />}
+        {help}
       </span>
     </div>
   );
