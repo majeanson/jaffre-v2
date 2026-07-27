@@ -6,7 +6,7 @@ import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { useGameStore } from '../state/gameStore.js';
-import { RoomComms } from '../comms/RoomComms.js';
+import { RoomComms, toggleRoomComms } from '../comms/RoomComms.js';
 import {
   BidOverlay,
   ConnectionBanner,
@@ -22,6 +22,7 @@ import {
   useHandSort,
   useQueuedPlay,
   useTableDerived,
+  useTableKeys,
   useTrickHold,
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
@@ -114,6 +115,19 @@ export function Table({
   const handSort = useHandSort(derived?.view.hand ?? []);
   useTrickHold(frozenHold);
   useQueuedPlay(onAction);
+  // Keyboard play: 1–8 cards, 1–6 + P in the auction, L log, C chat.
+  useTableKeys({
+    onAction,
+    cards: handSort.displayCards,
+    legal: derived?.legal ?? [],
+    queueable: derived?.queueable ?? [],
+    queued: derived?.queued ?? null,
+    setQueued,
+    bidOptions: derived?.bidOptions ?? [],
+    phase: derived?.view.phase ?? '',
+    onToggleLog: () => setLogOpen((o) => !o),
+    ...(online ? { onToggleChat: toggleRoomComms } : {}),
+  });
   // Screen stays awake at the table — thinking through a bid isn't idle time.
   useWakeLock();
   // Leaving the table (or the room) always tears the voice mesh down.

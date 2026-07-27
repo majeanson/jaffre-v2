@@ -13,6 +13,15 @@ const T: Record<Lang, { comms: string; chat: string; music: string }> = {
 
 type Tab = 'chat' | 'music';
 
+/** Same-tab signal to open/close the popover — lets the table's keyboard
+ * shortcut reach this component's own local open state. */
+const TOGGLE_EVENT = 'jaffre:toggle-comms';
+
+/** Toggle the room-comms popover (the "C" shortcut at the table). */
+export function toggleRoomComms(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(TOGGLE_EVENT));
+}
+
 export interface RoomCommsProps {
   /** Your absolute seat, or null (spectator). Gates voice and the skip vote. */
   readonly me: number | null;
@@ -59,6 +68,14 @@ export function RoomComms({
   const musicSeenRef = useRef(queueLen);
   if (tab === 'music') musicSeenRef.current = queueLen;
   const musicUnread = tab !== 'music' && queueLen > musicSeenRef.current;
+
+  // The keyboard shortcut lives at the table but the open state lives here.
+  useEffect(() => {
+    if (variant !== 'popover') return undefined;
+    const onToggle = (): void => setOpen((o) => !o);
+    window.addEventListener(TOGGLE_EVENT, onToggle);
+    return () => window.removeEventListener(TOGGLE_EVENT, onToggle);
+  }, [variant]);
 
   // Popover: Escape closes and returns focus to the toggle (same contract the
   // collapsible ChatPanel used to provide).

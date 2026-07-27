@@ -19,4 +19,5 @@ export * from './UtilityRow.js';
 export * from './WaitingScreen.js';
 export * from './useQueuedPlay.js';
 export * from './useTableDerived.js';
+export * from './useTableKeys.js';
 export * from './useTrickHold.js';

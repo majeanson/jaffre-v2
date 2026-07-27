@@ -33,6 +33,9 @@ const T: Record<
     tutorialGo: string;
     account: string;
     accountHint: string;
+    keys: string;
+    keysHint: string;
+    keysList: readonly [string, string][];
   }
 > = {
   en: {
@@ -55,6 +58,14 @@ const T: Record<
     tutorialGo: '♺ Replay tutorial',
     account: 'Account',
     accountHint: 'Log in so your games follow you.',
+    keys: 'Keyboard',
+    keysHint: 'At the table.',
+    keysList: [
+      ['1–8', 'play that card (or queue it)'],
+      ['1–6', 'bid 7–12 during the auction'],
+      ['P', 'pass'],
+      ['L / C', 'game log / chat'],
+    ],
   },
   fr: {
     settings: 'Réglages',
@@ -76,6 +87,14 @@ const T: Record<
     tutorialGo: '♺ Rejouer le tutoriel',
     account: 'Compte',
     accountHint: 'Connecte-toi pour que tes parties te suivent.',
+    keys: 'Clavier',
+    keysHint: 'À la table.',
+    keysList: [
+      ['1–8', 'joue cette carte (ou la met en file)'],
+      ['1–6', 'mise 7–12 pendant les mises'],
+      ['P', 'passe'],
+      ['L / C', 'journal / clavardage'],
+    ],
   },
 };
 
@@ -279,6 +298,25 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
         <Row title={t.account} hint={t.accountHint}>
           <LoginButton />
         </Row>
+
+        {/* Reference, not a control — the one place the table's shortcuts are
+            written down. Hidden on touch-only devices, where they're noise. */}
+        <div className="hidden flex-col gap-1.5 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap-sm) [@media(hover:hover)]:flex">
+          <span className="flex items-baseline gap-2">
+            <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+              {t.keys}
+            </span>
+            <span className="text-xs text-(--color-ap-muted)">{t.keysHint}</span>
+          </span>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            {t.keysList.map(([keys, what]) => (
+              <div key={keys} className="contents">
+                <dt className="font-arcade-display uppercase text-(--color-ap-gold)">{keys}</dt>
+                <dd className="text-(--color-ap-muted)">{what}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </div>
     </div>,
     document.body,
