@@ -1,5 +1,25 @@
 # PLAN — Fresh-eyes UX/product audit (2026-07-27)
 
+> **STATUS: SHIPPED (2026-07-27).** All four waves and every Section C idea are
+> implemented and on `main`. Three items were adjusted in flight because the
+> plan's original shape would have shipped something untrue — each is called out
+> inline below and in its commit message:
+>
+> - **#17 (Elo by name)** was already fixed by the awards/leaderboard
+>   fortification; the audit was misled by a stale `polishing.md` note, now
+>   corrected. No code change was needed.
+> - **Daily first-win** shipped as a recognition chip with **no XP claim**: the
+>   progression constants are frozen, so a "+10 XP" chip would have promised a
+>   reward nothing grants.
+> - **Recap coach tip** does **not** re-run the Coach over individual card
+>   plays — a `RoundSummary` carries no per-trick plays, so that verdict isn't
+>   derivable at recap time. It states facts the round record proves
+>   (contracts taken/made, per-seat tricks) and stays silent when unclear.
+>
+> Also fixed along the way: a bug introduced by the new Settings sheet, whose
+> "Open Collection" navigated by hash and would have torn down a live room
+> mid-game (it now opens the existing modal at the table).
+
 Goal restated: **a beautiful game that anyone can understand rapidly without being
 overwhelmed, with best-in-class playability for both first-timers and experts.**
 
@@ -52,10 +72,10 @@ guessable place to look.
 
 - The tutorial (`TutorialCoach` + 7 marks + intro) mounts **only** on
   `#practice` (`App.tsx:228-236`). A player whose first game is a friend's
-  invite link (`#room/<code>`) — arguably the *most common* real first game —
+  invite link (`#room/<code>`) — arguably the _most common_ real first game —
   gets no intro, no marks, and the Coach **off by default**.
 - The auction panel never explains its own numbers. Nothing on screen says
-  "bids are *points* (7–12), 11 points exist per round, defenders keep
+  "bids are _points_ (7–12), 11 points exist per round, defenders keep
   theirs". This is the single most confusing ramp in the game and it's taught
   by exactly one one-shot coach-mark, practice-only.
 - Trump-set-by-first-lead — the game's most counter-intuitive rule — is
@@ -65,7 +85,7 @@ guessable place to look.
 - Solo play is framed as multiplayer: "Play vs bots" is nested under
   PLAY → **CREATE** — a newcomer wanting a solo game must first answer a
   create-vs-join question that doesn't apply to them.
-- Quick Play — the fastest online path — is the *bottom* button of
+- Quick Play — the fastest online path — is the _bottom_ button of
   PublicLobby, itself buried at PLAY → JOIN → "Join a public game".
 
 ### A4. Experts have no speed controls and no keyboard
@@ -100,7 +120,7 @@ guessable place to look.
 ### Wave 1 — First contact (highest leverage on "anyone understands rapidly")
 
 1. **Teach the auction on the auction panel.** Add a permanent one-line
-   caption to `BetCards.tsx` / `BidOverlay.tsx`: "Bid the *points* your team
+   caption to `BetCards.tsx` / `BidOverlay.tsx`: "Bid the _points_ your team
    will take — 11 in play, defenders keep theirs." Plus a tap-to-expand
    "what do these numbers mean?" micro-sheet. Always on, both modes — a
    caption is not nagging. (S)
@@ -140,7 +160,7 @@ guessable place to look.
    "Back to home (keeps your seat)" vs "Leave table" with a confirm on the
    destructive one. (S)
 9. **De-duplicate Corner.** Corner's tiles either replace MetaNav on that
-   screen or become *summary* tiles (level ring, last game result, newest
+   screen or become _summary_ tiles (level ring, last game result, newest
    unlock, rank) that justify existing next to the tabs. Add the missing
    leaderboard tile or drop tiles entirely. (M)
 10. **Collection: one nav model.** The in-table CollectionSheet reuses the
@@ -232,5 +252,5 @@ guessable place to look.
    first (they compound with Wave 1).
 
 Everything here respects the standing principles: simpler always wins, reuse
-surfaces instead of adding them (the plan *removes* net surfaces), felt table
+surfaces instead of adding them (the plan _removes_ net surfaces), felt table
 changed surgically in small shot-verified steps.
