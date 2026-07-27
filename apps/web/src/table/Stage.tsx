@@ -52,6 +52,10 @@ export function Stage({
   // "I've seen it, move on" — and after the last trick of a round it's what
   // the recap is waiting on.
   const holding = banner !== null;
+  // On a bidding turn the centered bet panel owns the middle-to-bottom of the
+  // stage; BidOverlay renders the coach tip stacked above it there, so the
+  // bottom-anchored hint below would only duplicate it (and get overlapped).
+  const bidding = Boolean(bidOverlay);
   return (
     <div
       className={`relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1 ${
@@ -88,7 +92,9 @@ export function Stage({
         />
       )}
       {banner !== null && <TrickBanner banner={banner} />}
-      {banner === null && coachTip !== null && coachTip !== '' && <CoachHint tip={coachTip} />}
+      {banner === null && !bidding && coachTip !== null && coachTip !== '' && (
+        <CoachHint tip={coachTip} />
+      )}
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·
           bot"). Phone: compact avatar tokens pulled ONTO the felt, diagonally
           offset beside their own played card, so the rim isn't dead space.

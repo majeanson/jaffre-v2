@@ -3,6 +3,7 @@ import type { ClientAction } from '@jaffre/protocol';
 import { BetCards, type AuctionTurn, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
 import { reportFunnel } from '../net/telemetry.js';
+import { CoachTipPill } from './CoachHint.js';
 
 export interface BidOverlayProps {
   readonly options: readonly BidOption[];
@@ -11,6 +12,9 @@ export interface BidOverlayProps {
   readonly onAction: (action: ClientAction) => void;
   /** The Coach's suggested bid on this turn, when it's switched on. */
   readonly recommended?: BidChoice | null;
+  /** The Coach's one-line tip, stacked above the panel so it never hides the
+   * bet cards (the bottom-anchored CoachHint would collide with them). */
+  readonly coachTip?: string | null;
   /** True when the "Hail-Mary 12 sans atout" house rule is on this game. */
   readonly hailMary12?: boolean;
   /** Another seat is up: keep the auction visible but lock every card. */
@@ -23,6 +27,7 @@ export function BidOverlay({
   order,
   onAction,
   recommended = null,
+  coachTip = null,
   hailMary12 = false,
   waiting = false,
 }: BidOverlayProps) {
@@ -36,28 +41,37 @@ export function BidOverlay({
     // around it stay peekable while the auction goes around the table.
     // z-[15]: above the trick area (z-10) but below the seat chips (z-20),
     // so a chip's peek popover opens OVER the auction panel, never under it.
-    <div className="pointer-events-none absolute inset-0 z-[15] grid place-items-center *:pointer-events-auto">
-      <BetCards
-        options={options}
-        {...(order !== undefined ? { order } : {})}
-        coaching={coaching}
-        recommended={recommendedOption}
-        hailMary12={hailMary12}
-        waiting={waiting}
-        onPass={() => {
-          feedback('play');
-          reportFunnel('bid', 'pass');
-          onAction({ type: 'place_bid', choice: { kind: 'pass' } });
-        }}
-        onBid={(o) => {
-          feedback('play');
-          reportFunnel('bid', 'bid');
-          onAction({
-            type: 'place_bid',
-            choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
-          });
-        }}
-      />
+    <div className="pointer-events-none absolute inset-0 z-[15] grid place-items-center px-3 *:pointer-events-auto">
+      {/* Tip above the panel, cards below: the two never fight for the same
+          space, so the coach's bidding advice stays fully readable. */}
+      <div className="flex flex-col items-center gap-[1.4vmin]">
+        {coachTip !== null && coachTip !== '' && (
+          <div className="pointer-events-none">
+            <CoachTipPill tip={coachTip} />
+          </div>
+        )}
+        <BetCards
+          options={options}
+          {...(order !== undefined ? { order } : {})}
+          coaching={coaching}
+          recommended={recommendedOption}
+          hailMary12={hailMary12}
+          waiting={waiting}
+          onPass={() => {
+            feedback('play');
+            reportFunnel('bid', 'pass');
+            onAction({ type: 'place_bid', choice: { kind: 'pass' } });
+          }}
+          onBid={(o) => {
+            feedback('play');
+            reportFunnel('bid', 'bid');
+            onAction({
+              type: 'place_bid',
+              choice: { kind: 'bid', value: o.value, sansAtout: o.sansAtout },
+            });
+          }}
+        />
+      </div>
     </div>
   );
 }
