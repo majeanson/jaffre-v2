@@ -20,6 +20,9 @@ const ARCADE_SECONDARY =
 export interface LobbyProps {
   readonly code: string;
   readonly onLeave: () => void;
+  /** Give the seat up for good and drop the table from "Your tables" —
+   * distinct from `onLeave`, which just goes Home and keeps it. */
+  readonly onLeaveTable?: (() => void) | undefined;
 }
 
 const T: Record<
@@ -42,6 +45,8 @@ const T: Record<
     houseRules: string;
     publicPill: string;
     privatePill: string;
+    leaveTable: string;
+    leaveConfirm: string;
   }
 > = {
   en: {
@@ -64,6 +69,8 @@ const T: Record<
     houseRules: 'House rules',
     publicPill: 'Public',
     privatePill: 'Private',
+    leaveTable: 'Leave table',
+    leaveConfirm: 'Sure? Seat frees up',
   },
   fr: {
     room: (code) => `Salon ${code}`,
@@ -89,12 +96,21 @@ const T: Record<
     houseRules: 'Règles maison',
     publicPill: 'Publique',
     privatePill: 'Privée',
+    leaveTable: 'Quitter la table',
+    leaveConfirm: 'Certain? Le siège se libère',
   },
 };
 
 /** Pre-game room: pick a seat, fill the rest with bots, start. */
-export function Lobby({ code, onLeave }: LobbyProps) {
+export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
   const t = T[useLang()];
+  // Two-tap confirm on the irreversible exit, same contract as the table's.
+  const [leaveArmed, setLeaveArmed] = useState(false);
+  useEffect(() => {
+    if (!leaveArmed) return undefined;
+    const timer = setTimeout(() => setLeaveArmed(false), 4000);
+    return () => clearTimeout(timer);
+  }, [leaveArmed]);
   const { roster, viewer, connection } = useGameStore();
   const full = roster !== null && roster.seats.every((s) => s !== null);
   const emptySeats = roster === null ? 4 : roster.seats.filter((s) => s === null).length;
@@ -283,6 +299,21 @@ export function Lobby({ code, onLeave }: LobbyProps) {
           <Cta variant="secondary" onClick={onLeave}>
             {t.back}
           </Cta>
+          {/* Distinct from Home: that keeps your seat and the table card;
+              this hands the seat back and forgets the table. */}
+          {onLeaveTable !== undefined && seated && (
+            <Cta
+              variant="secondary"
+              data-testid="leave-table"
+              className={leaveArmed ? 'border-(--color-ap-danger) text-(--color-ap-danger-text)' : ''}
+              onClick={() => {
+                if (leaveArmed) onLeaveTable();
+                else setLeaveArmed(true);
+              }}
+            >
+              {leaveArmed ? t.leaveConfirm : t.leaveTable}
+            </Cta>
+          )}
           <HelpButton label={t.howToPlay} className={ARCADE_SECONDARY} />
         </div>
       </div>

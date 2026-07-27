@@ -243,6 +243,20 @@ function BadLinkNotice() {
   );
 }
 
+/**
+ * Give the seat up for good: tell the room, drop the table from "Your tables",
+ * and go Home. The counterpart to the plain Home exit, which keeps both — the
+ * two live side by side in the lobby, the table's Options drawer and the recap,
+ * and must never be confused for one another.
+ */
+function leaveTableFor(code: string): () => void {
+  return () => {
+    send({ t: 'leave' });
+    forgetTable(code);
+    location.hash = '';
+  };
+}
+
 function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
@@ -361,13 +375,7 @@ function AppRoutes() {
           // Spectators: drop the /watch suffix to get the takeover gate back.
           onTakeSeat={() => (location.hash = `#room/${route.code}`)}
           onLeave={() => (location.hash = '')}
-          onLeaveTable={() => {
-            // Recap "Leave": give the seat up for good (the top-bar leave stays a
-            // soft hop — seat kept, resume from "Your tables").
-            send({ t: 'leave' });
-            forgetTable(route.code);
-            location.hash = '';
-          }}
+          onLeaveTable={leaveTableFor(route.code)}
           onRematch={() => send({ t: 'start' })}
           // One click: re-pair the teams AND deal the next game. The DO handles
           // messages in order, so start sees the swapped seating.
@@ -378,7 +386,11 @@ function AppRoutes() {
           onToggleAutoPlay={(on) => send({ t: 'set_autoplay', on })}
         />
       ) : (
-        <Lobby code={route.code} onLeave={() => (location.hash = '')} />
+        <Lobby
+          code={route.code}
+          onLeave={() => (location.hash = '')}
+          onLeaveTable={leaveTableFor(route.code)}
+        />
       );
     content = (
       <>

@@ -163,6 +163,7 @@ export function Table({
         action={derived.headerAction}
         myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         onLeave={onLeave}
+        onLeaveTable={onLeaveTable}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}
         coachOn={coachOn}
