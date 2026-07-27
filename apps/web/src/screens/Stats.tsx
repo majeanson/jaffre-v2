@@ -122,7 +122,7 @@ const T: Record<
     netPoints: 'points nets',
     bestStreak: 'meilleure séquence',
     bidAccuracy: 'Précision des mises',
-    noContracts: 'Contrats : pas encore de contrat — nommes-en un et vois ce que ça donne.',
+    noContracts: 'Contrats : pas encore de contrat — prends-en un et vois ce que ça donne.',
     contract: (made, attempted, sa) =>
       `Tu fais le contrat ${String(made)} fois sur ${String(attempted)}${
         sa === null ? '' : ` · ${String(sa)} % à sans atout`

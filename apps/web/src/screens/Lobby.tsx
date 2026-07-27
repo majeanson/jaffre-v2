@@ -78,14 +78,14 @@ const T: Record<
     back: '← Accueil',
     howToPlay: 'Comment jouer',
     hailMary: 'Hail-Mary 12 sans atout — tout ou rien',
-    hailMaryHint: 'Réussis 12 sans atout pour gagner la partie — rate et tu la perds.',
+    hailMaryHint: 'Réussis 12 sans atout et tu gagnes la partie — rate-la et tu la perds.',
     turnTimer: 'Minuterie de tour',
-    turnTimerHint: '60 secondes par tour, ensuite un bot joue le tour.',
+    turnTimerHint: '60 secondes par tour; après, un bot joue à ta place.',
     publicTable: 'Afficher dans le salon public',
     publicHint:
       'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',
     reclaimHint:
-      "Un de ces sièges est à toi ? Connecte-toi sur l'écran d'accueil pour le reprendre.",
+      "Un de ces sièges est à toi? Connecte-toi sur l'écran d'accueil pour le reprendre.",
     houseRules: 'Règles maison',
     publicPill: 'Publique',
     privatePill: 'Privée',

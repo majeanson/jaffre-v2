@@ -90,7 +90,7 @@ const T: Record<
     keys: 'Clavier',
     keysHint: 'À la table.',
     keysList: [
-      ['1–8', 'joue cette carte (ou la met en file)'],
+      ['1–8', 'joue cette carte (ou la met en attente)'],
       ['1–6', 'mise 7–12 pendant les mises'],
       ['P', 'passe'],
       ['L / C', 'journal / clavardage'],

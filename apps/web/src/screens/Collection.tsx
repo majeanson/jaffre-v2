@@ -84,7 +84,7 @@ const T: Record<
     themes: 'Thèmes',
     showAll: 'Tout afficher (dev)',
     blurb:
-      'Monte de niveau sur le Parcours pour les habillages et thèmes du tracé; le reste, ce sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
+      'Les habillages et thèmes du Parcours arrivent avec les niveaux; les autres sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
     paintFirst: "Peins ta carte d'abord",
     equipped: (name) => `Équipé : ${name}`,
   },

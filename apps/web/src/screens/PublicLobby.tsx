@@ -48,7 +48,7 @@ const T: Record<
     empty: 'Aucune table ouverte. Partie rapide en crée une pour toi.',
     quickPlay: 'Partie rapide',
     live: 'Liste en direct',
-    join: 'Rejoindre',
+    join: 'Joindre',
     watch: 'Regarder',
     watchHint: 'Partie en cours — regarde en spectateur',
     full: 'Complète',

@@ -94,7 +94,7 @@ const T: Record<
     games: 'Parties',
     wins: 'Victoires',
     winRate: '% victoires',
-    streak: 'Série',
+    streak: 'Séquence',
     best: (n) => `record ${n}`,
     loading: 'Chargement…',
     noRecord: 'Aucune partie',

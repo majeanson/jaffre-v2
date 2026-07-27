@@ -94,7 +94,7 @@ const T: Record<
     login: 'Connexion',
     close: 'Fermer la connexion',
     optional:
-      'Facultatif — tu joues déjà comme invité. Te connecter garde simplement ton nom, tes stats et tes habillages sur tous tes appareils.',
+      'Facultatif — tu joues déjà comme invité. Te connecter sert juste à garder ton nom, tes stats et tes habillages sur tous tes appareils.',
     linked: 'Lié',
     linkedTo: (what) => `Lié · ${what}`,
     linkedNote: 'Tes parties te suivent — connecte-toi avec le même compte sur tous tes appareils.',
@@ -122,7 +122,7 @@ const T: Record<
     copied: 'Copié',
     haveWords: "J'ai un code à 3 mots",
     wordsHint:
-      "Tu as des mots comme lampe-tricot-hibou d'un autre appareil? Ils ramènent ces parties.",
+      'Tu as trois mots comme lampe-tricot-hibou notés sur un autre appareil? Entre-les pour récupérer ces parties-là.',
     namePlaceholder: 'Nom (facultatif)',
     restoring: 'Restauration…',
     restore: 'Restaurer',

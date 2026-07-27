@@ -37,7 +37,7 @@ const T: Record<
     invite: 'Inviter à ta table',
     pullUp: 'Tire-toi une bûche',
     sendThis:
-      'Envoie ça à qui tu veux à la table. Un tap et la personne arrive direct — pas de compte, rien à installer.',
+      'Envoie ça à qui tu veux à la table. La personne arrive direct en une touche — pas de compte, rien à installer.',
     scanToJoin: (code) => `Scanne pour joindre le salon ${code}`,
     tableCode: 'Code de la table',
     scanOrRead: 'Scanne le code, ou lis les mots à voix haute.',

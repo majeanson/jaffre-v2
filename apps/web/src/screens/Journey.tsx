@@ -116,10 +116,10 @@ const T: Record<
     skin: 'Habillage',
     theme: 'Thème',
     unlocked: 'Débloqué',
-    breather: 'Niveau tampon',
+    breather: 'Pas de récompense',
     challengesTitle: 'Au-delà du parcours',
     challengesBlurb:
-      'Les habillages et thèmes défis — séries, taux de victoires, sans-atout, ta némésis — se débloquent selon ta façon de jouer, pas ton volume. Retrouve-les dans la Collection et à côté de leurs Récompenses.',
+      'Les habillages et thèmes défis — séquences, taux de victoires, sans-atout, ta némésis — se débloquent selon ta façon de jouer, pas selon le nombre de parties. Ils sont dans la Collection et à côté de leur récompense.',
   },
 };
 
