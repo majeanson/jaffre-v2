@@ -79,11 +79,8 @@ test('a started public game is watchable from the lobby, and a spectator can tak
 
   // B lands on the room hash. Because B never sat and the game is already
   // started, App.tsx's routing shows the Visitor landing screen FIRST — its
-  // "take over a bot seat / just watch" choice IS the spectator's mid-game
-  // takeover affordance (there is no such control on the felt itself; it
-  // lives only on this pre-watch landing page, keyed off local `watching`
-  // state that resets on a fresh mount). Its bot-seat buttons carry a stable
-  // testid: `take-seat-{seat}`.
+  // "take over a bot seat / just watch" choice IS the spectator's entry
+  // decision. Its bot-seat buttons carry a stable testid: `take-seat-{seat}`.
   await expect.poll(() => b.evaluate(() => location.hash)).toBe(`#room/${code}`);
   const takeSeatButtons = b.locator('[data-testid^="take-seat-"]');
   await expect(takeSeatButtons.first()).toBeVisible();
@@ -91,17 +88,24 @@ test('a started public game is watchable from the lobby, and a spectator can tak
 
   // Choosing "Just watch" carries B onto the felt as a pure spectator: the
   // score strip renders, and there is nothing resembling a "Sit here" pick
-  // (the pre-game seat picker isn't shown once the game has started).
+  // (the pre-game seat picker isn't shown once the game has started). The
+  // choice is recorded in the URL, not in mount-local state.
   await b.getByRole('button', { name: 'Just watch' }).click();
   await expect(b.getByTestId('score-strip')).toBeVisible();
   await expect(b.getByRole('button', { name: 'Sit here' })).toHaveCount(0);
   await expect(b.locator('[data-testid^="take-seat-"]')).toHaveCount(0);
+  await expect.poll(() => b.evaluate(() => location.hash)).toBe(`#room/${code}/watch`);
 
-  // Reloading re-mounts the app: B is still an unseated spectator at a
-  // started game, so the Visitor landing (and its takeover affordance)
-  // reappears — this is how a spectator gets back to it mid-game.
+  // Reloading RESUMES watching — the '/watch' hash survives, so a spectator
+  // who refreshes stays on the felt instead of being bounced to the gate.
   await b.reload();
   await b.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(b.getByTestId('score-strip')).toBeVisible();
+  await expect(b.locator('[data-testid^="take-seat-"]')).toHaveCount(0);
+
+  // The way back to the takeover gate is an explicit spectator control on the
+  // felt (the utility bar's "Take a seat"), not an accidental reload.
+  await b.getByTestId('spectator-seat-gate').click();
   const takeoverBtn = b.locator('[data-testid^="take-seat-"]').first();
   await expect(takeoverBtn).toBeVisible();
   const seatTestId = await takeoverBtn.getAttribute('data-testid');

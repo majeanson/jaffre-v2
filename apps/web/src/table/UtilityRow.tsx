@@ -38,6 +38,8 @@ export interface UtilityRowProps {
   /** Always-visible help trigger — the rules one tap from the felt, not two
    * taps behind the score strip's Options drawer. */
   readonly help?: ReactNode;
+  /** Spectators only: back to the seat-takeover gate. */
+  readonly takeSeat?: ReactNode;
 }
 
 /** A full-height ink separator between the bar's cells. */
@@ -56,10 +58,12 @@ export function UtilityRow({
   autoPlay,
   sort,
   help,
+  takeSeat,
 }: UtilityRowProps) {
   const hasComms = comms !== undefined && comms !== null && comms !== false;
   const hasSort = sort !== undefined && sort !== null && sort !== false;
   const hasHelp = help !== undefined && help !== null && help !== false;
+  const hasTakeSeat = takeSeat !== undefined && takeSeat !== null && takeSeat !== false;
   return (
     <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center justify-end gap-2 py-1 sm:grid sm:grid-cols-[1fr_auto_1fr]">
       <span aria-hidden className="max-sm:hidden" />
@@ -84,6 +88,8 @@ export function UtilityRow({
         {sort}
         {hasHelp && <Divider />}
         {help}
+        {hasTakeSeat && <Divider />}
+        {takeSeat}
       </span>
     </div>
   );

@@ -33,6 +33,19 @@ export function IconSignOut() {
   );
 }
 
+/** Take a seat: a chair, seen from the side. */
+export function IconSeat() {
+  return (
+    <Svg>
+      <path d="M7 5v6h10V5" />
+      <path d="M5.5 11h13" />
+      <path d="M7.5 14v5" />
+      <path d="M16.5 14v5" />
+      <path d="M6.5 14h11" />
+    </Svg>
+  );
+}
+
 /** Auto-play: a friendly bot head — a bot covers your turns while you're away. */
 export function IconRobot() {
   return (

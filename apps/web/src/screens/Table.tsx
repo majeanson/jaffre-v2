@@ -1,5 +1,6 @@
 import { sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
+import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
@@ -25,8 +26,8 @@ import {
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { HelpButton } from '../help/HelpButton.js';
-import { ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
-import { IconQuestion } from '../components/icons.js';
+import { IconButton, ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
+import { IconQuestion, IconSeat } from '../components/icons.js';
 import { TrumpCallout } from '../table/TrumpCallout.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
@@ -62,6 +63,28 @@ export interface TableProps {
   readonly dev?: boolean;
   /** Practice only: run the one-time first-practice tutorial over the felt. */
   readonly tutorial?: boolean;
+  /** Spectators (online): back to the seat-takeover gate. Without it a
+   * watcher whose choice now persists in the URL would have no way in. */
+  readonly onTakeSeat?: () => void;
+}
+
+const TAKE_SEAT_T: Record<Lang, string> = {
+  en: 'Take a seat',
+  fr: 'Prendre un siège',
+};
+
+/**
+ * Spectator-only utility cell: back to the seat-takeover gate. The testid is
+ * deliberately NOT prefixed "take-seat-" — that prefix selects the Visitor
+ * gate's per-seat buttons in the spectate spec.
+ */
+function TakeSeatButton({ onClick }: { readonly onClick: () => void }) {
+  const label = TAKE_SEAT_T[useLang()];
+  return (
+    <IconButton plain data-testid="spectator-seat-gate" label={label} onClick={onClick}>
+      <IconSeat />
+    </IconButton>
+  );
 }
 
 /** Route-level composition of the game table: hooks + section layout, no game logic. */
@@ -77,6 +100,7 @@ export function Table({
   noDealIntro = false,
   dev = false,
   tutorial = false,
+  onTakeSeat,
   roomCode,
   frozenHold = false,
   initialUi,
@@ -195,6 +219,9 @@ export function Table({
           <HelpButton className={ICON_BTN_CELL_NEUTRAL}>
             <IconQuestion />
           </HelpButton>
+        }
+        takeSeat={
+          me === null && onTakeSeat !== undefined && <TakeSeatButton onClick={onTakeSeat} />
         }
       />
       <GameLogPanel

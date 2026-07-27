@@ -64,9 +64,10 @@ function RouteFallback() {
 }
 
 type Route =
-  | { kind: 'home' }
+  /** `badLink` carries the hash we couldn't route, so Home can say so once. */
+  | { kind: 'home'; badLink: string | null }
   | { kind: 'practice'; seed: number | null }
-  | { kind: 'room'; code: string }
+  | { kind: 'room'; code: string; watching: boolean }
   | { kind: 'scenes'; id: string | null }
   | { kind: 'corner' }
   | { kind: 'stats' }
@@ -80,17 +81,24 @@ type Route =
 
 function parseHash(): Route {
   const h = location.hash;
+  if (h === '' || h === '#') return { kind: 'home', badLink: null };
   if (h === '#practice') return { kind: 'practice', seed: null };
   // '#practice/<seed>' pins the deal + bot rng — used by the screenshot gallery.
   const practice = /^#practice\/(\d{1,10})$/.exec(h);
   if (practice !== null) return { kind: 'practice', seed: Number(practice[1]) };
-  const room = /^#room\/([a-z0-9-]{1,32})$/.exec(h);
-  if (room !== null) return { kind: 'room', code: room[1] as string };
+  // '/watch' keeps a spectator's choice IN the URL, so a reload (or a shared
+  // link) resumes watching instead of dropping back to the Visitor gate.
+  const room = /^#room\/([a-z0-9-]{1,32})(\/watch)?$/.exec(h);
+  if (room !== null) {
+    return { kind: 'room', code: room[1] as string, watching: room[2] !== undefined };
+  }
   // '#scenes[/<id>]' — live-through every game phase instantly (design/dev tool).
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
   if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#corner') return { kind: 'corner' };
-  // Old links/bookmarks to '#history' land on the record — the games list lives there now.
+  // Old links/bookmarks to '#history' land on the record — the games list
+  // lives there now. The address bar is rewritten to '#stats' on arrival
+  // (see AppRoutes) so the stale hash doesn't survive a copy-paste.
   if (h === '#history') return { kind: 'stats' };
   if (h === '#stats') return { kind: 'stats' };
   if (h === '#awards') return { kind: 'awards' };
@@ -101,7 +109,9 @@ function parseHash(): Route {
   if (h === '#paint') return { kind: 'paint' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
-  return { kind: 'home' };
+  // Anything else — a typo'd deep link, a stale bookmark, a dead room code —
+  // still lands on Home, but says so rather than silently pretending.
+  return { kind: 'home', badLink: h };
 }
 
 export function App() {
@@ -191,11 +201,35 @@ export function App() {
   );
 }
 
+/**
+ * A dead deep link used to dump you on Home with no explanation. One toast
+ * says what happened, and the bad hash is cleared so a reload doesn't repeat
+ * it (replaceState — the broken URL has no business in the back stack).
+ */
+function BadLinkNotice() {
+  const lang = useCurrentLang();
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    history.replaceState(null, '', location.pathname + location.search);
+  }, []);
+  if (!shown) return null;
+  return (
+    <Toast
+      message={
+        lang === 'fr'
+          ? 'Ce lien ne mène nulle part — retour à l’accueil.'
+          : "That link doesn't go anywhere — took you home."
+      }
+      durationMs={4000}
+      onDone={() => setShown(false)}
+    />
+  );
+}
+
 function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
   const viewer = useGameStore((s) => s.viewer);
-  const [watching, setWatching] = useState(false);
 
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
@@ -203,26 +237,39 @@ function AppRoutes() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Stale '#history' links resolve to the record — rewrite the address bar so
+  // the dead hash isn't what gets bookmarked or shared onward. replaceState
+  // (not an assignment) keeps it out of the back stack.
   useEffect(() => {
-    if (route.kind === 'practice') {
-      startLocalGame(route.seed ?? undefined);
-      return () => stopLocalGame();
-    }
-    if (route.kind === 'room') {
-      connect(route.code);
-      setWatching(false);
-      return () => {
-        // Tear the voice mesh down at the room boundary — it persists across the
-        // lobby→table remount, so leaving from either must clean it up. Music
-        // follows the same rule: the dock outlives the screens, not the room.
-        leaveVoice();
-        disconnect();
-        useGameStore.getState().reset();
-        useMusicStore.getState().reset();
-      };
-    }
-    return undefined;
+    if (location.hash === '#history') history.replaceState(null, '', '#stats');
   }, [route]);
+
+  // Keyed on the identity of the thing being connected to, NOT the route
+  // object: '#room/x' → '#room/x/watch' is the same socket, and re-running
+  // here would drop and re-open the connection mid-game.
+  const roomCode = route.kind === 'room' ? route.code : null;
+  const practiceSeed = route.kind === 'practice' ? route.seed : null;
+  const inPractice = route.kind === 'practice';
+
+  useEffect(() => {
+    if (!inPractice) return undefined;
+    startLocalGame(practiceSeed ?? undefined);
+    return () => stopLocalGame();
+  }, [inPractice, practiceSeed]);
+
+  useEffect(() => {
+    if (roomCode === null) return undefined;
+    connect(roomCode);
+    return () => {
+      // Tear the voice mesh down at the room boundary — it persists across the
+      // lobby→table remount, so leaving from either must clean it up. Music
+      // follows the same rule: the dock outlives the screens, not the room.
+      leaveVoice();
+      disconnect();
+      useGameStore.getState().reset();
+      useMusicStore.getState().reset();
+    };
+  }, [roomCode]);
 
   let content: ReactElement;
   if (route.kind === 'practice') {
@@ -268,11 +315,12 @@ function AppRoutes() {
     // iframe never remounts across Visitor→Lobby→Table, so the room's music
     // plays on without a gap through seat picking and game start.
     const screen =
-      started && typeof viewer !== 'number' && !watching ? (
+      started && typeof viewer !== 'number' && !route.watching ? (
         <Visitor
           code={route.code}
           onSit={(seat) => send({ t: 'sit', seat })}
-          onWatch={() => setWatching(true)}
+          // The choice goes in the URL, so a reload resumes watching.
+          onWatch={() => (location.hash = `#room/${route.code}/watch`)}
           onLeave={() => (location.hash = '')}
         />
       ) : started ? (
@@ -281,6 +329,8 @@ function AppRoutes() {
           dev
           roomCode={route.code}
           onAction={(action) => send({ t: 'action', action })}
+          // Spectators: drop the /watch suffix to get the takeover gate back.
+          onTakeSeat={() => (location.hash = `#room/${route.code}`)}
           onLeave={() => (location.hash = '')}
           onLeaveTable={() => {
             // Recap "Leave": give the seat up for good (the top-bar leave stays a
@@ -309,10 +359,13 @@ function AppRoutes() {
     );
   } else {
     content = (
-      <Home
-        onPractice={() => (location.hash = '#practice')}
-        onJoinRoom={(code) => (location.hash = `#room/${code}`)}
-      />
+      <>
+        {route.badLink !== null && <BadLinkNotice key={route.badLink} />}
+        <Home
+          onPractice={() => (location.hash = '#practice')}
+          onJoinRoom={(code) => (location.hash = `#room/${code}`)}
+        />
+      </>
     );
   }
   return <Suspense fallback={<RouteFallback />}>{content}</Suspense>;
