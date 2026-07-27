@@ -27,6 +27,7 @@ import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion } from '../components/icons.js';
+import { TrumpCallout } from '../table/TrumpCallout.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
@@ -105,6 +106,9 @@ export function Table({
     >
       {online && <ConnectionBanner />}
       <NoticeToast />
+      {/* Real play only (dev = App-mounted): scenes and replay stage mid-round
+          states where the fanfare would be noise in every shot. */}
+      {dev && <TrumpCallout />}
       <TopBar
         view={view}
         contract={derived.contractDisplay}
