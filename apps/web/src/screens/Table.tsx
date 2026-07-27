@@ -214,6 +214,17 @@ export function Table({
         />
       )}
       {tutorial && <TutorialCoach />}
+      {/* Real rooms (dev = App-mounted, never scenes/replay): the lite
+          first-online-game card + the three make-or-break coach-marks. */}
+      {!tutorial && online && dev && (
+        <TutorialCoach
+          online
+          onEnableCoach={() => {
+            saveCoachPref(true);
+            setCoachOn(true);
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -60,6 +60,29 @@ export function skipTutorial(): void {
   persist(TUTORIAL_STEPS);
 }
 
+const ONLINE_INTRO_KEY = 'jaffre:onlineIntro';
+
+/** Whether the one-shot first-online-game intro card has been shown. Separate
+ * from the practice tutorial: seeing the lite online card must not eat the
+ * full practice flow, and vice versa (the practice gate is `hasSeenTutorial`,
+ * checked alongside this one at the online table). */
+export function hasSeenOnlineIntro(): boolean {
+  try {
+    return localStorage.getItem(ONLINE_INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Record that the online intro card has been shown so it never fires again. */
+export function markOnlineIntroSeen(): void {
+  try {
+    localStorage.setItem(ONLINE_INTRO_KEY, '1');
+  } catch {
+    // Storage unavailable — the card may simply show again next session.
+  }
+}
+
 const REWARD_KEY = 'jaffre:tutorialReward';
 
 /** Whether the tutorial-completion reward has already been granted on this

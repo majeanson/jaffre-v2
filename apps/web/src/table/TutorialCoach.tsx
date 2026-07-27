@@ -5,8 +5,10 @@ import { HelpSheet, type ConceptId } from '../help/HelpSheet.js';
 import { setLocalPaused } from '../local/localGame.js';
 import { useGameStore } from '../state/gameStore.js';
 import {
+  hasSeenOnlineIntro,
   hasSeenTutorial,
   loadTutorialSeen,
+  markOnlineIntroSeen,
   markTutorialRewardGranted,
   markTutorialStep,
   skipTutorial,
@@ -31,6 +33,27 @@ const INTRO: Record<Lang, { title: string; body: string; start: string; skip: st
     skip: 'Passer le tutoriel',
   },
 };
+
+/** The lite first-online-game card: three facts, no frozen bots, no sequence. */
+const ONLINE_INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
+  en: {
+    title: 'First time at a table?',
+    body: 'Bids are points, not tricks — 11 in play each round. Trump is whatever suit the declarer leads first. The Coach can suggest bids and cards while you learn.',
+    start: 'Turn Coach on',
+    skip: 'Got it',
+  },
+  fr: {
+    title: 'Première fois à une table?',
+    body: 'Les mises sont des points, pas des levées — 11 en jeu par ronde. L’atout, c’est la couleur que le déclarant joue en premier. Le Coach peut te suggérer mises et cartes pendant que tu apprends.',
+    start: 'Activer le Coach',
+    skip: 'Compris',
+  },
+};
+
+/** The subset of coach-marks worth firing at an online table — the three
+ * make-or-break concepts, shared with the practice progress store so nothing
+ * ever repeats between modes. */
+const ONLINE_MARKS: readonly MarkStep[] = ['bidding', 'trump', 'firstTrick'];
 
 const UI: Record<Lang, { learn: string; close: string; learning: string; complete: string }> = {
   en: { learn: 'Learn more', close: 'Dismiss tip', learning: 'Learning', complete: 'Complete!' },
@@ -60,15 +83,28 @@ function tutorialEnabled(): boolean {
 /**
  * First-practice tutorial: a one-time intro overlay (teams + first-to-41),
  * then contextual coach-marks fired by real local-game transitions, each shown
- * at most once ever. Mounted only on the practice table; a no-op online.
+ * at most once ever. Mounted on the practice table, and — in `online` mode —
+ * on a real room table as a lite variant: one compact intro card (only when
+ * the practice tutorial was never taken) plus the three make-or-break marks,
+ * with no frozen bots, no progress pip and no skip-all.
  */
-export function TutorialCoach() {
+export function TutorialCoach({
+  online = false,
+  onEnableCoach,
+}: {
+  /** Lite mode for a real room: one card + three marks, nothing frozen. */
+  readonly online?: boolean;
+  /** Online intro's "Turn Coach on" — flips the table's coach toggle. */
+  readonly onEnableCoach?: () => void;
+}) {
   const lang = useLang();
   const view = useGameStore((s) => s.view);
   const heldTrick = useGameStore((s) => s.heldTrick);
 
   const [enabled] = useState(tutorialEnabled);
-  const [introUp, setIntroUp] = useState(() => enabled && !hasSeenTutorial());
+  const [introUp, setIntroUp] = useState(
+    () => enabled && !hasSeenTutorial() && (!online || !hasSeenOnlineIntro()),
+  );
   const [queue, setQueue] = useState<readonly MarkStep[]>([]);
   const [helpJump, setHelpJump] = useState<ConceptId | null>(null);
   // Steps already handled this mount — guards against re-queuing on the next
@@ -82,17 +118,22 @@ export function TutorialCoach() {
   const [pipDone, setPipDone] = useState(() => seenCount() === MARK_ORDER.length);
 
   // While the intro is up, freeze the bots so the auction waits behind it.
+  // Online there is nothing local to freeze — the room plays on behind the card.
   useEffect(() => {
-    if (!introUp) return undefined;
+    if (!introUp || online) return undefined;
     setLocalPaused(true);
     return () => setLocalPaused(false);
-  }, [introUp]);
+  }, [introUp, online]);
 
   const dismissIntro = useCallback(() => {
-    markTutorialStep('intro');
-    seenRef.current.add('intro');
+    if (online) {
+      markOnlineIntroSeen();
+    } else {
+      markTutorialStep('intro');
+      seenRef.current.add('intro');
+    }
     setIntroUp(false);
-  }, []);
+  }, [online]);
 
   const skipAll = useCallback(() => {
     skipTutorial();
@@ -109,6 +150,7 @@ export function TutorialCoach() {
     const seen = seenRef.current;
     const fired: MarkStep[] = [];
     const consider = (id: MarkStep, cond: boolean): void => {
+      if (online && !ONLINE_MARKS.includes(id)) return;
       if (cond && !seen.has(id)) fired.push(id);
     };
 
@@ -134,7 +176,7 @@ export function TutorialCoach() {
     }
     fired.sort((a, b) => MARK_ORDER.indexOf(a) - MARK_ORDER.indexOf(b));
     setQueue((q) => [...q, ...fired]);
-  }, [enabled, introUp, view, heldTrick]);
+  }, [enabled, introUp, view, heldTrick, online]);
 
   const current = queue[0] ?? null;
 
@@ -147,7 +189,9 @@ export function TutorialCoach() {
 
   // "Replay tutorial" (from the HelpSheet) clears progress in this same tab —
   // re-arm live: wipe what we've seen, re-show the intro, drop any queue.
+  // Practice only: mid-room, re-arming a welcome overlay would be noise.
   useEffect(() => {
+    if (online) return undefined;
     const onReset = (): void => {
       seenRef.current = new Set();
       setQueue([]);
@@ -156,7 +200,7 @@ export function TutorialCoach() {
     };
     window.addEventListener(TUTORIAL_RESET_EVENT, onReset);
     return () => window.removeEventListener(TUTORIAL_RESET_EVENT, onReset);
-  }, [enabled]);
+  }, [enabled, online]);
 
   const progress = seenCount();
   const total = MARK_ORDER.length;
@@ -187,13 +231,26 @@ export function TutorialCoach() {
 
   // The pip steps aside while a mark or the intro is up (on a phone the mark
   // spans the width), and retires once complete or nothing is left to track.
-  const showPip = !introUp && !pipDone && current === null;
+  // Online the lite variant tracks nothing — no pip at all.
+  const showPip = !online && !introUp && !pipDone && current === null;
 
   return (
     <>
       {introUp &&
         createPortal(
-          <IntroOverlay lang={lang} onStart={dismissIntro} onSkip={skipAll} />,
+          <IntroOverlay
+            copy={(online ? ONLINE_INTRO : INTRO)[lang]}
+            onStart={
+              online
+                ? () => {
+                    onEnableCoach?.();
+                    dismissIntro();
+                  }
+                : dismissIntro
+            }
+            onSkip={online ? dismissIntro : skipAll}
+            onDismiss={dismissIntro}
+          />,
           document.body,
         )}
       {current !== null &&
@@ -270,35 +327,40 @@ function ProgressPip({
   );
 }
 
-/** The welcome overlay: teams + first-to-41, with a skip. Pauses the bots. */
+/** The welcome overlay: title + one paragraph + primary/secondary actions.
+ * Practice: teams + first-to-41 (Start / Skip, backdrop = Start). Online lite:
+ * three facts (Turn Coach on / Got it, backdrop = Got it via onDismiss). */
 function IntroOverlay({
-  lang,
+  copy,
   onStart,
   onSkip,
+  onDismiss,
 }: {
-  readonly lang: Lang;
+  readonly copy: { title: string; body: string; start: string; skip: string };
   readonly onStart: () => void;
   readonly onSkip: () => void;
+  /** Backdrop click / Escape — the "just get out of my way" path. */
+  readonly onDismiss: () => void;
 }) {
-  const t = INTRO[lang];
+  const t = copy;
   const startRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     startRef.current?.focus();
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onStart();
+        onDismiss();
       }
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
-  }, [onStart]);
+  }, [onDismiss]);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div
         aria-hidden
-        onClick={onStart}
+        onClick={onDismiss}
         className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
       />
       <div
