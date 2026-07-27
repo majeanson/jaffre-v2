@@ -1817,6 +1817,14 @@ describe('GameRoom', () => {
       expect(stamped.turnStartedAt).toBeTypeOf('number');
       expect(stamped.alarm).not.toBeNull();
 
+      // The roster advertises the recap deadline room-wide (readyTimeoutAt) —
+      // that's what the client's "Auto-ready in 0:12" line under the Ready
+      // button ticks against. A fresh joiner's welcome snapshot carries it.
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      const w = await bob.next('welcome');
+      expect(w.roster.readyTimeoutAt).toBe((stamped.turnStartedAt ?? 0) + TURN_TIMER_MS);
+
       // BEFORE the deadline a forced wake must leave her un-readied.
       expect(await runDurableObjectAlarm(stub)).toBe(true);
       const still = await snapshot(stub);
@@ -1840,7 +1848,7 @@ describe('GameRoom', () => {
       });
       expect(flipped).toBeUndefined();
 
-      await endQuiet(room, alice);
+      await endQuiet(room, alice, bob);
     },
   );
 

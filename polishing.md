@@ -508,9 +508,10 @@ alarm loop + client badges). Shipped:
 - With the turnTimer rule on, a connected human idling the recap out is
   auto-readied after the same 60s (ready only — never flips their auto-play).
 
-Open follow-up: surface the recap ready-timeout on the Ready button (a quiet
-countdown ring in the last ~20s) so the auto-ready never feels like a ghost
-click; today it's server-silent by design.
+Follow-up SHIPPED same day: the recap ready-timeout is surfaced under the
+Ready button (`Roster.readyTimeoutAt` → "Auto-ready in 0:12", last 20s only,
+muted; `round-over-timeout` scene) — the auto-ready no longer reads as a
+ghost click.
 
 ## Verified-good (don't "polish" these into regressions)
 

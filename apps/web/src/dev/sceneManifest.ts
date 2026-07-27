@@ -288,6 +288,12 @@ export const SCENE_METAS = [
     probe: 'role=button[name="Waiting for the others…"]',
   },
   {
+    id: 'round-over-timeout',
+    label: 'Round summary — auto-ready countdown',
+    screen: 'table',
+    probe: '[data-testid="ready-countdown"]',
+  },
+  {
     id: 'game-over',
     label: 'Game over — recap',
     screen: 'table',

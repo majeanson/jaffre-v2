@@ -50,6 +50,7 @@ export function Overlays({
           specials={teamSpecialsFrom(view.capturedTricks)}
           readySeats={readySeats}
           youReady={me !== null ? (readySeats[me] ?? false) : true}
+          readyTimeoutAt={roster.readyTimeoutAt ?? null}
           onReady={onReady}
           rounds={rounds}
           summaries={view.roundSummaries}

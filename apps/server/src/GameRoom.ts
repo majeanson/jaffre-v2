@@ -1713,11 +1713,13 @@ export class GameRoom implements DurableObject {
       this.send(socket, { t: 'view', seq: this.seq, view: viewFor(game, a.viewer) });
     }
     // The roster is the only carrier of the per-seat clocks (turnTimerAt, a
-    // disconnected seat's botSwapAt → botPlaying flip) — without a roster per
-    // action those would only surface after an unrelated join/close/ready
-    // refresh. Every table gets it, not just turn-timer ones: rule-opt-out
-    // rooms still show the away countdown and its bot-playing steady state.
-    if (game.phase === 'bidding' || game.phase === 'playing') {
+    // disconnected seat's botSwapAt → botPlaying flip) and, on round_over
+    // entry, the recap's readyTimeoutAt — without a roster per action those
+    // would only surface after an unrelated join/close/ready refresh. Every
+    // table gets it, not just turn-timer ones: rule-opt-out rooms still show
+    // the away countdown and its bot-playing steady state. (game_over has its
+    // own broadcast below, after the series tallies are updated.)
+    if (game.phase !== 'game_over') {
       this.broadcastRoster({});
     }
     if (game.phase === 'game_over') {
@@ -2189,6 +2191,15 @@ export class GameRoom implements DurableObject {
     });
     const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;
     const hostSeat = this.meta.hostId !== undefined ? this.seatOf(this.meta.hostId) : null;
+    // Room-level recap deadline (turnTimer rule): when connected idle humans
+    // get auto-readied. Mirrors recapReadyDeadline minus the per-user
+    // connectivity gate — the client shows it under the Ready button.
+    const readyTimeoutAt =
+      this.game?.phase === 'round_over' &&
+      this.turnTimerRuleOn() &&
+      this.meta.turnStartedAt !== undefined
+        ? this.meta.turnStartedAt + (this.meta.turnTimerMs ?? TURN_TIMER_MS)
+        : Number.POSITIVE_INFINITY;
     return {
       now: Date.now(),
       seats,
@@ -2204,6 +2215,7 @@ export class GameRoom implements DurableObject {
         turnTimer: this.turnTimerRuleOn(),
       },
       public: this.meta.public ?? false,
+      ...(Number.isFinite(readyTimeoutAt) ? { readyTimeoutAt } : {}),
       ...(hostSeat !== null ? { hostSeat } : {}),
       ...(this.meta.lastRatings !== undefined ? { ratings: this.meta.lastRatings } : {}),
     };

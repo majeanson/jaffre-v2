@@ -12,8 +12,16 @@ import {
 } from '@jaffre/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useScrollLock } from '../components/useScrollLock.js';
+import { useGameStore } from '../state/gameStore.js';
 import { StartingHandsInset, StartingHandsPanel } from './StartingHandsPanel.js';
 import { TEAM_LABELS } from '../teams.js';
+import { formatCountdown, useCountdown } from './useCountdown.js';
+
+/** The auto-ready countdown stays hidden until this many seconds remain — a
+ * player reading the recap must not be hurried the moment it opens, only
+ * warned when the server is genuinely about to ready them (mirrors the
+ * seat chips' TURN_TIMER_WARN_S). */
+const AUTO_READY_WARN_S = 20;
 
 const T: Record<
   Lang,
@@ -33,6 +41,7 @@ const T: Record<
     trumpTitle: (suit: string) => string;
     waiting: string;
     ready: string;
+    autoReady: (countdown: string) => string;
   }
 > = {
   en: {
@@ -52,6 +61,7 @@ const T: Record<
     trumpTitle: (suit) => `Trump: ${suit}`,
     waiting: 'Waiting for the others…',
     ready: 'Ready for the next round',
+    autoReady: (countdown) => `Auto-ready in ${countdown}`,
   },
   fr: {
     teams: TEAM_LABELS.fr,
@@ -70,6 +80,7 @@ const T: Record<
     trumpTitle: (suit) => `Atout : ${suit}`,
     waiting: 'On attend les autres…',
     ready: 'Prêt pour la prochaine ronde',
+    autoReady: (countdown) => `Prêt auto dans ${countdown}`,
   },
 };
 
@@ -84,6 +95,10 @@ export interface RoundSummaryOverlayProps {
   readonly readySeats: readonly boolean[];
   /** True once YOU are ready (disables the button). */
   readonly youReady: boolean;
+  /** Epoch ms when the server auto-readies connected idle humans (turnTimer
+   * rule), or null. Surfaced as a quiet countdown under the Ready button in
+   * the final stretch, so the auto-ready never reads as a ghost click. */
+  readonly readyTimeoutAt?: number | null;
   readonly onReady: () => void;
   /** Finished rounds, oldest first — the same written scoresheet as the top bar. */
   readonly rounds: readonly ScoreboardRound[];
@@ -135,12 +150,16 @@ export function RoundSummaryOverlay({
   specials,
   readySeats,
   youReady,
+  readyTimeoutAt = null,
   onReady,
   rounds,
   summaries,
   myTeam,
 }: RoundSummaryOverlayProps) {
   const tr = T[useLang()];
+  const clockSkew = useGameStore((s) => s.clockSkew);
+  // Only tick while it can matter: once you're ready the deadline is moot.
+  const autoReadySeconds = useCountdown(youReady ? null : readyTimeoutAt, clockSkew);
   const ref = useRef<HTMLDivElement>(null);
   useScrollLock();
   useEffect(() => {
@@ -265,6 +284,18 @@ export function RoundSummaryOverlay({
           <Cta type="button" onClick={onReady} disabled={youReady} className="w-full">
             {youReady ? tr.waiting : tr.ready}
           </Cta>
+          {/* The server's recap ready-timeout, made visible in its final
+              stretch — without this the auto-ready would read as a ghost
+              click. Quiet by design: muted text, no urgency styling. */}
+          {autoReadySeconds !== null && autoReadySeconds <= AUTO_READY_WARN_S && (
+            <p
+              data-testid="ready-countdown"
+              role="status"
+              className="text-(length:--text-fluid-xs) font-semibold text-(--color-ap-muted)"
+            >
+              {tr.autoReady(formatCountdown(autoReadySeconds))}
+            </p>
+          )}
           {/* Who we're waiting on: one chip per seat in team colours — ready
               seats fill solid with a ✓, pending ones stay a quiet outline
               (their team shows as a dot, so the two sides still read). */}

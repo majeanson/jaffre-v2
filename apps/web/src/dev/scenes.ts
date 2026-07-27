@@ -583,6 +583,28 @@ const LOADERS: Record<SceneId, () => void> = {
   'round-over-ready': gameScene('round-over-ready', (s) => s.phase === 'round_over', {
     roster: READY_ROSTER,
   }),
+  'round-over-timeout': () => {
+    // Inside the warn window (≤20s) so the auto-ready countdown is visible
+    // under the Ready button; computed at load time so it never starts
+    // expired (same pattern as the seat countdown scenes).
+    const roster: Roster = {
+      seats: [
+        { name: 'You', isBot: false, connected: true, ready: false },
+        { name: 'Marcel', isBot: true, connected: true },
+        { name: 'Ginette', isBot: false, connected: true, ready: true },
+        { name: 'Réal', isBot: true, connected: true },
+      ],
+      spectators: 0,
+      started: true,
+      readyTimeoutAt: Date.now() + 15_000,
+    };
+    // Shares the 'round-over' cache key — same driven state, only the
+    // injected roster differs.
+    inject(
+      cached('round-over', (s) => s.phase === 'round_over'),
+      { roster },
+    );
+  },
   'game-over': gameScene('game-over', (s) => s.phase === 'game_over'),
   // Corner/Stats/Replay render their own screens from demo props (not the
   // store), so their loaders are no-ops — resetting here would race Replay's

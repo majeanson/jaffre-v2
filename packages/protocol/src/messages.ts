@@ -189,6 +189,12 @@ export interface Roster {
      * RosterSeat.turnTimerAt for the per-seat countdown it drives. */
     readonly turnTimer?: boolean;
   };
+  /** Epoch ms when the round_over recap auto-readies connected idle humans
+   * (turnTimer rule). Present only during round_over with the rule on — the
+   * client shows a quiet countdown on the Ready button in the final stretch,
+   * so the server's auto-ready never reads as a ghost click. Skew-correct
+   * with `now`, like the per-seat deadlines. */
+  readonly readyTimeoutAt?: number;
   /** Whether this table is listed for matchmaking (public lobby / Quick Play). */
   readonly public?: boolean;
   /** Last finished game's rating movement, one entry per SEATED human who was
