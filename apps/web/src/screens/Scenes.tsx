@@ -186,6 +186,14 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
               { id: 'first-win', grantedAt: 1_752_000_000_000 },
               { id: 'first-game', grantedAt: 1_751_000_000_000 },
             ]}
+            demoStanding={{
+              id: 'demo',
+              name: 'Marcel',
+              color: null,
+              rating: 1084,
+              ratingGames: 24,
+              rank: 7,
+            }}
             onLeave={onLeave}
           />
         ))}

@@ -4,7 +4,7 @@ import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ShellNote } from '../components/ShellNote.js';
-import { fetchStats, type Stats } from '../net/history.js';
+import { fetchLeaderboard, fetchStats, type Leaderboard, type Stats } from '../net/history.js';
 import { fetchAwards, type EarnedAward } from '../net/awards.js';
 import { AWARDS } from '../awards.js';
 import { levelProgress, xpFromStats } from '../progression.js';
@@ -17,6 +17,8 @@ export interface CornerProps {
   readonly demoStats?: Stats;
   /** Scene viewer: staged earned-awards list. */
   readonly demoAwards?: readonly EarnedAward[];
+  /** Scene viewer: staged standing for the rank tile. */
+  readonly demoStanding?: Leaderboard['you'];
 }
 
 const T: Record<
@@ -35,6 +37,13 @@ const T: Record<
     latestAward: string;
     noAwards: string;
     equipped: string;
+    rank: string;
+    rankAt: (n: number) => string;
+    unranked: string;
+    unrankedHint: string;
+    paint: string;
+    paintGo: string;
+    paintHint: string;
   }
 > = {
   en: {
@@ -51,6 +60,13 @@ const T: Record<
     latestAward: 'Latest award',
     noAwards: 'No awards yet',
     equipped: 'Equipped',
+    rank: 'Rank',
+    rankAt: (n) => `#${String(n)} on the board`,
+    unranked: 'Unranked',
+    unrankedHint: '10 rated games to join the board',
+    paint: 'Your avatar',
+    paintGo: 'Paint it',
+    paintHint: 'Pixel-art studio — your face at every table',
   },
   fr: {
     title: 'Ton coin',
@@ -66,6 +82,13 @@ const T: Record<
     latestAward: 'Dernière récompense',
     noAwards: 'Pas encore de récompense',
     equipped: 'Équipé',
+    rank: 'Rang',
+    rankAt: (n) => `#${String(n)} au classement`,
+    unranked: 'Non classé',
+    unrankedHint: '10 parties cotées pour entrer au classement',
+    paint: 'Ton avatar',
+    paintGo: 'Peins-le',
+    paintHint: 'Studio pixel — ton visage à chaque table',
   },
 };
 
@@ -80,15 +103,17 @@ const TILE_CLASS =
  * "Your corner": the one full-screen sheet for everything that's yours. The
  * MetaNav strip on top is the subtab row (corner, journey, collection,
  * awards, record, leaderboard — each its own hash route sharing this same
- * header shape), and this screen's own body is a snapshot of the four other
- * meta screens — level, win rate, latest award, equipped cosmetics — each
- * tile linking through to its full screen.
+ * header shape), and this screen's own body is a snapshot of the five other
+ * meta screens — level, win rate, latest award, equipped cosmetics, rank —
+ * each tile linking through to its full screen. Every tab has a tile: the
+ * strip is the map, the tiles are the state, and neither repeats the other.
  */
-export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
+export function Corner({ onLeave, demoStats, demoAwards, demoStanding }: CornerProps) {
   const lang = useLang();
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
   const [earned, setEarned] = useState<readonly EarnedAward[]>(demoAwards ?? []);
+  const [standing, setStanding] = useState<Leaderboard['you']>(demoStanding ?? null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -100,6 +125,11 @@ export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
     fetchAwards()
       .then((a) => live && setEarned(a))
       .catch(() => live && setEarned([]));
+    // The board is 30s-cached and shared with the Leaderboard screen — an
+    // unranked player (or a failed read) simply shows the "not yet" tile.
+    fetchLeaderboard()
+      .then((b) => live && setStanding(b.you))
+      .catch(() => live && setStanding(null));
     return () => {
       live = false;
     };
@@ -133,6 +163,7 @@ export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
             latestAward={latestAward}
             skinLabel={skinLabel}
             themeLabel={themeLabel}
+            standing={standing}
           />
         )}
       </div>
@@ -140,8 +171,8 @@ export function Corner({ onLeave, demoStats, demoAwards }: CornerProps) {
   );
 }
 
-/** The four snapshot tiles — split out so the level bar's progress calc only
- * runs once `stats` is known non-null. */
+/** The snapshot tiles — one per meta destination, split out so the level bar's
+ * progress calc only runs once `stats` is known non-null. */
 function CornerTiles({
   lang,
   t,
@@ -149,6 +180,7 @@ function CornerTiles({
   latestAward,
   skinLabel,
   themeLabel,
+  standing,
 }: {
   readonly lang: Lang;
   readonly t: (typeof T)['en'];
@@ -156,6 +188,7 @@ function CornerTiles({
   readonly latestAward: (typeof AWARDS)[number] | null;
   readonly skinLabel: string;
   readonly themeLabel: string;
+  readonly standing: Leaderboard['you'];
 }) {
   const progress = levelProgress(xpFromStats(stats));
   const barPct = progress.span === 0 ? 100 : (progress.into / progress.span) * 100;
@@ -212,6 +245,43 @@ function CornerTiles({
         <span className={MICRO_LABEL}>{t.equipped}</span>
         <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
           {skinLabel} · {themeLabel}
+        </span>
+      </a>
+
+      {/* The sixth destination: the strip has a Leaderboard tab, so the
+          snapshot row carries its summary too — no tab without a tile. */}
+      <a href="#leaderboard" className={`${TILE_CLASS} sm:col-span-2`}>
+        <span className={MICRO_LABEL}>{t.rank}</span>
+        {standing === null ? (
+          <>
+            <span className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">
+              {t.unranked}
+            </span>
+            <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+              {t.unrankedHint}
+            </span>
+          </>
+        ) : (
+          <span className="flex items-baseline gap-[0.6em]">
+            <span className="font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-gold)">
+              {t.rankAt(standing.rank)}
+            </span>
+            <span className="font-arcade-ui text-[0.8em] tabular-nums text-(--color-ap-muted)">
+              {standing.rating}
+            </span>
+          </span>
+        )}
+      </a>
+
+      {/* The Paint Studio's only labelled door in the app — 12 source files
+          previously reachable just by clicking the home hero card. */}
+      <a href="#paint" className={`${TILE_CLASS} sm:col-span-2`}>
+        <span className={MICRO_LABEL}>{t.paint}</span>
+        <span className="flex items-baseline gap-[0.6em]">
+          <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
+            {t.paintGo}
+          </span>
+          <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">{t.paintHint}</span>
         </span>
       </a>
     </div>
