@@ -10,11 +10,9 @@ import { useState, type ReactNode } from 'react';
 import { HelpButton } from '../help/HelpButton.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
-import { applyLang, LANGS } from '../lang.js';
 import { IconButton, ICON_BTN_LABELED } from '../components/IconButton.js';
 import {
   IconGear,
-  IconGlobe,
   IconList,
   IconPalette,
   IconQuestion,
@@ -22,6 +20,7 @@ import {
   IconSparkle,
 } from '../components/icons.js';
 import { CollectionSheet } from '../components/CollectionSheet.js';
+import { SettingsSheet } from '../components/SettingsSheet.js';
 import { StartingHandsInset } from './StartingHandsPanel.js';
 import type { ContractDisplay } from './useTableDerived.js';
 
@@ -31,7 +30,7 @@ const T: Record<
     leave: string;
     options: string;
     skins: string;
-    language: string;
+    settings: string;
     howToPlay: string;
     help: string;
     coach: string;
@@ -44,7 +43,7 @@ const T: Record<
     leave: 'Leave table',
     options: 'Options',
     skins: 'Skins',
-    language: 'Language',
+    settings: 'Settings',
     howToPlay: 'How to play',
     help: 'Help',
     coach: 'Coach — suggest a move on your turn',
@@ -56,7 +55,7 @@ const T: Record<
     leave: 'Quitter la table',
     options: 'Options',
     skins: 'Habillages',
-    language: 'Langue',
+    settings: 'Réglages',
     howToPlay: 'Comment jouer',
     help: 'Aide',
     coach: 'Coach — suggère un coup à ton tour',
@@ -118,7 +117,7 @@ export function TopBar({
   const t = T[lang];
   const [optionsOpen, setOptionsOpen] = useState(defaultDetailsOpen);
   const [skinsOpen, setSkinsOpen] = useState(false);
-  const otherLang = LANGS.find((l) => l.id !== lang) ?? LANGS[0];
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Tapping a finished round's R-row on the scorepad unfolds that round's
   // starting hands — the same reveal the round summary offers, available for
@@ -132,6 +131,12 @@ export function TopBar({
   return (
     <div className="flex w-full max-w-[min(96vw,100rem)] justify-center" data-testid="score-strip">
       {skinsOpen && <CollectionSheet onClose={() => setSkinsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsSheet
+          coach={{ on: coachOn, onToggle: onToggleCoach }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
       <ScoreStrip
         defaultDetailsOpen={defaultDetailsOpen}
         teamNames={[TEAMS[0].label, TEAMS[1].label]}
@@ -170,14 +175,14 @@ export function TopBar({
                 <IconButton label={t.skins} text={t.skins} onClick={() => setSkinsOpen(true)}>
                   <IconPalette />
                 </IconButton>
-                <IconButton
-                  label={`${t.language} · ${otherLang?.label ?? ''}`}
-                  text={(otherLang?.id ?? 'en').toUpperCase()}
-                  onClick={() => otherLang && applyLang(otherLang.id)}
-                >
-                  <IconGlobe />
-                </IconButton>
                 <SoundToggle labeled />
+                <IconButton
+                  label={t.settings}
+                  text={t.settings}
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  <IconGear />
+                </IconButton>
                 <HelpButton label={t.howToPlay} text={t.help} className={ICON_BTN_LABELED}>
                   <IconQuestion />
                 </HelpButton>

@@ -18,11 +18,12 @@ test('a French browser gets the French home screen by default', async ({ browser
   await expect(page.getByRole('link', { name: 'Ton record' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ton coin' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CA');
-  // Back to the title screen — the bots/friends split lives behind PLAY.
+  // Back to the title screen — the play actions live behind the PLAY door,
+  // with solo/quick-play/friends as peers on the open root.
   await page.getByRole('button', { name: 'Accueil' }).click();
   await page.getByRole('button', { name: 'Jouer', exact: true }).click();
-  await page.getByRole('button', { name: 'Créer', exact: true }).click();
   await expect(page.getByText('Jouer contre les bots')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Entre amis' })).toBeVisible();
   await context.close();
 });
 

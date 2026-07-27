@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
-import { IconQuestion } from '../components/icons.js';
+import { IconGear, IconQuestion } from '../components/icons.js';
 import { LangSwitcher } from '../components/LangSwitcher.js';
+import { SettingsSheet } from '../components/SettingsSheet.js';
 import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
@@ -17,9 +18,9 @@ import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/aut
 import { playerName, setPlayerName } from '../net/socket.js';
 import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
 
-const T: Record<Lang, { corner: string; customize: string }> = {
-  en: { corner: 'Your corner', customize: 'Customize' },
-  fr: { corner: 'Ton coin', customize: 'Personnaliser' },
+const T: Record<Lang, { corner: string; customize: string; settings: string }> = {
+  en: { corner: 'Your corner', customize: 'Customize', settings: 'Settings' },
+  fr: { corner: 'Ton coin', customize: 'Personnaliser', settings: 'Réglages' },
 };
 
 /** Scene-only: a fully-staged identity (no network) for the viewer. */
@@ -74,7 +75,9 @@ export function Home({
   // The Customize sheet: a scene stages an identity open on mount so its
   // probes still find the name field/recovery plates without a click.
   const [customizeOpen, setCustomizeOpen] = useState(staged || customizeOpenProp);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const customizeTriggerRef = useRef<HTMLButtonElement>(null);
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Establish identity as soon as the home screen shows (not only once the
   // recovery card mounts — it now lives inside the Customize sheet) so a
@@ -246,10 +249,29 @@ export function Home({
                 bar at its real density — hiding the login chip is exactly
                 how the linked-email overflow slipped past 505 screenshots. */}
             <LangSwitcher />
+            <button
+              ref={settingsTriggerRef}
+              type="button"
+              aria-label={t.settings}
+              title={t.settings}
+              onClick={() => setSettingsOpen(true)}
+              className={ICON_BTN_NEUTRAL}
+            >
+              <IconGear />
+            </button>
             <LoginButton defaultOpen={loginOpen} />
           </div>
         </div>
       </div>
+
+      {settingsOpen && (
+        <SettingsSheet
+          onClose={() => {
+            setSettingsOpen(false);
+            settingsTriggerRef.current?.focus();
+          }}
+        />
+      )}
 
       {customizeOpen && (
         <CustomizeSheet
