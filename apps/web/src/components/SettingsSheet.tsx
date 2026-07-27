@@ -4,6 +4,7 @@ import { useLang, type Lang } from '@jaffre/ui';
 import { applyLang, LANGS } from '../lang.js';
 import { playClick, setSoundEnabled, soundEnabled } from '../audio/clicks.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { setSnappyPace, snappyPace } from '../table/pacePref.js';
 import { resetTutorial } from '../table/tutorialPref.js';
 import { InstallButton } from '../pwa/InstallButton.js';
 import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
@@ -20,6 +21,8 @@ const T: Record<
     soundHint: string;
     coach: string;
     coachHint: string;
+    pace: string;
+    paceHint: string;
     app: string;
     appHint: string;
     theme: string;
@@ -40,6 +43,8 @@ const T: Record<
     soundHint: 'Card sounds & haptics.',
     coach: 'Coach',
     coachHint: 'Suggests a bid or card on your turn.',
+    pace: 'Snappy animations',
+    paceHint: 'Shorter deal, trick hold and bot pauses.',
     app: 'App',
     appHint: 'Install Jaffre and get "your turn" alerts.',
     theme: 'Theme & skins',
@@ -59,6 +64,8 @@ const T: Record<
     soundHint: 'Sons de cartes et vibrations.',
     coach: 'Coach',
     coachHint: 'Suggère une mise ou une carte à ton tour.',
+    pace: 'Animations rapides',
+    paceHint: 'Distribution, levées et pauses des bots plus courtes.',
     app: 'App',
     appHint: 'Installe Jaffre et reçois les alertes « à ton tour ».',
     theme: 'Thème et habillages',
@@ -142,6 +149,7 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
   const closeRef = useRef<HTMLButtonElement>(null);
   const [sound, setSound] = useState(soundEnabled);
   const [coachOn, setCoachOn] = useState(() => coach?.on ?? loadCoachPref(false));
+  const [snappy, setSnappy] = useState(snappyPace);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -219,6 +227,17 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
               setCoachOn(next);
               if (coach !== undefined) coach.onToggle();
               else saveCoachPref(next);
+            }}
+          />
+        </Row>
+
+        <Row title={t.pace} hint={t.paceHint}>
+          <Switch
+            label={t.pace}
+            checked={snappy}
+            onChange={(next) => {
+              setSnappyPace(next);
+              setSnappy(next);
             }}
           />
         </Row>

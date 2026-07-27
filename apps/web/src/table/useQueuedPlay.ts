@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { feedback } from '../audio/clicks.js';
 import { useGameStore } from '../state/gameStore.js';
+import { paced } from './pacePref.js';
 import { queueStillValid } from './queue.js';
 
 /** Pause after your turn arrives before a queued card fires — the play should
@@ -69,7 +70,7 @@ export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
       setQueued(null);
       feedback('play');
       onActionRef.current({ type: 'play_card', card: queued });
-    }, QUEUE_FIRE_DELAY_MS);
+    }, paced(QUEUE_FIRE_DELAY_MS));
     return () => clearTimeout(timer);
   }, [queued, view, me, myTurn, heldTrick, setQueued, autoPiloted]);
 }

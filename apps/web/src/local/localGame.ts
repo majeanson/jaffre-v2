@@ -6,6 +6,7 @@ import type { Roster } from '@jaffre/protocol';
 import { loadPracticeBots, PRACTICE_BOT_NAMES, type PracticeBots } from '../home/practiceBots.js';
 import { playerName } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
+import { paced } from '../table/pacePref.js';
 
 /**
  * Practice mode: the whole game runs in this tab. The store still only ever
@@ -157,7 +158,8 @@ function scheduleBots(afterTrick = false): void {
       const action = chooseAction(viewFor(state, seat), rng, botDifficulties[seat - 1]);
       if (action !== null) apply(action);
     },
-    // Leave room for the trick-hold + sweep animation before the next play.
-    afterTrick ? 2600 : 750,
+    // Leave room for the trick-hold + sweep animation before the next play —
+    // both of which scale with the pacing preference, so this must too.
+    paced(afterTrick ? 2600 : 750),
   );
 }

@@ -1,10 +1,16 @@
-import { TrickArea } from '@jaffre/ui';
+import { TrickArea, useLang, type Lang } from '@jaffre/ui';
 import type { ReactNode } from 'react';
 import { CoachHint } from './CoachHint.js';
 import { DealIntro } from './DealIntro.js';
 import { SeatChip } from './SeatChip.js';
 import { TrickBanner } from './TrickBanner.js';
+import { skipTrickHold } from './useTrickHold.js';
 import type { HeldBanner, TableDerived } from './useTableDerived.js';
+
+const SKIP_HOLD_LABEL: Record<Lang, string> = {
+  en: 'Continue — skip the pause on this trick',
+  fr: 'Continuer — passer la pause sur cette levée',
+};
 
 export interface StageProps {
   readonly trickPlays: TableDerived['trickPlays'];
@@ -41,6 +47,11 @@ export function Stage({
   capHeight = false,
   noDealIntro = false,
 }: StageProps) {
+  const skipLabel = SKIP_HOLD_LABEL[useLang()];
+  // A held trick is the one moment the felt itself is tappable: it means
+  // "I've seen it, move on" — and after the last trick of a round it's what
+  // the recap is waiting on.
+  const holding = banner !== null;
   return (
     <div
       className={`relative w-full max-w-[min(96vw,100rem)] min-h-0 flex-1 ${
@@ -63,6 +74,19 @@ export function Stage({
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[15%] max-sm:inset-y-[10%]">
         <TrickArea plays={trickPlays} sweepTo={sweepTo} highlight={winnerPosition} size="lg" />
       </div>
+      {holding && (
+        // Covers the felt while a trick is held, so a tap anywhere on the
+        // table continues. Sits above the cards (z-10) but below the seat
+        // chips (z-20) so a chip peek still wins the tap.
+        <button
+          type="button"
+          data-testid="skip-hold"
+          aria-label={skipLabel}
+          title={skipLabel}
+          onClick={skipTrickHold}
+          className="absolute inset-[7%] z-[11] cursor-pointer rounded-[46%] max-sm:inset-x-[2%] max-sm:inset-y-[3%]"
+        />
+      )}
       {banner !== null && <TrickBanner banner={banner} />}
       {banner === null && coachTip !== null && coachTip !== '' && <CoachHint tip={coachTip} />}
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·

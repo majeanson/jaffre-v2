@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayingCard } from '@jaffre/ui';
+import { paceScale, paced } from './pacePref.js';
 
 /** How long the fly-out itself takes before the layer starts fading. */
 const DEAL_MS = 1000;
@@ -100,8 +101,9 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
     if (isFirstMount || !changed) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     setPhase('dealing');
-    const toFade = window.setTimeout(() => setPhase('fading'), DEAL_MS);
-    const toIdle = window.setTimeout(() => setPhase('idle'), DEAL_MS + FADE_MS);
+    const dealMs = paced(DEAL_MS);
+    const toFade = window.setTimeout(() => setPhase('fading'), dealMs);
+    const toIdle = window.setTimeout(() => setPhase('idle'), dealMs + paced(FADE_MS));
     return () => {
       window.clearTimeout(toFade);
       window.clearTimeout(toIdle);
@@ -139,7 +141,10 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
       {seats.flatMap((seat) =>
         Array.from({ length: CARDS_PER_SEAT }, (_, i) => {
           const [tx, ty] = targets[seat];
-          const delay = (seat * CARDS_PER_SEAT + i) * 0.09;
+          // Stagger and flight time ride the same scale as the phase timers
+          // above, so the animation still finishes inside its own window.
+          const scale = paceScale();
+          const delay = (seat * CARDS_PER_SEAT + i) * 0.09 * scale;
           return (
             <div
               key={`${String(seat)}-${String(i)}`}
@@ -152,7 +157,7 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
                   '--dty': ty,
                   '--dtr': `${String((i - 1) * 10 + seat * 3)}deg`,
                   opacity: 0,
-                  animation: `deal-fly 0.75s ease-out ${String(delay)}s 1 both`,
+                  animation: `deal-fly ${String(0.75 * scale)}s ease-out ${String(delay)}s 1 both`,
                 } as CSSProperties
               }
             >
