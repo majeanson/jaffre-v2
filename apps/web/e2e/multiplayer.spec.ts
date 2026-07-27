@@ -14,20 +14,30 @@ import type { Page } from '@playwright/test';
  * (contract winner may be a human, who must lead the first trick).
  */
 async function actIfMyTurn(page: Page): Promise<void> {
-  // The bid panel now stays up for the whole auction — an ENABLED Pass (not a
+  // The bid panel stays up for the whole auction — an ENABLED Pass (not a
   // merely visible one) is what marks this human's turn.
+  //
+  // Every probe here is bounded and failure-tolerant ON PURPOSE. This polls a
+  // live two-client game, so any element can vanish between two awaits: the
+  // last bid ends the auction and unmounts the panel, and an unbounded
+  // `isEnabled()` on the element we just saw would then auto-wait for a node
+  // that is never coming back — blocking until the whole test times out. A
+  // vanished control simply means "not my turn any more", so treat it as that.
   const pass = page.getByRole('button', { name: 'Pass' });
-  if ((await pass.isVisible()) && (await pass.isEnabled())) {
+  const canBid = await pass.isEnabled({ timeout: 500 }).catch(() => false);
+  if (canBid) {
     const seven = page.getByRole('button', { name: 'Bid 7', exact: true });
-    if (await seven.isEnabled().catch(() => false)) {
-      await seven.click();
-    } else {
-      await pass.click();
-    }
+    const canSeven = await seven.isEnabled({ timeout: 500 }).catch(() => false);
+    await (canSeven ? seven : pass).click({ timeout: 2000 }).catch(() => undefined);
     return;
   }
   const legal = page.locator('[role="option"][data-playable="true"]');
-  if ((await legal.count()) > 0) await legal.first().click();
+  if ((await legal.count()) > 0) {
+    await legal
+      .first()
+      .click({ timeout: 2000 })
+      .catch(() => undefined);
+  }
 }
 
 test('two clients share a room, play starts, and a disconnect is shown', async ({ browser }) => {
