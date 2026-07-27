@@ -40,7 +40,9 @@ const T: Record<
   }
 > = {
   en: {
-    leave: 'Leave table',
+    // The truth of the action: a soft hop — the seat is kept, resume from
+    // "Your tables". Permanently leaving lives on the recap ("Leave table").
+    leave: 'Back to home — your seat is kept',
     options: 'Options',
     skins: 'Skins',
     settings: 'Settings',
@@ -52,7 +54,7 @@ const T: Record<
     log: 'Log',
   },
   fr: {
-    leave: 'Quitter la table',
+    leave: 'Retour à l’accueil — ton siège est gardé',
     options: 'Options',
     skins: 'Habillages',
     settings: 'Réglages',
@@ -155,7 +157,7 @@ export function TopBar({
         myTeam={myTeam}
         actions={
           <>
-            <IconButton danger label={t.leave} onClick={onLeave}>
+            <IconButton label={t.leave} onClick={onLeave}>
               <IconSignOut />
             </IconButton>
             <IconButton

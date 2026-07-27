@@ -20,6 +20,8 @@ export interface OverlaysProps {
   readonly onRematch?: (() => void) | undefined;
   readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
+  /** Online rooms: the recap's leave is permanent (seat freed) — two-tap it. */
+  readonly confirmLeave?: boolean;
 }
 
 /** Owns the modal layer: round summary between rounds, game recap at the end. */
@@ -32,6 +34,7 @@ export function Overlays({
   onRematch,
   onSwapSeats,
   onLeave,
+  confirmLeave = false,
 }: OverlaysProps) {
   const readySeats = roster.seats.map((s) => s?.ready ?? s?.isBot ?? false);
   // The round/game modal waits for the final trick's held moment (banner +
@@ -79,6 +82,7 @@ export function Overlays({
           onRematch={onRematch}
           onSwapSeats={onSwapSeats}
           onLeave={onLeave}
+          confirmLeave={confirmLeave}
         />
       )}
     </>

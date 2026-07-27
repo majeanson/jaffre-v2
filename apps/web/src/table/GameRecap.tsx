@@ -45,6 +45,8 @@ const T: Record<
     rematch: string;
     swapSeats: string;
     leave: string;
+    leaveTable: string;
+    leaveConfirm: string;
     rating: string;
     teamLabel: (t: 0 | 1) => string;
     hailMaryWonTitle: string;
@@ -84,6 +86,8 @@ const T: Record<
     rematch: 'Rematch',
     swapSeats: 'Swap seats',
     leave: 'Leave',
+    leaveTable: 'Leave table',
+    leaveConfirm: 'Sure? Seat frees up',
     rating: 'Rating',
     teamLabel: (t) => TEAM_LABELS.en[t],
     hailMaryWonTitle: 'Hail Mary!',
@@ -123,6 +127,8 @@ const T: Record<
     rematch: 'Revanche',
     swapSeats: 'Échanger les sièges',
     leave: 'Quitter',
+    leaveTable: 'Quitter la table',
+    leaveConfirm: 'Certain? Le siège se libère',
     rating: 'Cote',
     teamLabel: (t) => teamLabelWithArticle(t, 'fr'),
     hailMaryWonTitle: 'Coup de grâce!',
@@ -160,6 +166,9 @@ export interface GameRecapProps {
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
+  /** Online: leaving here frees the seat for good — arm a two-tap confirm.
+   * Practice leaves have nothing to lose and stay one tap. */
+  readonly confirmLeave?: boolean;
   /** The viewer's own rating movement from this game — absent for spectators
    * and unrated games (a bot on either team). */
   readonly myRating?: { readonly rating: number; readonly delta: number } | undefined;
@@ -411,12 +420,21 @@ export function GameRecap({
   onRematch,
   onSwapSeats,
   onLeave,
+  confirmLeave = false,
   endReason,
   myRating,
   showXp = false,
 }: GameRecapProps) {
   const lang = useLang();
   const t = T[lang];
+  // Two-tap leave (online): first tap arms the confirm, which relaxes on its
+  // own so a stray tap doesn't leave the button stuck asking.
+  const [leaveArmed, setLeaveArmed] = useState(false);
+  useEffect(() => {
+    if (!leaveArmed) return undefined;
+    const timer = setTimeout(() => setLeaveArmed(false), 4000);
+    return () => clearTimeout(timer);
+  }, [leaveArmed]);
   // Which round's starting hands are expanded in the round-by-round table
   // (one at a time), keyed by roundIndex; null when all are collapsed.
   const [openRound, setOpenRound] = useState<number | null>(null);
@@ -759,8 +777,16 @@ export function GameRecap({
                 {t.swapSeats}
               </Cta>
             )}
-            <Cta type="button" variant="secondary" onClick={onLeave} className="flex-1">
-              {t.leave}
+            <Cta
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                if (!confirmLeave || leaveArmed) onLeave();
+                else setLeaveArmed(true);
+              }}
+              className={`flex-1 ${leaveArmed ? 'border-(--color-ap-danger) text-(--color-ap-danger-text)' : ''}`}
+            >
+              {confirmLeave ? (leaveArmed ? t.leaveConfirm : t.leaveTable) : t.leave}
             </Cta>
           </div>
           {/* Quiet post-game moment: this record is worth keeping — link an

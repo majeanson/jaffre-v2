@@ -166,6 +166,7 @@ export function Table({
         onRematch={onRematch}
         onSwapSeats={onSwapSeats}
         onLeave={onLeaveTable ?? onLeave}
+        confirmLeave={onLeaveTable !== undefined}
       />
       <UtilityRow
         you={seatInfo(0)}

@@ -51,7 +51,8 @@ const T: Record<
     start: 'Start the game',
     waitingHelper: (n) =>
       `${String(n)} seat${n === 1 ? '' : 's'} left — add bots or share the code`,
-    back: '← Back home',
+    // "Home" — the one exit word across the app (MetaHeader, Visitor, here).
+    back: '← Home',
     howToPlay: 'How to play',
     hailMary: 'Hail-Mary 12 sans atout',
     hailMaryHint: 'Make 12 sans atout to win the whole game — miss and you lose it.',

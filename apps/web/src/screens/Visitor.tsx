@@ -53,7 +53,9 @@ const T: Record<
     sitDown: 'Sit down',
     takeOver: (name) => `Take over ${name}’s seat`,
     justWatch: 'Just watch',
-    leave: 'Leave',
+    // "Home", not "Leave": a visitor holds nothing here — the exit is the
+    // same soft hop every other screen calls Home.
+    leave: '← Home',
     whoAtTable: "Who's at the table",
     awayHint: 'Away seats free up or pass to a bot shortly.',
   },
@@ -72,7 +74,7 @@ const T: Record<
     sitDown: "S'asseoir",
     takeOver: (name) => `Prendre le siège de ${name}`,
     justWatch: 'Juste regarder',
-    leave: 'Quitter',
+    leave: '← Accueil',
     whoAtTable: 'Qui est à la table',
     awayHint: 'Les sièges absents se libèrent ou passent à un bot sous peu.',
   },
