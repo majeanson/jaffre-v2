@@ -1,5 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { CardSkinProvider, CARD_SKIN_RENDERERS, LangProvider, PixelWave } from '@jaffre/ui';
+import {
+  CardSkinProvider,
+  CARD_SKIN_RENDERERS,
+  LangProvider,
+  PixelWave,
+  preloadCardArt,
+} from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
 import {
   BONHOMME_SKIN_EVENT,
@@ -145,6 +151,14 @@ export function App() {
     () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {}, bonhommes }),
     [cardSkin, bonhommes],
   );
+
+  // Warm the equipped cosmetics' card art (the OG portraits/emblems are real
+  // JPGs) as soon as we know what's equipped, and again on every swap — so the
+  // first Red 0 of a game is already decoded when it lands, instead of
+  // starting its fetch at that moment. Fetches nothing for skins with no art.
+  useEffect(() => {
+    preloadCardArt(cardSkin, bonhommes);
+  }, [cardSkin, bonhommes]);
 
   // Once per load: reconcile cosmetics with real stats — degrade a now-locked
   // choice and surface freshly play-unlocked skins/themes as a toast. Skipped in
