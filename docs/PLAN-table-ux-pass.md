@@ -15,7 +15,8 @@ land.
   Difficile** (color-coded), shown per seat in the lobby (like the mock). Mirrors
   practice-mode adversaires. Needs protocol/server `add_bot { difficulty }`.
 - **Fonts**: no Visitor TTF (licensed) — keep Silkscreen.
-- **DEV_UNLOCK_ALL** stays `true` for now (everything previewable).
+- **DEV_UNLOCK_ALL** is now `false` (cosmetics ship play-earned; it was `true`
+  during this pass for previewability).
 
 ## Conventions
 
@@ -157,7 +158,7 @@ Paste this into a new session:
 > `format:check` fails). Verify with targeted `npx playwright test -c
 apps/web/playwright.config.ts <spec>` for the areas you touch, and screenshot via a
 > throwaway `apps/web/e2e/_x.spec.ts` (delete it before committing). After deploy,
-> curl the live bundle to confirm. `DEV_UNLOCK_ALL` stays `true`. End commit messages
+> curl the live bundle to confirm. End commit messages
 > with the Co-Authored-By trailer.
 >
 > **Conventions:** a reskin is a `[data-*]` token block / renderer, never a component
