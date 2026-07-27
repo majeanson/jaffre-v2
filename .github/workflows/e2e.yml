@@ -5,21 +5,48 @@ name: E2E (Playwright)
 # download, wrangler dev, the multi-client room orchestration in
 # lobby/two-players/spectate — is paid here and nowhere else. The suite is slow
 # (~5 min) and mostly catches what static checks and unit tests can't, so it
-# runs nightly and on demand rather than blocking a deploy.
+# always runs BESIDE the deploy path, never inside it.
 #
-# Because nothing gates prod on this, run it on demand (the "Run workflow"
-# button) before anything risky, and read the nightly result.
+# Three ways in, none of them on the merge path:
+#   workflow_run — after CI & Deploy succeeds on main, so whatever just shipped
+#                  gets browser coverage within minutes instead of by 06:00 UTC.
+#                  It runs AFTER the deploy, so it delays nothing.
+#   schedule     — the nightly safety net (and the telemetry digest below).
+#   dispatch     — the "Run workflow" button, for anything risky.
 on:
   schedule:
     # 06:00 UTC daily (low-traffic). Cron uses UTC; adjust if the window shifts.
     - cron: '0 6 * * *'
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ['CI & Deploy']
+    types: [completed]
+
+concurrency:
+  # Rapid pushes supersede each other: finishing a 5-minute suite against a
+  # commit that is already behind prod helps nobody.
+  group: e2e-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   e2e:
+    # `workflow_run` fires for EVERY CI completion — PRs, feature branches and
+    # failures included — so filter down to a green main push, which is the
+    # only case that actually deployed. schedule/dispatch always run.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # A workflow_run job checks out the DEFAULT BRANCH TIP by default, not
+          # the commit that triggered it — which would silently test something
+          # other than what shipped. Pin the triggering SHA; the fallback covers
+          # schedule/dispatch, where there is no workflow_run payload.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -34,13 +61,16 @@ jobs:
           path: apps/web/test-results/
           retention-days: 7
       # Telemetry beacons otherwise vanish into Workers Logs that nobody reads;
-      # print the last-7-days digest into this nightly job's log where a human
-      # will see it. The custom domain sits behind the zone's bot protection,
-      # which 403s plain curl from runner IPs (see verify-deploy.ts), so this
-      # tries the same worker's WAF-free workers.dev host first. Never fails
-      # the job — purely informational.
+      # print the last-7-days digest into this job's log where a human will see
+      # it. The custom domain sits behind the zone's bot protection, which 403s
+      # plain curl from runner IPs (see verify-deploy.ts), so this tries the
+      # same worker's WAF-free workers.dev host first. Never fails the job —
+      # purely informational.
+      #
+      # Skipped on post-deploy runs: a 7-day digest is worth reading once a day,
+      # not on every push, and repeating it there would train people to ignore it.
       - name: Telemetry digest
-        if: always()
+        if: always() && github.event_name != 'workflow_run'
         run: |
           curl -s --max-time 20 https://jaffre.marc-jeanson.workers.dev/api/telemetry/summary || true
           curl -s --max-time 20 https://jaffre.marcportal.com/api/telemetry/summary || true

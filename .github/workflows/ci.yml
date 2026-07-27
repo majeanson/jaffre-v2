@@ -29,9 +29,10 @@ jobs:
   #
   # Deploy is gated on that fast `ci` job only, so a merge reaches prod in a
   # couple of minutes. The trade is real and accepted: a regression that only a
-  # browser catches can ship, so the deploy proves itself against the LIVE site
-  # (verify-deploy.ts below) and the full suite runs nightly in e2e.yml. Run it
-  # on demand (workflow_dispatch) before anything risky.
+  # browser catches can ship. Three things cover it, none of them blocking —
+  # the deploy proves itself against the LIVE site (verify-deploy.ts below),
+  # e2e.yml re-runs the full suite on this exact commit as soon as THIS
+  # workflow succeeds on main (workflow_run), and it runs again nightly.
   deploy:
     needs: [ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
