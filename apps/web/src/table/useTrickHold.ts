@@ -7,8 +7,10 @@ export const TRICK_HOLD_MS = 1600;
 /** How long the sweep animation runs before the trick is cleared. */
 export const SWEEP_MS = 600;
 
-/** Same-tab signal that the player tapped the held trick to move on. */
-const SKIP_HOLD_EVENT = 'jaffre:skip-hold';
+/** Same-tab signal that the player tapped the held trick to move on. Exported
+ * so practice mode can pull its bot timer in to match (the bots' post-trick
+ * pause is sized to clear the full hold + sweep). */
+export const SKIP_HOLD_EVENT = 'jaffre:skip-hold';
 
 /**
  * Cut the current trick hold short — the sweep runs immediately instead of
@@ -35,8 +37,14 @@ export function useTrickHold(frozen = false): void {
 
   useEffect(() => {
     const onSkip = (): void => {
-      const held = useGameStore.getState().heldTrick;
+      const store = useGameStore.getState();
+      const held = store.heldTrick;
       if (held === null) return;
+      // Idempotent per trick. Re-arming on a second tap would cancel the
+      // in-flight clear timer and start a FRESH sweep window — so mashing a
+      // button labelled "Continue" used to delay the very thing it promises
+      // (and, after the last trick, the round summary waiting on it).
+      if (skippedRef.current === held) return;
       skippedRef.current = held;
       setSkipToken((n) => n + 1);
     };

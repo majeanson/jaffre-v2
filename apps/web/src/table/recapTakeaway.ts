@@ -60,13 +60,18 @@ export function recapTakeaway(
   const t = T[lang];
   const myTeam = mySeat % 2;
 
-  const mine = played.filter((r) => r.contract.seat % 2 === myTeam);
+  // Advice about bidding must be about YOUR OWN bids: "try bidding a point
+  // lower" is nonsense aimed at contracts your partner took. Only the
+  // never-defended line is a team fact (if the team never held it, neither
+  // did you).
+  const mine = played.filter((r) => r.contract.seat === mySeat);
   const missed = mine.filter((r) => !r.contractMade).length;
+  const teamHeld = played.filter((r) => r.contract.seat % 2 === myTeam);
 
   if (mine.length >= 2 && missed > mine.length / 2) {
     return { text: t.missed(missed, mine.length) };
   }
-  if (mine.length === 0) return { text: t.defended };
+  if (teamHeld.length === 0) return { text: t.defended };
   if (mine.length >= 2 && missed === 0) return { text: t.perfect(mine.length) };
 
   // Tricks are seat-indexed and optional (absent on legacy summaries).

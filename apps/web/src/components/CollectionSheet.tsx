@@ -3,9 +3,9 @@ import { useLang, type Lang } from '@jaffre/ui';
 import { Collection } from '../screens/Collection.js';
 import { useScrollLock } from './useScrollLock.js';
 
-const T: Record<Lang, { close: string }> = {
-  en: { close: 'Close' },
-  fr: { close: 'Fermer' },
+const T: Record<Lang, { close: string; collection: string }> = {
+  en: { close: 'Close', collection: 'Collection' },
+  fr: { close: 'Fermer', collection: 'Collection' },
 };
 
 /**
@@ -25,7 +25,16 @@ export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain">
+    // role/aria-modal are load-bearing, not decoration: the table stays mounted
+    // and live under this sheet, and the felt's keyboard shortcuts refuse to
+    // fire while a modal dialog is open (useTableKeys' typingElsewhere). Without
+    // them, pressing 1–8 here would play a card you can't see.
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.collection}
+      className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain"
+    >
       <Collection onLeave={onClose} leaveLabel={t.close} />
     </div>
   );

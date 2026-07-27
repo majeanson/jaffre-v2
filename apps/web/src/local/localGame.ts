@@ -7,6 +7,7 @@ import { loadPracticeBots, PRACTICE_BOT_NAMES, type PracticeBots } from '../home
 import { playerName } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
 import { paced } from '../table/pacePref.js';
+import { SKIP_HOLD_EVENT } from '../table/useTrickHold.js';
 
 /**
  * Practice mode: the whole game runs in this tab. The store still only ever
@@ -143,7 +144,12 @@ export function redeal(seed?: number): void {
   startLocalGame(seed);
 }
 
-function scheduleBots(afterTrick = false): void {
+/** Post-trick pause: long enough to clear the hold + sweep before the next
+ * play. When the player skips the hold, only the sweep is left to wait for. */
+const AFTER_TRICK_MS = 2600;
+const AFTER_SKIP_MS = 800;
+
+function scheduleBots(afterTrick = false, skipped = false): void {
   if (botTimer !== null) clearTimeout(botTimer);
   botTimer = null;
   if (paused) return;
@@ -160,6 +166,20 @@ function scheduleBots(afterTrick = false): void {
     },
     // Leave room for the trick-hold + sweep animation before the next play —
     // both of which scale with the pacing preference, so this must too.
-    paced(afterTrick ? 2600 : 750),
+    paced(afterTrick ? (skipped ? AFTER_SKIP_MS : AFTER_TRICK_MS) : 750),
   );
+}
+
+/**
+ * The player skipped the trick hold: pull the bots' post-trick pause in to
+ * match. Without this, skipping just trades a held trick you were looking at
+ * for a blank felt you're waiting on — the same delay, less to see.
+ * Registered once at module load; inert unless a local game is mid-trick.
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener(SKIP_HOLD_EVENT, () => {
+    if (botTimer === null || state === null || state.phase !== 'playing') return;
+    if (state.turn === HUMAN_SEAT) return;
+    scheduleBots(true, true);
+  });
 }

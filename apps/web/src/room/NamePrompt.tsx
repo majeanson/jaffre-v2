@@ -58,8 +58,11 @@ function promptEnabled(): boolean {
  */
 export function NamePrompt({ code }: { readonly code: string }) {
   const t = T[useLang()];
+  // Gate on the NAME, not on the key's existence: Home writes 'Player'
+  // verbatim the first time you tap any play action, so a key check would
+  // mean this prompt never fired for the very players it exists for.
   const [gone, setGone] = useState(
-    () => !promptEnabled() || latched() || localStorage.getItem('jaffre-name') !== null,
+    () => !promptEnabled() || latched() || playerName() !== 'Player',
   );
   const [value, setValue] = useState('');
   if (gone) return null;

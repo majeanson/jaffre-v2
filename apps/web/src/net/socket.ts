@@ -109,7 +109,15 @@ async function open(): Promise<void> {
     const msg = JSON.parse(e.data as string) as ServerMessage;
     handle(msg);
   };
+  // Captured so a LATE close from a socket we already replaced can't clobber
+  // the live one: `connect()` re-arms `closedByUs = false` synchronously, so
+  // without this identity check the old socket's close (arriving a tick later)
+  // reads as an unexpected drop — spurious "Reconnecting…", a scheduled
+  // reopen, and `ws = null` wiping the new socket's reference, leaving an
+  // orphaned-but-joined connection the server still counts as present.
+  const self = ws;
   ws.onclose = () => {
+    if (ws !== self) return;
     ws = null;
     stopPing();
     if (closedByUs) return;
@@ -126,7 +134,14 @@ async function open(): Promise<void> {
 export function disconnect(): void {
   closedByUs = true;
   stopPing();
-  ws?.close();
+  // Detach before closing: the close event lands a tick later, by which time a
+  // reconnect (e.g. the lobby's name prompt) may already have re-armed state.
+  if (ws !== null) {
+    ws.onclose = null;
+    ws.onmessage = null;
+    ws.onopen = null;
+    ws.close();
+  }
   ws = null;
   room = null;
   attempts = 0;

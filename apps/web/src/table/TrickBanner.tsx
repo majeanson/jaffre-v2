@@ -43,7 +43,11 @@ export function TrickBanner({ banner }: TrickBannerProps) {
   return (
     <div
       data-testid="trick-banner"
-      className={`absolute bottom-[4%] left-1/2 z-30 w-max max-w-[94vw] -translate-x-1/2 max-sm:bottom-[12%] ${special ? 'special-burst' : 'pop-in'}`}
+      // pointer-events-none: the banner sits above the tap-to-continue felt
+      // button and is the most eye-catching thing on screen while a trick is
+      // held — i.e. exactly where a player taps to move on. It owns no
+      // controls, so taps belong to the skip button underneath it.
+      className={`pointer-events-none absolute bottom-[4%] left-1/2 z-30 w-max max-w-[94vw] -translate-x-1/2 max-sm:bottom-[12%] ${special ? 'special-burst' : 'pop-in'}`}
     >
       {/* Fluid: root font scales with the viewport, internals in em. Ink pill
           with a gold border + zero-blur hard shadow — permanently dark, so its

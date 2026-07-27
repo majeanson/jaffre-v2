@@ -635,10 +635,14 @@ export function GameRecap({
               <ul className="mt-[0.6em] flex justify-between gap-2">
                 {[0, 1, 2, 3].map((i) => {
                   const s = seats[i] ?? null;
-                  // The server populates `ready` at game_over too (bots always,
-                  // humans while their socket is up), so this reads one field
-                  // instead of guessing from isBot/connected.
-                  const isReady = s?.ready ?? false;
+                  // Online, the server populates `ready` at game_over (bots
+                  // always; a human while their socket is up), so that field is
+                  // the answer. Practice builds its roster locally and has no
+                  // `ready` at all — everyone at a local table is by definition
+                  // still there — so fall back to `connected`, which practice
+                  // sets truthfully. Without the fallback a practice recap
+                  // showed all four seats as "Away".
+                  const isReady = s?.ready ?? s?.connected ?? false;
                   const status =
                     s === null
                       ? { word: t.left, tone: 'text-(--color-ap-muted)' }

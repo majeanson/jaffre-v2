@@ -18,8 +18,12 @@ export interface TableKeysConfig {
   /** Queue a card for your next turn (null clears). */
   readonly setQueued: (card: Card | null) => void;
   readonly queued: Card | null;
-  /** Legal bids right now (empty unless it's your bidding turn). */
+  /** Legal raises this auction. NOT turn-scoped — the panel keeps them listed
+   * for every seat's turn and disables the cards instead — so the bid keys
+   * below must gate on `myTurn` themselves. */
   readonly bidOptions: readonly BidOption[];
+  /** True only when the viewer is the seat on turn. */
+  readonly myTurn: boolean;
   readonly phase: string;
   readonly onToggleLog: () => void;
   /** Present in online rooms only. */
@@ -81,8 +85,10 @@ export function useTableKeys(config: TableKeysConfig): void {
       }
 
       if (c.phase === 'bidding') {
+        // Out of turn the server would just bounce these with NOT_YOUR_TURN,
+        // turning a stray keystroke into an error toast.
+        if (!c.myTurn) return;
         if (key === 'p') {
-          if (c.bidOptions.length === 0) return;
           e.preventDefault();
           c.onAction({ type: 'place_bid', choice: { kind: 'pass' } });
           return;

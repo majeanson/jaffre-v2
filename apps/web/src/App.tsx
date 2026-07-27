@@ -247,8 +247,16 @@ function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
   const viewer = useGameStore((s) => s.viewer);
+  // Counts navigations, so the dead-link notice can remount even when the SAME
+  // bad hash is pasted twice (its own replaceState fires no hashchange, so the
+  // route object alone never changes and the toast would stay silent).
+  const [navSeq, setNavSeq] = useState(0);
+
   useEffect(() => {
-    const onHash = () => setRoute(parseHash());
+    const onHash = () => {
+      setRoute(parseHash());
+      setNavSeq((n) => n + 1);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -381,7 +389,7 @@ function AppRoutes() {
   } else {
     content = (
       <>
-        {route.badLink !== null && <BadLinkNotice key={route.badLink} />}
+        {route.badLink !== null && <BadLinkNotice key={`${route.badLink}:${String(navSeq)}`} />}
         <Home
           onPractice={() => (location.hash = '#practice')}
           onJoinRoom={(code) => (location.hash = `#room/${code}`)}

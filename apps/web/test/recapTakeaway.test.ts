@@ -32,19 +32,36 @@ describe('recapTakeaway', () => {
     const t = recapTakeaway(
       [
         round({ seat: 0, made: false }),
-        round({ seat: 2, made: false }),
+        round({ seat: 0, made: false }),
         round({ seat: 0, made: true }),
       ],
       0,
       'en',
     );
-    // Seats 0 and 2 are the same team as seat 0: 3 taken, 2 missed.
     expect(t?.text).toContain('missed 2 of your 3 contracts');
+  });
+
+  it('counts only YOUR contracts, never your partner’s', () => {
+    // Partner (seat 2) bid four times and missed three; you passed all game.
+    // Telling you to bid lower would be advice about bids you never made.
+    const t = recapTakeaway(
+      [
+        round({ seat: 2, made: false }),
+        round({ seat: 2, made: false }),
+        round({ seat: 2, made: false }),
+        round({ seat: 2, made: true }),
+      ],
+      0,
+      'en',
+    );
+    expect(t?.text ?? '').not.toContain('your');
+    // The team DID hold the contract, so the defending line must not fire.
+    expect(t).toBeNull();
   });
 
   it('suggests bidding higher when every contract was made', () => {
     const t = recapTakeaway(
-      [round({ seat: 0, made: true }), round({ seat: 2, made: true })],
+      [round({ seat: 0, made: true }), round({ seat: 0, made: true })],
       0,
       'en',
     );

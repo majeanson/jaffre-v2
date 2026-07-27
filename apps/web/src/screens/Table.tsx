@@ -129,6 +129,7 @@ export function Table({
     queued: derived?.queued ?? null,
     setQueued,
     bidOptions: derived?.bidOptions ?? [],
+    myTurn: derived?.myTurn ?? false,
     phase: derived?.view.phase ?? '',
     onToggleLog: () => setLogOpen((o) => !o),
     ...(online ? { onToggleChat: toggleRoomComms } : {}),
