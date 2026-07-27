@@ -1,8 +1,14 @@
 name: E2E (Playwright)
 
-# The browser e2e suite is decoupled from the deploy path (see ci.yml): it is
-# slow (~5 min) and mostly catches regressions the fast `ci` gate can't, so it
-# runs "from time to time" — nightly and on demand — instead of blocking prod.
+# The ONLY place browser tests run. ci.yml deliberately installs no browser and
+# runs no Playwright spec, so every cost of a real browser — the Chromium
+# download, wrangler dev, the multi-client room orchestration in
+# lobby/two-players/spectate — is paid here and nowhere else. The suite is slow
+# (~5 min) and mostly catches what static checks and unit tests can't, so it
+# runs nightly and on demand rather than blocking a deploy.
+#
+# Because nothing gates prod on this, run it on demand (the "Run workflow"
+# button) before anything risky, and read the nightly result.
 on:
   schedule:
     # 06:00 UTC daily (low-traffic). Cron uses UTC; adjust if the window shifts.
