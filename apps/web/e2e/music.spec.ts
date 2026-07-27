@@ -8,10 +8,10 @@ import type { BrowserContext, Page } from '@playwright/test';
  * already present and never injects the real script — so nothing actually
  * plays and the test can fire ENDED deterministically.
  *
- * Covers: paste-a-link add propagating to both clients, the listen opt-in
- * creating exactly one player, the App-level dock SURVIVING the lobby→table
- * transition (same player instance, never destroyed), and a player ENDED
- * report advancing the whole room off the track.
+ * Covers: paste-a-link add propagating to both clients, the dock's listen
+ * opt-in creating exactly one player, the App-level dock SURVIVING the
+ * lobby→table transition (same player instance, never destroyed), and a
+ * player ENDED report advancing the whole room off the track.
  */
 
 /** Shape of the stub bookkeeping the init script leaves on window. */
@@ -125,7 +125,9 @@ test('music: add propagates, listening survives lobby→table, ENDED advances th
   await expect(b.getByTestId('music-pill')).toContainText(TITLE);
 
   // ── B opts in: exactly one stubbed player, loaded at the shared position ─
-  await b.getByTestId('music-listen').click();
+  // Listening is the DOCK's job (the queue tab only edits the queue), so the
+  // opt-in is the pill's Listen button.
+  await b.getByTestId('music-pill-listen').click();
   await expect(b.getByTestId('music-dock')).toBeVisible();
   await expect.poll(async () => (await stubPlayers(b))[0]?.loads.length ?? 0).toBeGreaterThan(0);
   const loaded = (await stubPlayers(b))[0]?.loads[0];

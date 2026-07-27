@@ -14,6 +14,7 @@ const T: Record<
     emptyQueue: string;
     minimize: string;
     expand: string;
+    volume: string;
   }
 > = {
   en: {
@@ -23,6 +24,7 @@ const T: Record<
     emptyQueue: 'Queue is empty — add another song to keep it going.',
     minimize: 'Hide the video (music keeps playing)',
     expand: 'Show the video',
+    volume: 'Your volume',
   },
   fr: {
     nowPlaying: 'Musique en cours à cette table',
@@ -31,6 +33,7 @@ const T: Record<
     emptyQueue: 'File vide — ajoute une autre chanson pour continuer.',
     minimize: 'Cacher la vidéo (la musique continue)',
     expand: 'Montrer la vidéo',
+    volume: 'Ton volume',
   },
 };
 
@@ -50,12 +53,13 @@ function targetSeconds(startedAt: number): number {
  * survives every lobby/table screen swap — audio never gaps across the
  * transition. Collapsed it's a pill advertising the track with a "Listen"
  * opt-in (the autoplay-policy user gesture); listening, it's a small dock
- * with the ToS-required visible player. RoomComms' music tab drives the same
- * store — this component owns only the iframe and the sync loop.
+ * with the ToS-required visible player, its volume, and the stop control.
+ * Playback lives here and only here; RoomComms' music tab is the queue
+ * editor (add / skip / remove) over the same shared store.
  */
 export function MusicDock() {
   const t = T[useLang()];
-  const { state, listening, volume, setListening } = useMusicStore();
+  const { state, listening, volume, setListening, setVolume } = useMusicStore();
   const current = state?.current ?? null;
   const [minimized, setMinimized] = useState(false);
   const holderRef = useRef<HTMLDivElement>(null);
@@ -216,6 +220,22 @@ export function MusicDock() {
           {t.stop}
         </button>
       </div>
+      {/* Volume sits with the player it controls — it used to live in the
+          queue panel, two surfaces away from the sound. */}
+      {!minimized && (
+        <label className="flex items-center gap-2 px-0.5 text-[11px] text-(--color-ap-muted)">
+          <span className="shrink-0">{t.volume}</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            aria-label={t.volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="min-w-0 flex-1 accent-(--color-ap-gold)"
+          />
+        </label>
+      )}
       <div
         ref={holderRef}
         data-testid="music-player"

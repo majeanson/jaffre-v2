@@ -160,15 +160,8 @@ export function RoomComms({
             {unread > 99 ? '99+' : unread}
           </span>
         )}
-        {unread === 0 && nowPlaying && (
-          <span
-            aria-hidden
-            data-testid="music-note-badge"
-            className="absolute -top-2 -right-2 grid min-w-4.5 place-items-center rounded-full bg-(--color-ap-violet) px-1 text-[10px] font-bold text-(--color-ap-ink)"
-          >
-            ♪
-          </span>
-        )}
+        {/* No "music is playing" badge here: the MusicDock pill in the corner
+            is that signal, and two of them 30px apart read as two features. */}
       </button>
       {open && (
         // Soft scrim (same treatment as the game log): the popover floats over

@@ -19,9 +19,6 @@ const T: Record<
     skip: (votes: number, needed: number) => string;
     skipVoted: string;
     remove: string;
-    listen: string;
-    stopListening: string;
-    volume: string;
   }
 > = {
   en: {
@@ -37,9 +34,6 @@ const T: Record<
     skip: (votes, needed) => `Skip (${String(votes)}/${String(needed)})`,
     skipVoted: 'Skip vote cast',
     remove: 'Remove from queue',
-    listen: 'Listen',
-    stopListening: 'Stop listening',
-    volume: 'Your volume',
   },
   fr: {
     heading: 'Musique',
@@ -55,9 +49,6 @@ const T: Record<
     skip: (votes, needed) => `Passer (${String(votes)}/${String(needed)})`,
     skipVoted: 'Vote pour passer envoyé',
     remove: 'Retirer de la file',
-    listen: 'Écouter',
-    stopListening: 'Couper la musique',
-    volume: 'Ton volume',
   },
 };
 
@@ -83,13 +74,14 @@ export interface MusicQueuePanelProps {
 }
 
 /**
- * The shared queue surface inside RoomComms: paste-a-link add, now-playing
- * row with the majority skip vote, the queue with remove-your-own, and the
- * local listen/volume controls that drive the App-level MusicDock.
+ * The shared queue EDITOR inside RoomComms: paste-a-link add, now-playing row
+ * with the majority skip vote, and the queue with remove-your-own. Playback —
+ * listening opt-in, volume, the video itself — belongs to the MusicDock, so
+ * each control lives in exactly one place.
  */
 export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
   const t = T[useLang()];
-  const { state, listening, volume, setListening, setVolume } = useMusicStore();
+  const state = useMusicStore((s) => s.state);
   const notice = useGameStore((s) => s.notice);
   const [url, setUrl] = useState('');
   // The just-submitted link, shown as a ghost "Adding…" row until the next
@@ -126,19 +118,6 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
         <span className="text-[11px] font-semibold uppercase tracking-widest text-(--color-ap-muted)">
           {t.heading}
         </span>
-        <button
-          type="button"
-          data-testid="music-listen"
-          aria-pressed={listening}
-          onClick={() => setListening(!listening)}
-          className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1 font-arcade-display text-[0.65em] uppercase tracking-wide shadow-(--shadow-ap-sm) transition-colors ${
-            listening
-              ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
-              : 'bg-(--color-ap-panel) text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)'
-          }`}
-        >
-          {listening ? t.stopListening : t.listen}
-        </button>
       </div>
 
       {current === null && queue.length === 0 && pendingUrl === null && (
@@ -247,19 +226,6 @@ export function MusicQueuePanel({ me }: MusicQueuePanelProps) {
           {t.add}
         </button>
       </form>
-
-      <label className="flex items-center gap-2 px-1 text-[11px] text-(--color-ap-muted)">
-        <span className="shrink-0">{t.volume}</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={volume}
-          aria-label={t.volume}
-          onChange={(e) => setVolume(Number(e.target.value))}
-          className="min-w-0 flex-1 accent-(--color-ap-gold)"
-        />
-      </label>
     </div>
   );
 }
