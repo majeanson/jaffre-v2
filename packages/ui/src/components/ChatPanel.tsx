@@ -13,6 +13,8 @@ const T: Record<
     inputLabel: string;
     send: string;
     slowDown: string;
+    quickLabel: string;
+    quick: readonly string[];
   }
 > = {
   en: {
@@ -24,6 +26,19 @@ const T: Record<
     inputLabel: 'Chat message',
     send: 'Send',
     slowDown: 'Slow down…',
+    quickLabel: 'Quick messages',
+    quick: [
+      '👍',
+      '😅',
+      '🎉',
+      '😮',
+      'Nice one!',
+      'Good game',
+      'Ouch',
+      'Your turn',
+      'One sec',
+      'Sorry',
+    ],
   },
   fr: {
     chat: 'Clavardage',
@@ -34,6 +49,19 @@ const T: Record<
     inputLabel: 'Message de clavardage',
     send: 'Envoyer',
     slowDown: 'Doucement…',
+    quickLabel: 'Messages rapides',
+    quick: [
+      '👍',
+      '😅',
+      '🎉',
+      '😮',
+      'Belle passe!',
+      'Belle partie',
+      'Ayoye',
+      'À ton tour',
+      'Une minute',
+      'Désolé',
+    ],
   },
 };
 
@@ -122,6 +150,17 @@ export function ChatPanel({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [collapsible, open]);
 
+  /** Send a canned phrase straight out — same throttle path as typing, so a
+   * tap-happy player gets the same "slow down" hint. */
+  const sendQuick = (phrase: string) => {
+    if (onSend(phrase)) setHint(false);
+    else {
+      setHint(true);
+      if (hintTimer.current !== null) clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(() => setHint(false), 1500);
+    }
+  };
+
   const submit = () => {
     const trimmed = text.trim();
     if (trimmed === '') return;
@@ -176,6 +215,25 @@ export function ChatPanel({
             </span>{' '}
             <span>{e.text}</span>
           </p>
+        ))}
+      </div>
+      {/* One tap to say the usual things: free-text-only chat is a wall on a
+          phone mid-trick, and canned phrases keep the room civil. */}
+      <div
+        role="group"
+        aria-label={t.quickLabel}
+        data-testid="chat-quick"
+        className="flex flex-wrap gap-1 px-1"
+      >
+        {t.quick.map((phrase) => (
+          <button
+            key={phrase}
+            type="button"
+            onClick={() => sendQuick(phrase)}
+            className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-1.5 py-0.5 text-[11px] text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)"
+          >
+            {phrase}
+          </button>
         ))}
       </div>
       <form
