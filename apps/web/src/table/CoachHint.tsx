@@ -10,7 +10,13 @@ export interface CoachHintProps {
  */
 export function CoachTipPill({ tip }: CoachHintProps) {
   return (
-    <div className="pop-in flex max-w-[min(92vw,34rem)] items-center gap-2.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2.5 shadow-(--shadow-ap)">
+    // data-testid is the contract for "the Coach is speaking" — the coach-off
+    // e2e asserts this never appears. Both placements (bottom-anchored during
+    // play, above the bet panel during bidding) render through here.
+    <div
+      data-testid="coach-tip"
+      className="pop-in flex max-w-[min(92vw,34rem)] items-center gap-2.5 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2.5 shadow-(--shadow-ap)"
+    >
       <span aria-hidden className="text-(--color-ap-gold)">
         ❖
       </span>

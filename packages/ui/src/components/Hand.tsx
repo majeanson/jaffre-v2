@@ -137,6 +137,9 @@ export function Hand({
             data-playable={playable || undefined}
             data-queueable={queueable || undefined}
             data-queued={entry.queued === true || undefined}
+            // The Coach's pick. Asserted absent by the coach-off e2e — the
+            // violet ring is advice, so it must vanish with the Coach.
+            data-recommended={entry.recommended === true || undefined}
             className={`group rounded-(--radius-ap-inner) transition-transform duration-(--duration-flick) ease-(--ease-snap) ${
               lifted ? '-translate-y-3' : ''
             } ${

@@ -128,6 +128,9 @@ function BetCard({
       type="button"
       disabled={!enabled}
       aria-label={pass ? t.pass : t.bidAria(label, sansAtout)}
+      // The Coach's suggested bid (or Pass). Asserted absent by the coach-off
+      // e2e — the violet ring is advice and must vanish with the Coach.
+      data-recommended={recommended || undefined}
       onClick={() => {
         if (enabled) onCommit();
       }}
