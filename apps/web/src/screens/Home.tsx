@@ -43,8 +43,8 @@ export interface HomeProps {
   readonly demoTables?: readonly TableEntry[];
   /** Scene viewer: mount the PLAY door already open. */
   readonly playOpen?: boolean;
-  /** Scene viewer: stage the PLAY door's initial step (create/join) once open. */
-  readonly playStep?: 'create' | 'join';
+  /** Scene viewer: stage the PLAY door's initial step (friends) once open. */
+  readonly playStep?: 'friends';
   /** Scene viewer: mount with the (editable) Customize sheet open. */
   readonly customizeOpen?: boolean;
   /** Scene viewer: mount with the Login sheet open. */

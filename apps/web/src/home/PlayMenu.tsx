@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
-import { markMakePublic, type TableEntry } from '../net/rooms.js';
+import { markMakePublic, quickPlay, type TableEntry } from '../net/rooms.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
 import { TableCard, useTableStatuses } from './TableCards.js';
 import { generateRoomCode } from './roomCode.js';
@@ -24,10 +24,10 @@ const T: Record<
     play: string;
     yourTables: string;
     playVsBots: string;
-    botsChip: (label: string) => string;
     botDifficulty: string;
-    create: string;
-    join: string;
+    quickPlay: string;
+    quickPlayHint: string;
+    friends: string;
     publicTable: string;
     privateTable: string;
     back: string;
@@ -41,10 +41,10 @@ const T: Record<
     play: 'Play',
     yourTables: 'Your tables',
     playVsBots: 'Play vs bots',
-    botsChip: (label) => `Bots: ${label}`,
     botDifficulty: 'Bot difficulty',
-    create: 'Create',
-    join: 'Join',
+    quickPlay: 'Quick play online',
+    quickPlayHint: 'Joins an open table, or starts one.',
+    friends: 'With friends',
     publicTable: 'Public table',
     privateTable: 'Private table',
     back: '← Back',
@@ -57,10 +57,10 @@ const T: Record<
     play: 'Jouer',
     yourTables: 'Tes tables',
     playVsBots: 'Jouer contre les bots',
-    botsChip: (label) => `Bots : ${label}`,
     botDifficulty: 'Difficulté des bots',
-    create: 'Créer',
-    join: 'Joindre',
+    quickPlay: 'Partie rapide en ligne',
+    quickPlayHint: 'Joins une table ouverte, ou pars-en une.',
+    friends: 'Entre amis',
     publicTable: 'Table publique',
     privateTable: 'Table privée',
     back: '← Retour',
@@ -70,11 +70,6 @@ const T: Record<
     yourTurn: 'À ton tour',
   },
 };
-
-function nextSetting(current: PracticeSetting): PracticeSetting {
-  const i = SETTING_ORDER.indexOf(current);
-  return SETTING_ORDER[(i + 1) % SETTING_ORDER.length] as PracticeSetting;
-}
 
 export interface PlayMenuProps {
   readonly onPractice: () => void;
@@ -86,13 +81,15 @@ export interface PlayMenuProps {
   /** Mount with the door already open (scene viewer). */
   readonly defaultOpen?: boolean;
   /** Scene staging: the door's initial step once open (defaults to 'root'). */
-  readonly defaultStep?: 'create' | 'join';
+  readonly defaultStep?: 'friends';
 }
 
 /**
  * The title-screen PLAY door in the arcade shell: your standing tables (if
- * any), practice vs bots, and play with friends (public lobby + create/join a
- * room), all one column behind a single knock.
+ * any), then three peer ways in — practice vs bots (with its difficulty row),
+ * quick play online, and "with friends" (create a table or join by code /
+ * public list) — all one column behind a single knock. Solo play is a
+ * first-class door, not a create-vs-join decision.
  */
 export function PlayMenu({
   onPractice,
@@ -111,8 +108,10 @@ export function PlayMenu({
   );
   // One PLAY door: everything else only appears after you knock.
   const [open, setOpen] = useState(defaultOpen ?? false);
-  // Root offers CREATE / JOIN; each step drills into its own actions.
-  const [step, setStep] = useState<'root' | 'create' | 'join'>(defaultStep ?? 'root');
+  // Root offers the three ways in; FRIENDS drills into create/join actions.
+  const [step, setStep] = useState<'root' | 'friends'>(defaultStep ?? 'root');
+  // Quick Play in flight — one tap only.
+  const [matching, setMatching] = useState(false);
   const statuses = useTableStatuses(tables);
   // A live table is waiting on YOU — the closed door announces it.
   const yourTurn = tables.some((tbl) => {
@@ -131,8 +130,7 @@ export function PlayMenu({
     if (!open) setStep(defaultStep ?? 'root');
   }, [open, defaultStep]);
 
-  const cycleSetting = () => {
-    const next = nextSetting(setting);
+  const pickSetting = (next: PracticeSetting) => {
     setSetting(next);
     savePracticeBots(botsFromSetting(next));
   };
@@ -213,48 +211,71 @@ export function PlayMenu({
             )}
 
             {step === 'root' && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
+                {/* Solo first: the one path with zero prerequisites. Its
+                    difficulty row lives right under it — four visible options,
+                    not a blind cycling chip. */}
+                <div className="flex flex-col gap-2">
+                  <Cta type="button" className="w-full" onClick={onPractice}>
+                    {t.playVsBots}
+                  </Cta>
+                  <div
+                    role="group"
+                    aria-label={t.botDifficulty}
+                    className="flex w-full items-stretch gap-1.5"
+                  >
+                    {SETTING_ORDER.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        aria-pressed={setting === s}
+                        onClick={() => pickSetting(s)}
+                        className={`min-w-0 flex-1 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-1 py-[0.45em] font-arcade-ui text-(length:--text-fluid-xs) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) ${
+                          setting === s
+                            ? 'bg-(--color-ap-gold) font-semibold text-(--color-ap-ink)'
+                            : 'bg-(--color-ap-panel) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text)'
+                        }`}
+                      >
+                        {difficultyLabel[s]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* The fastest online path, promoted from the bottom of the
+                    public lobby: match into an open table or host a fresh one. */}
+                <div className="flex flex-col gap-1">
+                  <Cta
+                    type="button"
+                    disabled={matching}
+                    onClick={() => {
+                      if (matching) return;
+                      setMatching(true);
+                      void quickPlay()
+                        .then(onJoinRoom)
+                        .finally(() => setMatching(false));
+                    }}
+                  >
+                    {t.quickPlay}
+                  </Cta>
+                  <span className="text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink)">
+                    {t.quickPlayHint}
+                  </span>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setStep('create')}
+                  onClick={() => setStep('friends')}
                   className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-[clamp(0.7rem,2vmin,1.1rem)] font-arcade-display text-[clamp(1.1rem,2.6vmin,1.5rem)] uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
                 >
-                  {t.create}
-                  <span aria-hidden>→</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep('join')}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-[clamp(0.7rem,2vmin,1.1rem)] font-arcade-display text-[clamp(1.1rem,2.6vmin,1.5rem)] uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-                >
-                  {t.join}
+                  {t.friends}
                   <span aria-hidden>→</span>
                 </button>
               </div>
             )}
 
-            {step === 'create' && (
+            {step === 'friends' && (
               <div className="flex flex-col gap-4">
-                {/* Same row format as the two table Ctas below: the wide
-                    segment starts, the attached segment cycles the shared bot
-                    difficulty (two sibling buttons — never nested). */}
-                {/* flex-wrap + min-w-0: the nowrap difficulty chip could push
-                    past the door's right edge when the pair outgrew the rail —
-                    now it drops to its own row instead of overflowing. */}
-                <div className="flex flex-wrap items-stretch gap-2">
-                  <Cta type="button" className="min-w-0 flex-1" onClick={onPractice}>
-                    {t.playVsBots}
-                  </Cta>
-                  <button
-                    type="button"
-                    onClick={cycleSetting}
-                    aria-label={t.botDifficulty}
-                    className="cursor-pointer whitespace-nowrap rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.8em] py-[0.5em] font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap) transition-[transform,box-shadow] duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-                  >
-                    {t.botsChip(difficultyLabel[setting])}
-                  </button>
-                </div>
-
                 <Cta
                   type="button"
                   onClick={() => {
@@ -280,18 +301,6 @@ export function PlayMenu({
                   {t.privateTable}
                 </Cta>
 
-                <button
-                  type="button"
-                  onClick={() => setStep('root')}
-                  className={`w-fit ${GHOST_BTN_SM}`}
-                >
-                  {t.back}
-                </button>
-              </div>
-            )}
-
-            {step === 'join' && (
-              <div className="flex flex-col gap-4">
                 <form
                   className="flex flex-col gap-2"
                   onSubmit={(e) => {
@@ -323,6 +332,7 @@ export function PlayMenu({
                     hosts a fresh public one when the list is empty). */}
                 <Cta
                   type="button"
+                  variant="secondary"
                   onClick={() => {
                     location.hash = '#lobby';
                   }}

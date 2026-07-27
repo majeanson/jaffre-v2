@@ -196,12 +196,13 @@ for (const width of MEDIA_WIDTHS) {
       width,
     );
 
-    // The bots/friends split hides behind the single PLAY door, split further
-    // into the create and join steps — check each via its own staged scene.
-    await page.goto('/#scenes/home-create');
+    // The play actions hide behind the single PLAY door — root (bots + quick
+    // play + friends) and the with-friends step each via a staged scene.
+    await page.goto('/#scenes/home-play-open');
     for (const [name, what] of [
-      ['Public table', 'Public table'],
       ['Play vs bots', 'Play vs bots'],
+      ['Quick play online', 'Quick play online'],
+      ['With friends', 'With friends'],
     ] as const) {
       await fitsWithin(
         await page.getByRole('button', { name }).boundingBox(),
@@ -212,7 +213,14 @@ for (const width of MEDIA_WIDTHS) {
       );
     }
 
-    await page.goto('/#scenes/home-join');
+    await page.goto('/#scenes/home-friends');
+    await fitsWithin(
+      await page.getByRole('button', { name: 'Public table' }).boundingBox(),
+      width,
+      0,
+      'Public table',
+      width,
+    );
     await fitsWithin(
       await page.getByRole('button', { name: 'Join room' }).boundingBox(),
       width,
