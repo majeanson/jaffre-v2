@@ -16,13 +16,12 @@ async function newPage(context: BrowserContext): Promise<Page> {
   return page;
 }
 
-/** Create a room from Home via Play → With friends → Public table (the real
- * path — this is what flags it public) and take seat 0. Resolves to the code. */
+/** Create a room from Home via Play → Host a public table (the real path —
+ * this is what flags it public) and take seat 0. Resolves to the code. */
 async function createRoomAndSit(page: Page): Promise<string> {
   await page.goto('/');
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.getByRole('button', { name: 'With friends' }).click();
-  await page.getByRole('button', { name: 'Public table' }).click();
+  await page.getByRole('button', { name: 'Host a public table' }).click();
   await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#room\//);
   const code = await page.evaluate(() => location.hash.replace('#room/', ''));
   await page.getByRole('button', { name: 'Sit here' }).first().click();
@@ -61,7 +60,6 @@ test('a started public game is watchable from the lobby, and a spectator can tak
   // wrangler's persisted DO state).
   await b.goto('/');
   await b.getByRole('button', { name: 'Play', exact: true }).click();
-  await b.getByRole('button', { name: 'With friends' }).click();
   await b.getByRole('button', { name: 'Join a public game' }).click();
   const card = b.getByRole('listitem').filter({ hasText: code });
   await expect(card).toBeVisible();

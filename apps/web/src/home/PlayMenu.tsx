@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { markMakePublic, quickPlay, type TableEntry } from '../net/rooms.js';
 import { reportFunnel } from '../net/telemetry.js';
@@ -24,17 +24,24 @@ const T: Record<
   Lang,
   {
     play: string;
-    yourTables: string;
+    close: string;
+    resume: string;
+    resumeHint: string;
+    bots: string;
+    botsHint: string;
+    public: string;
+    publicHint: string;
+    private: string;
+    privateHint: string;
     playVsBots: string;
     botDifficulty: string;
     teaching: string;
     quickPlay: string;
     quickPlayHint: string;
-    friends: string;
-    publicTable: string;
-    privateTable: string;
-    back: string;
-    joinPublic: string;
+    browsePublic: string;
+    hostPublic: string;
+    newPrivate: string;
+    orCode: string;
     roomCode: string;
     joinRoom: string;
     yourTurn: string;
@@ -42,34 +49,48 @@ const T: Record<
 > = {
   en: {
     play: 'Play',
-    yourTables: 'Your tables',
+    close: 'Close',
+    resume: 'Resume',
+    resumeHint: 'Tables you already have going.',
+    bots: 'Bots',
+    botsHint: 'Solo practice — starts instantly, no waiting.',
+    public: 'Public',
+    publicHint: 'Play online with anyone.',
+    private: 'Private',
+    privateHint: 'Invite-only — share the room code.',
     playVsBots: 'Play vs bots',
     botDifficulty: 'Bot difficulty',
     teaching: 'Or learn one thing:',
     quickPlay: 'Quick play online',
     quickPlayHint: 'Joins an open table, or starts one.',
-    friends: 'With friends',
-    publicTable: 'Public table',
-    privateTable: 'Private table',
-    back: '← Back',
-    joinPublic: 'Join a public game',
+    browsePublic: 'Join a public game',
+    hostPublic: 'Host a public table',
+    newPrivate: 'New private table',
+    orCode: 'Or join with a code',
     roomCode: 'Room code',
     joinRoom: 'Join room',
     yourTurn: 'Your turn',
   },
   fr: {
     play: 'Jouer',
-    yourTables: 'Tes tables',
+    close: 'Fermer',
+    resume: 'Reprendre',
+    resumeHint: 'Les tables que t’as déjà en cours.',
+    bots: 'Bots',
+    botsHint: 'Pratique solo — ça part tout de suite, sans attendre.',
+    public: 'Public',
+    publicHint: 'Joue en ligne avec n’importe qui.',
+    private: 'Privé',
+    privateHint: 'Sur invitation — partage le code du salon.',
     playVsBots: 'Jouer contre les bots',
     botDifficulty: 'Difficulté des bots',
     teaching: 'Ou apprends une affaire :',
     quickPlay: 'Partie rapide en ligne',
     quickPlayHint: 'Joins une table ouverte, ou pars-en une.',
-    friends: 'Entre amis',
-    publicTable: 'Table publique',
-    privateTable: 'Table privée',
-    back: '← Retour',
-    joinPublic: 'Joindre une partie publique',
+    browsePublic: 'Joindre une partie publique',
+    hostPublic: 'Ouvrir une table publique',
+    newPrivate: 'Nouvelle table privée',
+    orCode: 'Ou joins avec un code',
     roomCode: 'Code du salon',
     joinRoom: 'Joindre le salon',
     yourTurn: 'À ton tour',
@@ -85,16 +106,50 @@ export interface PlayMenuProps {
   readonly onQuitTable?: (code: string) => void;
   /** Mount with the door already open (scene viewer). */
   readonly defaultOpen?: boolean;
-  /** Scene staging: the door's initial step once open (defaults to 'root'). */
-  readonly defaultStep?: 'friends';
+}
+
+/** One labelled way in. The door is violet; each section is a `ground` card on
+ * it with a gold display heading and one plain-language line under it, so the
+ * four ways to start a game are told apart at a glance instead of reading as
+ * one stack of buttons. */
+function DoorSection({
+  title,
+  hint,
+  delay,
+  children,
+}: {
+  readonly title: string;
+  readonly hint: string;
+  readonly delay: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <section
+      aria-label={title}
+      className="rise-in flex flex-col gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-4 shadow-(--shadow-ap-sm) max-sm:p-3"
+      style={{ '--rise-delay': delay } as CSSProperties}
+    >
+      <header className="flex flex-col gap-0.5">
+        {/* h2 (not h3): the page's only h1 is the wordmark, and axe flags a
+            skipped level. */}
+        <h2 className="font-arcade-display text-[clamp(0.95rem,2vmin,1.15rem)] uppercase tracking-[0.14em] text-(--color-ap-gold)">
+          {title}
+        </h2>
+        <p className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+          {hint}
+        </p>
+      </header>
+      {children}
+    </section>
+  );
 }
 
 /**
- * The title-screen PLAY door in the arcade shell: your standing tables (if
- * any), then three peer ways in — practice vs bots (with its difficulty row),
- * quick play online, and "with friends" (create a table or join by code /
- * public list) — all one column behind a single knock. Solo play is a
- * first-class door, not a create-vs-join decision.
+ * The title-screen PLAY door in the arcade shell. Knock once and the door
+ * opens onto four labelled sections — RESUME (your standing tables), BOTS,
+ * PUBLIC, PRIVATE — every way into a game visible at once. There is no
+ * sub-step to drill into: the old "with friends" fork hid the room-code box
+ * and the public list one tap deep, which read as a maze.
  */
 export function PlayMenu({
   onPractice,
@@ -102,7 +157,6 @@ export function PlayMenu({
   tables,
   onQuitTable,
   defaultOpen,
-  defaultStep,
 }: PlayMenuProps) {
   const lang = useLang();
   const t = T[lang];
@@ -113,8 +167,6 @@ export function PlayMenu({
   );
   // One PLAY door: everything else only appears after you knock.
   const [open, setOpen] = useState(defaultOpen ?? false);
-  // Root offers the three ways in; FRIENDS drills into create/join actions.
-  const [step, setStep] = useState<'root' | 'friends'>(defaultStep ?? 'root');
   // Quick Play in flight — one tap only.
   const [matching, setMatching] = useState(false);
   const statuses = useTableStatuses(tables);
@@ -129,11 +181,6 @@ export function PlayMenu({
       s.turn === tbl.yourSeat
     );
   });
-
-  // Closing the door forgets which step you were on, so it always reopens fresh.
-  useEffect(() => {
-    if (!open) setStep(defaultStep ?? 'root');
-  }, [open, defaultStep]);
 
   const pickSetting = (next: PracticeSetting) => {
     setSetting(next);
@@ -159,12 +206,6 @@ export function PlayMenu({
         className="rise-in group relative flex flex-col gap-4 overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) p-5 text-(--color-ap-ink) shadow-(--shadow-ap-lg) max-sm:p-4 sm:col-span-2"
         style={{ '--rise-delay': '60ms' } as CSSProperties}
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-8 -right-6 font-arcade-display text-[7rem] leading-none opacity-15 transition-transform duration-(--duration-play) group-hover:-rotate-12"
-        >
-          ♠
-        </span>
         {!open ? (
           <button
             type="button"
@@ -172,11 +213,15 @@ export function PlayMenu({
               setOpen(true);
               reportFunnel('play');
             }}
-            className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
+            className="relative z-10 flex w-full cursor-pointer flex-wrap items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             {t.play}
             {yourTurn ? (
-              <span className="flex items-center gap-1.5 font-arcade-ui text-(length:--text-fluid-xs) normal-case tracking-normal text-(--color-ap-ok)">
+              // A proper little badge, not a loose dot + word: panel-filled so
+              // it reads on the violet in every skin, ink-bordered like every
+              // other chip in the shell, with a green heartbeat and a slow
+              // wobble (both motion-preference guarded) to make it wave.
+              <span className="ap-wobble inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.32em] font-arcade-ui text-(length:--text-fluid-xs) font-semibold normal-case tracking-normal text-(--color-ap-text) shadow-(--shadow-ap-sm)">
                 <span
                   aria-hidden
                   className="size-2 animate-pulse rounded-full bg-(--color-ap-ok)"
@@ -192,12 +237,22 @@ export function PlayMenu({
             </span>
           </button>
         ) : (
-          <div className="relative z-10 flex flex-col gap-5">
+          <div className="relative z-10 flex flex-col gap-3">
+            {/* The open door keeps its own title bar so the tall stack still
+                reads as "this is PLAY", and can be shut again. */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-arcade-display text-[clamp(1.1rem,2.6vmin,1.5rem)] uppercase tracking-wide">
+                {t.play}
+              </span>
+              <button type="button" onClick={() => setOpen(false)} className={GHOST_BTN_SM}>
+                {t.close}
+              </button>
+            </div>
+
+            {/* 1 · RESUME — anything already in progress outranks starting
+                something new, so it sits at the top when it exists. */}
             {tables.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <span className="font-arcade-display text-[clamp(1rem,2vmin,1.2rem)] uppercase tracking-wide">
-                  {t.yourTables}
-                </span>
+              <DoorSection title={t.resume} hint={t.resumeHint} delay="0ms">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* MAX standing tables (net/rooms.ts) is 6 — the same cap, so
                       nothing here is ever silently hidden. */}
@@ -215,168 +270,156 @@ export function PlayMenu({
                     />
                   ))}
                 </div>
-              </div>
+              </DoorSection>
             )}
 
-            {step === 'root' && (
-              <div className="flex flex-col gap-4">
-                {/* Solo first: the one path with zero prerequisites. Its
-                    difficulty row lives right under it — four visible options,
-                    not a blind cycling chip. */}
-                <div className="flex flex-col gap-2">
-                  <Cta type="button" className="w-full" onClick={onPractice}>
-                    {t.playVsBots}
-                  </Cta>
-                  <div
-                    role="group"
-                    aria-label={t.botDifficulty}
-                    className="flex w-full items-stretch gap-1.5"
-                  >
-                    {SETTING_ORDER.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        aria-pressed={setting === s}
-                        onClick={() => pickSetting(s)}
-                        className={`min-w-0 flex-1 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-1 py-[0.45em] font-arcade-ui text-(length:--text-fluid-xs) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) ${
-                          setting === s
-                            ? 'bg-(--color-ap-gold) font-semibold text-(--color-ap-ink)'
-                            : 'bg-(--color-ap-panel) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text)'
-                        }`}
-                      >
-                        {difficultyLabel[s]}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Curated deals: the same practice table, seeded so the
-                      lesson is actually in your hand on round one. */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink)">
-                      {t.teaching}
-                    </span>
-                    {TEACHING_DEALS.map((deal) => (
-                      <button
-                        key={deal.id}
-                        type="button"
-                        title={deal.goal[lang]}
-                        onClick={() => {
-                          location.hash = `#practice/${String(deal.seed)}`;
-                        }}
-                        className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-                      >
-                        {deal.label[lang]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* The fastest online path, promoted from the bottom of the
-                    public lobby: match into an open table or host a fresh one. */}
-                <div className="flex flex-col gap-1">
-                  <Cta
+            {/* 2 · BOTS — the one path with zero prerequisites. Its difficulty
+                row lives right under it: four visible options, not a blind
+                cycling chip. */}
+            <DoorSection title={t.bots} hint={t.botsHint} delay="40ms">
+              <Cta type="button" className="w-full" onClick={onPractice}>
+                {t.playVsBots}
+              </Cta>
+              <div
+                role="group"
+                aria-label={t.botDifficulty}
+                className="flex w-full items-stretch gap-1.5"
+              >
+                {SETTING_ORDER.map((s) => (
+                  <button
+                    key={s}
                     type="button"
-                    disabled={matching}
-                    onClick={() => {
-                      if (matching) return;
-                      setMatching(true);
-                      void quickPlay()
-                        .then(onJoinRoom)
-                        .finally(() => setMatching(false));
-                    }}
+                    aria-pressed={setting === s}
+                    onClick={() => pickSetting(s)}
+                    className={`min-w-0 flex-1 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-1 py-[0.45em] font-arcade-ui text-(length:--text-fluid-xs) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) ${
+                      setting === s
+                        ? 'bg-(--color-ap-gold) font-semibold text-(--color-ap-ink)'
+                        : 'bg-(--color-ap-panel) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text)'
+                    }`}
                   >
-                    {t.quickPlay}
-                  </Cta>
-                  <span className="text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink)">
-                    {t.quickPlayHint}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('friends')}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-[clamp(0.7rem,2vmin,1.1rem)] font-arcade-display text-[clamp(1.1rem,2.6vmin,1.5rem)] uppercase tracking-wide text-(--color-ap-violet) shadow-(--shadow-ap-sm) transition-[transform,box-shadow] duration-(--duration-flick) hover:brightness-110 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-                >
-                  {t.friends}
-                  <span aria-hidden>→</span>
-                </button>
+                    {difficultyLabel[s]}
+                  </button>
+                ))}
               </div>
-            )}
+              {/* Curated deals: the same practice table, seeded so the lesson
+                  is actually in your hand on round one. */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text)">
+                  {t.teaching}
+                </span>
+                {TEACHING_DEALS.map((deal) => (
+                  <button
+                    key={deal.id}
+                    type="button"
+                    title={deal.goal[lang]}
+                    onClick={() => {
+                      location.hash = `#practice/${String(deal.seed)}`;
+                    }}
+                    className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                  >
+                    {deal.label[lang]}
+                  </button>
+                ))}
+              </div>
+            </DoorSection>
 
-            {step === 'friends' && (
-              <div className="flex flex-col gap-4">
+            {/* 3 · PUBLIC — one tap to be seated (quick play), plus the two
+                slower public choices: browse the live list, or open a table
+                and let strangers fill it. */}
+            <DoorSection title={t.public} hint={t.publicHint} delay="80ms">
+              <div className="flex flex-col gap-1">
                 <Cta
                   type="button"
+                  className="w-full"
+                  disabled={matching}
                   onClick={() => {
-                    // New tables are public by default — the pre-game toggle is
-                    // how a host opts DOWN to invite-only.
+                    if (matching) return;
+                    setMatching(true);
+                    void quickPlay()
+                      .then(onJoinRoom)
+                      .finally(() => setMatching(false));
+                  }}
+                >
+                  {t.quickPlay}
+                </Cta>
+                <span className="text-center font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                  {t.quickPlayHint}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {/* The live lobby list — you see who's open and pick, instead
+                    of being teleported blind. */}
+                <Cta
+                  type="button"
+                  variant="secondary"
+                  className="w-full min-w-0"
+                  onClick={() => {
+                    location.hash = '#lobby';
+                  }}
+                >
+                  {t.browsePublic}
+                </Cta>
+                <Cta
+                  type="button"
+                  variant="secondary"
+                  className="w-full min-w-0"
+                  onClick={() => {
+                    // New public tables are listed on sight — the pre-game
+                    // toggle is how a host opts back DOWN to invite-only.
                     const roomCode = generateRoomCode();
                     markMakePublic(roomCode);
                     onJoinRoom(roomCode);
                   }}
                 >
-                  {t.publicTable}
+                  {t.hostPublic}
                 </Cta>
-                <Cta
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    // Invite-only: no markMakePublic — the in-lobby public toggle
-                    // still lets a host opt up once seated.
-                    const roomCode = generateRoomCode();
-                    onJoinRoom(roomCode);
-                  }}
-                >
-                  {t.privateTable}
-                </Cta>
-
-                <form
-                  className="flex flex-col gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    joinTyped();
-                  }}
-                >
-                  <input
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="early-newt-os"
-                    aria-label={t.roomCode}
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className="w-full min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-                  >
-                    {t.joinRoom}
-                  </button>
-                </form>
-
-                {/* The public path leads to the LIVE lobby list — you see who's
-                    open and pick, instead of being teleported blind; the lobby's
-                    own Quick Play still one-taps into the fullest table (or
-                    hosts a fresh public one when the list is empty). */}
-                <Cta
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    location.hash = '#lobby';
-                  }}
-                >
-                  {t.joinPublic}
-                </Cta>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('root')}
-                  className={`w-fit ${GHOST_BTN_SM}`}
-                >
-                  {t.back}
-                </button>
               </div>
-            )}
+            </DoorSection>
+
+            {/* 4 · PRIVATE — the friends path: open an invite-only table, or
+                punch in the code someone sent you. Both live in the open now
+                instead of behind a "with friends" fork. */}
+            <DoorSection title={t.private} hint={t.privateHint} delay="120ms">
+              <Cta
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  // No markMakePublic — the in-lobby public toggle still lets
+                  // a host opt up once seated.
+                  const roomCode = generateRoomCode();
+                  onJoinRoom(roomCode);
+                }}
+              >
+                {t.newPrivate}
+              </Cta>
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  joinTyped();
+                }}
+              >
+                <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                  {t.orCode}
+                </span>
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="early-newt-os"
+                  aria-label={t.roomCode}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full min-w-0 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2.5 text-(--color-ap-text) placeholder:text-(--color-ap-muted) focus:bg-(--color-ap-panel-hover)"
+                />
+                <button
+                  type="submit"
+                  className="w-full cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-2.5 font-arcade-display text-[0.95em] uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                >
+                  {t.joinRoom}
+                </button>
+              </form>
+            </DoorSection>
           </div>
         )}
       </div>

@@ -37,16 +37,14 @@ test('home screen has no serious axe violations', async ({ page }) => {
   await expectNoSeriousViolations(page, 'home customize open');
   await page.getByRole('button', { name: 'Close customize' }).click();
 
-  // The open PLAY root: bots + difficulty row + quick play + friends door.
+  // The open PLAY door: four labelled sections — resume / bots / public /
+  // private — with every action (including the room-code box) in the open.
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Play vs bots' })).toBeVisible();
-  await expectNoSeriousViolations(page, 'home play open');
-
-  // Room code + create actions live behind the "With friends" step.
-  await page.getByRole('button', { name: 'With friends' }).click();
+  await expect(page.getByRole('button', { name: 'Host a public table' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New private table' })).toBeVisible();
   await expect(page.getByLabel('Room code')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Public table' })).toBeVisible();
-  await expectNoSeriousViolations(page, 'home play friends');
+  await expectNoSeriousViolations(page, 'home play open');
 });
 
 test('practice table mid-bidding has no serious axe violations', async ({ page }) => {

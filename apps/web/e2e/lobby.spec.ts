@@ -30,13 +30,12 @@ async function newPage(context: import('@playwright/test').BrowserContext): Prom
   return page;
 }
 
-/** Create a room from Home via Play → With friends → Public table (the real
- * path — this is what flags it public) and take seat 1. Resolves to the code. */
+/** Create a room from Home via Play → Host a public table (the real path —
+ * this is what flags it public) and take seat 1. Resolves to the code. */
 async function createRoomAndSit(page: Page): Promise<string> {
   await page.goto('/');
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.getByRole('button', { name: 'With friends' }).click();
-  await page.getByRole('button', { name: 'Public table' }).click();
+  await page.getByRole('button', { name: 'Host a public table' }).click();
   await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#room\//);
   const code = await page.evaluate(() => location.hash.replace('#room/', ''));
   await page.getByRole('button', { name: 'Sit here' }).first().click();
@@ -69,7 +68,6 @@ test('a created room is public by default, appears in #lobby live, and a second 
   // not because the page loaded after the fact.
   await b.goto('/');
   await b.getByRole('button', { name: 'Play', exact: true }).click();
-  await b.getByRole('button', { name: 'With friends' }).click();
   await b.getByRole('button', { name: 'Join a public game' }).click();
   // The lobby is up BEFORE Alice's table exists (that's the push proof: her
   // card can only get here over the watcher socket). No emptiness assertion —

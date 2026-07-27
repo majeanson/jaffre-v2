@@ -446,7 +446,6 @@ const LOADERS: Record<SceneId, () => void> = {
   'home-help': () => useGameStore.getState().reset(),
   'your-tables': () => useGameStore.getState().reset(),
   'home-play-open': () => useGameStore.getState().reset(),
-  'home-friends': () => useGameStore.getState().reset(),
   // Identity scenes render Home with a staged identity (props, not the store).
   identity: () => useGameStore.getState().reset(),
   'identity-light': () => useGameStore.getState().reset(),

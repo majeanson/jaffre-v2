@@ -28,7 +28,6 @@ export interface SceneUi {
   readonly chatOpen?: boolean;
   readonly helpOpen?: boolean;
   readonly playOpen?: boolean;
-  readonly playStep?: 'friends';
   /** Home only: mount with the Customize sheet open (live/editable variant). */
   readonly customizeOpen?: boolean;
   /** Home only: mount with the Login sheet open. */
@@ -87,17 +86,10 @@ export const SCENE_METAS = [
   },
   {
     id: 'home-play-open',
-    label: 'Home — play door open (bots / quick play / friends)',
+    label: 'Home — play door open (resume / bots / public / private)',
     screen: 'home',
     ui: { playOpen: true },
     probe: 'role=button[name="Play vs bots"]',
-  },
-  {
-    id: 'home-friends',
-    label: 'Home — with-friends step',
-    screen: 'home',
-    ui: { playOpen: true, playStep: 'friends' },
-    probe: 'role=button[name="Join room"]',
   },
   {
     id: 'identity',

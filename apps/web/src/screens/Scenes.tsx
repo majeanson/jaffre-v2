@@ -156,7 +156,6 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           playOpen={current.ui?.playOpen ?? false}
           customizeOpen={current.ui?.customizeOpen ?? false}
           loginOpen={current.ui?.loginOpen ?? false}
-          {...(current.ui?.playStep !== undefined ? { playStep: current.ui.playStep } : {})}
           {...(current.id === 'your-tables' ? { demoTables: DEMO_TABLES } : {})}
           {...(IDENTITY_STAGES[current.id] !== undefined
             ? { identityStage: IDENTITY_STAGES[current.id] }
@@ -313,7 +312,13 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       )}
       <div
         data-testid="scene-picker"
-        className="fixed bottom-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-violet)/50 bg-(--color-ap-ink) px-3 py-2 font-arcade-ui shadow-(--shadow-ap)"
+        // The replay screen owns its own bottom-centred transport bar, in the
+        // same spot — and the picker's z-[100] wins, so it swallowed the clicks
+        // meant for Next/Previous frame. Step aside for that one screen instead
+        // of covering the very UI the scene exists to show.
+        className={`fixed left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-violet)/50 bg-(--color-ap-ink) px-3 py-2 font-arcade-ui shadow-(--shadow-ap) ${
+          current.screen === 'replay' ? 'bottom-20' : 'bottom-2'
+        }`}
       >
         <button
           type="button"

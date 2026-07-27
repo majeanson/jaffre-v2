@@ -52,8 +52,6 @@ export interface HomeProps {
   readonly demoTables?: readonly TableEntry[];
   /** Scene viewer: mount the PLAY door already open. */
   readonly playOpen?: boolean;
-  /** Scene viewer: stage the PLAY door's initial step (friends) once open. */
-  readonly playStep?: 'friends';
   /** Scene viewer: mount with the (editable) Customize sheet open. */
   readonly customizeOpen?: boolean;
   /** Scene viewer: mount with the Login sheet open. */
@@ -69,7 +67,6 @@ export function Home({
   identityStage,
   demoTables,
   playOpen,
-  playStep,
   customizeOpen: customizeOpenProp = false,
   loginOpen = false,
 }: HomeProps) {
@@ -178,7 +175,6 @@ export function Home({
             }}
             tables={demoTables ?? tables}
             defaultOpen={playOpen ?? false}
-            {...(playStep !== undefined ? { defaultStep: playStep } : {})}
             {...(demoTables === undefined
               ? {
                   onQuitTable: (code: string) => {
@@ -198,9 +194,6 @@ export function Home({
             }}
             className="group/corner flex w-full cursor-pointer items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-5 py-[clamp(0.6rem,1.8vmin,1rem)] font-arcade-display text-[clamp(1rem,2.2vmin,1.3rem)] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap) transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
-            <span aria-hidden className="text-(--color-ap-gold)">
-              ★
-            </span>
             {t.corner}
             <span
               aria-hidden
