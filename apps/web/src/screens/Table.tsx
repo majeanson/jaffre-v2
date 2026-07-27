@@ -30,6 +30,7 @@ import { HelpButton } from '../help/HelpButton.js';
 import { IconButton, ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion, IconSeat } from '../components/icons.js';
 import { TrumpCallout } from '../table/TrumpCallout.js';
+import { TeachingGoal } from '../table/TeachingGoal.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
@@ -64,6 +65,9 @@ export interface TableProps {
   readonly dev?: boolean;
   /** Practice only: run the one-time first-practice tutorial over the felt. */
   readonly tutorial?: boolean;
+  /** Practice only: the seed in play, so a curated teaching deal can show
+   * what it's here to teach. */
+  readonly practiceSeed?: number | null;
   /** Spectators (online): back to the seat-takeover gate. Without it a
    * watcher whose choice now persists in the URL would have no way in. */
   readonly onTakeSeat?: () => void;
@@ -101,6 +105,7 @@ export function Table({
   noDealIntro = false,
   dev = false,
   tutorial = false,
+  practiceSeed = null,
   onTakeSeat,
   roomCode,
   frozenHold = false,
@@ -172,6 +177,7 @@ export function Table({
         devConsole={dev && DEV_CONSOLE_ENABLED ? <DevConsole /> : undefined}
         defaultDetailsOpen={initialUi?.scoreDetailsOpen ?? false}
       />
+      <TeachingGoal seed={practiceSeed} />
       <Stage
         trickPlays={derived.trickPlays}
         sweepTo={derived.sweepTo}

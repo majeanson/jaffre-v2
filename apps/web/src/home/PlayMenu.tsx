@@ -5,6 +5,7 @@ import { reportFunnel } from '../net/telemetry.js';
 import { GHOST_BTN_SM } from '../components/buttonStyles.js';
 import { TableCard, useTableStatuses } from './TableCards.js';
 import { generateRoomCode } from './roomCode.js';
+import { TEACHING_DEALS } from './teachingDeals.js';
 import {
   botsFromSetting,
   loadPracticeBots,
@@ -26,6 +27,7 @@ const T: Record<
     yourTables: string;
     playVsBots: string;
     botDifficulty: string;
+    teaching: string;
     quickPlay: string;
     quickPlayHint: string;
     friends: string;
@@ -43,6 +45,7 @@ const T: Record<
     yourTables: 'Your tables',
     playVsBots: 'Play vs bots',
     botDifficulty: 'Bot difficulty',
+    teaching: 'Or learn one thing:',
     quickPlay: 'Quick play online',
     quickPlayHint: 'Joins an open table, or starts one.',
     friends: 'With friends',
@@ -59,6 +62,7 @@ const T: Record<
     yourTables: 'Tes tables',
     playVsBots: 'Jouer contre les bots',
     botDifficulty: 'Difficulté des bots',
+    teaching: 'Ou apprends une affaire :',
     quickPlay: 'Partie rapide en ligne',
     quickPlayHint: 'Joins une table ouverte, ou pars-en une.',
     friends: 'Entre amis',
@@ -241,6 +245,26 @@ export function PlayMenu({
                         }`}
                       >
                         {difficultyLabel[s]}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Curated deals: the same practice table, seeded so the
+                      lesson is actually in your hand on round one. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-ink)">
+                      {t.teaching}
+                    </span>
+                    {TEACHING_DEALS.map((deal) => (
+                      <button
+                        key={deal.id}
+                        type="button"
+                        title={deal.goal[lang]}
+                        onClick={() => {
+                          location.hash = `#practice/${String(deal.seed)}`;
+                        }}
+                        className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                      >
+                        {deal.label[lang]}
                       </button>
                     ))}
                   </div>
