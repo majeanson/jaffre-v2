@@ -9,7 +9,7 @@ import { legalBidChoices, legalCards } from '@jaffre/engine';
 export function easyAction(view: SeatView, rng: Rng): Action | null {
   if (view.phase === 'bidding') {
     const strength = handStrength(view.hand);
-    const bidsOnly = legalBidChoices(view.bids).filter(
+    const bidsOnly = legalBidChoices(view.bids, view.viewer === view.dealer).filter(
       (c): c is Extract<BidChoice, { kind: 'bid' }> => c.kind === 'bid',
     );
     const wanted = bidsOnly.filter((b) => !b.sansAtout && b.value <= strength);

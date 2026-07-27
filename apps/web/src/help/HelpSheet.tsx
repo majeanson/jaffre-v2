@@ -276,8 +276,8 @@ const CONCEPTS: Record<ConceptId, Concept> = {
     color: BLUE,
     term: { en: 'Dealer (brasseur)', fr: 'Le brasseur' },
     def: {
-      en: 'Deals the 8 cards and speaks last in the auction — and when all four players pass, the brasseur is stuck with a forced bid of 7.',
-      fr: 'Brasse et donne les 8 cartes, puis parle en dernier aux mises — et quand les quatre joueurs passent, le brasseur est pris avec une mise forcée de 7.',
+      en: 'Deals the 8 cards and speaks last in the auction — which comes with the privilege of matching the standing bid instead of topping it. And when all four players pass, the brasseur is stuck with a forced bid of 7.',
+      fr: 'Brasse et donne les 8 cartes, puis parle en dernier aux mises — ce qui lui donne le privilège d’égaler la mise en cours au lieu de la dépasser. Et quand les quatre joueurs passent, le brasseur est pris avec une mise forcée de 7.',
     },
     see: ['mise'],
   },
@@ -586,7 +586,9 @@ function RulesEn() {
           <Strong>bid 7 to 12 trick points</Strong> or pass. Bidding{' '}
           <G id="sansatout">sans atout</G> means playing with no trump and{' '}
           <Strong>doubles the stake</Strong> — and an equal bid played sans atout outbids the plain
-          one. If all four players pass, the <G id="brasseur">dealer</G> is forced to a bid of 7.
+          one. Speaking last, the <G id="brasseur">dealer</G> has the{' '}
+          <Strong>privilege of matching</Strong> the standing bid — an equal bid takes the contract
+          from it. If all four players pass, the dealer is forced to a bid of 7.
         </p>
       </Rule>
 
@@ -912,8 +914,9 @@ function RulesFr() {
           <Strong>mise de 7 à 12 points de levées</Strong>, ou passe. Miser{' '}
           <G id="sansatout">sans atout</G> veut dire jouer sans couleur d'atout et{' '}
           <Strong>double les points en jeu (×2)</Strong> — et une mise égale jouée sans atout
-          l'emporte sur la mise ordinaire. Si les quatre joueurs passent, le{' '}
-          <G id="brasseur">brasseur</G> est forcé de miser 7.
+          l'emporte sur la mise ordinaire. Parlant en dernier, le <G id="brasseur">brasseur</G> a le{' '}
+          <Strong>privilège d'égaler</Strong> la mise en cours — une mise égale lui donne le
+          contrat. Si les quatre joueurs passent, le brasseur est forcé de miser 7.
         </p>
       </Rule>
 

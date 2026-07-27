@@ -20,7 +20,10 @@ export function randomAction(state: GameState, rng: Rng): Action {
     // tipped past the convergence threshold — 11 of 1000 seeds then blew past
     // MAX_ACTIONS. At 0.85 the model settles at ~26 rounds/game and a worst
     // case of ~9.6k actions, comfortably inside the cap. Measured, not guessed.
-    const choices = legalBidChoices(state.bids);
+    //
+    // The dealer flag is the matching privilege: bidding last, the dealer may
+    // take the contract by equalling the standing bid instead of climbing it.
+    const choices = legalBidChoices(state.bids, state.turn === state.dealer);
     const bidsOnly = choices.filter((c) => c.kind === 'bid');
     const choice: BidChoice =
       rng() < 0.85 || bidsOnly.length === 0

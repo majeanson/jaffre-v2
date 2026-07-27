@@ -19,7 +19,8 @@
  * BIDDING: one round, dealer last. A bid of 7-12 promises the contract team
  * captures at least that many points; sans-atout doubles the stake. If all four
  * pass, the dealer is FORCED to a plain 7. Higher value or (at equal value)
- * sans-atout outbids.
+ * sans-atout outbids. DEALER'S PRIVILEGE: bidding last, the dealer alone may
+ * MATCH the standing bid exactly and take the contract with it.
  *
  * SETTLEMENT (see reducer.ts scoreRound): the contract team scores +stake if it
  * makes the contract, −stake if it misses (stake = value, ×2 sans-atout). The
