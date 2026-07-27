@@ -7,6 +7,7 @@ import { useScrollLock } from '../components/useScrollLock.js';
 import { Confetti } from './Confetti.js';
 import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js';
 import { XpStrip } from './XpStrip.js';
+import { DailyFirstWin } from './DailyFirstWin.js';
 import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
@@ -545,6 +546,7 @@ export function GameRecap({
             </p>
           )}
           {showXp && <XpStrip />}
+          {showXp && mySeat !== null && <DailyFirstWin won={mySeat % 2 === winner} />}
 
           {seriesWins !== undefined && (
             <div className="mt-5 text-left">
