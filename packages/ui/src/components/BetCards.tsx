@@ -16,6 +16,9 @@ const T: Record<
     bidding: string;
     waitYourTurn: string;
     hailMaryWarn: string;
+    pointsHint: string;
+    explainToggle: string;
+    explainLines: readonly [string, string, string];
   }
 > = {
   en: {
@@ -30,6 +33,13 @@ const T: Record<
     bidding: 'Bidding',
     waitYourTurn: 'Wait for your turn to bid',
     hailMaryWarn: 'All or nothing — make 12 sans atout to win the game, miss it and you lose.',
+    pointsHint: 'Bids are points, not tricks — 11 in play each round.',
+    explainToggle: 'What do the numbers mean?',
+    explainLines: [
+      'Each trick is worth 1 point · the Red 0 adds 5 · the Brown 0 removes 2 — 11 in total.',
+      'Make your bid and your team scores it; miss and you lose it (doubled sans atout).',
+      'Defenders always keep the points they capture.',
+    ],
   },
   fr: {
     pass: 'Passe',
@@ -43,6 +53,13 @@ const T: Record<
     bidding: 'Les mises',
     waitYourTurn: 'Attends ton tour pour miser',
     hailMaryWarn: 'Tout ou rien — réussis 12 sans atout pour gagner, rate-le et tu perds.',
+    pointsHint: 'Les mises sont des points, pas des levées — 11 en jeu par ronde.',
+    explainToggle: 'Que veulent dire les chiffres?',
+    explainLines: [
+      'Chaque levée vaut 1 point · le Rouge 0 ajoute 5 · le Brun 0 enlève 2 — 11 au total.',
+      'Mise réussie : ton équipe la marque; ratée : tu la perds (doublée sans atout).',
+      'Les défenseurs gardent toujours les points qu’ils prennent.',
+    ],
   },
 };
 
@@ -159,6 +176,7 @@ export function BetCards({
 }: BetCardsProps) {
   const tt = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
+  const [explaining, setExplaining] = useState(false);
   const values = [7, 8, 9, 10, 11, 12] as const;
   const locked = disabled || waiting;
   const recommendPass = coaching && recommended === null;
@@ -186,6 +204,27 @@ export function BetCards({
           {sansAtout ? '★ Sans atout' : '☆ Sans atout'}
         </button>
       </div>
+
+      {/* The one line a first-timer needs before the numbers make sense —
+          always visible, with the full why behind a single tap. */}
+      <p className="w-full text-center text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+        {tt.pointsHint}{' '}
+        <button
+          type="button"
+          aria-expanded={explaining}
+          onClick={() => setExplaining((v) => !v)}
+          className="cursor-pointer whitespace-nowrap text-(--color-ap-violet-soft) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+        >
+          {tt.explainToggle}
+        </button>
+      </p>
+      {explaining && (
+        <ul className="w-full space-y-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel-hover) px-3 py-2 text-left text-(length:--text-fluid-xs) text-(--color-ap-text)">
+          {tt.explainLines.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
 
       {order !== undefined && order.length > 0 && (
         // The auction in turn order: who already declared what, whose turn it
