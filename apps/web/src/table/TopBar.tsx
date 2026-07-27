@@ -136,6 +136,7 @@ export function TopBar({
       {settingsOpen && (
         <SettingsSheet
           coach={{ on: coachOn, onToggle: onToggleCoach }}
+          onOpenCollection={() => setSkinsOpen(true)}
           onClose={() => setSettingsOpen(false)}
         />
       )}

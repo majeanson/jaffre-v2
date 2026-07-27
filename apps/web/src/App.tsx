@@ -16,7 +16,6 @@ import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGam
 import { connect, disconnect, send } from './net/socket.js';
 import { forgetTable } from './net/rooms.js';
 import { leaveVoice } from './voice/rtc.js';
-import { collectionReturnHash } from './screens/collectionReturn.js';
 // Home and the room/practice Table path are the critical path (first paint,
 // and the screen every join/create flow lands on next) and stay eager. Lobby
 // is the screen right after Create/Join, so it stays eager too. Every other
@@ -230,7 +229,6 @@ function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
   const viewer = useGameStore((s) => s.viewer);
-
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
     window.addEventListener('hashchange', onHash);
@@ -302,7 +300,9 @@ function AppRoutes() {
       />
     );
   } else if (route.kind === 'collection') {
-    content = <Collection onLeave={() => (location.hash = collectionReturnHash())} />;
+    // Same exit as every other meta screen: Home. (The mid-game route into
+    // the gallery is the CollectionSheet modal, which never leaves the room.)
+    content = <Collection onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'paint') {
     content = <PaintStudio onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'replay') {

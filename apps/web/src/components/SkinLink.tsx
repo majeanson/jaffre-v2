@@ -1,6 +1,5 @@
 import { useLang, type Lang } from '@jaffre/ui';
 import { CARD_SKINS, DEFAULT_CARD_SKIN, currentCardSkin } from '../cosmetics.js';
-import { COLLECTION_RETURN_KEY } from '../screens/collectionReturn.js';
 import { ICON_BTN_NEUTRAL } from './IconButton.js';
 import { IconPalette } from './icons.js';
 
@@ -15,7 +14,7 @@ const T: Record<Lang, { collection: string }> = {
  * choices live in the Collection gallery; this routes to `#collection`. When a
  * non-default card skin is equipped the tooltip names it (e.g. "OG Deck").
  * A plain hash link so the router handles it and it's keyboard-accessible.
- * Stashes the current route first so the gallery's back button returns here.
+ * The gallery's own back goes through history, so no return route is stashed.
  */
 export function SkinLink() {
   const t = T[useLang()];
@@ -27,10 +26,6 @@ export function SkinLink() {
       href="#collection"
       aria-label={t.collection}
       title={equipped === null ? t.collection : `${t.collection} · ${equipped}`}
-      onClick={() => {
-        const here = location.hash;
-        if (here !== '#collection') sessionStorage.setItem(COLLECTION_RETURN_KEY, here);
-      }}
       className={ICON_BTN_NEUTRAL}
     >
       <IconPalette />

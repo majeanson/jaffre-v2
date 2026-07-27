@@ -122,6 +122,10 @@ export interface SettingsSheetProps {
   /** Live coach state when opened at the table, so the sheet and the drawer
    * toggle stay in sync; omitted elsewhere (the persisted pref is edited). */
   readonly coach?: { readonly on: boolean; readonly onToggle: () => void };
+  /** How to reach the gallery from here. At the table this opens the
+   * CollectionSheet modal — navigating to '#collection' would tear the room
+   * route down mid-game. Elsewhere it's omitted and the route is used. */
+  readonly onOpenCollection?: () => void;
 }
 
 /**
@@ -131,7 +135,7 @@ export interface SettingsSheetProps {
  * footer and the lobby. Same overlay idiom as Customize/Login (portal,
  * backdrop + Escape + ✕ close).
  */
-export function SettingsSheet({ onClose, coach }: SettingsSheetProps) {
+export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsSheetProps) {
   const lang = useLang();
   const t = T[lang];
   useScrollLock();
@@ -230,7 +234,8 @@ export function SettingsSheet({ onClose, coach }: SettingsSheetProps) {
             type="button"
             onClick={() => {
               onClose();
-              location.hash = '#collection';
+              if (onOpenCollection !== undefined) onOpenCollection();
+              else location.hash = '#collection';
             }}
             className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 font-arcade-display text-xs uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
           >
