@@ -6,6 +6,7 @@ import { NoticeToast } from '../components/NoticeToast.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { send } from '../net/socket.js';
 import { consumeMakePublic } from '../net/rooms.js';
+import { NamePrompt } from '../room/NamePrompt.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { ConnectionBanner } from '../table/ConnectionBanner.js';
@@ -147,6 +148,10 @@ export function Lobby({ code, onLeave }: LobbyProps) {
         {/* In-flow (its own row): the table's fixed variant lands on the seat
             rows at phone heights. */}
         <ConnectionBanner inline />
+
+        {/* One-shot: players still named "Player" get a single field before
+            they sit, so the default name never becomes their online identity. */}
+        <NamePrompt code={code} />
 
         <SeatPicker
           roster={roster}
