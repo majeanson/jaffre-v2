@@ -8,6 +8,7 @@ import { Confetti } from './Confetti.js';
 import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js';
 import { XpStrip } from './XpStrip.js';
 import { DailyFirstWin } from './DailyFirstWin.js';
+import { recapTakeaway } from './recapTakeaway.js';
 import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
@@ -54,6 +55,8 @@ const T: Record<
     hailMaryLostTitle: string;
     hailMaryWonMsg: (team: string) => string;
     hailMaryLostMsg: (bidder: string, winner: string) => string;
+    takeaway: string;
+    seeRecord: string;
   }
 > = {
   en: {
@@ -96,6 +99,8 @@ const T: Record<
     hailMaryWonMsg: (team) => `${team} called 12 sans atout and swept it — instant win.`,
     hailMaryLostMsg: (bidder, winner) =>
       `${bidder} went for 12 sans atout and missed — ${winner} take the game.`,
+    takeaway: 'One thing to work on',
+    seeRecord: 'Replay it from Your record →',
   },
   fr: {
     gameOver: 'Partie terminée',
@@ -138,6 +143,8 @@ const T: Record<
       `${team} a demandé 12 sans atout et a tout ramassé — victoire immédiate.`,
     hailMaryLostMsg: (bidder, winner) =>
       `${bidder} a tenté le 12 sans atout et l'a raté — ${winner} remporte la partie.`,
+    takeaway: 'Une affaire à travailler',
+    seeRecord: 'Rejoue-la depuis Ton record →',
   },
 };
 
@@ -463,6 +470,8 @@ export function GameRecap({
       : null;
   const label = (uc: string) =>
     `font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) ${uc}`;
+  // Players only: a spectator has no record here to learn from.
+  const takeaway = showXp ? recapTakeaway(rounds, mySeat ?? null, lang) : null;
   return (
     <div
       ref={ref}
@@ -547,6 +556,26 @@ export function GameRecap({
           )}
           {showXp && <XpStrip />}
           {showXp && mySeat !== null && <DailyFirstWin won={mySeat % 2 === winner} />}
+
+          {/* Turns the recap into a learning loop: one true observation from
+              this game's record, and the way back to watching it. */}
+          {takeaway !== null && (
+            <div
+              data-testid="recap-takeaway"
+              className="mt-4 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-paper-shade) px-3 py-2 text-left"
+            >
+              <p className={label('')}>{t.takeaway}</p>
+              <p className="mt-1 text-[0.85em] leading-snug text-(--color-ap-ink)">
+                {takeaway.text}
+              </p>
+              <a
+                href="#stats"
+                className="mt-1.5 inline-block text-[0.8em] text-(--color-ap-ink)/75 underline decoration-dotted underline-offset-2 hover:text-(--color-ap-ink)"
+              >
+                {t.seeRecord}
+              </a>
+            </div>
+          )}
 
           {seriesWins !== undefined && (
             <div className="mt-5 text-left">
