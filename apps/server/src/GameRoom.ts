@@ -2136,20 +2136,26 @@ export class GameRoom implements DurableObject {
       .getWebSockets()
       .filter((s) => s !== exclude)
       .map((s) => this.attachment(s));
+    const phase = this.game?.phase;
     const seats = SEATS.map((i): RosterSeat | null => {
       const owner = this.meta.seats[i];
       if (owner === null) return null;
-      const ready = this.game?.phase === 'round_over' ? this.readyState()[i] : undefined;
+      // round_over: readiness for the next round (the Ready button).
+      // game_over: "still at the table" for the recap — bots always are, a
+      // human is while their socket is up. Sent explicitly so the recap can
+      // read one field instead of guessing from connected/isBot.
       if (isBotOwner(owner)) {
+        const ready = phase === 'round_over' ? this.readyState()[i] : phase === 'game_over';
         return {
           name: `Bot ${String(i + 1)}`,
           isBot: true,
           connected: true,
           difficulty: botDifficulty(owner),
-          ...(ready !== undefined ? { ready } : {}),
+          ...(phase === 'round_over' || phase === 'game_over' ? { ready } : {}),
         };
       }
       const connected = attachments.some((a) => a.joined && a.viewer === i);
+      const ready = phase === 'round_over' ? this.readyState()[i] : connected;
       // A disconnected human mid-game is on the bot-swap clock (botSwapAt); a
       // connected human on turn, with the turnTimer house rule on, is on their
       // per-turn clock (turnTimerAt). Distinct fields — the client labels the
@@ -2182,7 +2188,7 @@ export class GameRoom implements DurableObject {
         connected,
         pid: publicId(owner),
         ...(paint !== undefined ? { paint } : {}),
-        ...(ready !== undefined ? { ready } : {}),
+        ...(phase === 'round_over' || phase === 'game_over' ? { ready } : {}),
         ...(Number.isFinite(swapAt) ? { botSwapAt: swapAt } : {}),
         ...(botPlaying ? { botPlaying: true } : {}),
         ...(Number.isFinite(turnAt) ? { turnTimerAt: turnAt } : {}),

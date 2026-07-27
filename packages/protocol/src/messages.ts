@@ -129,7 +129,9 @@ export interface RosterSeat {
   /** This human's pixel avatar (pixel-SVG data URL), as sent on their join —
    * lets every client render painted avatars for OTHER players too. */
   readonly paint?: string;
-  /** Ready for the next round (round_over phase only; bots are always ready). */
+  /** During `round_over`: ready for the next round (bots always are). During
+   * `game_over`: still at the table for the recap (bots always are; a human is
+   * while their socket is up). Absent in every other phase. */
   readonly ready?: boolean;
   /** Present only for bot seats — the difficulty this bot plays at. */
   readonly difficulty?: BotDifficulty;

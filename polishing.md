@@ -134,9 +134,11 @@ i18n/copy, perf/tech). Line numbers drift — re-locate by the described element
       `s.ready ?? s.isBot ?? s.connected ?? false`: honors the flag when the server ever
       sends one (mirrors RoundSummaryOverlay), falls back to `connected` (today's behavior)
       when it doesn't — no regression, and future-proofed if a rematch-ready flag is added.
-- [x] (M) SKIPPED: `PlayerPeek.tsx:214` — public standing matched by display NAME;
-      duplicate names show the wrong Elo. Needs a stable id on the leaderboard payload —
-      a server-side change (LeaderboardRow/roster), out of scope for a surgical client pass.
+- [x] (M) `PlayerPeek.tsx` — public standing was matched by display NAME, so duplicate
+      names showed the wrong Elo. NO LONGER SKIPPED: the awards/leaderboard fortification
+      landed the server side — `/api/leaderboard` rows carry `publicId(users.id)` and the
+      same opaque hash rides on `RosterSeat.pid` (`GameRoom.ts`), so `PublicStanding`
+      matches seat↔row by id, with the name lookup left only as a no-pid fallback.
 - [x] (M) `RoundSummaryOverlay.tsx` — the who-are-we-waiting-on list is
       undifferentiated tiny text. DONE (2026-07-25): team-coloured chips — ready seats
       fill solid in their team colour with a ✓, pending ones stay a muted outline with a
