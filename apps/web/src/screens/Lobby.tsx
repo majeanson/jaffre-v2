@@ -305,7 +305,9 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
             <Cta
               variant="secondary"
               data-testid="leave-table"
-              className={leaveArmed ? 'border-(--color-ap-danger) text-(--color-ap-danger-text)' : ''}
+              className={
+                leaveArmed ? 'border-(--color-ap-danger) text-(--color-ap-danger-text)' : ''
+              }
               onClick={() => {
                 if (leaveArmed) onLeaveTable();
                 else setLeaveArmed(true);

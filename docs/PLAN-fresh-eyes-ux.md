@@ -140,6 +140,10 @@ guessable place to look.
    inside). Quick Play calls the existing `/api/quickplay`. PracticeNudge
    stays. Bot difficulty becomes a proper 4-option row instead of a blind
    cycling chip. (M)
+   > **Superseded 2026-07-27:** the "with friends" fork went one tap too deep —
+   > it hid the room-code box and the public list. The door now opens onto four
+   > labelled sections (RESUME / BOTS / PUBLIC / PRIVATE) with every action
+   > visible at once. The 4-option difficulty row survives as planned.
 5. **Persistent `?` on the felt.** A small fixed help button on the table
    (phone: inside UtilityRow) opening HelpSheet directly — currently Help is
    two taps deep behind the score-strip gear. (S)

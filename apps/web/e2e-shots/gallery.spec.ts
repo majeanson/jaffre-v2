@@ -68,7 +68,7 @@ function warn(line: string): void {
  *     what a scrollWidth check can't see when an ancestor uses overflow-clip
  *     (the home `main` does): the runaway control is simply cut off. An
  *     element whose spill is clipped away by an overflow-hidden ancestor
- *     (decorative bleeds like the PLAY door's spade) is NOT reported — we
+ *     (decorative bleeds off a panel's edge) is NOT reported — we
  *     intersect with every clipping ancestor first;
  *  3. anything poking into the top bar's box from below (top-chip regression).
  */
