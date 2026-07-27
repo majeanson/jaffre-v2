@@ -187,7 +187,9 @@ export function pickBid(view: SeatView, opts: BidOpts): BidChoice {
   ceil = Math.min(12, ceil);
   if (ceil < 7) return { kind: 'pass' };
 
-  const legal = legalBidChoices(view.bids).filter((c): c is PlainBid => c.kind === 'bid');
+  const legal = legalBidChoices(view.bids, seat === view.dealer).filter(
+    (c): c is PlainBid => c.kind === 'bid',
+  );
   const affordablePlain = legal
     .filter((c) => !c.sansAtout && c.value <= ceil)
     .sort((a, b) => a.value - b.value);

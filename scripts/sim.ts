@@ -42,7 +42,9 @@ function fmtBid(choice: BidChoice): string {
 
 function randomAction(state: GameState, rng: Rng): Action {
   if (state.phase === 'bidding') {
-    const bidsOnly = legalBidChoices(state.bids).filter((c) => c.kind === 'bid');
+    const bidsOnly = legalBidChoices(state.bids, state.turn === state.dealer).filter(
+      (c) => c.kind === 'bid',
+    );
     const choice: BidChoice =
       // 0.85, matching the engine test driver — see its comment: below this the
       // random model stops converging now that a round holds 10 points, not 11.

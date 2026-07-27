@@ -284,7 +284,8 @@ export function useTableDerived(coachOn = false): TableDerived | null {
 
   const bidOptions: BidOption[] =
     view.phase === 'bidding'
-      ? legalBidChoices(view.bids).flatMap((c) =>
+      ? // The dealer bids last and may match the standing bid, not just top it.
+        legalBidChoices(view.bids, me !== null && me === view.dealer).flatMap((c) =>
           c.kind === 'bid' ? [{ value: c.value, sansAtout: c.sansAtout }] : [],
         )
       : [];

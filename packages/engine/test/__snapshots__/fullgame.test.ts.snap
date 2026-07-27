@@ -2,11 +2,11 @@
 
 exports[`full games > golden seeds replay to a stable final state (canon frozen at M3) 1`] = `
 {
-  "actionCount": 1183,
-  "rounds": 32,
+  "actionCount": 517,
+  "rounds": 14,
   "scores": [
-    42,
-    -71,
+    41,
+    -47,
   ],
   "seed": 1,
   "winner": 0,

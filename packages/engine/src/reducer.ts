@@ -71,7 +71,8 @@ function placeBid(state: GameState, seat: Seat, choice: BidChoice): Result {
   if (seat !== state.turn) {
     return fail('NOT_YOUR_TURN', `It is seat ${state.turn}'s turn to bid.`);
   }
-  if (choice.kind === 'bid' && !outbids(choice, highestBid(state.bids))) {
+  // The dealer bids last and may match the standing bid instead of topping it.
+  if (choice.kind === 'bid' && !outbids(choice, highestBid(state.bids), seat === state.dealer)) {
     return fail('ILLEGAL_BID', 'Bid must outbid the current highest bid.');
   }
 

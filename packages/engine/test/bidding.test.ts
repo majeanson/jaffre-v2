@@ -32,6 +32,19 @@ describe('outbids', () => {
       false,
     );
   });
+
+  it("dealer's privilege: an exact match takes over, a lower bid still does not", () => {
+    const current = { seat: 0, value: 9, sansAtout: false } as const;
+    expect(outbids({ value: 9, sansAtout: false }, current, true)).toBe(true);
+    expect(outbids({ value: 9, sansAtout: true }, { ...current, sansAtout: true }, true)).toBe(
+      true,
+    );
+    // Matching is not a licence to go below: plain never takes a sans-atout.
+    expect(outbids({ value: 9, sansAtout: false }, { ...current, sansAtout: true }, true)).toBe(
+      false,
+    );
+    expect(outbids({ value: 8, sansAtout: false }, current, true)).toBe(false);
+  });
 });
 
 describe('highestBid / resolveContract', () => {
@@ -52,6 +65,23 @@ describe('highestBid / resolveContract', () => {
       seat: 3,
       value: 7,
       sansAtout: true,
+      forced: false,
+    });
+  });
+
+  it('gives a matching dealer the contract, but only when they are the dealer', () => {
+    const matched: BidEntry[] = [
+      { seat: 1, choice: { kind: 'bid', value: 9, sansAtout: false } },
+      { seat: 2, choice: { kind: 'pass' } },
+      { seat: 3, choice: { kind: 'pass' } },
+      { seat: 0, choice: { kind: 'bid', value: 9, sansAtout: false } },
+    ];
+    expect(highestBid(matched, 0)).toEqual({ seat: 0, value: 9, sansAtout: false });
+    expect(highestBid(matched)).toEqual({ seat: 1, value: 9, sansAtout: false });
+    expect(resolveContract(matched, 0)).toEqual({
+      seat: 0,
+      value: 9,
+      sansAtout: false,
       forced: false,
     });
   });
@@ -84,6 +114,13 @@ describe('legalBidChoices', () => {
 
   it('offers all 13 choices on an open auction', () => {
     expect(legalBidChoices([])).toHaveLength(13);
+  });
+
+  it('offers the dealer the standing bid itself, to match', () => {
+    const bids: BidEntry[] = [{ seat: 1, choice: { kind: 'bid', value: 11, sansAtout: false } }];
+    const choices = legalBidChoices(bids, true);
+    expect(choices).toContainEqual({ kind: 'bid', value: 11, sansAtout: false });
+    expect(choices).toHaveLength(5);
   });
 });
 
@@ -122,6 +159,20 @@ describe('reducer: bidding flow', () => {
     expect(state.trickLeader).toBe(0);
     expect(state.trumpDecided).toBe(true);
     expect(state.trump).toBeNull();
+  });
+
+  it('lets the dealer match the standing bid and take the contract', () => {
+    const state = bidPhase(1, [bid(9), PASS, PASS, bid(9)]);
+    expect(state.phase).toBe('playing');
+    expect(state.contract).toEqual({ seat: 0, value: 9, sansAtout: false, forced: false });
+    expect(state.turn).toBe(0);
+  });
+
+  it('still rejects a matching bid from a non-dealer', () => {
+    const state = bidPhase(1, [bid(9)]);
+    expect(state.turn).toBe(2);
+    const result = applyAction(state, { type: 'place_bid', seat: 2, choice: bid(9) });
+    expect(result).toMatchObject({ ok: false, error: { code: 'ILLEGAL_BID' } });
   });
 
   it('forces the dealer to 7 when all pass', () => {
