@@ -9,6 +9,7 @@ import {
 } from './cosmetics.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { DEV_TOOLS_ENABLED } from './dev/devMode.js';
 import { NoticeToast } from './components/NoticeToast.js';
 import { Toast } from './components/Toast.js';
 import { UpdateToast } from './pwa/UpdateToast.js';
@@ -91,9 +92,11 @@ function parseHash(): Route {
   if (room !== null) {
     return { kind: 'room', code: room[1] as string, watching: room[2] !== undefined };
   }
-  // '#scenes[/<id>]' — live-through every game phase instantly (design/dev tool).
+  // '#scenes[/<id>]' — live-through every game phase instantly (design/dev
+  // tool). Gated like the dev console: a real visitor typing the hash gets the
+  // unknown-link notice, not the internal 60-scene gallery.
   const scenes = /^#scenes(?:\/([a-z0-9-]{1,40}))?$/.exec(h);
-  if (scenes !== null) return { kind: 'scenes', id: scenes[1] ?? null };
+  if (scenes !== null && DEV_TOOLS_ENABLED) return { kind: 'scenes', id: scenes[1] ?? null };
   if (h === '#corner') return { kind: 'corner' };
   // Old links/bookmarks to '#history' land on the record — the games list
   // lives there now. The address bar is rewritten to '#stats' on arrival

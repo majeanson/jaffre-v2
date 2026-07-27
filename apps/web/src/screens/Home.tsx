@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayerCard, useLang, type Lang } from '@jaffre/ui';
 import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconGear, IconQuestion } from '../components/icons.js';
@@ -13,10 +13,17 @@ import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { PracticeNudge } from '../home/PracticeNudge.js';
 import { LevelBadge } from '../home/LevelBadge.js';
-import { RecoveryCard, type RecoveryStage } from '../home/RecoveryCard.js';
+import type { RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 import { leaveTable, listTables, type TableEntry } from '../net/rooms.js';
+
+/** Only the scene viewer's staged identity renders this (live players reach
+ * recovery through the Log-in sheet), so it has no business in the eager Home
+ * chunk every visitor downloads. */
+const RecoveryCard = lazy(() =>
+  import('../home/RecoveryCard.js').then((m) => ({ default: m.RecoveryCard })),
+);
 
 const T: Record<Lang, { corner: string; customize: string; settings: string }> = {
   en: { corner: 'Your corner', customize: 'Customize', settings: 'Settings' },
@@ -290,7 +297,11 @@ export function Home({
           {/* Scene viewer still stages the recovery plates; live players reach
               every login path (Google / email code / 3-word restore) through
               the one "Log in" button in the chrome bar below. */}
-          {staged && <RecoveryCard stage={identityStage.recovery} />}
+          {staged && (
+            <Suspense fallback={null}>
+              <RecoveryCard stage={identityStage.recovery} />
+            </Suspense>
+          )}
         </CustomizeSheet>
       )}
     </main>

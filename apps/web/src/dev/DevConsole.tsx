@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { consoleActive, currentScores, jumpTo, redeal, setScores } from '../local/localGame.js';
+import { DEV_TOOLS_ENABLED } from './devMode.js';
 
-/** Dev-server and e2e only: local `vite dev` builds (import.meta.env.DEV) and
- * automated runs against the prod build (navigator.webdriver, same idiom as
- * UpdateToast/NotificationsToggle/TutorialCoach) get the console; real prod
- * users never do. */
-export const DEV_CONSOLE_ENABLED = import.meta.env.DEV || navigator.webdriver === true;
+/** Dev-server and e2e only — see devMode.ts. Kept as a named re-export so the
+ * table's existing gate reads at the call site. */
+export const DEV_CONSOLE_ENABLED = DEV_TOOLS_ENABLED;
 
 const BTN =
   'cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2.5 py-1.5 text-left font-arcade-display text-[0.72em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) enabled:hover:bg-(--color-ap-panel-hover) disabled:opacity-45';
