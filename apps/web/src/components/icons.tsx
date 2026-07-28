@@ -33,16 +33,6 @@ export function IconSignOut() {
   );
 }
 
-/** Cards seen: an eye — what's already been played. */
-export function IconEye() {
-  return (
-    <Svg>
-      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" />
-      <circle cx="12" cy="12" r="2.5" />
-    </Svg>
-  );
-}
-
 /** Take a seat: a chair, seen from the side. */
 export function IconSeat() {
   return (
