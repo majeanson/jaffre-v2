@@ -182,7 +182,12 @@ function FeltPreview({ id }: { readonly id: string }) {
   const attrs = id === DEFAULT_FELT ? {} : { 'data-felt': id };
   return (
     <div {...attrs} className="flex w-full items-center justify-center p-[0.35em]">
-      <div className="felt-oval h-[3.1em] w-full rounded-[46%]" />
+      {/* A fixed size, NOT w-full: the picker's preview slot shrink-wraps its
+          content, and a bare swatch has no intrinsic width to wrap around —
+          `w-full` resolved against a collapsed parent and rendered a 4px
+          slice. The card/theme previews get their width from the card inside
+          them; this has to state its own. */}
+      <div className="felt-oval felt-swatch h-[3.1em] w-[5.6em] rounded-[46%]" />
     </div>
   );
 }
@@ -198,6 +203,15 @@ function FeltPreview({ id }: { readonly id: string }) {
  * table's component. Honours reduced motion for free (MotionConfig zeroes the
  * transitions, so the tile settles instead of looping).
  */
+/** The virtual stage the preview renders at, then scales down. TrickArea lays
+ * cards out in absolute px (seat offsets ~140px, sweep travel ~260px), so it
+ * cannot simply be given a tiny box — everything would land outside it and be
+ * clipped. Rendering at table scale and shrinking the whole thing keeps the
+ * positions, the travel and the card size in proportion, and means the tile
+ * shows the REAL motion rather than an approximation of it. */
+const SWEEP_STAGE_PX = 220;
+const SWEEP_STAGE_SCALE = 0.42;
+
 function SweepPreview({ id }: { readonly id: string }) {
   const [sweeping, setSweeping] = useState(false);
   useEffect(() => {
@@ -209,10 +223,27 @@ function SweepPreview({ id }: { readonly id: string }) {
   }, []);
   return (
     <div className="flex w-full items-center justify-center p-[0.3em]">
-      <div className="felt-oval relative h-[3.4em] w-full overflow-hidden rounded-[46%]">
-        <TrickSweepProvider value={trickSweepById(id)}>
-          <TrickArea plays={SWEEP_PREVIEW_TRICK} sweepTo={sweeping ? 2 : null} size="sm" />
-        </TrickSweepProvider>
+      {/* Explicit px, for the same reason as FeltPreview above — and because
+          the stage inside is laid out in px, so the frame has to be too. */}
+      <div
+        className="felt-oval felt-swatch relative overflow-hidden rounded-[46%]"
+        style={{
+          width: `${String(Math.round(SWEEP_STAGE_PX * SWEEP_STAGE_SCALE * 1.3))}px`,
+          height: `${String(Math.round(SWEEP_STAGE_PX * SWEEP_STAGE_SCALE))}px`,
+        }}
+      >
+        <div
+          className="absolute top-1/2 left-1/2"
+          style={{
+            width: `${String(SWEEP_STAGE_PX)}px`,
+            height: `${String(SWEEP_STAGE_PX)}px`,
+            transform: `translate(-50%, -50%) scale(${String(SWEEP_STAGE_SCALE)})`,
+          }}
+        >
+          <TrickSweepProvider value={trickSweepById(id)}>
+            <TrickArea plays={SWEEP_PREVIEW_TRICK} sweepTo={sweeping ? 2 : null} size="sm" />
+          </TrickSweepProvider>
+        </div>
       </div>
     </div>
   );

@@ -1166,6 +1166,12 @@
   /* A discrete green felt oval — the playing surface, sat on the arcade ground.
    * Ink border, inset ring, zero-blur hard shadow, felt radial highlight. */
   .felt-oval {
+    /* The inset rim, as a variable. It used to be a hard 8px, which is a thin
+     * edge on a full-size table but swallows a small swatch whole — leaving
+     * nothing but --color-felt-900 in a lens shape, so every felt previewed
+     * identically. Anything rendering the oval smaller than the table sets
+     * this down (see .felt-swatch). */
+    --felt-ring: 8px;
     /* Two layers: an optional texture from the chosen felt (see the [data-felt]
      * blocks), over the felt's own radial highlight. `none` is a valid image
      * layer, so a felt that sets no texture renders exactly as before. */
@@ -1174,8 +1180,19 @@
       radial-gradient(60% 55% at 50% 42%, var(--color-felt-700), var(--color-felt-800));
     border: 3px solid var(--color-ap-ink);
     box-shadow:
-      inset 0 0 0 8px var(--color-felt-900),
+      inset 0 0 0 var(--felt-ring) var(--color-felt-900),
       var(--shadow-ap-lg);
+  }
+
+  /* The oval at swatch size — Collection's felt tiles and the sweep previews.
+   * Same surface, scaled trim: a thin rim and a small shadow, so what shows is
+   * the felt itself rather than its border. */
+  .felt-swatch {
+    --felt-ring: 2px;
+    border-width: 2px;
+    box-shadow:
+      inset 0 0 0 var(--felt-ring) var(--color-felt-900),
+      var(--shadow-ap-sm);
   }
 
   :focus-visible {
