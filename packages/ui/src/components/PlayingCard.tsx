@@ -157,7 +157,14 @@ export function PlayingCard({
         )}
       </span>
 
-      {/* Special tokens: red 0 = +5 (ok), brown 0 = −3 (dark red). BOTTOM-left
+      {/* Special tokens: red 0 = +5 (green), brown 0 = −3 (dark red). Both are
+          FIXED plates rather than theme tokens: these two chips state a rule of
+          the game, not a mood, and they must stay legible on every skin and
+          every theme. The green one used to be `--color-ap-ok` + ink, which is
+          a fine pairing on the dark theme (8:1) and a failing one on the light
+          theme (3.8:1 — the token darkens for text-on-panel use, so the ink on
+          top of it goes muddy). axe caught it on the arborite-light scene.
+          BOTTOM-left
           corner: the fan overlaps each card's right side, so the left strip is
           the card's one always-exposed edge — but tucked under the top rank the
           token sat right on the bonhomme's hat whenever the card was fully
@@ -169,7 +176,7 @@ export function PlayingCard({
       {bonus !== null && size !== 'sm' && (
         <span
           className={`absolute top-[6%] left-[21%] rounded-full border-[0.12em] border-(--color-ap-ink) px-[0.5em] py-[0.06em] font-arcade-display text-[0.72em] leading-none shadow-(--shadow-ap-sm) ${
-            isRedZero ? 'bg-(--color-ap-ok) text-(--color-ap-ink)' : 'bg-[#7a2230] text-white'
+            isRedZero ? 'bg-[#1c6b46] text-white' : 'bg-[#7a2230] text-white'
           }`}
         >
           {bonus}
