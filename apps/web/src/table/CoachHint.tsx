@@ -38,7 +38,11 @@ export function CoachHint({ tip }: CoachHintProps) {
     // w-max: an abs-positioned box at left-1/2 shrink-wraps against the HALF
     // of the container to its right, so the tip wrapped into a ~140px tower
     // on phones. max-w on the pill still caps it to the viewport.
-    <div className="pointer-events-none absolute bottom-[4%] left-1/2 z-20 w-max max-w-full -translate-x-1/2 px-3">
+    // z-30 (not z-20): the seat chips are also z-20 and render AFTER this in
+    // the stage, so at equal z the avatars — and their bubbles ("Absent — le
+    // bot joue") — painted over the tip's ends. One step up clears them all;
+    // the seats' own z-30/z-40 popovers stay trapped inside their z-20 wrapper.
+    <div className="pointer-events-none absolute bottom-[4%] left-1/2 z-30 w-max max-w-full -translate-x-1/2 px-3">
       <CoachTipPill tip={tip} />
     </div>
   );
