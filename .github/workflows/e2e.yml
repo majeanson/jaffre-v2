@@ -53,6 +53,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Runs BOTH Playwright projects: `chromium` (reduced motion, the
+      # deterministic bulk) and `chromium-motion` (motion.spec.ts only, with
+      # animations switched on). The motion project is the only place the app
+      # is ever observed actually moving, so it must not be filtered out here.
       - run: npm run e2e
       - uses: actions/upload-artifact@v4
         if: failure()

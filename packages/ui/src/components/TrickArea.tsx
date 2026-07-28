@@ -101,6 +101,13 @@ export function TrickArea({
             return (
               <motion.div
                 key={cardKey(play.card)}
+                // Same testid as the resting branch, plus a marker for the
+                // state: a departing trick had no handle at all, which is why
+                // no test could ever watch a sweep happen. Counting probes are
+                // unaffected — a sweep always has all four cards, and the one
+                // count-based probe (queue-play) looks for 1–3.
+                data-testid="trick-card"
+                data-sweeping="true"
                 className={`absolute ${SLOT[play.position]}`}
                 initial={{ x: 0, y: 0, opacity: 1 }}
                 animate={step.animate}
