@@ -349,6 +349,27 @@ export async function consumeLoginFragment(): Promise<StoredToken | null> {
   }
 }
 
+/**
+ * Drop this browser's identity: token, links, recovery words, cached profile
+ * and the guest uid/name. Display preferences (language, theme, sound) stay —
+ * they belong to the device, not the account. The caller reloads, and the next
+ * boot mints a fresh guest. Nothing is lost server-side: logging back in with
+ * the same email/Google brings the whole account back.
+ */
+export function logOut(): void {
+  for (const k of [
+    KEY,
+    LINKS_KEY,
+    RECOVERY_KEY,
+    PROFILE_KEY,
+    'jaffre-uid',
+    'jaffre-name',
+    'jaffre-last-room',
+    'jaffre-tables',
+  ])
+    localStorage.removeItem(k);
+}
+
 function storeToken(data: { userId: string; name: string; token: string }): StoredToken {
   const payload = JSON.parse(atob(data.token.split('.')[0] ?? '')) as { exp?: number };
   const stored: StoredToken = {

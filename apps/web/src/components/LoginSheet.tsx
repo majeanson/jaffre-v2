@@ -8,6 +8,7 @@ import {
   getRecoveryCode,
   googleLoginUrl,
   isLinked,
+  logOut,
   recoverIdentity,
   startEmailLogin,
   verifyEmailLogin,
@@ -51,6 +52,10 @@ const T: Record<
     restoring: string;
     restore: string;
     recoverError: string;
+    logOut: string;
+    logOutConfirm: string;
+    logOutHint: string;
+    cancel: string;
   }
 > = {
   en: {
@@ -89,6 +94,11 @@ const T: Record<
     restoring: 'Restoring…',
     restore: 'Restore',
     recoverError: "That code didn't match — check the words and try again.",
+    logOut: 'Log out',
+    logOutConfirm: 'Log out for real?',
+    logOutHint:
+      'This device goes back to a fresh guest. Log in with the same account any time to get everything back.',
+    cancel: 'Cancel',
   },
   fr: {
     login: 'Connexion',
@@ -127,6 +137,11 @@ const T: Record<
     restoring: 'Restauration…',
     restore: 'Restaurer',
     recoverError: 'Ce code ne correspond pas — vérifie les mots et réessaie.',
+    logOut: 'Se déconnecter',
+    logOutConfirm: 'Se déconnecter pour vrai?',
+    logOutHint:
+      'Cet appareil redevient un invité. Reconnecte-toi avec le même compte quand tu veux pour tout retrouver.',
+    cancel: 'Annuler',
   },
 };
 
@@ -165,7 +180,16 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
   // surface a guest ever opens.
   const [myCode, setMyCode] = useState(getRecoveryCode);
   const [copied, setCopied] = useState(false);
+  // Logging out is two-step: the quiet link arms it, the loud button does it.
+  const [confirmOut, setConfirmOut] = useState(false);
   const links = getLinks();
+
+  const doLogOut = () => {
+    logOut();
+    // Full reload so every cached identity (socket, stats, cosmetics) is rebuilt
+    // from a clean slate, back on the home screen as a fresh guest.
+    location.href = location.pathname + location.search;
+  };
 
   useEffect(() => {
     void fetchAuthMethods().then(setMethods);
@@ -263,9 +287,41 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
         </div>
 
         {isLinked() ? (
-          <p className="text-center font-arcade-ui text-[0.9em] text-(--color-ap-ok)">
-            ✓ {t.linkedTo(links.email ?? 'Google')}
-          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-center font-arcade-ui text-[0.9em] text-(--color-ap-ok)">
+              ✓ {t.linkedTo(links.email ?? 'Google')}
+            </p>
+            {/* The way out. Two taps, never one — a stray tap here would drop
+                the account off this device until the player logs back in. */}
+            <div className="flex flex-col gap-1.5 border-t-2 border-(--color-ap-ink)/30 pt-3">
+              {confirmOut ? (
+                <>
+                  <Hint>{t.logOutHint}</Hint>
+                  <div className="flex gap-[0.5em]">
+                    <Cta
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setConfirmOut(false)}
+                      className="flex-1"
+                    >
+                      {t.cancel}
+                    </Cta>
+                    <Cta type="button" onClick={doLogOut} className="flex-1">
+                      {t.logOutConfirm}
+                    </Cta>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmOut(true)}
+                  className="cursor-pointer text-[0.8em] text-(--color-ap-muted) hover:text-(--color-ap-danger-text) hover:underline"
+                >
+                  {t.logOut}
+                </button>
+              )}
+            </div>
+          </div>
         ) : (
           <>
             {methods?.google === true && (
