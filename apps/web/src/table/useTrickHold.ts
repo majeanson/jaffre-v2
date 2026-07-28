@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { toPosition, useGameStore } from '../state/gameStore.js';
+import { playSweepSound } from '../sweeps.js';
 import { paced } from './pacePref.js';
 
 /** How long a finished trick stays face-up before sweeping to the winner. */
-export const TRICK_HOLD_MS = 1600;
-/** How long the sweep animation runs before the trick is cleared. */
-export const SWEEP_MS = 600;
+export const TRICK_HOLD_MS = 1900;
+/**
+ * How long the sweep animation runs before the trick is cleared. Must stay
+ * ABOVE `SWEEP_DURATION_S` in TrickArea.tsx (900ms) so the clear lands after
+ * the animation finishes rather than cutting it off.
+ *
+ * `TRICK_HOLD_MS + SWEEP_MS` is the window during which no new card may be
+ * played, so both bot pacers are sized to cover it: `AFTER_TRICK_MS`
+ * (local/localGame.ts) for practice and `TRICK_HOLD_MS` (server GameRoom.ts)
+ * for online. Raising either constant here means raising both of those.
+ */
+export const SWEEP_MS = 960;
 
 /** Same-tab signal that the player tapped the held trick to move on. Exported
  * so practice mode can pull its bot timer in to match (the bots' post-trick
@@ -58,7 +68,13 @@ export function useTrickHold(frozen = false): void {
     // Zero only for the exact trick that was skipped — a fresh trick that
     // arrives after a skip gets its normal hold back.
     const hold = skippedRef.current === heldTrick ? 0 : paced(TRICK_HOLD_MS);
-    const t1 = setTimeout(() => store.setSweep(toPosition(heldTrick.winner, store.viewer)), hold);
+    const t1 = setTimeout(() => {
+      // Sound and motion start together — the equipped sweep's sound is part
+      // of the gesture, not a generic "trick over" beep. No-ops when sound is
+      // off or the audio context was never unlocked by a gesture.
+      playSweepSound();
+      store.setSweep(toPosition(heldTrick.winner, store.viewer));
+    }, hold);
     const t2 = setTimeout(() => store.clearHeldTrick(), hold + paced(SWEEP_MS));
     return () => {
       clearTimeout(t1);

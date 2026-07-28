@@ -1,5 +1,13 @@
-import type { Action, GameState, Rng, Seat } from '@jaffre/engine';
-import { applyAction, createGame, mulberry32, viewFor } from '@jaffre/engine';
+import type { Action, ChallengeDeal, GameState, Rng, Seat } from '@jaffre/engine';
+import {
+  CHALLENGE_BOT_DIFFICULTY,
+  CHALLENGE_SEAT,
+  applyAction,
+  challengeBotSeed,
+  createGame,
+  mulberry32,
+  viewFor,
+} from '@jaffre/engine';
 import { chooseAction } from '@jaffre/bots';
 import type { ClientAction } from '@jaffre/protocol';
 import type { Roster } from '@jaffre/protocol';
@@ -15,10 +23,23 @@ import { SKIP_HOLD_EVENT } from '../table/useTrickHold.js';
  * Table screen cannot tell local from online play.
  */
 
-const HUMAN_SEAT = 0 as const;
+/**
+ * Which seat the human occupies. Seat 0 for a normal practice game — but a
+ * "check this play" link drops you into a real position, and the seat facing
+ * that decision is whichever seat it was. Everything below derives from this
+ * rather than assuming 0.
+ */
+let humanSeat: Seat = 0;
 
 let state: GameState | null = null;
 let rng: Rng = mulberry32(0);
+/**
+ * Every action applied since the game started, in order — the Deal Board's
+ * submission. Recorded only in challenge mode: a normal practice game has no
+ * use for it, and keeping a log of every casual hand would be pure overhead.
+ * The server re-plays this to derive the score (apps/server/src/challenge.ts).
+ */
+let actionLog: Action[] | null = null;
 let botTimer: ReturnType<typeof setTimeout> | null = null;
 let botDifficulties: PracticeBots = ['normal', 'normal', 'normal'];
 // While true, bots hold — the tutorial intro is up and the auction must wait.
@@ -34,28 +55,96 @@ export function setLocalPaused(next: boolean): void {
   if (!paused) scheduleBots();
 }
 
+/**
+ * Bot slot for a seat: 0-based distance clockwise from the human. Seat
+ * `humanSeat` has no slot (it's you), so the three bots are slots 0, 1, 2 in
+ * seating order starting after you — which keeps the difficulty preference
+ * meaning "the bot to my left / across / to my right" no matter where I sit.
+ */
+function botSlot(seat: Seat): number {
+  return ((seat - humanSeat + 4) % 4) - 1;
+}
+
 function localRoster(bots: PracticeBots): Roster {
-  return {
-    seats: [
-      { name: playerName(), isBot: false, connected: true },
-      { name: PRACTICE_BOT_NAMES[0], isBot: true, connected: true, difficulty: bots[0] },
-      { name: PRACTICE_BOT_NAMES[1], isBot: true, connected: true, difficulty: bots[1] },
-      { name: PRACTICE_BOT_NAMES[2], isBot: true, connected: true, difficulty: bots[2] },
-    ],
-    spectators: 0,
-    started: true,
-  };
+  const seats = [0, 1, 2, 3].map((i) => {
+    const seat = i as Seat;
+    if (seat === humanSeat) return { name: playerName(), isBot: false, connected: true };
+    const slot = botSlot(seat);
+    return {
+      name: PRACTICE_BOT_NAMES[slot] as string,
+      isBot: true,
+      connected: true,
+      difficulty: bots[slot] as PracticeBots[number],
+    };
+  });
+  return { seats, spectators: 0, started: true };
+}
+
+/**
+ * Start a Deal Board challenge: the shared seeded deal, fixed bots, fixed
+ * seat, and an action log recorded for submission.
+ *
+ * Everything here is pinned rather than preference-driven — the bots'
+ * difficulty, the seat, and the rng seed — because a challenge is only worth
+ * comparing if every player met the identical deal and the identical
+ * opposition. The same constants are what the server re-derives to verify a
+ * run (see @jaffre/engine's challenge.ts).
+ */
+export function startChallenge(deal: ChallengeDeal): void {
+  stopLocalGame();
+  botDifficulties = [CHALLENGE_BOT_DIFFICULTY, CHALLENGE_BOT_DIFFICULTY, CHALLENGE_BOT_DIFFICULTY];
+  humanSeat = CHALLENGE_SEAT;
+  state = createGame(deal.seed);
+  rng = mulberry32(challengeBotSeed(deal.seed));
+  actionLog = [];
+  begin();
+}
+
+/** The challenge run so far, for submission. Null outside challenge mode. */
+export function challengeLog(): readonly Action[] | null {
+  return actionLog;
 }
 
 export function startLocalGame(seed?: number): void {
   stopLocalGame();
   botDifficulties = loadPracticeBots();
+  humanSeat = 0;
+  actionLog = null;
   const actualSeed = seed ?? Math.floor(Math.random() * 2 ** 31);
   state = createGame(actualSeed);
   rng = mulberry32(actualSeed ^ 0xb07);
+  begin();
+}
+
+/**
+ * Start a practice game from an ARBITRARY state — the "check this play" path:
+ * a position folded out of a finished game's action log, handed over so the
+ * player can take that seat and play it out themselves.
+ *
+ * The engine is a pure fold, so a state reached this way is indistinguishable
+ * from one reached by playing: everything downstream (bots, the store, the
+ * Table screen) works unchanged. Only the seat differs, and that is now a
+ * variable rather than an assumption.
+ */
+export function startLocalGameFrom(from: GameState, seat: Seat): void {
+  stopLocalGame();
+  botDifficulties = loadPracticeBots();
+  humanSeat = seat;
+  actionLog = null;
+  state = from;
+  // Derive the bot rng from the game's own seed AND the position, so replaying
+  // the same link twice gives the same bots — the whole point of a challenge
+  // is that two people meet the same opposition.
+  rng = mulberry32((from.seed ^ 0xb07) + from.roundIndex * 31 + from.currentTrick.length);
+  begin();
+}
+
+/** Shared tail of both entry points: publish the state and wake the bots. */
+function begin(): void {
+  if (state === null) return;
   const store = useGameStore.getState();
   store.reset();
-  store.welcome(HUMAN_SEAT, viewFor(state, HUMAN_SEAT), 0, localRoster(botDifficulties), []);
+  store.welcome(humanSeat, viewFor(state, humanSeat), 0, localRoster(botDifficulties), []);
   scheduleBots();
 }
 
@@ -64,12 +153,13 @@ export function stopLocalGame(): void {
   botTimer = null;
   paused = false;
   state = null;
+  actionLog = null;
 }
 
 export function sendLocalAction(action: ClientAction): void {
   if (state === null) return;
   const stamped: Action =
-    action.type === 'continue' ? action : ({ ...action, seat: HUMAN_SEAT } as Action);
+    action.type === 'continue' ? action : ({ ...action, seat: humanSeat } as Action);
   apply(stamped);
 }
 
@@ -77,9 +167,12 @@ function apply(action: Action): void {
   if (state === null) return;
   const result = applyAction(state, action);
   if (!result.ok) return; // UI only offers legal moves; ignore rejects
+  // Record only what the engine ACCEPTED, so the log is replayable by
+  // construction — a rejected action never happened.
+  actionLog?.push(action);
   state = result.state;
   const store = useGameStore.getState();
-  store.applyEvents(result.events, store.seq + 1, viewFor(state, HUMAN_SEAT));
+  store.applyEvents(result.events, store.seq + 1, viewFor(state, humanSeat));
   scheduleBots(result.events.some((e) => e.type === 'trick_won'));
 }
 
@@ -95,7 +188,7 @@ export function consoleActive(): boolean {
 function pushView(): void {
   if (state === null) return;
   const store = useGameStore.getState();
-  store.applyEvents([], store.seq + 1, viewFor(state, HUMAN_SEAT));
+  store.applyEvents([], store.seq + 1, viewFor(state, humanSeat));
 }
 
 /**
@@ -117,7 +210,7 @@ export function jumpTo(target: 'round_over' | 'game_over'): void {
       continue;
     }
     const seat = state.turn as Seat;
-    const action = chooseAction(viewFor(state, seat), rng, botDifficulties[seat - 1]);
+    const action = chooseAction(viewFor(state, seat), rng, botDifficulties[botSlot(seat)]);
     if (action === null) break;
     const result = applyAction(state, action);
     if (!result.ok) break;
@@ -145,9 +238,10 @@ export function redeal(seed?: number): void {
 }
 
 /** Post-trick pause: long enough to clear the hold + sweep before the next
- * play. When the player skips the hold, only the sweep is left to wait for. */
-const AFTER_TRICK_MS = 2600;
-const AFTER_SKIP_MS = 800;
+ * play (TRICK_HOLD_MS 1900 + SWEEP_MS 960 = 2860, plus margin). When the
+ * player skips the hold, only the sweep is left to wait for. */
+const AFTER_TRICK_MS = 3300;
+const AFTER_SKIP_MS = 1100;
 
 function scheduleBots(afterTrick = false, skipped = false): void {
   if (botTimer !== null) clearTimeout(botTimer);
@@ -156,12 +250,12 @@ function scheduleBots(afterTrick = false, skipped = false): void {
   if (state === null || state.phase === 'game_over') return;
   // round_over waits for the human's Ready click — bots are always ready.
   if (state.phase === 'round_over') return;
-  if (state.turn === HUMAN_SEAT) return;
+  if (state.turn === humanSeat) return;
   botTimer = setTimeout(
     () => {
       if (state === null || (state.phase !== 'playing' && state.phase !== 'bidding')) return;
       const seat = state.turn as Seat;
-      const action = chooseAction(viewFor(state, seat), rng, botDifficulties[seat - 1]);
+      const action = chooseAction(viewFor(state, seat), rng, botDifficulties[botSlot(seat)]);
       if (action !== null) apply(action);
     },
     // Leave room for the trick-hold + sweep animation before the next play —
@@ -179,7 +273,7 @@ function scheduleBots(afterTrick = false, skipped = false): void {
 if (typeof window !== 'undefined') {
   window.addEventListener(SKIP_HOLD_EVENT, () => {
     if (botTimer === null || state === null || state.phase !== 'playing') return;
-    if (state.turn === HUMAN_SEAT) return;
+    if (state.turn === humanSeat) return;
     scheduleBots(true, true);
   });
 }

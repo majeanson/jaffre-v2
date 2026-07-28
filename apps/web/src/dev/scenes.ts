@@ -256,6 +256,14 @@ export const DEMO_STATS: Stats = {
   netPoints: 180,
   bids: { attempted: 6, made: 4 },
   sansAtout: { attempted: 2, made: 1 },
+  // A mid-game player with a gap: green never called, so the mastery panel
+  // stages its "Never called: …" line rather than the even/narrow one.
+  mastery: {
+    red: { attempted: 3, made: 2 },
+    brown: { attempted: 1, made: 1 },
+    green: { attempted: 0, made: 0 },
+    blue: { attempted: 0, made: 0 },
+  },
   bestPartner: { name: 'Ginette', games: 6, wins: 4 },
   nemesis: { name: 'Marcel', games: 8, losses: 5 },
   streak: { current: 3, best: 5 },
@@ -270,6 +278,14 @@ export const DEMO_STATS_NEW: Stats = {
   netPoints: -20,
   bids: { attempted: 0, made: 0 },
   sansAtout: { attempted: 0, made: 0 },
+  // All five lanes empty — stages the mastery panel's "haven't taken a
+  // contract yet" state.
+  mastery: {
+    red: { attempted: 0, made: 0 },
+    brown: { attempted: 0, made: 0 },
+    green: { attempted: 0, made: 0 },
+    blue: { attempted: 0, made: 0 },
+  },
   bestPartner: null,
   nemesis: null,
   streak: { current: 0, best: 1 },
@@ -283,6 +299,14 @@ export const DEMO_STATS_VETERAN: Stats = {
   netPoints: 430,
   bids: { attempted: 96, made: 71 },
   sansAtout: { attempted: 22, made: 14 },
+  // Every lane well past the threshold — stages all five bars full, i.e. the
+  // four crests earned, and the "you spread them around" line.
+  mastery: {
+    red: { attempted: 26, made: 19 },
+    brown: { attempted: 18, made: 13 },
+    green: { attempted: 16, made: 12 },
+    blue: { attempted: 14, made: 13 },
+  },
   bestPartner: { name: 'Réal', games: 44, wins: 33 },
   nemesis: { name: 'Marcel', games: 20, losses: 12 },
   streak: { current: 6, best: 11 },
@@ -633,6 +657,22 @@ const LOADERS: Record<SceneId, () => void> = {
     'og-deck',
     (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
   ),
+  // The felt axis (surface applied by the Scenes shell from meta.felt). Three
+  // scenes because the felt is the biggest area on screen and its failure mode
+  // is contrast: a dark surface, a LIGHT one, and a light one under the light
+  // theme, where the foreground has the least room to work with.
+  'felt-tavern': gameScene(
+    'felt-tavern',
+    (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
+  ),
+  'felt-rink': gameScene(
+    'felt-rink',
+    (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
+  ),
+  'felt-arborite-light': gameScene(
+    'felt-arborite-light',
+    (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,
+  ),
   // Seed 2 deals seat 0 (you) BOTH specials; the opening bidding state keeps
   // your full hand on screen (seat 1 bids first, no overlay) so the painted
   // red-0/brown-0 show alongside the painted seat avatar (paint from meta).
@@ -645,6 +685,8 @@ const LOADERS: Record<SceneId, () => void> = {
   // Awards/Leaderboard/Corner/Journey variants render from demo props — no-op.
   awards: () => undefined,
   'awards-fresh': () => undefined,
+  // Renders from demoStats/demoEarned/demoArranging props — no engine state.
+  'awards-arranging': () => undefined,
   leaderboard: () => undefined,
   'leaderboard-empty': () => undefined,
   'corner-empty': () => undefined,

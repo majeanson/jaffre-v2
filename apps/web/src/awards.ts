@@ -118,6 +118,49 @@ export const AWARDS: readonly AwardDef[] = [
       need: 1,
     }),
   },
+  // ── Spectating. Deliberately awards rather than XP: the XP constants are
+  //    frozen, and watching is the least skill-bearing thing in the game. The
+  //    reward is a FELT rather than a card skin — a commentator's surface fits
+  //    the role better than a deck they weren't playing with.
+  {
+    id: 'watcher',
+    icon: '👀',
+    name: (l) => t(l, 'Watcher', 'Spectateur'),
+    desc: (l) => t(l, 'Watch a game through to the end.', "Regarde une partie jusqu'à la fin."),
+    requirement: (s, l) => ({
+      text: t(l, 'Watch 1 game to the end', "Regarde 1 partie jusqu'au bout"),
+      have: s.spectated ?? 0,
+      need: 1,
+    }),
+  },
+  {
+    id: 'commentator',
+    icon: '🎙️',
+    name: (l) => t(l, 'Commentator', 'Commentateur'),
+    desc: (l) =>
+      t(
+        l,
+        'Watch ten games to the end. Unlocks the Bare Slate felt.',
+        'Regarde dix parties jusqu’à la fin. Débloque le tapis Ardoise nue.',
+      ),
+    reward: 'slate',
+    requirement: (s, l) => ({
+      text: t(l, 'Watch 10 games to the end', "Regarde 10 parties jusqu'au bout"),
+      have: s.spectated ?? 0,
+      need: 10,
+    }),
+  },
+  {
+    id: 'the-rail',
+    icon: '🪑',
+    name: (l) => t(l, 'The Rail', 'La galerie'),
+    desc: (l) => t(l, 'Watch fifty games to the end.', 'Regarde cinquante parties jusqu’à la fin.'),
+    requirement: (s, l) => ({
+      text: t(l, 'Watch 50 games to the end', "Regarde 50 parties jusqu'au bout"),
+      have: s.spectated ?? 0,
+      need: 50,
+    }),
+  },
   {
     id: 'tutorial-complete',
     icon: '🎓',

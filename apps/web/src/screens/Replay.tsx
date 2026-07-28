@@ -5,7 +5,8 @@ import { buildFrames, type ReplayFrame } from '../replay/buildFrames.js';
 import { fetchReplay, type ReplayData } from '../net/history.js';
 import { useGameStore } from '../state/gameStore.js';
 import { Table } from './Table.js';
-import type { Viewer } from '@jaffre/engine';
+import { shareHand } from '../replay/position.js';
+import type { Seat, Viewer } from '@jaffre/engine';
 import type { Roster } from '@jaffre/protocol';
 
 const T: Record<
@@ -21,6 +22,7 @@ const T: Record<
     pause: string;
     position: string;
     viewAs: string;
+    shareHand: string;
     seat: (n: number) => string;
   }
 > = {
@@ -35,6 +37,7 @@ const T: Record<
     pause: 'Pause',
     position: 'Replay position',
     viewAs: 'View as',
+    shareHand: 'Share this hand',
     seat: (n) => `Seat ${String(n)}`,
   },
   fr: {
@@ -48,6 +51,7 @@ const T: Record<
     pause: 'Pause',
     position: 'Position dans la reprise',
     viewAs: 'Voir comme',
+    shareHand: 'Partager cette main',
     seat: (n) => `Siège ${String(n)}`,
   },
 };
@@ -102,9 +106,13 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
   const t = T[useLang()];
   const [data, setData] = useState<ReplayData | null>(demo ?? null);
   const [failed, setFailed] = useState(false);
-  const [viewer, setViewer] = useState<Viewer>(0);
+  // A Seat, not a Viewer: the selector only ever offers the four seats, and a
+  // shared position has to name one (there is no "check this play" from the
+  // spectator's chair).
+  const [viewer, setViewer] = useState<Seat>(0);
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     if (demo !== undefined || gameId === null) return;
@@ -215,13 +223,30 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
         >
           {clamped + 1} / {frames.length}
         </span>
+        {/* Share THIS moment, not just the game. The scrubber position is
+            already a precise index into the action log, so a position link is
+            free here — see replay/position.ts. Hidden for a demo (scene
+            viewer) replay, which has no real game id to point at. */}
+        {gameId !== null && (
+          <button
+            type="button"
+            aria-label={t.shareHand}
+            title={t.shareHand}
+            onClick={() => {
+              void shareHand({ gameId, actionIndex: clamped, seat: viewer }, () => setShared(true));
+            }}
+            className={GHOST_BTN_SM_DARK}
+          >
+            {shared ? '✓' : '⇗'}
+          </button>
+        )}
         {/* "View as" seat selector — kept available on phones (compact:
             tighter padding/text) instead of hidden; the frame counter yields
             the room instead, since the position is already on the slider. */}
         <select
           aria-label={t.viewAs}
           value={viewer}
-          onChange={(e) => setViewer(Number(e.target.value) as Viewer)}
+          onChange={(e) => setViewer(Number(e.target.value) as Seat)}
           className="w-[4.2em] shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-black/40 px-1.5 py-1 text-xs text-white max-sm:w-auto max-sm:px-1 max-sm:py-0.5 max-sm:text-[10px]"
         >
           {[0, 1, 2, 3].map((s) => (

@@ -1,7 +1,8 @@
 import { useLang, type Lang } from '@jaffre/ui';
 
 export interface MetaNavProps {
-  readonly current: 'corner' | 'journey' | 'collection' | 'awards' | 'stats' | 'leaderboard';
+  readonly current:
+    'corner' | 'journey' | 'collection' | 'awards' | 'stats' | 'leaderboard' | 'dealboard';
 }
 
 const ITEMS = [
@@ -11,6 +12,7 @@ const ITEMS = [
   { id: 'awards', hash: '#awards' },
   { id: 'stats', hash: '#stats' },
   { id: 'leaderboard', hash: '#leaderboard' },
+  { id: 'dealboard', hash: '#daily' },
 ] as const;
 
 const T: Record<
@@ -22,6 +24,7 @@ const T: Record<
     awards: string;
     stats: string;
     leaderboard: string;
+    dealboard: string;
   }
 > = {
   en: {
@@ -31,6 +34,7 @@ const T: Record<
     awards: 'Awards',
     stats: 'Your record',
     leaderboard: 'Leaderboard',
+    dealboard: 'Deal Board',
   },
   fr: {
     corner: 'Ton coin',
@@ -39,6 +43,7 @@ const T: Record<
     awards: 'Récompenses',
     stats: 'Ton record',
     leaderboard: 'Classement',
+    dealboard: 'Donnes',
   },
 };
 

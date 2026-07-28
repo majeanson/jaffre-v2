@@ -1,6 +1,8 @@
+import { SUITS, type Suit } from '@jaffre/engine';
 import type { Lang } from '@jaffre/ui';
 import type { Stats } from './net/history.js';
 import { getProfile } from './net/auth.js';
+import { masteryRequirement, masteryUnlocked } from './mastery.js';
 import { levelFromStats, levelRequirement } from './progression.js';
 
 /**
@@ -49,6 +51,28 @@ export function atLevel(
     requirement: (s, lang) => levelRequirement(n, s, lang),
   };
 }
+
+/** Display labels for the four mastery crests. English-only like every other
+ * `Cosmetic.label`; the localized lane names come from `masteryLabel`. */
+const CREST_LABELS: Readonly<Record<Suit, string>> = {
+  red: 'Red Crest',
+  brown: 'Brown Crest',
+  green: 'Green Crest',
+  blue: 'Blue Crest',
+};
+
+/**
+ * The four suit-mastery decks, generated rather than hand-written: they differ
+ * only by the suit they read, so spelling each out four times would just be
+ * four places to forget to update.
+ */
+export const MASTERY_CRESTS: readonly Cosmetic[] = SUITS.map((suit) => ({
+  id: `crest-${suit}`,
+  label: CREST_LABELS[suit],
+  free: false,
+  unlock: (s: Stats) => masteryUnlocked(s, suit),
+  requirement: (s: Stats, lang: Lang) => masteryRequirement(suit, s, lang),
+}));
 
 /** The set of owned cosmetic ids for these stats. `devAll` forces everything
  * owned (defaults to the DEV_UNLOCK_ALL flag); the gallery passes `false` to
@@ -133,6 +157,12 @@ export const CARD_SKINS: readonly Cosmetic[] = [
       need: 10,
     }),
   },
+  // ── Mastery crests (≈ level 9-11) — one per trump, earned by MAKING 5
+  //    contracts in that suit. They sit together because they are the same
+  //    difficulty as each other; which one you get first is the point.
+  //    The fifth lane, sans-atout, pays the `sans-atout` skin further down at
+  //    its own long-standing threshold of 3 (see mastery.ts).
+  ...MASTERY_CRESTS,
   {
     id: 'lamplight-foil',
     label: 'Lamplight Foil',

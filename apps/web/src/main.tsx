@@ -24,12 +24,14 @@ import { setPlayerName } from './net/socket.js';
 import { installTelemetry } from './net/telemetry.js';
 import { initTheme } from './theme.js';
 import { initCardSkin } from './cosmetics.js';
+import { initFelt } from './felt.js';
 import { initLang } from './lang.js';
 import { initInstallCapture } from './pwa/install.js';
 import { initBadge } from './pwa/badge.js';
 
 initTheme();
 initCardSkin();
+initFelt();
 initLang();
 installTelemetry();
 // beforeinstallprompt can fire before React mounts — capture it now.

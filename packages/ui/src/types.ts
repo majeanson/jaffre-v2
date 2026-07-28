@@ -33,6 +33,12 @@ const CARD_LABEL_SUITS: Record<'en' | 'fr', Record<SuitId, string>> = {
   fr: { red: 'Rouge', brown: 'Brun', green: 'Vert', blue: 'Bleu' },
 };
 
+/** A suit's display name. Shares CARD_LABEL_SUITS with `cardLabel` so the
+ * French names are defined exactly once. */
+export function suitLabel(suit: SuitId, lang: 'en' | 'fr' = 'en'): string {
+  return CARD_LABEL_SUITS[lang][suit];
+}
+
 export function cardLabel(card: CardData, lang: 'en' | 'fr' = 'en'): string {
   const special =
     card.suit === 'red' && card.value === 0

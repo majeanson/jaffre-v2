@@ -24,6 +24,14 @@ export interface AwardEvalStats {
   readonly sansAtout: { readonly attempted: number; readonly made: number };
   readonly streak: { readonly current: number; readonly best: number };
   readonly nemesis: unknown | null;
+  /**
+   * Games watched through to the end as a spectator. Its own counter rather
+   * than an XP source: the XP constants are frozen by design, and adding a
+   * source would silently re-level everyone for the least skill-bearing thing
+   * in the game. Optional so a caller that hasn't read it evaluates as zero
+   * instead of throwing.
+   */
+  readonly spectated?: number;
 }
 
 interface StatAward {
@@ -41,6 +49,11 @@ export const STAT_AWARDS: readonly StatAward[] = [
   { id: 'sans-atout-master', earned: (s) => s.sansAtout.made >= 3 },
   { id: 'veteran', earned: (s) => s.games >= 50 },
   { id: 'nemesis-born', earned: (s) => s.nemesis !== null },
+  // Spectating. Three steps rather than one so the first is reachable the
+  // first time someone sits through a friend's finish.
+  { id: 'watcher', earned: (s) => (s.spectated ?? 0) >= 1 },
+  { id: 'commentator', earned: (s) => (s.spectated ?? 0) >= 10 },
+  { id: 'the-rail', earned: (s) => (s.spectated ?? 0) >= 50 },
 ];
 
 /** Event awards the client may request via POST — the grant allowlist. */

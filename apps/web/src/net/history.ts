@@ -1,4 +1,4 @@
-import type { Action } from '@jaffre/engine';
+import type { Action, Suit } from '@jaffre/engine';
 import { getGuestToken } from './auth.js';
 import { playerName } from './socket.js';
 
@@ -30,6 +30,12 @@ export interface ReplayData {
   readonly players?: readonly HistoryPlayer[];
 }
 
+/** One mastery lane: contracts declared in a given trump, and how many stood. */
+export interface MasteryLane {
+  readonly attempted: number;
+  readonly made: number;
+}
+
 export interface StatsPartner {
   readonly name: string;
   readonly games: number;
@@ -51,9 +57,22 @@ export interface Stats {
   readonly netPoints: number;
   readonly bids: { readonly attempted: number; readonly made: number };
   readonly sansAtout: { readonly attempted: number; readonly made: number };
+  /**
+   * Contracts you declared, split by the trump you named. Only the four suits
+   * live here — the sans-atout lane is the `sansAtout` field above, not a
+   * duplicate counter.
+   *
+   * Optional because a client can outrun its server: an older worker (or a
+   * cached response) returns stats without it. Read through `masteryOf()`
+   * rather than indexing directly.
+   */
+  readonly mastery?: Readonly<Record<Suit, MasteryLane>>;
   readonly bestPartner: StatsPartner | null;
   readonly nemesis: StatsNemesis | null;
   readonly streak: { readonly current: number; readonly best: number };
+  /** Games watched to the end as a spectator. Optional for the same reason as
+   * `mastery`: a client can outrun its server. Read it as `?? 0`. */
+  readonly spectated?: number;
 }
 
 /** Auth headers/query for a request scoped to "your" identity, mirroring the

@@ -30,6 +30,7 @@ import type {
 import type { Env } from './env.js';
 import { notifyUser } from './push.js';
 import { gameRecordFrom } from './history.js';
+import { rollFoil } from './foils.js';
 import { DEFAULT_RATING, ratingUpdates, type CurrentRating } from './rating.js';
 import { lobbyStub } from './Lobby.js';
 import { publicId } from './publicId.js';
@@ -52,8 +53,10 @@ const BOT_DELAY_MS = 300;
  * of auto-players keeps rolling. */
 const AUTOPLAY_READY_MS = 1500;
 /** After a completed trick the client holds the 4 cards on the table
- * (~2.2s hold + sweep) — bots must not play into that window. */
-export const TRICK_HOLD_MS = 2600;
+ * (~2.9s hold + sweep — TRICK_HOLD_MS + SWEEP_MS in web useTrickHold.ts) —
+ * bots must not play into that window. Raised alongside that client retune;
+ * these two must be revisited together. */
+export const TRICK_HOLD_MS = 3300;
 /** How long a seated human may be fully disconnected mid-game before a bot
  * plays their turns. Tests can override per-room via `meta.botSwapMs`. */
 export const BOT_SWAP_MS = 45_000;
@@ -1880,6 +1883,119 @@ export class GameRoom implements DurableObject {
         console.error('[rating] retry failed, leaving rating unchanged', err);
       }
     }
+
+    // Foil chase — a rare drop for each human who finished with a card skin
+    // equipped. Best-effort and last: a foil is the smallest stake in this
+    // method, and it must never be the reason a history row is lost.
+    try {
+      await this.grantFoils(db, record.id, record.players);
+    } catch (err) {
+      console.error('[foil] grant failed, no drop this game', err);
+    }
+
+    // Credit anyone who WATCHED this game to the end. Same best-effort rule.
+    try {
+      await this.creditSpectators(db, record.id);
+    } catch (err) {
+      console.error('[spectate] credit failed', err);
+    }
+  }
+
+  /**
+   * Record everyone still watching as the game finished.
+   *
+   * "Still attached at game_over" is the deliberate definition: opening a tab
+   * on a live game costs nothing, so counting that would make the reward
+   * meaningless. Sitting through the end is the thing worth recognising.
+   *
+   * Seated players are excluded — they already get history, stats and rating
+   * from this game; this is specifically for the people who have nothing else
+   * to show for the time.
+   */
+  private async creditSpectators(db: D1Database, gameId: string): Promise<void> {
+    const watchers = new Set<string>();
+    for (const att of this.ctx.getWebSockets().map((s) => this.attachment(s))) {
+      if (!att.joined || att.viewer !== 'spectator') continue;
+      if (att.userId === '') continue;
+      watchers.add(att.userId);
+    }
+    if (watchers.size === 0) return;
+    const now = Date.now();
+    await db.batch(
+      [...watchers].map((userId) =>
+        db
+          .prepare(
+            'INSERT OR IGNORE INTO spectated_games (user_id, game_id, watched_at) VALUES (?1, ?2, ?3)',
+          )
+          .bind(userId, gameId, now),
+      ),
+    );
+  }
+
+  /**
+   * Roll a foil for every seated human and grant the winners.
+   *
+   * The roll is server-side and keyed on (gameId, userId), so it cannot be
+   * re-rolled or attested by a client — see src/foils.ts. Reads each player's
+   * equipped skin from their profile row, which is already the record of what
+   * they were playing with.
+   */
+  private async grantFoils(
+    db: D1Database,
+    gameId: string,
+    players: readonly { readonly user_id: string | null }[],
+  ): Promise<void> {
+    const userIds = players
+      .map((p) => p.user_id)
+      .filter((id): id is string => id !== null && id !== '');
+    if (userIds.length === 0) return;
+
+    const placeholders = userIds.map((_id, i) => `?${String(i + 1)}`).join(', ');
+    const [skins, owned] = await Promise.all([
+      db
+        .prepare(`SELECT id, card_skin FROM users WHERE id IN (${placeholders})`)
+        .bind(...userIds)
+        .all<{ id: string; card_skin: string | null }>(),
+      db
+        .prepare(
+          `SELECT user_id, award_id FROM user_awards
+            WHERE user_id IN (${placeholders}) AND award_id LIKE 'foil:%'`,
+        )
+        .bind(...userIds)
+        .all<{ user_id: string; award_id: string }>(),
+    ]);
+
+    const equipped = new Map(skins.results.map((r) => [r.id, r.card_skin]));
+    const ownedByUser = new Map<string, Set<string>>();
+    for (const row of owned.results) {
+      const set = ownedByUser.get(row.user_id) ?? new Set<string>();
+      set.add(row.award_id);
+      ownedByUser.set(row.user_id, set);
+    }
+
+    const now = Date.now();
+    const grants = userIds
+      .map((userId) => ({
+        userId,
+        awardId: rollFoil(
+          gameId,
+          userId,
+          equipped.get(userId) ?? null,
+          ownedByUser.get(userId) ?? new Set<string>(),
+        ),
+      }))
+      .filter((g): g is { userId: string; awardId: string } => g.awardId !== null);
+    if (grants.length === 0) return;
+
+    await db.batch(
+      grants.map((g) =>
+        db
+          .prepare(
+            'INSERT OR IGNORE INTO user_awards (user_id, award_id, granted_at) VALUES (?1, ?2, ?3)',
+          )
+          .bind(g.userId, g.awardId, now),
+      ),
+    );
   }
 
   /** Re-reads one user's now-current rating and re-applies this game's delta on

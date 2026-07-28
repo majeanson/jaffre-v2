@@ -6,6 +6,9 @@ import {
   CosmeticPicker,
   Panel,
   PlayingCard,
+  TrickArea,
+  TrickSweepProvider,
+  trickSweepById,
   useLang,
   type CardData,
   type CosmeticTile,
@@ -26,6 +29,8 @@ import {
   type Cosmetic,
 } from '../cosmetics.js';
 import { DEFAULT_THEME, THEMES, applyTheme, currentTheme } from '../theme.js';
+import { DEFAULT_FELT, FELTS, applyFelt, currentFelt } from '../felt.js';
+import { SWEEPS, applySweep, currentSweep, playSweepSound } from '../sweeps.js';
 import { getProfile, saveProfile } from '../net/auth.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
@@ -54,6 +59,8 @@ const T: Record<
     cardSkins: string;
     bonhommes: string;
     themes: string;
+    felts: string;
+    sweeps: string;
     showAll: string;
     blurb: string;
     paintFirst: string;
@@ -68,6 +75,8 @@ const T: Record<
     cardSkins: 'Card skins',
     bonhommes: 'Bonhommes',
     themes: 'Themes',
+    felts: 'Felts',
+    sweeps: 'Trick sweeps',
     showAll: 'Show all (dev)',
     blurb:
       'Level up on the Journey for the track skins and themes; the rest are challenge unlocks. Equip any you own — it follows your account.',
@@ -82,6 +91,8 @@ const T: Record<
     cardSkins: 'Habillages de cartes',
     bonhommes: 'Bonhommes',
     themes: 'Thèmes',
+    felts: 'Tapis',
+    sweeps: 'Ramassage des levées',
     showAll: 'Tout afficher (dev)',
     blurb:
       'Les habillages et thèmes du Parcours arrivent avec les niveaux; les autres sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
@@ -159,6 +170,61 @@ function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin
     </div>
   );
 }
+
+/**
+ * Felt preview: a bare miniature of the playing surface — the same
+ * `.felt-oval` recipe the table uses (radial highlight + optional texture +
+ * inset ring), scoped to this tile with `data-felt`. Deliberately shows NO
+ * cards: this axis is the table, and every other grid on this screen already
+ * shows a card.
+ */
+function FeltPreview({ id }: { readonly id: string }) {
+  const attrs = id === DEFAULT_FELT ? {} : { 'data-felt': id };
+  return (
+    <div {...attrs} className="flex w-full items-center justify-center p-[0.35em]">
+      <div className="felt-oval h-[3.1em] w-full rounded-[46%]" />
+    </div>
+  );
+}
+
+/**
+ * Sweep preview: a looping miniature of the real thing — four cards on a felt
+ * oval, resolving toward the top seat over and over. A still image cannot show
+ * a motion cosmetic, and a hover-to-play preview hides it on touch, so this
+ * just runs.
+ *
+ * It drives the ACTUAL variant through the ACTUAL TrickArea, scoped by a local
+ * TrickSweepProvider — the tile can't drift from the table, because it is the
+ * table's component. Honours reduced motion for free (MotionConfig zeroes the
+ * transitions, so the tile settles instead of looping).
+ */
+function SweepPreview({ id }: { readonly id: string }) {
+  const [sweeping, setSweeping] = useState(false);
+  useEffect(() => {
+    // Slightly longer than the sweep itself, so the cards are seen landing,
+    // gone, and dealt again rather than strobing.
+    const period = 1400;
+    const t = setInterval(() => setSweeping((s) => !s), period);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="flex w-full items-center justify-center p-[0.3em]">
+      <div className="felt-oval relative h-[3.4em] w-full overflow-hidden rounded-[46%]">
+        <TrickSweepProvider value={trickSweepById(id)}>
+          <TrickArea plays={SWEEP_PREVIEW_TRICK} sweepTo={sweeping ? 2 : null} size="sm" />
+        </TrickSweepProvider>
+      </div>
+    </div>
+  );
+}
+
+/** Four cards, one per seat — the smallest thing that reads as a real trick. */
+const SWEEP_PREVIEW_TRICK = [
+  { position: 0 as const, card: { suit: 'red' as const, value: 7 as const } },
+  { position: 1 as const, card: { suit: 'green' as const, value: 4 as const } },
+  { position: 2 as const, card: { suit: 'blue' as const, value: 6 as const } },
+  { position: 3 as const, card: { suit: 'brown' as const, value: 2 as const } },
+];
 
 /** Bonhomme-skin preview: shows what that mode puts on the 0-card figure —
  * the pixel sprite, the player's own painting (or a muted placeholder + hint
@@ -316,6 +382,8 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
   const [theme, setTheme] = useState(currentTheme());
   const [bonhomme, setBonhomme] = useState(currentBonhommeSkin());
+  const [felt, setFelt] = useState(currentFelt());
+  const [sweep, setSweep] = useState(currentSweep());
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -340,6 +408,8 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
 
   const ownedCards = owned(CARD_SKINS, stats, showAll, rewards);
   const ownedThemes = owned(THEMES, stats, showAll, rewards);
+  const ownedFelts = owned(FELTS, stats, showAll, rewards);
+  const ownedSweeps = owned(SWEEPS, stats, showAll, rewards);
   // Localized labels live alongside (not inside) the catalog — see
   // bonhommeLabel's doc comment in cosmetics.ts — so build a per-render
   // catalog with `label` filled in for the tile grid + toast/equipped copy.
@@ -374,8 +444,34 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
     setToast(t.equipped(labelOf(bonhommeCatalog, mode)));
   };
 
+  const chooseSweep = (id: string) => {
+    applySweep(id);
+    setSweep(id);
+    void saveProfile({ sweep: id });
+    // Play the sweep's OWN sound rather than the generic select tick — picking
+    // a sweep should sound like the thing you just picked.
+    feedback('select');
+    playSweepSound();
+    setToast(t.equipped(labelOf(SWEEPS, id)));
+  };
+  const chooseFelt = (id: string) => {
+    applyFelt(id);
+    setFelt(id);
+    void saveProfile({ felt: id });
+    feedback('select');
+    setToast(t.equipped(labelOf(FELTS, id)));
+  };
+
   const cardTiles = buildTiles(CARD_SKINS, ownedCards, cardSkin, stats, lang, (id) => (
     <CardSkinPreview id={id} />
+  ));
+  // Felt tiles preview the SURFACE only — a bare oval swatch with no cards on
+  // it, so the axis reads as "the table" rather than a second theme grid.
+  const feltTiles = buildTiles(FELTS, ownedFelts, felt, stats, lang, (id) => (
+    <FeltPreview id={id} />
+  ));
+  const sweepTiles = buildTiles(SWEEPS, ownedSweeps, sweep, stats, lang, (id) => (
+    <SweepPreview id={id} />
   ));
   // Theme tiles preview against a FIXED reference skin (the default), so picking
   // a card skin never re-renders every theme tile — each grid shows one axis.
@@ -441,6 +537,24 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
             {t.themes}
           </h2>
           <CosmeticPicker tiles={themeTiles} onSelect={chooseTheme} label={t.themes} />
+        </Panel>
+
+        {/* Felt last: it is the axis the theme used to own, so it reads as
+            "and the table itself" once you've picked everything else. */}
+        <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">
+          <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">
+            {t.felts}
+          </h2>
+          <CosmeticPicker tiles={feltTiles} onSelect={chooseFelt} label={t.felts} />
+        </Panel>
+
+        {/* Sweeps last: it's the only axis you can't judge from a still, so it
+            wants the reader's full attention rather than a glance in passing. */}
+        <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">
+          <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">
+            {t.sweeps}
+          </h2>
+          <CosmeticPicker tiles={sweepTiles} onSelect={chooseSweep} label={t.sweeps} />
         </Panel>
       </div>
       {toast !== null && <Toast message={toast} onDone={() => setToast(null)} />}

@@ -6,8 +6,18 @@ import {
   type HistoryGame,
   type Stats as StatsData,
 } from '../net/history.js';
+import {
+  MASTERY_LANE_IDS,
+  MASTERY_UNLOCK,
+  favouriteLane,
+  masteryLabel,
+  masteryOf,
+  masteryStyle,
+  masterySpread,
+} from '../mastery.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
+import { ProgressBar } from '../components/ProgressBar.js';
 import { ShellNote } from '../components/ShellNote.js';
 
 export interface StatsProps {
@@ -41,6 +51,12 @@ const T: Record<
     bidAccuracy: string;
     noContracts: string;
     contract: (made: number, attempted: number, sa: number | null) => string;
+    mastery: string;
+    masteryLane: (made: number, attempted: number) => string;
+    masteryEmpty: string;
+    masteryEven: string;
+    masteryNarrow: (lane: string) => string;
+    masteryUntouched: (lanes: string) => string;
     bestPartner: string;
     nemesis: string;
     partnerRelation: (wins: number, games: number) => string;
@@ -83,6 +99,13 @@ const T: Record<
       `You make the contract ${String(made)} of ${String(attempted)} times you name it${
         sa === null ? '' : ` · ${String(sa)}% at sans atout`
       }.`,
+    mastery: 'Suit mastery',
+    masteryLane: (made, attempted) =>
+      attempted === 0 ? 'never called' : `${String(made)} of ${String(attempted)} stood`,
+    masteryEmpty: "You haven't taken a contract yet — the lanes fill as you bid.",
+    masteryEven: 'You spread your contracts around evenly.',
+    masteryNarrow: (lane) => `You lean hard on ${lane}.`,
+    masteryUntouched: (lanes) => `Never called: ${lanes}.`,
     bestPartner: 'Best partner',
     nemesis: 'Nemesis',
     partnerRelation: (wins, games) => `${String(wins)} wins in ${String(games)} games`,
@@ -127,6 +150,15 @@ const T: Record<
       `Tu fais le contrat ${String(made)} fois sur ${String(attempted)}${
         sa === null ? '' : ` · ${String(sa)} % à sans atout`
       }.`,
+    mastery: 'Maîtrise des couleurs',
+    masteryLane: (made, attempted) =>
+      attempted === 0 ? 'jamais demandé' : `${String(made)} sur ${String(attempted)} de réussis`,
+    masteryEmpty: "Tu n'as pas encore pris de contrat — les couloirs se remplissent en misant.",
+    masteryEven: 'Tu répartis tes contrats également.',
+    // "en rouge" / "en sans atout" — works for every lane without needing a
+    // gendered article, unlike "sur le ___".
+    masteryNarrow: (lane) => `Tu mises surtout en ${lane.toLowerCase()}.`,
+    masteryUntouched: (lanes) => `Jamais demandé : ${lanes}.`,
     bestPartner: 'Meilleur partenaire',
     nemesis: 'Némésis',
     partnerRelation: (wins, games) =>
@@ -323,6 +355,89 @@ function GameRow({ game }: { readonly game: HistoryGame }) {
 const MICRO_LABEL =
   'font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)';
 
+/**
+ * Suit mastery — five lanes, one per thing you can name when you take a
+ * contract. Each bar is that lane's progress toward its crest deck, coloured
+ * with the suit itself so the bar's colour IS its label.
+ *
+ * Deliberately shows lanes you have NEVER called, greyed at zero: the empty
+ * lane is the interesting one. The closing line reads the shape rather than
+ * the totals — this is meant to be a mirror of how you bid, not a grind bar.
+ */
+function MasteryPanel({
+  stats,
+  t,
+  lang,
+}: {
+  readonly stats: StatsData;
+  readonly t: Strings;
+  readonly lang: Lang;
+}) {
+  const total = MASTERY_LANE_IDS.reduce((n, lane) => n + masteryOf(stats, lane).attempted, 0);
+  const untouched = MASTERY_LANE_IDS.filter((lane) => masteryOf(stats, lane).attempted === 0);
+  const favourite = favouriteLane(stats);
+
+  const takeaway = (): string => {
+    if (total === 0) return t.masteryEmpty;
+    if (untouched.length > 0) {
+      return t.masteryUntouched(
+        untouched.map((lane) => masteryLabel(lane, lang).toLowerCase()).join(', '),
+      );
+    }
+    if (favourite !== null && masterySpread(stats) >= 0.4) {
+      return t.masteryNarrow(masteryLabel(favourite, lang));
+    }
+    return t.masteryEven;
+  };
+
+  return (
+    <section
+      data-testid="mastery-panel"
+      className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)"
+    >
+      <div className="mb-[0.7em] flex items-baseline justify-between gap-3">
+        <span className={MICRO_LABEL}>{t.mastery}</span>
+        <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+          {String(MASTERY_UNLOCK)}★
+        </span>
+      </div>
+      <ul className="flex flex-col gap-[0.55em]">
+        {MASTERY_LANE_IDS.map((lane) => {
+          const { attempted, made } = masteryOf(stats, lane);
+          const { color, glyph } = masteryStyle(lane);
+          const pct = Math.min(100, (made / MASTERY_UNLOCK) * 100);
+          const done = made >= MASTERY_UNLOCK;
+          return (
+            <li key={lane} className="flex items-center gap-[0.6em]">
+              <span
+                aria-hidden="true"
+                className="w-[1em] shrink-0 text-center text-[0.9em] leading-none"
+                style={{ color }}
+              >
+                {glyph}
+              </span>
+              <span className="w-[6.5em] shrink-0 truncate font-arcade-ui text-[0.85em] max-sm:w-[5em]">
+                {masteryLabel(lane, lang)}
+              </span>
+              <ProgressBar pct={pct} className="min-w-0 flex-1" fill={color} />
+              <span
+                className={`w-[8.5em] shrink-0 text-right font-arcade-ui text-[0.75em] tabular-nums max-sm:w-[6em] ${
+                  done ? 'text-(--color-ap-gold)' : 'text-(--color-ap-muted)'
+                }`}
+              >
+                {t.masteryLane(made, attempted)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-[0.8em] font-arcade-ui text-[0.8em] text-(--color-ap-text)/75">
+        {takeaway()}
+      </p>
+    </section>
+  );
+}
+
 /** One social fact (best partner / nemesis) — an avatar + name + relation. */
 function SocialPanel({
   heading,
@@ -378,7 +493,8 @@ export function Stats({
   demoLoading = false,
   initialGamesView,
 }: StatsProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const [stats, setStats] = useState<StatsData | null>(demoStats ?? null);
   const [games, setGames] = useState<readonly HistoryGame[] | null>(demoGames ?? null);
   const [error, setError] = useState(false);
@@ -511,6 +627,11 @@ export function Stats({
                 </>
               )}
             </section>
+
+            {/* Suit mastery — the five lanes, straight after bid accuracy:
+                that headline says how often your contracts stand, this says
+                which trumps you take them in. */}
+            <MasteryPanel stats={stats} t={t} lang={lang} />
 
             {/* Social facts: best partner + nemesis, side by side. */}
             <section className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">

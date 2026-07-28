@@ -14,6 +14,7 @@ import {
   SCENES,
 } from '../dev/scenes.js';
 import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
+import { applyFelt, currentFelt } from '../felt.js';
 import { overrideLang } from '../lang.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
@@ -105,8 +106,10 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     const root = document.documentElement;
     const prevTheme = root.dataset['theme'];
     const prevSkin = currentCardSkin();
+    const prevFelt = currentFelt();
     if (current?.theme === 'light') root.dataset['theme'] = 'light';
     if (current?.cardSkin !== undefined) applyCardSkin(current.cardSkin);
+    if (current?.felt !== undefined) applyFelt(current.felt);
     // Language rides an in-memory override, NEVER localStorage: a full
     // navigation out of a fr scene (shot sweep's page.goto, hard refresh)
     // skips this cleanup, and a persisted 'fr' left the whole app French.
@@ -129,6 +132,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       if (prevTheme === undefined) delete root.dataset['theme'];
       else root.dataset['theme'] = prevTheme;
       if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
+      if (current?.felt !== undefined) applyFelt(prevFelt);
       if (current?.lang !== undefined) overrideLang(null);
       if (current?.paint !== undefined) {
         if (prevProfile === null) localStorage.removeItem(PROFILE_KEY);
@@ -215,6 +219,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
               : DEMO_STATS
           }
           demoEarned={current.id === 'awards-fresh' ? [] : DEMO_EARNED_AWARDS}
+          demoArranging={current.id === 'awards-arranging'}
           onLeave={onLeave}
         />
       )}

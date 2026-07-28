@@ -7,6 +7,7 @@ const T: Record<Lang, { currentTrick: string }> = {
   fr: { currentTrick: 'Levée en cours' },
 };
 import { cardKey } from '../types.js';
+import { useTrickSweep } from '../trickSweep.js';
 import { PlayingCard, type CardSize } from './PlayingCard';
 
 export interface TrickPlayView {
@@ -48,11 +49,16 @@ const SWEEP_TO: Record<0 | 1 | 2 | 3, { x: number; y: number }> = {
 
 /** The won-trick sweep-away duration, in seconds — framer-motion transitions
  * need a JS number, so this mirrors (rather than reads) the CSS
- * `--duration-sweep: 560ms` token in tokens.css; keep the two in sync by hand
+ * `--duration-sweep: 900ms` token in tokens.css; keep the two in sync by hand
  * if that token ever moves. Reduced motion still applies: `JaffreMotionConfig`
  * (motion/config.tsx) sets `reducedMotion="user"`, which zeroes every
- * framer-motion transition under `prefers-reduced-motion`, this one included. */
-const SWEEP_DURATION_S = 0.56;
+ * framer-motion transition under `prefers-reduced-motion`, this one included.
+ *
+ * This is the TOTAL budget any sweep may take: `SWEEP_MS` in useTrickHold.ts
+ * clears the trick just after it, and the servers' post-trick bot pause
+ * (GameRoom.ts `TRICK_HOLD_MS`) is sized to cover hold + this. Raising it
+ * means raising both. */
+const SWEEP_DURATION_S = 0.9;
 
 /**
  * The trick fills whatever box its parent gives it: each play sits toward its
@@ -68,6 +74,7 @@ export function TrickArea({
   size = 'md',
 }: TrickAreaProps) {
   const t = T[useLang()];
+  const sweep = useTrickSweep();
   return (
     <div role="group" className="relative h-full w-full" aria-label={t.currentTrick}>
       <AnimatePresence>
@@ -86,21 +93,27 @@ export function TrickArea({
             </motion.div>
           ))}
         {sweepTo !== null &&
-          plays.map((play, i) => (
-            <motion.div
-              key={cardKey(play.card)}
-              className={`absolute ${SLOT[play.position]}`}
-              initial={{ x: 0, y: 0, opacity: 1 }}
-              animate={{ ...SWEEP_TO[sweepTo], opacity: 0, scale: 0.85 }}
-              transition={{
-                duration: SWEEP_DURATION_S,
-                delay: i * 0.04,
-                ease: [0.2, 0.9, 0.25, 1],
-              }}
-            >
-              <PlayingCard card={play.card} size={size} />
-            </motion.div>
-          ))}
+          plays.map((play, i) => {
+            // The variant owns WHERE and HOW; this owns the budget. Delays and
+            // durations arrive as fractions of SWEEP_DURATION_S so no variant
+            // can outlive the window useTrickHold clears the trick in.
+            const step = sweep.step(play.position, sweepTo, i);
+            return (
+              <motion.div
+                key={cardKey(play.card)}
+                className={`absolute ${SLOT[play.position]}`}
+                initial={{ x: 0, y: 0, opacity: 1 }}
+                animate={step.animate}
+                transition={{
+                  duration: SWEEP_DURATION_S * step.durationFraction,
+                  delay: SWEEP_DURATION_S * step.delayFraction,
+                  ease: [...step.ease],
+                }}
+              >
+                <PlayingCard card={play.card} size={size} />
+              </motion.div>
+            );
+          })}
       </AnimatePresence>
     </div>
   );

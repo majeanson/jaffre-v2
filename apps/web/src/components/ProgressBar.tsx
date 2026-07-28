@@ -8,15 +8,23 @@
 export function ProgressBar({
   pct,
   className = 'w-full',
+  fill,
 }: {
   readonly pct: number;
   readonly className?: string;
+  /** Fill colour (any CSS colour or var()). Defaults to the shell violet —
+   * pass a suit colour for the mastery lanes, where the bar's colour IS the
+   * label. */
+  readonly fill?: string;
 }) {
   return (
     <span
       className={`block h-[0.55em] overflow-hidden rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-ink)/20 ${className}`}
     >
-      <span className="block h-full bg-(--color-ap-violet)" style={{ width: `${String(pct)}%` }} />
+      <span
+        className={`block h-full ${fill === undefined ? 'bg-(--color-ap-violet)' : ''}`}
+        style={{ width: `${String(pct)}%`, ...(fill === undefined ? {} : { background: fill }) }}
+      />
     </span>
   );
 }

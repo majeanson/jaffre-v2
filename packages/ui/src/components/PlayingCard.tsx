@@ -83,7 +83,11 @@ export function PlayingCard({
       role="img"
       aria-label={cardLabel(card, lang)}
       style={tilt !== 0 ? { transform: `rotate(${tilt}deg)` } : undefined}
-      className={`relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
+      /* `card-face` is a styling hook, not a layout class: the foil modifier
+         (`[data-foil] .card-face::after` in tokens.css) attaches its sheen to
+         it. Nothing else targets it, and without a foil granted it costs
+         nothing. */
+      className={`card-face relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
         raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'
       } ${
         queued

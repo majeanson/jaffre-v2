@@ -5,6 +5,8 @@ import {
   LangProvider,
   PixelWave,
   preloadCardArt,
+  TrickSweepProvider,
+  trickSweepById,
 } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
 import {
@@ -13,6 +15,9 @@ import {
   currentBonhommeSkin,
   currentCardSkin,
 } from './cosmetics.js';
+import { SWEEP_EVENT, currentSweep } from './sweeps.js';
+import { refreshFoil } from './foils.js';
+import { parsePositionHash, type HandPosition } from './replay/position.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { DEV_TOOLS_ENABLED } from './dev/devMode.js';
@@ -53,6 +58,10 @@ const Journey = lazy(() => import('./screens/Journey.js').then((m) => ({ default
 const PaintStudio = lazy(() =>
   import('./screens/PaintStudio.js').then((m) => ({ default: m.PaintStudio })),
 );
+const DealBoard = lazy(() =>
+  import('./screens/DealBoard.js').then((m) => ({ default: m.DealBoard })),
+);
+const Hand = lazy(() => import('./screens/Hand.js').then((m) => ({ default: m.Hand })));
 const Replay = lazy(() => import('./screens/Replay.js').then((m) => ({ default: m.Replay })));
 const Scenes = lazy(() => import('./screens/Scenes.js').then((m) => ({ default: m.Scenes })));
 const Stats = lazy(() => import('./screens/Stats.js').then((m) => ({ default: m.Stats })));
@@ -84,7 +93,11 @@ type Route =
   | { kind: 'lobby' }
   | { kind: 'collection' }
   | { kind: 'paint' }
-  | { kind: 'replay'; gameId: string };
+  | { kind: 'replay'; gameId: string }
+  /** A shared POSITION — one moment of one game, playable. See
+   * replay/position.ts for the link format and why it is action-indexed. */
+  | { kind: 'hand'; position: HandPosition }
+  | { kind: 'dealboard' };
 
 function parseHash(): Route {
   const h = location.hash;
@@ -113,11 +126,14 @@ function parseHash(): Route {
   if (h === '#awards') return { kind: 'awards' };
   if (h === '#journey') return { kind: 'journey' };
   if (h === '#leaderboard') return { kind: 'leaderboard' };
+  if (h === '#daily') return { kind: 'dealboard' };
   if (h === '#lobby') return { kind: 'lobby' };
   if (h === '#collection') return { kind: 'collection' };
   if (h === '#paint') return { kind: 'paint' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
+  const position = parsePositionHash(h);
+  if (position !== null) return { kind: 'hand', position };
   // Anything else — a typo'd deep link, a stale bookmark, a dead room code —
   // still lands on Home, but says so rather than silently pretending.
   return { kind: 'home', badLink: h };
@@ -151,11 +167,29 @@ export function App() {
     () => ({ id: cardSkin, renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {}, bonhommes }),
     [cardSkin, bonhommes],
   );
+  // The trick-sweep variant — a fifth axis, motion rather than tokens. Same
+  // subscribe/re-sync pattern as the two above, and for the same reason: it
+  // must sit ABOVE every animated card so a swap never remounts one mid-flight.
+  const [sweepId, setSweepId] = useState(currentSweep());
+  useEffect(() => {
+    const onChange = () => setSweepId(currentSweep());
+    window.addEventListener(SWEEP_EVENT, onChange);
+    onChange();
+    return () => window.removeEventListener(SWEEP_EVENT, onChange);
+  }, []);
+  const sweep = useMemo(() => trickSweepById(sweepId), [sweepId]);
 
   // Warm the equipped cosmetics' card art (the OG portraits/emblems are real
   // JPGs) as soon as we know what's equipped, and again on every swap — so the
   // first Red 0 of a game is already decoded when it lands, instead of
   // starting its fetch at that moment. Fetches nothing for skins with no art.
+  // A foil belongs to ONE skin, so equipping a different deck must drop (or
+  // pick up) the sheen. Cheap: it reads the grants the boot reconcile already
+  // fetched, and no-ops before that has happened.
+  useEffect(() => {
+    refreshFoil(cardSkin);
+  }, [cardSkin]);
+
   useEffect(() => {
     preloadCardArt(cardSkin, bonhommes);
   }, [cardSkin, bonhommes]);
@@ -169,7 +203,17 @@ export function App() {
     // fetch has no business competing with a live room's socket. (`#scenes` is a
     // dev tool that shouldn't hit the network or pop toasts either.)
     const h = location.hash;
-    if (h.startsWith('#room') || h.startsWith('#practice') || h.startsWith('#scenes')) return;
+    // `#hand` belongs on this list too: a shared position runs a real practice
+    // game, so it is "mid-game" for exactly the same reasons as #practice.
+    if (
+      h.startsWith('#room') ||
+      h.startsWith('#practice') ||
+      h.startsWith('#scenes') ||
+      h.startsWith('#hand') ||
+      h === '#daily'
+    ) {
+      return;
+    }
     let live = true;
     // Never blocks UI (it only ever surfaces an unlock toast) — defer it off
     // the critical first-paint/hydration path onto idle time, with a
@@ -193,26 +237,28 @@ export function App() {
   return (
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
-        {/* Mounted first (renders/commits before AppRoutes) so it wins the
+        <TrickSweepProvider value={sweep}>
+          {/* Mounted first (renders/commits before AppRoutes) so it wins the
             NoticeToast module-level ownership claim over Table's/Lobby's own
             local mounts — see NoticeToast.tsx. This is the app-wide toast
             surface: award grants (and any other net-layer notice) show here
             regardless of which screen is active. */}
-        <NoticeToast />
-        {/* A render crash lands on a localized fallback (kept inside the
+          <NoticeToast />
+          {/* A render crash lands on a localized fallback (kept inside the
             providers so it stays themed) instead of a white screen. */}
-        <ErrorBoundary>
-          <AppRoutes />
-        </ErrorBoundary>
-        {/* Registers the SW; skipped under automation so e2e never caches. */}
-        {!navigator.webdriver && <UpdateToast />}
-        {unlocked !== null && (
-          <Toast
-            message={`${lang === 'fr' ? 'Débloqué : ' : 'Unlocked: '}${unlocked}`}
-            durationMs={3500}
-            onDone={() => setUnlocked(null)}
-          />
-        )}
+          <ErrorBoundary>
+            <AppRoutes />
+          </ErrorBoundary>
+          {/* Registers the SW; skipped under automation so e2e never caches. */}
+          {!navigator.webdriver && <UpdateToast />}
+          {unlocked !== null && (
+            <Toast
+              message={`${lang === 'fr' ? 'Débloqué : ' : 'Unlocked: '}${unlocked}`}
+              durationMs={3500}
+              onDone={() => setUnlocked(null)}
+            />
+          )}
+        </TrickSweepProvider>
       </CardSkinProvider>
     </LangProvider>
   );
@@ -350,6 +396,10 @@ function AppRoutes() {
     content = <PaintStudio onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'replay') {
     content = <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
+  } else if (route.kind === 'dealboard') {
+    content = <DealBoard onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'hand') {
+    content = <Hand position={route.position} onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'room') {
     // A spectator arriving at a room already underway (viewer is not a seated
     // number) lands on the Visitor screen first — take over a bot's seat or

@@ -71,9 +71,16 @@ describe('GET /api/stats', () => {
       netPoints: 0,
       bids: { attempted: 0, made: 0 },
       sansAtout: { attempted: 0, made: 0 },
+      mastery: {
+        red: { attempted: 0, made: 0 },
+        brown: { attempted: 0, made: 0 },
+        green: { attempted: 0, made: 0 },
+        blue: { attempted: 0, made: 0 },
+      },
       bestPartner: null,
       nemesis: null,
       streak: { current: 0, best: 0 },
+      spectated: 0,
     });
   });
 
@@ -164,5 +171,115 @@ describe('GET /api/stats', () => {
     expect(data.nemesis).toEqual({ name: 'Bob', games: 2, losses: 1 });
     // Ascending order: win, loss, win — the trailing streak is 1, best is 1.
     expect(data.streak).toEqual({ current: 1, best: 1 });
+  });
+
+  it('splits declared contracts into per-trump mastery lanes', async () => {
+    // One game, four of Zoe's own contracts across three trumps, plus a
+    // sans-atout (no trump) and an OPPONENT's green contract that must not
+    // land in her lanes.
+    await seedGame({
+      id: 'mastery-g1',
+      roomCode: 'm1',
+      finishedAt: 4000,
+      winnerTeam: 0,
+      scores: [90, 10],
+      roundSummaries: [
+        summary({
+          contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          trump: 'red',
+        }),
+        summary({
+          contract: { seat: 0, value: 9, sansAtout: false, forced: false },
+          contractMade: false,
+          trump: 'red',
+        }),
+        summary({
+          contract: { seat: 0, value: 7, sansAtout: false, forced: true },
+          contractMade: true,
+          trump: 'blue',
+        }),
+        // Sans-atout has no trump: it belongs to the existing sansAtout
+        // counter, NOT to a suit lane.
+        summary({
+          contract: { seat: 0, value: 10, sansAtout: true, forced: false },
+          contractMade: true,
+          trump: null,
+        }),
+        // Seat 1 is an opponent — their green contract is not Zoe's mastery.
+        summary({
+          contract: { seat: 1, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          trump: 'green',
+        }),
+      ],
+      players: [
+        { seat: 0, userId: 'zoe', isBot: 0, name: 'Zoe' },
+        { seat: 1, userId: 'yan', isBot: 0, name: 'Yan' },
+        { seat: 2, userId: null, isBot: 1, name: 'Bot 3' },
+        { seat: 3, userId: null, isBot: 1, name: 'Bot 4' },
+      ],
+    });
+
+    const res = await SELF.fetch('https://example.com/api/stats?u=zoe');
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      bids: { attempted: number; made: number };
+      sansAtout: { attempted: number; made: number };
+      mastery: Record<string, { attempted: number; made: number }>;
+    };
+
+    expect(data.mastery).toEqual({
+      red: { attempted: 2, made: 1 },
+      brown: { attempted: 0, made: 0 },
+      green: { attempted: 0, made: 0 }, // the opponent's, not hers
+      blue: { attempted: 1, made: 1 },
+    });
+    // The sans-atout contract stays out of every suit lane.
+    expect(data.sansAtout).toEqual({ attempted: 1, made: 1 });
+    // All four of her contracts still count toward the overall bid record.
+    expect(data.bids).toEqual({ attempted: 4, made: 3 });
+  });
+
+  it('ignores an unrecognised trump from a legacy row instead of inventing a lane', async () => {
+    await seedGame({
+      id: 'mastery-g2',
+      roomCode: 'm2',
+      finishedAt: 5000,
+      winnerTeam: 0,
+      scores: [90, 10],
+      roundSummaries: [
+        // A row written by some older/other build: contract present, trump a
+        // value the current engine doesn't know.
+        summary({
+          contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          trump: 'purple' as never,
+        }),
+        summary({
+          contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          trump: 'green',
+        }),
+      ],
+      players: [
+        { seat: 0, userId: 'legacy-user', isBot: 0, name: 'Old' },
+        { seat: 1, userId: null, isBot: 1, name: 'Bot 2' },
+        { seat: 2, userId: null, isBot: 1, name: 'Bot 3' },
+        { seat: 3, userId: null, isBot: 1, name: 'Bot 4' },
+      ],
+    });
+
+    const res = await SELF.fetch('https://example.com/api/stats?u=legacy-user');
+    const data = (await res.json()) as {
+      bids: { attempted: number; made: number };
+      mastery: Record<string, { attempted: number; made: number }>;
+    };
+
+    // Exactly the four known suits — no 'purple' key.
+    expect(Object.keys(data.mastery).sort()).toEqual(['blue', 'brown', 'green', 'red']);
+    expect(data.mastery.green).toEqual({ attempted: 1, made: 1 });
+    // The unknown-trump contract is still a contract for the overall record.
+    expect(data.bids).toEqual({ attempted: 2, made: 2 });
   });
 });

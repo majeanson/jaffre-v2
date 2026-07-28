@@ -54,6 +54,10 @@ export interface SceneMeta {
   readonly lang?: 'fr';
   /** Force a card skin for this scene (default: the stored one, i.e. arcade). */
   readonly cardSkin?: string;
+  /** Force a felt for this scene (default: the stored one, i.e. house). The
+   * felt is the largest single area on the table, so the sweep needs at least
+   * one dark and one LIGHT surface to catch foreground-contrast regressions. */
+  readonly felt?: string;
   /** Seed the viewer's painted-card cosmetic (data URL) for this scene, so the
    * personalised avatar + own 0-cards render; restored to the real one on exit. */
   readonly paint?: string;
@@ -378,6 +382,28 @@ export const SCENE_METAS = [
     probe: '[role="option"][data-playable="true"]',
   },
   {
+    id: 'felt-tavern',
+    label: 'Play — Tavern Wood felt',
+    screen: 'table',
+    felt: 'tavern',
+    probe: '[role="option"][data-playable="true"]',
+  },
+  {
+    id: 'felt-rink',
+    label: 'Play — Rink Ice felt (light surface)',
+    screen: 'table',
+    felt: 'rink',
+    probe: '[role="option"][data-playable="true"]',
+  },
+  {
+    id: 'felt-arborite-light',
+    label: 'Play — Kitchen Arborite felt on the light theme',
+    screen: 'table',
+    felt: 'arborite',
+    theme: 'light',
+    probe: '[role="option"][data-playable="true"]',
+  },
+  {
     id: 'painted-card',
     label: 'Play — your painted card (avatar + own 0s)',
     screen: 'table',
@@ -415,6 +441,14 @@ export const SCENE_METAS = [
   {
     id: 'awards-fresh',
     label: 'Awards — all locked (progress bars)',
+    screen: 'awards',
+    probe: 'role=heading[name="Awards"]',
+  },
+  {
+    // Arrange mode adds a row of move buttons under every trophy — the state
+    // most likely to overflow a narrow shelf, so it gets its own shot.
+    id: 'awards-arranging',
+    label: 'Awards — trophy shelf, arrange mode',
     screen: 'awards',
     probe: 'role=heading[name="Awards"]',
   },

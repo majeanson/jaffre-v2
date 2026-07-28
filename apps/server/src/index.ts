@@ -1,4 +1,12 @@
-import type { RoundSummary } from '@jaffre/engine';
+import {
+  SUITS,
+  challengeById,
+  challengeIsOpen,
+  dailyChallenge,
+  type RoundSummary,
+  type Suit,
+} from '@jaffre/engine';
+import { parseActions, verifyChallengeRun } from './challenge.js';
 import { EVENT_AWARD_IDS, earnedStatAwardIds } from './awards.js';
 import { GameRoom } from './GameRoom.js';
 import { Lobby, lobbyStub } from './Lobby.js';
@@ -48,6 +56,11 @@ interface Profile {
   readonly cardSkin: string | null;
   readonly theme: string | null;
   readonly bonhommeSkin: string | null;
+  readonly felt: string | null;
+  readonly sweep: string | null;
+  /** Trophy-shelf arrangement: a JSON array of award ids, or null for catalog
+   * order. Display-only — never gates what is earned. */
+  readonly awardOrder: string | null;
 }
 
 const NO_PROFILE: Profile = {
@@ -56,6 +69,9 @@ const NO_PROFILE: Profile = {
   cardSkin: null,
   theme: null,
   bonhommeSkin: null,
+  felt: null,
+  sweep: null,
+  awardOrder: null,
 };
 
 /** The player's cosmetics (colour, painted card, card skin, theme, bonhomme
@@ -65,7 +81,7 @@ async function readProfile(env: Env, uid: string): Promise<Profile> {
   if (env.DB === undefined) return NO_PROFILE;
   try {
     const row = await env.DB.prepare(
-      'SELECT color, paint, card_skin, theme, bonhomme_skin FROM users WHERE id = ?1',
+      'SELECT color, paint, card_skin, theme, bonhomme_skin, felt, sweep, award_order FROM users WHERE id = ?1',
     )
       .bind(uid)
       .first<{
@@ -74,6 +90,9 @@ async function readProfile(env: Env, uid: string): Promise<Profile> {
         card_skin: string | null;
         theme: string | null;
         bonhomme_skin: string | null;
+        felt: string | null;
+        sweep: string | null;
+        award_order: string | null;
       }>();
     return {
       color: row?.color ?? null,
@@ -81,6 +100,9 @@ async function readProfile(env: Env, uid: string): Promise<Profile> {
       cardSkin: row?.card_skin ?? null,
       theme: row?.theme ?? null,
       bonhommeSkin: row?.bonhomme_skin ?? null,
+      felt: row?.felt ?? null,
+      sweep: row?.sweep ?? null,
+      awardOrder: row?.award_order ?? null,
     };
   } catch (err) {
     console.error('[users] profile read failed', err);
@@ -579,13 +601,17 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
  * from `/api/stats` on the client, keeping `/api/stats` the single unlock
  * source with zero new server state. */
 const SKIN_ID_RE = /^[a-z0-9-]{1,24}$/;
+/** Upper bound on a stored trophy-shelf arrangement. Comfortably above the
+ * award catalog so it never rejects a real shelf, low enough that the column
+ * can't be used as scratch storage. */
+const AWARD_ORDER_MAX = 128;
 /** Cap on the whole POST body — the painted-canvas data URL is the big field.
  * A 260×347 PNG of brush strokes compresses well under this. */
 const PROFILE_MAX_BYTES = 512 * 1024;
 
 /**
- * POST /api/profile {color?, paint?, cardSkin?, theme?, bonhommeSkin?} →
- * {userId, ...profile}.
+ * POST /api/profile {color?, paint?, cardSkin?, theme?, bonhommeSkin?, felt?,
+ * sweep?} → {userId, ...profile}.
  * Authenticated by Bearer token; persists the player's cosmetics to `users`.
  * Each field is optional: absent leaves the column untouched, explicit `null`
  * clears it. No account vocabulary — this is just the look of your cards.
@@ -649,15 +675,53 @@ async function handleProfile(request: Request, env: Env): Promise<Response> {
       bonhommeSkin = b.bonhommeSkin;
     else return Response.json({ error: 'bonhommeSkin must be a skin id or null' }, { status: 400 });
   }
+  let felt: string | null | undefined;
+  if ('felt' in b) {
+    if (b.felt === null) felt = null;
+    else if (typeof b.felt === 'string' && SKIN_ID_RE.test(b.felt)) felt = b.felt;
+    else return Response.json({ error: 'felt must be a felt id or null' }, { status: 400 });
+  }
+  let sweep: string | null | undefined;
+  if ('sweep' in b) {
+    if (b.sweep === null) sweep = null;
+    else if (typeof b.sweep === 'string' && SKIN_ID_RE.test(b.sweep)) sweep = b.sweep;
+    else return Response.json({ error: 'sweep must be a sweep id or null' }, { status: 400 });
+  }
+  let awardOrder: string | null | undefined;
+  if ('awardOrder' in b) {
+    if (b.awardOrder === null) awardOrder = null;
+    else if (
+      Array.isArray(b.awardOrder) &&
+      b.awardOrder.length <= AWARD_ORDER_MAX &&
+      b.awardOrder.every((id) => typeof id === 'string' && SKIN_ID_RE.test(id))
+    ) {
+      // Stored as JSON so the column stays a plain TEXT like every other
+      // profile field. Ids are NOT checked against the award catalog here —
+      // the catalog is the client's (see apps/web/src/awards.ts), and the
+      // reader ignores anything it doesn't recognise, so a stale or unknown id
+      // is inert rather than an error that would block saving a valid shelf.
+      awardOrder = JSON.stringify(b.awardOrder);
+    } else {
+      return Response.json(
+        { error: 'awardOrder must be an array of award ids, or null' },
+        { status: 400 },
+      );
+    }
+  }
   if (
     color === undefined &&
     paint === undefined &&
     cardSkin === undefined &&
     theme === undefined &&
-    bonhommeSkin === undefined
+    bonhommeSkin === undefined &&
+    felt === undefined &&
+    sweep === undefined &&
+    awardOrder === undefined
   ) {
     return Response.json(
-      { error: 'Provide color, paint, cardSkin, theme and/or bonhommeSkin' },
+      {
+        error: 'Provide color, paint, cardSkin, theme, bonhommeSkin, felt, sweep and/or awardOrder',
+      },
       { status: 400 },
     );
   }
@@ -686,6 +750,18 @@ async function handleProfile(request: Request, env: Env): Promise<Response> {
   if (bonhommeSkin !== undefined) {
     binds.push(bonhommeSkin);
     sets.push(`bonhomme_skin = ?${String(binds.length)}`);
+  }
+  if (felt !== undefined) {
+    binds.push(felt);
+    sets.push(`felt = ?${String(binds.length)}`);
+  }
+  if (sweep !== undefined) {
+    binds.push(sweep);
+    sets.push(`sweep = ?${String(binds.length)}`);
+  }
+  if (awardOrder !== undefined) {
+    binds.push(awardOrder);
+    sets.push(`award_order = ?${String(binds.length)}`);
   }
   binds.push(identity.uid);
   try {
@@ -823,6 +899,11 @@ async function handleReplay(env: Env, gameId: string): Promise<Response> {
   });
 }
 
+/** Narrows a persisted `RoundSummary.trump` to a real suit. */
+function isSuit(value: unknown): value is Suit {
+  return typeof value === 'string' && (SUITS as readonly string[]).includes(value);
+}
+
 interface StatsRow {
   readonly id: string;
   readonly finished_at: number | null;
@@ -840,6 +921,16 @@ interface StatsPayload {
   readonly netPoints: number;
   readonly bids: { readonly attempted: number; readonly made: number };
   readonly sansAtout: { readonly attempted: number; readonly made: number };
+  /**
+   * Contracts you declared, split by the trump you named — the "five lanes"
+   * mastery view. Only the four SUITS live here: a sans-atout contract has no
+   * trump, and its lane is the existing top-level `sansAtout` field rather
+   * than a duplicate counter.
+   *
+   * Derived from `round_summaries.trump`, which has been persisted since the
+   * field existed, so this is fully retroactive for every past game.
+   */
+  readonly mastery: Readonly<Record<Suit, { readonly attempted: number; readonly made: number }>>;
   readonly bestPartner: {
     readonly name: string;
     readonly games: number;
@@ -851,6 +942,20 @@ interface StatsPayload {
     readonly losses: number;
   } | null;
   readonly streak: { readonly current: number; readonly best: number };
+  /** Games watched through to the end as a spectator. Its own counter, NOT an
+   * XP source — see the note in apps/server/src/awards.ts. */
+  readonly spectated: number;
+}
+
+/** A zeroed mastery table. A function, not a shared const: computeStats
+ * increments these counters in place, so each call needs its own. */
+function emptyMastery(): Record<Suit, { attempted: number; made: number }> {
+  return {
+    red: { attempted: 0, made: 0 },
+    brown: { attempted: 0, made: 0 },
+    green: { attempted: 0, made: 0 },
+    blue: { attempted: 0, made: 0 },
+  };
 }
 
 const EMPTY_STATS: StatsPayload = {
@@ -860,9 +965,11 @@ const EMPTY_STATS: StatsPayload = {
   netPoints: 0,
   bids: { attempted: 0, made: 0 },
   sansAtout: { attempted: 0, made: 0 },
+  mastery: emptyMastery(),
   bestPartner: null,
   nemesis: null,
   streak: { current: 0, best: 0 },
+  spectated: 0,
 };
 
 /**
@@ -896,8 +1003,12 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     )
     .bind(userId)
     .all<StatsRow>();
+  // Read BEFORE the no-games early return: someone who has only ever watched
+  // has zero games, and is exactly the person the spectating awards are for.
+  const spectated = await countSpectated(db, userId);
+
   const games = rows.results;
-  if (games.length === 0) return EMPTY_STATS;
+  if (games.length === 0) return { ...EMPTY_STATS, spectated };
 
   const players = await playersByGame(
     env,
@@ -910,6 +1021,7 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
   let bidsMade = 0;
   let saAttempted = 0;
   let saMade = 0;
+  const mastery = emptyMastery();
   let running = 0;
   let best = 0;
   const partners = new Map<string, { name: string; games: number; wins: number }>();
@@ -934,6 +1046,13 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
         if (s.contract.sansAtout) {
           saAttempted++;
           if (s.contractMade) saMade++;
+        } else if (isSuit(s.trump)) {
+          // Guarded rather than indexed directly: `trump` comes from JSON
+          // persisted by older builds, so treat anything unrecognised as a
+          // contract with no lane instead of creating a junk key.
+          const lane = mastery[s.trump];
+          lane.attempted++;
+          if (s.contractMade) lane.made++;
         }
       }
     }
@@ -980,10 +1099,28 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     netPoints,
     bids: { attempted: bidsAttempted, made: bidsMade },
     sansAtout: { attempted: saAttempted, made: saMade },
+    mastery,
     bestPartner,
     nemesis,
     streak: { current: running, best },
+    spectated,
   };
+}
+
+/** Games this user watched to the end. Degrades to 0 rather than failing the
+ * whole stats read — a missing spectate count must not cost someone their
+ * record. */
+async function countSpectated(db: D1Database, userId: string): Promise<number> {
+  try {
+    const row = await db
+      .prepare('SELECT COUNT(*) AS n FROM spectated_games WHERE user_id = ?1')
+      .bind(userId)
+      .first<{ n: number }>();
+    return row?.n ?? 0;
+  } catch (err) {
+    console.error('[spectate] count failed', err);
+    return 0;
+  }
 }
 
 /**
@@ -1057,6 +1194,163 @@ async function handleAwardGrant(request: Request, env: Env, url: URL): Promise<R
 
 const LEADERBOARD_MIN_GAMES = 10;
 const LEADERBOARD_LIMIT = 100;
+
+/** How many rows a Deal Board shows. */
+const BOARD_LIMIT = 20;
+
+/**
+ * POST /api/challenge/submit { challengeId, actions } → { score, tricks, rank }.
+ *
+ * The score is NOT taken from the client. The action log is re-played against
+ * the challenge's own derived deal, every bot move is recomputed and compared,
+ * and the score is read out of the resulting round summary (see
+ * src/challenge.ts). A doctored client can therefore submit a log that fails
+ * verification, but not a score it didn't earn.
+ *
+ * One attempt per challenge: the table's PRIMARY KEY refuses a second, so
+ * "best of many tries" can't quietly become the game.
+ */
+async function handleChallengeSubmit(request: Request, env: Env, url: URL): Promise<Response> {
+  const db = env.DB;
+  if (db === undefined) return noDb();
+  const userId = await resolveUserId(request, env, url);
+  if (userId === undefined) return Response.json({ error: 'Invalid token' }, { status: 401 });
+  if (userId === null || userId === '') {
+    return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Expected a JSON body' }, { status: 400 });
+  }
+  if (typeof body !== 'object' || body === null) {
+    return Response.json({ error: 'Expected a JSON object' }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.challengeId !== 'string') {
+    return Response.json({ error: 'challengeId is required' }, { status: 400 });
+  }
+  // Parsed, not cast: the engine's applyAction switches on `action.type` with
+  // no guard, so a malformed element would throw inside the worker instead of
+  // being refused. Validate the shape before anything touches the engine.
+  const actions = parseActions(b.actions);
+  if (actions === null) {
+    return Response.json({ error: 'actions must be an array of game actions' }, { status: 400 });
+  }
+
+  const deal = challengeById(b.challengeId);
+  if (deal === null) return Response.json({ error: 'Unknown challenge' }, { status: 400 });
+  // A challenge is re-derivable from its id, so a caller could name yesterday's
+  // (or next year's). Only the open period takes scores.
+  if (!challengeIsOpen(deal, Date.now())) {
+    return Response.json({ error: 'That challenge is closed' }, { status: 409 });
+  }
+
+  const verdict = verifyChallengeRun(deal, actions);
+  if (!verdict.ok) {
+    return Response.json({ error: 'Run rejected', reason: verdict.reason }, { status: 422 });
+  }
+
+  try {
+    const inserted = await db
+      .prepare(
+        `INSERT OR IGNORE INTO challenge_scores
+           (challenge_id, user_id, score, tricks, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)`,
+      )
+      .bind(deal.id, userId, verdict.score, verdict.tricks, Date.now())
+      .run();
+    // OR IGNORE + meta.changes tells us whether this was the first attempt,
+    // without a separate SELECT that could race another tab.
+    const first = (inserted.meta.changes ?? 0) > 0;
+    const stored = await db
+      .prepare(
+        'SELECT score, tricks FROM challenge_scores WHERE challenge_id = ?1 AND user_id = ?2',
+      )
+      .bind(deal.id, userId)
+      .first<{ score: number; tricks: number }>();
+    return Response.json({
+      accepted: first,
+      score: stored?.score ?? verdict.score,
+      tricks: stored?.tricks ?? verdict.tricks,
+    });
+  } catch (err) {
+    console.error('[challenge] submit failed', err);
+    return Response.json({ error: 'Could not record that run' }, { status: 500 });
+  }
+}
+
+/**
+ * GET /api/challenge?id=<challengeId> → { challenge, board, you }.
+ *
+ * Omit `id` for today's daily. Public, like the leaderboard; a caller identity
+ * just adds their own row so someone off the top of the board can still see
+ * where they landed.
+ */
+async function handleChallengeBoard(request: Request, env: Env, url: URL): Promise<Response> {
+  const db = env.DB;
+  if (db === undefined) return noDb();
+  const now = Date.now();
+  const requested = url.searchParams.get('id');
+  const deal = requested === null ? dailyChallenge(now) : challengeById(requested);
+  if (deal === null) return Response.json({ error: 'Unknown challenge' }, { status: 400 });
+
+  const rows = await db
+    .prepare(
+      `SELECT s.user_id, s.score, s.tricks, u.name, u.color
+         FROM challenge_scores s LEFT JOIN users u ON u.id = s.user_id
+        WHERE s.challenge_id = ?1
+        ORDER BY s.score DESC, s.tricks DESC, s.created_at ASC
+        LIMIT ?2`,
+    )
+    .bind(deal.id, BOARD_LIMIT)
+    .all<{
+      user_id: string;
+      score: number;
+      tricks: number;
+      name: string | null;
+      color: string | null;
+    }>();
+
+  const board = rows.results.map((r, i) => ({
+    // Opaque public id, never the raw uid — same rule as the leaderboard.
+    id: publicId(r.user_id),
+    name: r.name ?? 'Player',
+    color: r.color,
+    score: r.score,
+    tricks: r.tricks,
+    rank: i + 1,
+  }));
+
+  let you: { score: number; tricks: number; rank: number } | null = null;
+  const userId = await resolveUserId(request, env, url);
+  if (typeof userId === 'string' && userId !== '') {
+    const mine = await db
+      .prepare(
+        'SELECT score, tricks FROM challenge_scores WHERE challenge_id = ?1 AND user_id = ?2',
+      )
+      .bind(deal.id, userId)
+      .first<{ score: number; tricks: number }>();
+    if (mine !== null) {
+      const ahead = await db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM challenge_scores
+            WHERE challenge_id = ?1 AND (score > ?2 OR (score = ?2 AND tricks > ?3))`,
+        )
+        .bind(deal.id, mine.score, mine.tricks)
+        .first<{ n: number }>();
+      you = { score: mine.score, tricks: mine.tricks, rank: (ahead?.n ?? 0) + 1 };
+    }
+  }
+
+  return Response.json({
+    challenge: { id: deal.id, cadence: deal.cadence, periodKey: deal.periodKey, seed: deal.seed },
+    board,
+    you,
+  });
+}
 
 /**
  * GET /api/leaderboard → the global skill ladder: the top-rated users with at
@@ -1438,6 +1732,12 @@ export default {
     }
     if (url.pathname === '/api/awards/grant' && request.method === 'POST') {
       return handleAwardGrant(request, env, url);
+    }
+    if (url.pathname === '/api/challenge' && request.method === 'GET') {
+      return handleChallengeBoard(request, env, url);
+    }
+    if (url.pathname === '/api/challenge/submit' && request.method === 'POST') {
+      return handleChallengeSubmit(request, env, url);
     }
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       return handleLeaderboard(request, env, url);

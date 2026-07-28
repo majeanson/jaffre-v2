@@ -27,6 +27,12 @@ export interface Profile {
   readonly cardSkin: string | null;
   readonly theme: string | null;
   readonly bonhommeSkin: string | null;
+  readonly felt: string | null;
+  readonly sweep: string | null;
+  /** Trophy-shelf arrangement: award ids in display order, or null for catalog
+   * order. Display-only; the Awards screen ignores unknown/duplicate ids and
+   * appends anything missing, so a stale shelf can never hide a trophy. */
+  readonly awardOrder: readonly string[] | null;
 }
 
 const EMPTY_PROFILE: Profile = {
@@ -35,6 +41,9 @@ const EMPTY_PROFILE: Profile = {
   cardSkin: null,
   theme: null,
   bonhommeSkin: null,
+  felt: null,
+  sweep: null,
+  awardOrder: null,
 };
 
 /** The cosmetic fields as they arrive on auth/profile responses (all optional). */
@@ -44,7 +53,35 @@ type ProfileFields = {
   cardSkin?: string | null;
   theme?: string | null;
   bonhommeSkin?: string | null;
+  felt?: string | null;
+  sweep?: string | null;
+  /** Sent as an array; the server stores it as JSON and echoes it back either
+   * way, so the reader below accepts both shapes. */
+  awardOrder?: readonly string[] | string | null;
 };
+
+/**
+ * Normalise a stored/received award order to a string array. It arrives as a
+ * real array from our own save call and as a JSON string from the server's
+ * TEXT column, and as anything at all from a corrupted localStorage blob —
+ * all of which must degrade to `null` (= catalog order) rather than throw on
+ * a screen whose whole job is to show you what you've earned.
+ */
+function parseAwardOrder(value: readonly string[] | string | null | undefined): string[] | null {
+  if (value === null || value === undefined) return null;
+  const raw: unknown = typeof value === 'string' ? safeJson(value) : value;
+  if (!Array.isArray(raw)) return null;
+  const ids = raw.filter((id): id is string => typeof id === 'string');
+  return ids.length > 0 ? ids : null;
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 function profileFrom(d: ProfileFields): Profile {
   return {
@@ -53,6 +90,9 @@ function profileFrom(d: ProfileFields): Profile {
     cardSkin: d.cardSkin ?? null,
     theme: d.theme ?? null,
     bonhommeSkin: d.bonhommeSkin ?? null,
+    felt: d.felt ?? null,
+    sweep: d.sweep ?? null,
+    awardOrder: parseAwardOrder(d.awardOrder),
   };
 }
 
@@ -68,6 +108,9 @@ export function getProfile(): Profile {
       cardSkin: p.cardSkin ?? null,
       theme: p.theme ?? null,
       bonhommeSkin: p.bonhommeSkin ?? null,
+      felt: p.felt ?? null,
+      sweep: p.sweep ?? null,
+      awardOrder: parseAwardOrder(p.awardOrder),
     };
   } catch {
     return EMPTY_PROFILE;
@@ -190,6 +233,10 @@ export async function saveProfile(patch: ProfileFields): Promise<Profile> {
     cardSkin: patch.cardSkin !== undefined ? patch.cardSkin : current.cardSkin,
     theme: patch.theme !== undefined ? patch.theme : current.theme,
     bonhommeSkin: patch.bonhommeSkin !== undefined ? patch.bonhommeSkin : current.bonhommeSkin,
+    felt: patch.felt !== undefined ? patch.felt : current.felt,
+    sweep: patch.sweep !== undefined ? patch.sweep : current.sweep,
+    awardOrder:
+      patch.awardOrder !== undefined ? parseAwardOrder(patch.awardOrder) : current.awardOrder,
   };
   storeProfile(optimistic);
   const token = read()?.token;

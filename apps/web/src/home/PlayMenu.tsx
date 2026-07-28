@@ -36,6 +36,7 @@ const T: Record<
     playVsBots: string;
     botDifficulty: string;
     teaching: string;
+    dailyDoor: string;
     quickPlay: string;
     quickPlayHint: string;
     browsePublic: string;
@@ -61,6 +62,7 @@ const T: Record<
     playVsBots: 'Play vs bots',
     botDifficulty: 'Bot difficulty',
     teaching: 'Or learn one thing:',
+    dailyDoor: '★ Hand of the Day — same deal as everyone else',
     quickPlay: 'Quick play online',
     quickPlayHint: 'Joins an open table, or starts one.',
     browsePublic: 'Join a public game',
@@ -85,6 +87,7 @@ const T: Record<
     playVsBots: 'Jouer contre les bots',
     botDifficulty: 'Difficulté des bots',
     teaching: 'Ou apprends une affaire :',
+    dailyDoor: '★ La main du jour — la même donne que tout le monde',
     quickPlay: 'Partie rapide en ligne',
     quickPlayHint: 'Joins une table ouverte, ou pars-en une.',
     browsePublic: 'Joindre une partie publique',
@@ -321,6 +324,19 @@ export function PlayMenu({
                   </button>
                 ))}
               </div>
+              {/* The Deal Board sits with BOTS because that's what it is — a
+                  seeded practice deal. What makes it different is that it's
+                  the SAME deal as everyone else's today, so it gets its own
+                  line rather than being one more curated chip. */}
+              <button
+                type="button"
+                onClick={() => {
+                  location.hash = '#daily';
+                }}
+                className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 text-left font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+              >
+                {t.dailyDoor}
+              </button>
             </DoorSection>
 
             {/* 3 · PUBLIC — one tap to be seated (quick play), plus the two

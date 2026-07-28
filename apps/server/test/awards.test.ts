@@ -115,4 +115,57 @@ describe('POST /api/awards/grant', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('refuses a spectating award through the grant endpoint', async () => {
+    // Spectating awards are derived from a server-written counter. If the POST
+    // allowlist ever let one through, watching would become self-attested.
+    for (const id of ['watcher', 'commentator', 'the-rail']) {
+      expect(EVENT_AWARD_IDS.has(id), id).toBe(false);
+      const res = await SELF.fetch('https://example.com/api/awards/grant?u=aw-zoe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ awardId: id }),
+      });
+      expect(res.status, id).toBe(400);
+    }
+  });
+});
+
+describe('spectating awards', () => {
+  it('are earned from the watch count, at each step', () => {
+    const base: AwardEvalStats = {
+      games: 0,
+      wins: 0,
+      winRate: 0,
+      netPoints: 0,
+      bids: { attempted: 0, made: 0 },
+      sansAtout: { attempted: 0, made: 0 },
+      streak: { current: 0, best: 0 },
+      nemesis: null,
+    };
+    expect(earnedStatAwardIds({ ...base, spectated: 0 })).not.toContain('watcher');
+    expect(earnedStatAwardIds({ ...base, spectated: 1 })).toContain('watcher');
+    expect(earnedStatAwardIds({ ...base, spectated: 9 })).not.toContain('commentator');
+    expect(earnedStatAwardIds({ ...base, spectated: 10 })).toContain('commentator');
+    expect(earnedStatAwardIds({ ...base, spectated: 50 })).toContain('the-rail');
+  });
+
+  it('treat a server without the counter as zero, not as earned', () => {
+    // The field is optional so an older payload can't accidentally hand out
+    // every spectating award at once.
+    const noField: AwardEvalStats = {
+      games: 5,
+      wins: 2,
+      winRate: 0.4,
+      netPoints: 0,
+      bids: { attempted: 0, made: 0 },
+      sansAtout: { attempted: 0, made: 0 },
+      streak: { current: 0, best: 0 },
+      nemesis: null,
+    };
+    const earned = earnedStatAwardIds(noField);
+    expect(earned).not.toContain('watcher');
+    expect(earned).not.toContain('commentator');
+    expect(earned).not.toContain('the-rail');
+  });
 });

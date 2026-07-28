@@ -10,7 +10,17 @@
 
 const STORAGE_KEY = 'jaffre-sound';
 
-export type ClickKind = 'deal' | 'play' | 'sort' | 'select' | 'illegal';
+export type ClickKind =
+  | 'deal'
+  | 'play'
+  | 'sort'
+  | 'select'
+  | 'illegal'
+  // One per trick-sweep variant — see SWEEP_SOUND in sweeps.ts for the mapping.
+  | 'sweep'
+  | 'sweep-fold'
+  | 'sweep-drift'
+  | 'sweep-riffle';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -132,6 +142,32 @@ export function playClick(kind: ClickKind): void {
       // A dull knock on the table — clearly "no", nothing papery about it.
       thump(c, now, 110, 0.5, 0.14);
       thump(c, now + 0.09, 95, 0.35, 0.12);
+      break;
+    // ── Trick sweeps. One per motion variant (see packages/ui/trickSweep.tsx):
+    //    the sound is half of what makes a sweep feel different, and the shapes
+    //    below deliberately mirror the motion — a long drag, a squared-up
+    //    stack, a soft settle, a hard shove.
+    case 'sweep':
+      // Cards dragged across cloth: a long, low paper hiss.
+      paper(c, now, { freq: 1500, q: 0.5, peak: 0.4, attack: 0.02, tail: 0.3 });
+      thump(c, now + 0.1, 140, 0.22, 0.14);
+      break;
+    case 'sweep-fold':
+      // Gathered to the middle, then squared: two taps and a settle.
+      paper(c, now, { freq: 2400, q: 1.0, peak: 0.28, attack: 0.005, tail: 0.08 });
+      thump(c, now + 0.12, 160, 0.3, 0.1);
+      thump(c, now + 0.2, 150, 0.24, 0.12);
+      break;
+    case 'sweep-drift':
+      // Blown off the table: airy, high, and slow to die away.
+      paper(c, now, { freq: 5200, q: 0.6, peak: 0.24, attack: 0.05, tail: 0.42 });
+      break;
+    case 'sweep-riffle':
+      // Shoved across: a fast burst of riffle ticks.
+      for (let i = 0; i < 4; i++) {
+        paper(c, now + i * 0.035, { freq: 4200, q: 1.5, peak: 0.26, attack: 0.002, tail: 0.04 });
+      }
+      thump(c, now + 0.14, 130, 0.3, 0.1);
       break;
   }
 }

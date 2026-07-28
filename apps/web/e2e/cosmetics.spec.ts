@@ -50,6 +50,26 @@ test('the OG deck renders real painted card-face images', async ({ page }) => {
   expect(loaded).toBe(true);
 });
 
+test('equipping a felt applies it independently of the theme, and persists', async ({ page }) => {
+  await page.goto('/#collection');
+  await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
+  const html = page.locator('html');
+  // Default = the `house` felt: no attribute at all, so the theme keeps the
+  // table (same "default declares nothing" rule as arcade / dark).
+  await expect(html).not.toHaveAttribute('data-felt', /.*/);
+
+  await page.getByTestId('cosmetic-tile-tavern').click();
+  await expect(html).toHaveAttribute('data-felt', 'tavern');
+  // The whole point of the axis: the table changed, the cards did not.
+  await expect(html).not.toHaveAttribute('data-card-skin', /.*/);
+
+  await page.reload();
+  await expect(html).toHaveAttribute('data-felt', 'tavern');
+
+  await page.getByTestId('cosmetic-tile-house').click();
+  await expect(html).not.toHaveAttribute('data-felt', /.*/);
+});
+
 test('a locked skin shows its requirement and cannot be equipped', async ({ browser }) => {
   const context = await browser.newContext(); // fresh identity → no games played
   const page = await context.newPage();

@@ -7,3 +7,4 @@ export * from './reducer.js';
 export * from './view.js';
 export * from './serialize.js';
 export * from './replay.js';
+export * from './challenge.js';
