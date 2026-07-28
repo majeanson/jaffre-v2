@@ -47,6 +47,12 @@ export interface CollectionProps {
   readonly leaveLabel?: string;
   /** Scene viewer: a staged record so the gallery renders without the network. */
   readonly demoStats?: Stats;
+  /**
+   * A cosmetic id to scroll to and briefly ring — where a cross-link lands.
+   * "You unlocked Tavern Wood" is only useful if it can take you to Tavern
+   * Wood, so every announcement and every Journey/Awards reward points here.
+   */
+  readonly focus?: string | null;
 }
 
 const T: Record<
@@ -417,7 +423,7 @@ function buildTiles(
  * persisted to the profile); locked tiles are dimmed with their unlock
  * requirement + a progress bar. A dev "Show all" toggle reveals every skin.
  */
-export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) {
+export function Collection({ onLeave, leaveLabel, demoStats, focus }: CollectionProps) {
   const lang = useLang();
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
@@ -429,6 +435,22 @@ export function Collection({ onLeave, leaveLabel, demoStats }: CollectionProps) 
   const [felt, setFelt] = useState(currentFelt());
   const [sweep, setSweep] = useState(currentSweep());
   const [toast, setToast] = useState<string | null>(null);
+
+  // Land on the tile a cross-link named. Runs after the catalogs have rendered
+  // (the tile must exist to be scrolled to), and the ring is transient — this
+  // is a "here it is" gesture, not a selection state.
+  useEffect(() => {
+    if (focus === null || focus === undefined) return undefined;
+    const tile = document.querySelector<HTMLElement>(`[data-testid="cosmetic-tile-${focus}"]`);
+    if (tile === null) return undefined;
+    // Instant, not smooth: the tile has to BE there when you arrive. A smooth
+    // scroll also fights `prefers-reduced-motion`, and this is navigation, not
+    // decoration.
+    tile.scrollIntoView({ block: 'center', behavior: 'auto' });
+    tile.classList.add('cosmetic-found');
+    const id = setTimeout(() => tile.classList.remove('cosmetic-found'), 2200);
+    return () => clearTimeout(id);
+  }, [focus, stats, rewards]);
 
   useEffect(() => {
     if (demoStats !== undefined) return;

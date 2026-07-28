@@ -1008,6 +1008,19 @@
   }
 }
 
+@keyframes jaffre-found {
+  0%,
+  100% {
+    box-shadow: var(--shadow-ap-sm);
+  }
+  12%,
+  62% {
+    box-shadow:
+      0 0 0 3px var(--color-ap-gold),
+      var(--shadow-ap-sm);
+  }
+}
+
 @keyframes jaffre-foil {
   from {
     background-position: 150% 0;
@@ -1239,6 +1252,13 @@
       animation: jaffre-deal-in var(--duration-deal) var(--ease-snap) both;
       animation-delay: calc(var(--deal-i, 0) * 90ms);
     }
+    /* "Here it is" — the tile a cross-link landed on. A brief pulse rather than
+   * a persistent state: it answers "which one?" and then gets out of the way,
+   * so it can never be confused with the equipped ring. */
+    .cosmetic-found {
+      animation: jaffre-found 2.2s var(--ease-snap) both;
+    }
+
     /* Panels rise in softly; stagger with --rise-delay. */
     .rise-in {
       animation: jaffre-rise-in var(--duration-rise) var(--ease-snap) both;

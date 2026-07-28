@@ -100,7 +100,7 @@ function Trophy({
 }: {
   readonly icon: string;
   readonly name: string;
-  readonly reward: string | null;
+  readonly reward: { readonly id: string; readonly label: string } | null;
 }) {
   return (
     <span className="flex w-full flex-col items-center gap-[0.25em] text-center">
@@ -116,9 +116,14 @@ function Trophy({
         {name}
       </span>
       {reward !== null && (
-        <span className="font-arcade-ui text-[0.6em] leading-tight text-(--color-ap-gold)">
-          {reward}
-        </span>
+        /* An earned award's reward is a door too — same destination as the
+           Journey rungs, so "you unlocked X" always leads to X. */
+        <a
+          href={`#collection/${reward.id}`}
+          className="font-arcade-ui text-[0.6em] leading-tight text-(--color-ap-gold) underline"
+        >
+          {reward.label}
+        </a>
       )}
     </span>
   );
@@ -246,7 +251,9 @@ export function Awards({ onLeave, demoStats, demoEarned, demoArranging }: Awards
                             icon={award.icon}
                             name={name}
                             reward={
-                              award.reward === undefined ? null : rewardLabel(award.reward, lang)
+                              award.reward === undefined
+                                ? null
+                                : { id: award.reward, label: rewardLabel(award.reward, lang) }
                             }
                           />
                           <Ledge />

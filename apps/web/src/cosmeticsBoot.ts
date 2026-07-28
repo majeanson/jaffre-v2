@@ -1,4 +1,7 @@
+import type { Lang } from '@jaffre/ui';
 import { fetchStats } from './net/history.js';
+import { levelFromStats } from './progression.js';
+import { EMPTY_SEEN, detectMoments, type ProgressMoment, type ProgressSeen } from './progress.js';
 import { fetchAwards } from './net/awards.js';
 import { grantedRewardIds } from './awards.js';
 import {
@@ -19,15 +22,26 @@ import { DEFAULT_SWEEP, SWEEPS, applySweep, currentSweep } from './sweeps.js';
 import { applyFoil, ownedFoilSkins } from './foils.js';
 
 const SEEN_KEY = 'jaffre-cosmetics-seen';
+const PROGRESS_KEY = 'jaffre-progress-seen';
 
-function labelOf(id: string): string {
-  return (
-    CARD_SKINS.find((c) => c.id === id)?.label ??
-    THEMES.find((c) => c.id === id)?.label ??
-    FELTS.find((c) => c.id === id)?.label ??
-    SWEEPS.find((c) => c.id === id)?.label ??
-    id
-  );
+/** The level/award/cosmetic snapshot from the last reconcile. A missing or
+ * unreadable record reads as EMPTY_SEEN, which detectMoments treats as a first
+ * run — silent, rather than replaying a whole career as news. */
+function readProgressSeen(): ProgressSeen | null {
+  const raw = localStorage.getItem(PROGRESS_KEY);
+  if (raw === null) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<ProgressSeen>;
+    return {
+      level: typeof p.level === 'number' ? p.level : 0,
+      awards: Array.isArray(p.awards) ? p.awards : [],
+      cosmetics: Array.isArray(p.cosmetics) ? p.cosmetics : [],
+    };
+  } catch {
+    // Unreadable is the same as absent: seed silently rather than risk
+    // replaying a whole career against a zeroed baseline.
+    return null;
+  }
 }
 
 /**
@@ -44,7 +58,9 @@ function labelOf(id: string): string {
  *
  * Best-effort: returns `[]` on any failure (offline, no identity, etc.).
  */
-export async function reconcileCosmetics(): Promise<string[]> {
+export async function reconcileCosmetics(lang: Lang): Promise<ProgressMoment[]> {
+  let awardIds: readonly string[] = [];
+  let level = 0;
   let ownedCards: Set<string>;
   let ownedThemes: Set<string>;
   let ownedBonhommes: Set<string>;
@@ -52,7 +68,8 @@ export async function reconcileCosmetics(): Promise<string[]> {
   let ownedSweeps: Set<string>;
   try {
     const [stats, awards] = await Promise.all([fetchStats(), fetchAwards()]);
-    const awardIds = awards.map((a) => a.id);
+    awardIds = awards.map((a) => a.id);
+    level = levelFromStats(stats);
     const rewards = grantedRewardIds(awardIds);
     // Foils: a modifier on the equipped skin, not a choice. Applied here
     // because this is where the award grants are already in hand — see
@@ -84,13 +101,10 @@ export async function reconcileCosmetics(): Promise<string[]> {
 
   const ownedNow = [...ownedCards, ...ownedThemes, ...ownedFelts, ...ownedSweeps];
   const seenRaw = localStorage.getItem(SEEN_KEY);
-  if (seenRaw === null) {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(ownedNow));
-    return [];
-  }
+  const firstRun = seenRaw === null;
   let seen: readonly string[];
   try {
-    seen = JSON.parse(seenRaw) as string[];
+    seen = firstRun ? [] : (JSON.parse(seenRaw) as string[]);
   } catch {
     seen = [];
   }
@@ -111,11 +125,27 @@ export async function reconcileCosmetics(): Promise<string[]> {
     const unseenAxis = !ids.some((id) => seenSet.has(id));
     if (unseenAxis) for (const id of ids) silenced.add(id);
   }
-  const fresh = ownedNow.filter((id) => !seenSet.has(id) && !silenced.has(id));
+  const freshCosmetics = ownedNow.filter((id) => !seenSet.has(id) && !silenced.has(id));
   // Persist whenever the stored set is stale — including the seed-only case,
   // where nothing is announced but the seen set must still absorb the new axis
   // so the NEXT genuine unlock in it is recognised as fresh.
   const stale = ownedNow.some((id) => !seenSet.has(id));
   if (stale) localStorage.setItem(SEEN_KEY, JSON.stringify(ownedNow));
-  return fresh.map(labelOf);
+
+  // Levels and awards ride the same "what changed since last time" pass, so a
+  // single visit produces ONE ordered set of news rather than three systems
+  // each shouting independently.
+  const progressSeen = readProgressSeen();
+  const moments = detectMoments(
+    { level, awards: awardIds, cosmetics: freshCosmetics },
+    progressSeen ?? EMPTY_SEEN,
+    lang,
+    // No stored snapshot = nothing to compare against, so nothing to announce.
+    firstRun || progressSeen === null,
+  );
+  localStorage.setItem(
+    PROGRESS_KEY,
+    JSON.stringify({ level, awards: awardIds, cosmetics: ownedNow } satisfies ProgressSeen),
+  );
+  return moments;
 }

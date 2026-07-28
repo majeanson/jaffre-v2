@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   CardSkinProvider,
   CARD_SKIN_RENDERERS,
@@ -59,6 +59,7 @@ const T: Record<
     skin: string;
     theme: string;
     unlocked: string;
+    equipHint: string;
     breather: string;
     challengesTitle: string;
     challengesBlurb: string;
@@ -87,6 +88,7 @@ const T: Record<
     skin: 'Card skin',
     theme: 'Theme',
     unlocked: 'Unlocked',
+    equipHint: 'Unlocked — tap to equip',
     breather: 'Breather level',
     challengesTitle: 'Beyond the track',
     challengesBlurb:
@@ -116,6 +118,7 @@ const T: Record<
     skin: 'Habillage',
     theme: 'Thème',
     unlocked: 'Débloqué',
+    equipHint: 'Débloqué — touche pour équiper',
     breather: 'Pas de récompense',
     challengesTitle: 'Au-delà du parcours',
     challengesBlurb:
@@ -132,6 +135,35 @@ function labelOf(reward: TrackReward): string {
  * (it's what the whole table sees of your deck all game long). Scaled into the
  * shared PREVIEW_SLOT footprint so a card-skin rung is the same height as a
  * theme rung (an sm card is ~1.5× the swatch otherwise). */
+/**
+ * The reward half of a track rung. Once earned it becomes a link into the
+ * Collection focused on that cosmetic — the Journey tells you what you got,
+ * and this is how you go and wear it. Before that it is plain markup: a link
+ * to something you cannot equip yet would be a dead end.
+ */
+function RewardSlot({
+  cosmeticId,
+  linked,
+  equipLabel,
+  children,
+}: {
+  readonly cosmeticId: string;
+  readonly linked: boolean;
+  readonly equipLabel: string;
+  readonly children: ReactNode;
+}) {
+  if (!linked) return <>{children}</>;
+  return (
+    <a
+      href={`#collection/${cosmeticId}`}
+      aria-label={equipLabel}
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-(--radius-ap-inner) hover:bg-(--color-ap-panel-hover)"
+    >
+      {children}
+    </a>
+  );
+}
+
 function SkinBackPreview({ id }: { readonly id: string }) {
   const attrs = id === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': id };
   return (
@@ -304,7 +336,15 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                         {t.xpShort(xpToReach(level))}
                       </span>
                       {reward !== undefined ? (
-                        <>
+                        /* An EARNED reward is a door, not a picture: tapping it
+                           opens the Collection on that exact tile so it can be
+                           equipped. Unearned rungs stay inert — there is
+                           nothing to go and do with them yet. */
+                        <RewardSlot
+                          cosmeticId={reward.cosmeticId}
+                          linked={done}
+                          equipLabel={t.equipHint}
+                        >
                           {/* Fixed slot for BOTH preview kinds — rung height
                               stays uniform whether the reward is a card back
                               or a theme swatch. */}
@@ -321,10 +361,10 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                             </span>
                             <span className="font-arcade-ui text-[0.68em] uppercase tracking-wide text-(--color-ap-muted)">
                               {reward.kind === 'skin' ? t.skin : t.theme}
-                              {done ? ` · ${t.unlocked}` : ''}
+                              {done ? ` · ${t.equipHint}` : ''}
                             </span>
                           </span>
-                        </>
+                        </RewardSlot>
                       ) : (
                         <>
                           {/* Empty preview slot keeps the text column aligned

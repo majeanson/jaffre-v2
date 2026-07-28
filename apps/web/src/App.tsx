@@ -23,6 +23,8 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { DEV_TOOLS_ENABLED } from './dev/devMode.js';
 import { NoticeToast } from './components/NoticeToast.js';
 import { Toast } from './components/Toast.js';
+import { ProgressToast } from './components/ProgressToast.js';
+import type { ProgressMoment } from './progress.js';
 import { UpdateToast } from './pwa/UpdateToast.js';
 import { sendLocalAction, startLocalGame, stopLocalGame } from './local/localGame.js';
 import { connect, disconnect, send } from './net/socket.js';
@@ -91,7 +93,9 @@ type Route =
   | { kind: 'journey' }
   | { kind: 'leaderboard' }
   | { kind: 'lobby' }
-  | { kind: 'collection' }
+  /** `focus` names a cosmetic to scroll to and highlight — the destination
+   * every "you unlocked X" link points at, so the news leads to the thing. */
+  | { kind: 'collection'; focus: string | null }
   | { kind: 'paint' }
   | { kind: 'replay'; gameId: string }
   /** A shared POSITION — one moment of one game, playable. See
@@ -128,7 +132,9 @@ function parseHash(): Route {
   if (h === '#leaderboard') return { kind: 'leaderboard' };
   if (h === '#daily') return { kind: 'dealboard' };
   if (h === '#lobby') return { kind: 'lobby' };
-  if (h === '#collection') return { kind: 'collection' };
+  if (h === '#collection') return { kind: 'collection', focus: null };
+  const collectionFocus = /^#collection\/([a-z0-9-]{1,32})$/.exec(h);
+  if (collectionFocus !== null) return { kind: 'collection', focus: collectionFocus[1] as string };
   if (h === '#paint') return { kind: 'paint' };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
@@ -197,7 +203,7 @@ export function App() {
   // Once per load: reconcile cosmetics with real stats — degrade a now-locked
   // choice and surface freshly play-unlocked skins/themes as a toast. Skipped in
   // the scene viewer (a dev tool that shouldn't hit the network or pop toasts).
-  const [unlocked, setUnlocked] = useState<string | null>(null);
+  const [moments, setMoments] = useState<readonly ProgressMoment[]>([]);
   useEffect(() => {
     // Only on menu screens: reconciling mid-game is pointless, and its stats
     // fetch has no business competing with a live room's socket. (`#scenes` is a
@@ -219,8 +225,8 @@ export function App() {
     // the critical first-paint/hydration path onto idle time, with a
     // setTimeout fallback for browsers without requestIdleCallback (Safari).
     const runReconcile = () => {
-      void reconcileCosmetics().then((fresh) => {
-        if (live && fresh.length > 0) setUnlocked(fresh.join(', '));
+      void reconcileCosmetics(lang).then((found) => {
+        if (live && found.length > 0) setMoments(found);
       });
     };
     const hasRic = typeof window.requestIdleCallback === 'function';
@@ -251,13 +257,7 @@ export function App() {
           </ErrorBoundary>
           {/* Registers the SW; skipped under automation so e2e never caches. */}
           {!navigator.webdriver && <UpdateToast />}
-          {unlocked !== null && (
-            <Toast
-              message={`${lang === 'fr' ? 'Débloqué : ' : 'Unlocked: '}${unlocked}`}
-              durationMs={3500}
-              onDone={() => setUnlocked(null)}
-            />
-          )}
+          {moments.length > 0 && <ProgressToast moments={moments} onDone={() => setMoments([])} />}
         </TrickSweepProvider>
       </CardSkinProvider>
     </LangProvider>
@@ -391,7 +391,7 @@ function AppRoutes() {
   } else if (route.kind === 'collection') {
     // Same exit as every other meta screen: Home. (The mid-game route into
     // the gallery is the CollectionSheet modal, which never leaves the room.)
-    content = <Collection onLeave={() => (location.hash = '')} />;
+    content = <Collection onLeave={() => (location.hash = '')} focus={route.focus} />;
   } else if (route.kind === 'paint') {
     content = <PaintStudio onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'replay') {
