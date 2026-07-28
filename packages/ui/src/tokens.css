@@ -149,21 +149,63 @@
  *      real tokens, without a duplicated JS colour map.
  */
 
-/* `dark` is the DEFAULT theme and normally declares no block at all — the
- * @theme values above are its values, and the live app carries no data-theme
- * for it. It still needs to be ADDRESSABLE: Collection's "House Green" felt
- * tile has to show the theme's own felt while a different felt is equipped on
- * <html>, and the only way to escape an inherited override is for the tile to
- * match a rule of its own.
+/* `dark` is the DEFAULT theme: the @theme values above ARE its values, and the
+ * live app carries no data-theme for it. It still has to be ADDRESSABLE, so a
+ * preview tile can scope a subtree back to "the theme" while a DIFFERENT theme,
+ * card skin or felt is equipped on <html>. Without a rule of its own, the
+ * "Classic dark" and "Arcade" tiles simply inherited whatever was equipped and
+ * showed the wrong thing.
  *
- * Felt tokens ONLY, deliberately: nothing else needs escaping today, and a
- * full restatement of every default would be a second copy to keep in sync.
- * These four must mirror the @theme defaults above. */
+ * This is the union of every token any [data-theme] block overrides, so scoping
+ * to it is a COMPLETE reset. It duplicates the @theme defaults by necessity — a
+ * custom property cannot reference a value that has been overridden on the same
+ * element — so tokens.test.ts fails if the two ever drift apart. */
 [data-theme='dark']:is(:root, :root *) {
-  --color-felt-950: #071410;
-  --color-felt-900: #0b1f18;
-  --color-felt-800: #123329;
+  --color-accent: #f2c66d;
+  --color-ap-danger-text: #ef8a8a;
+  --color-ap-gold: #f2b712;
+  --color-ap-ground: #181225;
+  --color-ap-muted: #9a8fbf;
+  --color-ap-ok: #58b884;
+  --color-ap-panel: #221a35;
+  --color-ap-panel-hover: #2c2244;
+  --color-ap-paper: #f6efdf;
+  --color-ap-paper-shade: #efe6cf;
+  --color-ap-text: #ebe6f5;
+  --color-ap-violet: #7a6ff0;
+  --color-ap-violet-soft: #a897f0;
+  --color-card-back: #7c2d3e;
+  --color-card-back-line: #9c4356;
+  --color-card-face: #f6efdf;
+  --color-card-face-shade: #e8dfc8;
+  --color-danger: #e05252;
+  --color-danger-text: #ef8a8a;
   --color-felt-700: #1a4536;
+  --color-felt-800: #123329;
+  --color-felt-900: #0b1f18;
+  --color-felt-950: #071410;
+  --color-ivory: #f6efdf;
+  --color-ivory-shade: #e8dfc8;
+  --color-lamplight: #f2c66d;
+  --color-lamplight-dim: #b9995a;
+  --color-ok: #58b884;
+  --color-suit-blue: #3568c4;
+  --color-suit-brown: #b07a2e;
+  --color-suit-green: #1f8a70;
+  --color-suit-red: #d43a3a;
+  --color-team-a: #f2c66d;
+  --color-team-b: #82c7dc;
+  --duration-deal: 420ms;
+  --duration-flick: 120ms;
+  --duration-play: 300ms;
+  --duration-rise: 560ms;
+  --duration-sweep: 900ms;
+  --radius-card: 10px;
+  --radius-panel: 14px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.45), 0 6px 16px rgb(0 0 0 / 0.35);
+  --shadow-card-raised: 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 28px rgb(0 0 0 / 0.45);
+  --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 10px 30px rgb(0 0 0 / 0.5);
+  --table-backdrop: radial-gradient(1100px 720px at 50% 24%, #241b3d, var(--color-ap-ground) 72%);
 }
 
 /* Classic light: daytime kitchen table. Pale linen surfaces, dark text,

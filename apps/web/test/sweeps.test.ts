@@ -72,6 +72,42 @@ describe('trick sweep variants', () => {
     }
   });
 
+  it('gives every variant a distinguishable gesture', () => {
+    // Riffle originally differed from Classic by a small rotation and a
+    // slightly wider stagger, which at 900ms read as the same move. A variant
+    // that cannot be told apart from another is not worth unlocking, so each
+    // one has to differ from every other in HOW it moves, not just by how far.
+    const signature = (id: string) => {
+      const v = trickSweepById(id);
+      const steps = [0, 1, 2, 3].map((i) => v.step(0, 2, i));
+      return JSON.stringify({
+        // Total delay span: near-zero = the trick leaves as one slab, large =
+        // the cards leave in sequence.
+        span: (steps[3]?.delayFraction ?? 0) - (steps[0]?.delayFraction ?? 0),
+        rotations: steps.map((s) => s.animate.rotate ?? 0),
+        scale: steps[0]?.animate.scale,
+        duration: steps[0]?.durationFraction,
+      });
+    };
+    const seen = new Set(TRICK_SWEEPS.map((v) => signature(v.id)));
+    expect(seen.size).toBe(TRICK_SWEEPS.length);
+  });
+
+  it('sequences Riffle, where Classic moves the trick as one', () => {
+    // The specific distinction that was missing. Classic's cards overlap
+    // almost entirely; Riffle's last card starts only after the first has
+    // finished its flight.
+    const classic = trickSweepById('sweep');
+    const riffle = trickSweepById('riffle');
+    const overlaps = (v: ReturnType<typeof trickSweepById>) => {
+      const first = v.step(0, 2, 0);
+      const last = v.step(0, 2, 3);
+      return last.delayFraction < first.delayFraction + first.durationFraction;
+    };
+    expect(overlaps(classic)).toBe(true);
+    expect(overlaps(riffle)).toBe(false);
+  });
+
   it('has unique ids and resolves an unknown id to the default', () => {
     const ids = TRICK_SWEEPS.map((v) => v.id);
     expect(new Set(ids).size).toBe(ids.length);

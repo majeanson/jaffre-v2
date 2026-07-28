@@ -144,7 +144,13 @@ function MiniDeck() {
 /** Card-skin preview: scope the skin to this subtree (`data-card-skin` +
  * the matching renderers) so the tile shows that skin's real look. */
 function CardSkinPreview({ id }: { readonly id: string }) {
-  const attrs = id === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': id };
+  // The default skin declares no token block — its cards are the THEME's
+  // cards. Emitting nothing left this tile inheriting whatever skin was
+  // equipped on <html>, so the "Arcade" tile showed Noir. Naming the current
+  // theme scopes it to what Arcade actually means. (Same fix as FeltPreview;
+  // `dark` is addressable for exactly this reason — see tokens.css.)
+  const attrs =
+    id === DEFAULT_CARD_SKIN ? { 'data-theme': currentTheme() } : { 'data-card-skin': id };
   return (
     <div {...attrs}>
       <CardSkinProvider value={{ id, renderers: CARD_SKIN_RENDERERS[id] ?? {} }}>
@@ -157,9 +163,11 @@ function CardSkinPreview({ id }: { readonly id: string }) {
 /** Theme preview: scope the theme to this subtree (`data-theme`) — a felt strip
  * with the two team chips + one card (under the currently-equipped card skin). */
 function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin: string }) {
-  const attrs = id === DEFAULT_THEME ? {} : { 'data-theme': id };
+  // ALWAYS named, including the default: `dark` now has a block of its own, so
+  // this tile no longer inherits the equipped theme and show sepia when it
+  // says "Classic dark".
   return (
-    <div {...attrs} className="flex w-full flex-col items-center gap-[0.5em]">
+    <div data-theme={id} className="flex w-full flex-col items-center gap-[0.5em]">
       <div className="flex h-[2.2em] w-full items-center justify-center gap-[0.5em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-felt-800)">
         <span
           className="size-[1em] rounded-full border-2 border-(--color-ap-ink)"

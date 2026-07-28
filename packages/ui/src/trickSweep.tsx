@@ -121,21 +121,33 @@ const SNOW_DRIFT: TrickSweepVariant = {
 };
 
 /**
- * Riffle — a hard, fast flick: the cards fan out as they go, like they were
- * shoved across the table rather than collected.
+ * Riffle — the cards leave ONE AT A TIME, each snapped off hard, like someone
+ * raking them in without waiting.
+ *
+ * The distinguishing feature is the sequence, not the decoration. Classic
+ * Sweep moves the whole trick as one slab with a 45ms trickle between cards;
+ * this gives each card a fifth of the window to itself, so you read four
+ * separate departures instead of one shove. Each flight is short (0.28) and
+ * hard-eased, and every card spins the same way as it goes — a flick, not a
+ * fan. Without that, a "faster sweep with a tilt" is what it was, and that is
+ * not a second gesture.
  */
 const RIFFLE: TrickSweepVariant = {
   id: 'riffle',
   step: (_position, winner, index) => ({
     animate: {
-      x: TOWARD[winner].x * 1.08,
-      y: TOWARD[winner].y * 1.08,
+      x: TOWARD[winner].x * 1.18,
+      y: TOWARD[winner].y * 1.18,
       opacity: 0,
-      scale: 0.8,
-      rotate: -24 + index * 16,
+      scale: 0.7,
+      // One consistent spin direction: each card is flicked the same way, so
+      // the eye reads a repeated action rather than a spreading fan.
+      rotate: 52,
     },
-    delayFraction: index * 0.09,
-    durationFraction: 0.7,
+    // The whole point: 3 × 0.24 + 0.28 = 1.0 — the last card only starts as the
+    // first is long gone, using the entire budget as a sequence.
+    delayFraction: index * 0.24,
+    durationFraction: 0.28,
     ease: SNAP,
   }),
 };

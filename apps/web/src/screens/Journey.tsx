@@ -24,7 +24,7 @@ import {
   type TrackReward,
 } from '../progression.js';
 import { CARD_SKINS, DEFAULT_CARD_SKIN } from '../cosmetics.js';
-import { THEMES } from '../theme.js';
+import { THEMES, currentTheme } from '../theme.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { MetaNav } from '../components/MetaNav.js';
 
@@ -165,7 +165,11 @@ function RewardSlot({
 }
 
 function SkinBackPreview({ id }: { readonly id: string }) {
-  const attrs = id === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': id };
+  // Same rule as the Collection tiles: the default skin's cards are the
+  // THEME's cards, so name the theme rather than emitting nothing and
+  // inheriting whatever is equipped.
+  const attrs =
+    id === DEFAULT_CARD_SKIN ? { 'data-theme': currentTheme() } : { 'data-card-skin': id };
   return (
     <div {...attrs} className="scale-[0.62]">
       <CardSkinProvider value={{ id, renderers: CARD_SKIN_RENDERERS[id] ?? {} }}>
