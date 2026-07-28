@@ -90,17 +90,31 @@ function defaultCenter(card: CardData, size: string): ReactNode {
  * only the two scoring specials (red = Joffre +5, brown = −3) get a slightly
  * larger portrait to stand out.
  */
+/** The OG deck's aged-paper colour (same value the classic-og/og-deck skin
+ * tokens use for --color-card-face). The portrait rides on its own plate of
+ * this paper so the `darken` blend always has cream to melt into — on a dark
+ * card face, darken alone would swallow the ink entirely. */
+export const OG_PAPER = '#e6dcc1';
+
 export function ogBonhomme(card: CardData): ReactNode {
   const big = card.suit === 'red' || card.suit === 'brown';
   return (
-    <img
-      src={`/og-cards/${card.suit}_bon.jpg`}
-      alt=""
-      aria-hidden
-      draggable={false}
-      className="pointer-events-none select-none object-contain"
-      style={{ width: big ? '74%' : '66%', mixBlendMode: 'darken' }}
-    />
+    <span
+      className="flex items-center justify-center overflow-hidden rounded-[0.2em]"
+      // isolation confines the img's darken blend to this plate: without it the
+      // blend reaches the card face below and vanishes on dark skins/themes. On
+      // the cream OG skins the plate matches the face exactly, so it's unseen.
+      style={{ width: big ? '74%' : '66%', background: OG_PAPER, isolation: 'isolate' }}
+    >
+      <img
+        src={`/og-cards/${card.suit}_bon.jpg`}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className="pointer-events-none w-full select-none object-contain"
+        style={{ mixBlendMode: 'darken' }}
+      />
+    </span>
   );
 }
 

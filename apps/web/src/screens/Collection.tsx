@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Bonhomme,
   CardSkinProvider,
+  OG_PAPER,
   CARD_SKIN_RENDERERS,
   CosmeticPicker,
   Panel,
@@ -297,8 +298,13 @@ function BonhommePreview({ id, paintHint }: { readonly id: string; readonly pain
     );
   }
   if (id === 'og') {
+    // Fixed aged-paper backdrop (NOT --color-card-face): the darken-blended
+    // photo disappears whenever the active skin/theme makes the face dark.
     return (
-      <div className="flex items-center justify-center bg-(--color-card-face) p-[0.5em]">
+      <div
+        className="flex items-center justify-center p-[0.5em]"
+        style={{ background: OG_PAPER, isolation: 'isolate' }}
+      >
         <img
           src="/og-cards/red_bon.jpg"
           alt=""
