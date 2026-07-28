@@ -133,6 +133,31 @@ test('avatar peek opens two sections: the player and the current game', async ({
   await expectNoSeriousViolations(page, 'avatar peek open');
 });
 
+test('every seat opens its peek fully on-screen, even on a phone', async ({ page }) => {
+  // The peek is wider than the chips it hangs off and the felt clips overflow,
+  // so an edge seat used to open a half-panel sliced off at the viewport edge.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#scenes/mid-trick');
+
+  const chips = page.getByRole('button', { name: /Show .*info/ });
+  await expect(chips.first()).toBeVisible();
+  const count = await chips.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let i = 0; i < count; i++) {
+    await chips.nth(i).click();
+    const peek = page.getByRole('dialog');
+    await expect(peek).toBeVisible();
+    const box = (await peek.boundingBox()) ?? { x: -1, y: -1, width: 1e4, height: 1e4 };
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+    await page.keyboard.press('Escape');
+    await expect(peek).toBeHidden();
+  }
+});
+
 /**
  * Overflow guard across every media width: phone → large phone → tablet → the
  * `lg` two-column breakpoint → wide desktop. The title screen's `main` clips

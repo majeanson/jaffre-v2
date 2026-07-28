@@ -1,5 +1,6 @@
 import { Seat, useLang, type Lang } from '@jaffre/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getProfile } from '../net/auth.js';
 import { send } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -11,6 +12,9 @@ import type { SeatChipInfo } from './useTableDerived.js';
  * present player quietly thinking must not be badged the moment their turn
  * starts, only when the bot is genuinely about to play for them. */
 const TURN_TIMER_WARN_S = 20;
+
+/** Breathing room the peek keeps from every viewport edge, in px. */
+const PEEK_MARGIN = 8;
 
 const T: Record<
   Lang,
@@ -80,6 +84,51 @@ export function SeatChip({
   const [open, setOpen] = useState(defaultPeekOpen);
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const peekRef = useRef<HTMLSpanElement>(null);
+  // The peek is wider than most chips, and the felt clips its overflow, so an
+  // anchored absolute box gets guillotined on edge seats. Measure instead:
+  // place it in the viewport, then clamp it inside the screen. It renders in a
+  // body portal — the seat containers carry `-translate-x-1/2`, and a transform
+  // makes even a `fixed` child position against THAT box, not the viewport.
+  const [peekPos, setPeekPos] = useState<{ left: number; top: number } | null>(null);
+
+  const placePeek = useCallback(() => {
+    const anchor = rootRef.current?.getBoundingClientRect();
+    const peek = peekRef.current?.getBoundingClientRect();
+    if (anchor === undefined || peek === undefined) return;
+    const desiredLeft =
+      peekAlign === 'start'
+        ? anchor.left
+        : peekAlign === 'end'
+          ? anchor.right - peek.width
+          : anchor.left + anchor.width / 2 - peek.width / 2;
+    const desiredTop =
+      peekPlacement === 'up' ? anchor.top - peek.height - PEEK_MARGIN : anchor.bottom + PEEK_MARGIN;
+    const clamp = (value: number, extent: number, viewport: number) =>
+      // A panel taller/wider than the viewport pins to the top/left edge
+      // rather than sliding off the far one.
+      Math.max(PEEK_MARGIN, Math.min(value, viewport - extent - PEEK_MARGIN));
+    setPeekPos({
+      left: clamp(desiredLeft, peek.width, window.innerWidth),
+      top: clamp(desiredTop, peek.height, window.innerHeight),
+    });
+  }, [peekAlign, peekPlacement]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPeekPos(null);
+      return undefined;
+    }
+    placePeek();
+    // The felt reflows on rotate/resize and the peek must follow, not linger
+    // over a chip that has moved out from under it.
+    window.addEventListener('resize', placePeek);
+    window.addEventListener('scroll', placePeek, true);
+    return () => {
+      window.removeEventListener('resize', placePeek);
+      window.removeEventListener('scroll', placePeek, true);
+    };
+  }, [open, placePeek]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -90,7 +139,13 @@ export function SeatChip({
       }
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current !== null && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // The peek lives in a portal, so it is outside rootRef's subtree — test
+      // both, or a tap inside the panel would dismiss it.
+      const inside =
+        (rootRef.current?.contains(target) ?? false) ||
+        (peekRef.current?.contains(target) ?? false);
+      if (!inside) setOpen(false);
     };
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
@@ -231,15 +286,19 @@ export function SeatChip({
           {info.bidText}
         </span>
       )}
-      {open && (
-        <span
-          className={`absolute z-40 ${alignX} ${
-            peekPlacement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-          }`}
-        >
-          <PlayerPeek info={info} />
-        </span>
-      )}
+      {open &&
+        createPortal(
+          <span
+            ref={peekRef}
+            // Hidden for the single frame before the measurement lands, so the
+            // panel never flashes at an unclamped spot.
+            className={`fixed z-40 ${peekPos === null ? 'invisible' : ''}`}
+            style={{ top: peekPos?.top ?? 0, left: peekPos?.left ?? 0 }}
+          >
+            <PlayerPeek info={info} />
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
