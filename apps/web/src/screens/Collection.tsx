@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import {
   Bonhomme,
   CardSkinProvider,
@@ -179,9 +179,22 @@ function ThemePreview({ id, cardSkin }: { readonly id: string; readonly cardSkin
  * shows a card.
  */
 function FeltPreview({ id }: { readonly id: string }) {
-  const attrs = id === DEFAULT_FELT ? {} : { 'data-felt': id };
+  // EVERY tile scopes itself explicitly. Emitting no attribute for the default
+  // (as the theme tiles do) leaves that tile inheriting whatever is equipped
+  // on <html> — so equipping Tavern Wood repainted the House Green tile as
+  // tavern. A directly-matched rule always beats an inherited value, so the
+  // default tile names the current THEME instead: its felt is the theme's
+  // felt, which is exactly what "House Green" means.
+  const attrs = id === DEFAULT_FELT ? { 'data-theme': currentTheme() } : { 'data-felt': id };
   return (
-    <div {...attrs} className="flex w-full items-center justify-center p-[0.35em]">
+    <div
+      {...attrs}
+      // The colours come from the theme block above, but --felt-texture would
+      // still inherit from the equipped felt, printing tavern's grain on the
+      // house tile. Reset it here; the token blocks have no "no texture" state.
+      style={id === DEFAULT_FELT ? ({ '--felt-texture': 'none' } as CSSProperties) : undefined}
+      className="flex w-full items-center justify-center p-[0.35em]"
+    >
       {/* A fixed size, NOT w-full: the picker's preview slot shrink-wraps its
           content, and a bare swatch has no intrinsic width to wrap around —
           `w-full` resolved against a collapsed parent and rendered a 4px

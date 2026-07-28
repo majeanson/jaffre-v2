@@ -149,6 +149,23 @@
  *      real tokens, without a duplicated JS colour map.
  */
 
+/* `dark` is the DEFAULT theme and normally declares no block at all — the
+ * @theme values above are its values, and the live app carries no data-theme
+ * for it. It still needs to be ADDRESSABLE: Collection's "House Green" felt
+ * tile has to show the theme's own felt while a different felt is equipped on
+ * <html>, and the only way to escape an inherited override is for the tile to
+ * match a rule of its own.
+ *
+ * Felt tokens ONLY, deliberately: nothing else needs escaping today, and a
+ * full restatement of every default would be a second copy to keep in sync.
+ * These four must mirror the @theme defaults above. */
+[data-theme='dark']:is(:root, :root *) {
+  --color-felt-950: #071410;
+  --color-felt-900: #0b1f18;
+  --color-felt-800: #123329;
+  --color-felt-700: #1a4536;
+}
+
 /* Classic light: daytime kitchen table. Pale linen surfaces, dark text,
  * cards stay pale with stronger borders. */
 [data-theme='light']:is(:root, :root *) {
