@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactElement } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+} from 'react';
 import {
   CardSkinProvider,
   CARD_SKIN_RENDERERS,
@@ -341,6 +349,17 @@ function AppRoutes() {
     reportFunnel('start', 'practice');
     return () => stopLocalGame();
   }, [inPractice, practiceSeed]);
+
+  // A room always opens on an EMPTY store, before the browser paints. Practice,
+  // the daily deal and the replay viewer all publish through this same store,
+  // and their roster says `started: true` — so a room entered right after one of
+  // them read as "game already underway" and flashed the felt table for a beat
+  // before the socket's welcome arrived and the seat picker took over. This is a
+  // LAYOUT effect on purpose: the connect effect below is passive and runs after
+  // paint, which is exactly one frame too late to stop the flash.
+  useLayoutEffect(() => {
+    if (roomCode !== null) useGameStore.getState().reset();
+  }, [roomCode]);
 
   useEffect(() => {
     if (roomCode === null) return undefined;

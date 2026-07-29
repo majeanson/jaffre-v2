@@ -143,6 +143,11 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
     if (frame !== undefined) injectFrame(frame, viewer, clamped, roster);
   }, [frames, clamped, viewer, roster]);
 
+  // The injected frame dies with the viewer: its roster says `started: true`,
+  // and a replay left in the store makes the next screen think that game is
+  // live. Same contract as stopLocalGame's.
+  useEffect(() => () => useGameStore.getState().reset(), []);
+
   useEffect(() => {
     if (!playing) return undefined;
     if (clamped >= last) {
