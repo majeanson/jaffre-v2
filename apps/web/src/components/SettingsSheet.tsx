@@ -5,7 +5,7 @@ import { applyLang, LANGS } from '../lang.js';
 import { playClick, setSoundEnabled, soundEnabled } from '../audio/clicks.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { setSnappyPace, snappyPace } from '../table/pacePref.js';
-import { resetTutorial } from '../table/tutorialPref.js';
+import { ReplayTutorialButton } from './ReplayTutorialButton.js';
 import { InstallButton } from '../pwa/InstallButton.js';
 import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { LoginButton } from './LoginSheet.js';
@@ -282,17 +282,7 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
         </Row>
 
         <Row title={t.tutorial} hint={t.tutorialHint}>
-          <button
-            type="button"
-            onClick={() => {
-              resetTutorial();
-              onClose();
-              location.hash = '#practice';
-            }}
-            className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 font-arcade-display text-xs uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-          >
-            {t.tutorialGo}
-          </button>
+          <ReplayTutorialButton label={t.tutorialGo} onConfirm={onClose} />
         </Row>
 
         <Row title={t.account} hint={t.accountHint}>

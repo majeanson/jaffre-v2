@@ -35,8 +35,9 @@ const T: Record<
     privateHint: string;
     playVsBots: string;
     botDifficulty: string;
-    teaching: string;
-    dailyDoor: string;
+    learn: string;
+    daily: string;
+    dailyHint: string;
     quickPlay: string;
     quickPlayHint: string;
     browsePublic: string;
@@ -61,8 +62,9 @@ const T: Record<
     privateHint: 'Invite-only — share the room code.',
     playVsBots: 'Play vs bots',
     botDifficulty: 'Bot difficulty',
-    teaching: 'Or learn one thing:',
-    dailyDoor: '★ Hand of the Day — same deal as everyone else',
+    learn: 'Learn a hand',
+    daily: '★ Hand of the Day',
+    dailyHint: 'Learn: three seeded lessons. Hand of the Day: the same deal as everyone else.',
     quickPlay: 'Quick play online',
     quickPlayHint: 'Joins an open table, or starts one.',
     browsePublic: 'Join a public game',
@@ -86,8 +88,10 @@ const T: Record<
     privateHint: 'Sur invitation — partage le code du salon.',
     playVsBots: 'Jouer contre les bots',
     botDifficulty: 'Difficulté des bots',
-    teaching: 'Ou apprends une affaire :',
-    dailyDoor: '★ La main du jour — la même donne que tout le monde',
+    learn: 'Apprendre une main',
+    daily: '★ La main du jour',
+    dailyHint:
+      'Apprendre : trois leçons préparées. La main du jour : la même donne que tout le monde.',
     quickPlay: 'Partie rapide en ligne',
     quickPlayHint: 'Joins une table ouverte, ou pars-en une.',
     browsePublic: 'Joindre une partie publique',
@@ -170,6 +174,9 @@ export function PlayMenu({
   );
   // One PLAY door: everything else only appears after you knock.
   const [open, setOpen] = useState(defaultOpen ?? false);
+  // The three curated lessons, folded behind LEARN so BOTS stays a short
+  // stack of buttons until you ask for them.
+  const [learnOpen, setLearnOpen] = useState(false);
   // Quick Play in flight — one tap only.
   const [matching, setMatching] = useState(false);
   const statuses = useTableStatuses(tables);
@@ -304,39 +311,61 @@ export function PlayMenu({
                   </button>
                 ))}
               </div>
-              {/* Curated deals: the same practice table, seeded so the lesson
-                  is actually in your hand on round one. */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text)">
-                  {t.teaching}
-                </span>
-                {TEACHING_DEALS.map((deal) => (
-                  <button
-                    key={deal.id}
-                    type="button"
-                    title={deal.goal[lang]}
-                    onClick={() => {
-                      location.hash = `#practice/${String(deal.seed)}`;
-                    }}
-                    className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-                  >
-                    {deal.label[lang]}
-                  </button>
-                ))}
+              {/* The section's two other doors, given the same button weight
+                  as PUBLIC's pair instead of the loose chip row and the one
+                  text line they used to be: LEARN (curated deals) and the
+                  Deal Board. Both are seeded practice tables — the Deal Board
+                  is just the deal EVERYONE gets today, so it stands beside
+                  the lessons rather than inside them. */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Cta
+                  type="button"
+                  variant="secondary"
+                  className="w-full min-w-0"
+                  aria-expanded={learnOpen}
+                  onClick={() => setLearnOpen((v) => !v)}
+                >
+                  {t.learn}
+                </Cta>
+                <Cta
+                  type="button"
+                  variant="secondary"
+                  className="w-full min-w-0"
+                  onClick={() => {
+                    location.hash = '#daily';
+                  }}
+                >
+                  {t.daily}
+                </Cta>
               </div>
-              {/* The Deal Board sits with BOTS because that's what it is — a
-                  seeded practice deal. What makes it different is that it's
-                  the SAME deal as everyone else's today, so it gets its own
-                  line rather than being one more curated chip. */}
-              <button
-                type="button"
-                onClick={() => {
-                  location.hash = '#daily';
-                }}
-                className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 text-left font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
-              >
-                {t.dailyDoor}
-              </button>
+              <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                {t.dailyHint}
+              </span>
+              {/* Curated deals: the same practice table, seeded so the lesson
+                  is actually in your hand on round one. Open, each one names
+                  the lesson AND what to try — the goal line used to hide in a
+                  hover title, which a phone never shows. */}
+              {learnOpen && (
+                <div className="flex flex-col gap-1.5">
+                  {TEACHING_DEALS.map((deal) => (
+                    <button
+                      key={deal.id}
+                      type="button"
+                      onClick={() => {
+                        location.hash = `#practice/${String(deal.seed)}`;
+                      }}
+                      className="flex cursor-pointer flex-col gap-0.5 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 text-left shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+                    >
+                      <span className="font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide text-(--color-ap-text)">
+                        {deal.label[lang]}
+                      </span>
+                      <span className="font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-muted)">
+                        {deal.goal[lang]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </DoorSection>
 
             {/* 3 · PUBLIC — one tap to be seated (quick play), plus the two
