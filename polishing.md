@@ -286,8 +286,12 @@ Soleil`). Promote one bilingual `TEAM_LABELS` in `teams.ts` and import everywher
       Rubik latin); verified in dist/index.html.
 - [x] (S/M) `Collection.tsx:191` — 48 KB og-card JPG rendered at ~46px with no
       width/height (CLS). Thumbnail variant or at least intrinsic dimensions.
-- [ ] (M) `useTableStatuses` — N parallel status fetches per Home visit; candidate for a
+- [x] (M) `useTableStatuses` — N parallel status fetches per Home visit; candidate for a
       batched `/api/table-status?codes=` endpoint (needs a server route — only if N grows).
+      DONE 2026-07-29 without the server route: `fetchTableStatus` now dedupes in-flight
+      requests and caches results 15s (module maps in `net/rooms.ts`). The real multiplier
+      was TWO consumers per Home visit (TableCards + PlayMenu's your-turn badge) — the
+      dedupe collapses 2×N to N, the TTL to ~1 per room per visit. Errors never cached.
 - [x] (S) `QrCode.tsx:18-30` — QR re-encoded on every render; `useMemo` on `value`.
 - [x] (S) `App.tsx` reconcile effect — gate the unlock-toast fetch behind
       `requestIdleCallback`; it never blocks UI.
@@ -599,3 +603,23 @@ fine. Confirmed by eye, not inferred.
   the bots package is critical path for the app's main screen — not just for
   practice. The engine is likewise needed everywhere for rules and types.
   Deferring either would buy a loading hop on the most common first action.
+
+## Refinement week 2026-07-29 (see PLAN-refinement-week.md)
+
+- **The violet rule is now a test.** `apps/web/test/violetInk.test.ts` scans every
+  className in `apps/web/src` + `packages/ui/src`: a solid `bg-(--color-ap-violet)`
+  must carry `text-(--color-ap-ink)` (three text-free bar fills allowlisted). Its
+  very first dry run found a FOURTH live instance of the audit's named slip — the
+  ProgressToast action chip, `text-white` on violet at ~2.6:1 — fixed same commit.
+- **Deal sequence settled.** One schedule in `dealPace.ts` (round-robin [1,2,3,you],
+  70ms cadence, arrival at the 62% keyframe, DEAL_TOTAL_MS 1685) drives the fly-out,
+  the fan's 1-by-1 fill, the auction gate, AND the local bots' first bid — no more
+  "Marcel PASS" while cards are in the air; your seat now flies the real 8 so the
+  fly-out and the fan count the same deal. Two motion e2e tests pin it.
+- **HelpSheet is one content tree.** 1,412-line file → concepts.ts + helpPrimitives.tsx
+  - helpContent.tsx (en/fr bodies ADJACENT per card/tip — structure can no longer
+    drift between languages) + a 501-line machinery sheet. Rules reordered to teach:
+    goal + shape first (41 points now in card ONE), Tricks & trump merged, Points
+    before Bidding so "trick points" means something when the auction card arrives.
+- Still owed from audit #3: the 36 unshot viewport×skin combos — `npm run shots`
+  overnight, triage the next morning.

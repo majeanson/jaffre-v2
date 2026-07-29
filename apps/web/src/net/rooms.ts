@@ -78,15 +78,44 @@ export function rememberTable(code: string, roster: Roster, yourSeat?: number | 
   }
 }
 
-/** Peek a room's current phase/turn (cheap, unauthenticated). Null on error. */
+/** How long a status peek is trusted before a fresh one is worth fetching —
+ * short enough that the "Your turn" pulse doesn't lag behind a real game. */
+const STATUS_TTL_MS = 15_000;
+/** Last-known status per room, timestamped. */
+const statusCache = new Map<string, { readonly v: TableStatus | null; readonly at: number }>();
+/** Requests already in flight per room, so two callers racing the same code
+ * share one fetch instead of firing two. */
+const statusInFlight = new Map<string, Promise<TableStatus | null>>();
+
+/**
+ * Peek a room's current phase/turn (cheap, unauthenticated). Null on error.
+ *
+ * Home mounts TWO consumers of this per table (TableCards' row + PlayMenu's
+ * your-turn badge), so a plain fetch here doubles every request on every
+ * Home visit, times however many tables you have. The in-flight dedupe plus
+ * a short TTL cache collapse that back down to one round trip per room.
+ */
 export async function fetchTableStatus(code: string): Promise<TableStatus | null> {
-  try {
-    const res = await fetch(`/api/room/${encodeURIComponent(code)}/status`);
-    if (!res.ok) return null;
-    return (await res.json()) as TableStatus;
-  } catch {
-    return null;
-  }
+  const cached = statusCache.get(code);
+  if (cached !== undefined && Date.now() - cached.at < STATUS_TTL_MS) return cached.v;
+  const pending = statusInFlight.get(code);
+  if (pending !== undefined) return pending;
+  const promise = (async () => {
+    try {
+      const res = await fetch(`/api/room/${encodeURIComponent(code)}/status`);
+      const v = res.ok ? ((await res.json()) as TableStatus) : null;
+      statusCache.set(code, { v, at: Date.now() });
+      return v;
+    } catch {
+      // Don't cache a network failure — it should retry next call, not sit
+      // behind the TTL for an outage that may already be over by then.
+      return null;
+    } finally {
+      statusInFlight.delete(code);
+    }
+  })();
+  statusInFlight.set(code, promise);
+  return promise;
 }
 
 /**
