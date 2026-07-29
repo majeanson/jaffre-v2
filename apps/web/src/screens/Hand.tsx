@@ -41,9 +41,9 @@ const T: Record<
     failed: 'Impossible de charger cette main — le lien pointe peut-être sur une partie disparue.',
     intro: (seat) => `Tu es au siège ${String(seat)}.`,
     introBody:
-      "C'est une vraie position d'une vraie partie, reculée au début de la levée. Joue-la et vois ce que ça donne — rien ici ne touche à ton record.",
+      'C’est une vraie position d’une vraie partie, reculée au début de la levée. Joue-la et vois ce que ça donne — rien ici ne touche à ton record.',
     play: 'Joue-la',
-    watch: 'Montre-moi juste',
+    watch: 'Montre-moi ça',
     back: '← Retour',
   },
 };
@@ -147,7 +147,11 @@ export function Hand({ position, onLeave, demo }: HandProps) {
             startLocalGameFrom(start, seat);
             setPlaying(true);
           }}
-          className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-[1em] py-[0.5em] font-arcade-display text-[1em] uppercase tracking-wide shadow-(--shadow-ap)"
+          // Ink on violet, like every other primary CTA in the app (Home, the
+          // PLAY door, the toolbar toggles). Inheriting the page text colour
+          // instead puts light-on-violet at 2.6:1 — axe caught it the moment
+          // this screen got a scene of its own to be scanned in.
+          className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-[1em] py-[0.5em] font-arcade-display text-[1em] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap)"
         >
           {t.play}
         </button>

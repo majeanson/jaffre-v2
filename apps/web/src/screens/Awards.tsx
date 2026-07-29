@@ -84,8 +84,8 @@ const T: Record<
     arrangeDone: 'Terminé',
     moveLeft: (name) => `Déplacer ${name} vers la gauche`,
     moveRight: (name) => `Déplacer ${name} vers la droite`,
-    reset: 'Remettre en ordre',
-    emptyShelf: 'Rien sur la tablette encore — gagne quelque chose et ça atterrit ici.',
+    reset: 'Ordre d’origine',
+    emptyShelf: 'Encore rien sur la tablette — gagne quelque chose et ça va atterrir ici.',
     arrangeHint: 'Mets ta plus belle pièce là où le monde regarde en premier.',
   },
 };
@@ -103,7 +103,7 @@ function Trophy({
   readonly reward: { readonly id: string; readonly label: string } | null;
 }) {
   return (
-    <span className="flex w-full flex-col items-center gap-[0.25em] text-center">
+    <span className="flex w-full flex-1 flex-col items-center gap-[0.25em] text-center">
       {/* The object itself, lifted on a plinth so it reads as standing ON the
           ledge rather than floating in a tile. */}
       <span
@@ -246,6 +246,12 @@ export function Awards({ onLeave, demoStats, demoEarned, demoArranging }: Awards
                       if (award === undefined) return null;
                       const name = award.name(lang);
                       return (
+                        /* The trophy block GROWS and the ledge is pushed to a
+                           common bottom: without that, a trophy carrying a
+                           reward line is taller than its neighbours and its
+                           ledge sits lower — a shelf whose plank is at two
+                           heights in the same row, which is exactly the
+                           illusion the ledge exists to create. */
                         <li key={id} className="flex flex-col">
                           <Trophy
                             icon={award.icon}

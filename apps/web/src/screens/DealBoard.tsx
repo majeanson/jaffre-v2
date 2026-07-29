@@ -68,13 +68,13 @@ const T: Record<
     play: 'Joue la main',
     replayed: 'Tu as déjà joué celle-là.',
     board: 'Le tableau du jour',
-    empty: "Personne n'a encore inscrit de pointage. Sois le premier.",
+    empty: 'Personne n’a encore inscrit de pointage. Sois le premier.',
     you: (rank) => `Tu es #${String(rank)}`,
     scored: (score) => `Tu as fait ${String(score)}.`,
     submitting: 'On inscrit ton pointage…',
-    rejected: "Cette partie n'a pas pu être vérifiée, donc elle n'a pas été inscrite.",
-    offline: "Ton pointage a besoin du serveur en ligne — il n'a pas été inscrit.",
-    alreadyPlayed: "Seul ton premier essai compte, donc celui-ci n'a pas été inscrit.",
+    rejected: 'Cette partie n’a pas pu être vérifiée, donc elle n’a pas été inscrite.',
+    offline: 'Ton pointage a besoin du serveur en ligne — il n’a pas été inscrit.',
+    alreadyPlayed: 'Seul ton premier essai compte, donc celui-ci n’a pas été inscrit.',
     weeklyDeal: (n) => `Donne ${String(n)}`,
   },
 };
@@ -214,7 +214,10 @@ export function DealBoard({ onLeave, demoBoard, demoNow }: DealBoardProps) {
               setOutcome(null);
               setPhase('playing');
             }}
-            className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-[1em] py-[0.5em] font-arcade-display text-[1em] uppercase tracking-wide shadow-(--shadow-ap) disabled:bg-(--color-ap-panel) disabled:text-(--color-ap-muted)"
+            // Ink on violet — the same fix, and the same reason, as the
+            // "Play it out" button on the shared-hand screen: these two were
+            // the only primary CTAs that never named a text colour.
+            className="rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-[1em] py-[0.5em] font-arcade-display text-[1em] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap) disabled:bg-(--color-ap-panel) disabled:text-(--color-ap-muted)"
           >
             {alreadyPlayed ? t.replayed : t.play}
           </button>
