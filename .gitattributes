@@ -1,0 +1,29 @@
+# Line endings, settled once.
+#
+# This checkout runs with core.autocrlf=true on Windows, and the repo had no
+# .gitattributes at all — so every file's line endings were whatever the
+# working tree happened to produce. The visible cost was `prettier --check .`
+# failing locally on files CI (LF) considered fine, which trained everyone to
+# ignore a red format check and check only their own changed files by hand. A
+# check you have learned to disbelieve is worse than no check.
+#
+# `* text=auto eol=lf` normalizes every text file to LF in the repository,
+# regardless of what any one machine checks out. Binaries are listed
+# explicitly: `text=auto` guesses well but a wrong guess on a font or an image
+# corrupts it, and there is no reason to leave that to inference.
+* text=auto eol=lf
+
+# Binary — never touch these bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.wav binary
+*.pdf binary
