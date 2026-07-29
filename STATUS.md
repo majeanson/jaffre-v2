@@ -83,7 +83,7 @@ Last checkpoint: **2026-07-29**.
   challenge URL, a daily streak, and a link to yesterday's board. The
   leaderboard has a **This month** tab: ranked by WINS, derived from
   `games` + `game_players` — there is no per-game rating delta stored anywhere,
-  so a monthly Elo would need a migration, and an Elo *reset* would punish a
+  so a monthly Elo would need a migration, and an Elo _reset_ would punish a
   small pool. No min-games gate, so a newcomer is on it after one game.
 - **Operability.** `[observability]` is ON in wrangler.toml (it is opt-in;
   without it every `console.error` lived only in a `wrangler tail`). Room-code
