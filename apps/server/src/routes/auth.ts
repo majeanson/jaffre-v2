@@ -309,6 +309,17 @@ export async function handleEmailStart(request: Request, env: Env): Promise<Resp
 
     const code = generateLoginCode();
     const now = Date.now();
+    // Sweep dead codes on the way past. Nothing else ever deleted from this
+    // table, so it grew forever — and it is the table the two rate-limit
+    // COUNT(*) queries above scan, so the cost of never pruning it lands on
+    // every future login. Best-effort: a failed sweep must not cost a login.
+    // Keep an hour of grace so the per-email/per-IP windows still see their
+    // own history (they look back exactly one hour).
+    try {
+      await env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?1').bind(hourAgo).run();
+    } catch (err) {
+      console.error('[login] code sweep failed', err);
+    }
     await env.DB.prepare(
       'INSERT INTO login_codes (id, email, code_hash, created_at, expires_at, ip) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
     )

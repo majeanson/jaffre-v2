@@ -68,74 +68,90 @@ describe('POST /api/telemetry', () => {
 describe('telemetry daily counters', () => {
   const today = new Date().toISOString().slice(0, 10);
 
-  it('increments the counter for the kind on a valid report', async () => {
-    const kind = `count-once-${Date.now()}`;
+  /** The counter is a shared (day, kind) row, so every assertion here is a
+   * DELTA. Tests used to dodge that with a unique kind each — which stopped
+   * working once kinds became an allowlist, and was hiding the coupling
+   * rather than removing it. */
+  async function countOf(kind: string): Promise<number> {
+    const row = await env.DB.prepare(
+      'SELECT count FROM telemetry_counts WHERE day = ?1 AND kind = ?2',
+    )
+      .bind(today, kind)
+      .first<{ count: number }>();
+    return row?.count ?? 0;
+  }
+
+  async function report(kind: string, message = 'boom'): Promise<number> {
     const resp = await SELF.fetch('https://example.com/api/telemetry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, message: 'boom' }),
+      body: JSON.stringify({ kind, message }),
     });
-    expect(resp.status).toBe(204);
+    return resp.status;
+  }
 
-    const row = await env.DB.prepare(
-      'SELECT count FROM telemetry_counts WHERE day = ?1 AND kind = ?2',
-    )
-      .bind(today, kind)
-      .first<{ count: number }>();
-    expect(row?.count).toBe(1);
+  it('increments the counter for a known kind', async () => {
+    const before = await countOf('ws-error');
+    expect(await report('ws-error')).toBe(204);
+    expect(await countOf('ws-error')).toBe(before + 1);
   });
 
-  it('two reports of the same kind bump the count to 2', async () => {
-    const kind = `count-twice-${Date.now()}`;
-    for (let i = 0; i < 2; i++) {
-      const resp = await SELF.fetch('https://example.com/api/telemetry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, message: `hit ${i}` }),
-      });
-      expect(resp.status).toBe(204);
-    }
-
-    const row = await env.DB.prepare(
-      'SELECT count FROM telemetry_counts WHERE day = ?1 AND kind = ?2',
-    )
-      .bind(today, kind)
-      .first<{ count: number }>();
-    expect(row?.count).toBe(2);
+  it('two reports of the same kind bump the count by 2', async () => {
+    const before = await countOf('ws-reconnect-loop');
+    expect(await report('ws-reconnect-loop', 'hit 0')).toBe(204);
+    expect(await report('ws-reconnect-loop', 'hit 1')).toBe(204);
+    expect(await countOf('ws-reconnect-loop')).toBe(before + 2);
   });
 
   it('buckets an oversize kind under "unknown"', async () => {
-    const resp = await SELF.fetch('https://example.com/api/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'x'.repeat(64), message: 'too long' }),
-    });
-    expect(resp.status).toBe(204);
+    const before = await countOf('unknown');
+    expect(await report('x'.repeat(64), 'too long')).toBe(204);
+    expect(await countOf('unknown')).toBe(before + 1);
+  });
 
-    const row = await env.DB.prepare(
-      'SELECT count FROM telemetry_counts WHERE day = ?1 AND kind = ?2',
-    )
-      .bind(today, 'unknown')
-      .first<{ count: number }>();
-    expect(row?.count).toBeGreaterThanOrEqual(1);
+  /**
+   * The bucket is a primary-key column on an UNAUTHENTICATED endpoint, so a
+   * client-controlled kind meant one row per distinct string — unbounded rows
+   * and an error-level log line each, which would bury real errors in the one
+   * tool you'd reach for mid-incident.
+   */
+  it('buckets an unrecognised kind under "unknown" rather than minting a row', async () => {
+    const rogue = 'definitely-not-a-real-kind';
+    const beforeUnknown = await countOf('unknown');
+    expect(await report(rogue, 'spam')).toBe(204);
+
+    // Counted, but not under a name the caller chose.
+    expect(await countOf('unknown')).toBe(beforeUnknown + 1);
+    expect(await countOf(rogue)).toBe(0);
+  });
+
+  it('still counts every funnel step under its own name', async () => {
+    const before = await countOf('funnel:daily-score');
+    expect(await report('funnel:daily-score', 'daily-score')).toBe(204);
+    expect(await countOf('funnel:daily-score')).toBe(before + 1);
   });
 });
 
 describe('GET /api/telemetry/summary', () => {
   it('reflects counted reports for the current day', async () => {
-    const kind = `summary-${Date.now()}`;
+    const kind = 'mint-failed';
     const today = new Date().toISOString().slice(0, 10);
+    const read = async (): Promise<number> => {
+      const resp = await SELF.fetch('https://example.com/api/telemetry/summary');
+      expect(resp.status).toBe(200);
+      const body = (await resp.json()) as {
+        days: { day: string; kinds: Record<string, number> }[];
+      };
+      expect(Array.isArray(body.days)).toBe(true);
+      return body.days.find((d) => d.day === today)?.kinds[kind] ?? 0;
+    };
+
+    const before = await read();
     await SELF.fetch('https://example.com/api/telemetry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, message: 'for summary' }),
     });
-
-    const resp = await SELF.fetch('https://example.com/api/telemetry/summary');
-    expect(resp.status).toBe(200);
-    const body = (await resp.json()) as { days: { day: string; kinds: Record<string, number> }[] };
-    expect(Array.isArray(body.days)).toBe(true);
-    const todayEntry = body.days.find((d) => d.day === today);
-    expect(todayEntry?.kinds[kind]).toBe(1);
+    expect(await read()).toBe(before + 1);
   });
 });

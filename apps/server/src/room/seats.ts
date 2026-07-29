@@ -28,20 +28,31 @@ export async function onJoin(
   const seat = room.seatOf(att.userId);
   att.viewer = seat ?? 'spectator';
   att.joined = true;
+  // Ride the socket, not the room: promoted into meta by onSit if this
+  // viewer ever takes a seat, and gone with the socket if they don't.
+  if (paint === undefined) delete att.paint;
+  else att.paint = paint;
   ws.serializeAttachment(att);
   let metaDirty = false;
-  if (room.meta.names[att.userId] !== att.name) {
-    room.meta.names[att.userId] = att.name;
-    metaDirty = true;
-  }
-  // The join carries the player's current avatar painting (or nothing when
-  // they have none / erased it) — keep the stored copy in sync either way.
-  if ((room.meta.paints?.[att.userId] ?? undefined) !== paint) {
-    const others = Object.fromEntries(
-      Object.entries(room.meta.paints ?? {}).filter(([id]) => id !== att.userId),
-    );
-    room.meta.paints = paint === undefined ? others : { ...others, [att.userId]: paint };
-    metaDirty = true;
+  // Only SEATED users are kept in meta. Every reader of names/paints — the
+  // roster, the lobby's host field, history and persistence — asks about a
+  // seat, and chat carries att.name directly, so a spectator's entries were
+  // write-only bytes that nothing pruned (clearUserState runs on unseat, which
+  // a spectator never does). onSit stamps both for anyone who does sit.
+  if (seat !== null) {
+    if (room.meta.names[att.userId] !== att.name) {
+      room.meta.names[att.userId] = att.name;
+      metaDirty = true;
+    }
+    // The join carries the player's current avatar painting (or nothing when
+    // they have none / erased it) — keep the stored copy in sync either way.
+    if ((room.meta.paints?.[att.userId] ?? undefined) !== paint) {
+      const others = Object.fromEntries(
+        Object.entries(room.meta.paints ?? {}).filter(([id]) => id !== att.userId),
+      );
+      room.meta.paints = paint === undefined ? others : { ...others, [att.userId]: paint };
+      metaDirty = true;
+    }
   }
   // Rejoining stops the disconnect clock — the human resumes control.
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
@@ -156,6 +167,14 @@ export async function onSit(
     room.meta.lastRatings = room.meta.lastRatings.filter((r) => r.seat !== seat);
   }
   room.meta.names[att.userId] = att.name;
+  // Promote the painting the socket arrived with — onJoin deliberately left it
+  // there rather than in meta, since until this moment they were a spectator.
+  if ((room.meta.paints?.[att.userId] ?? undefined) !== att.paint) {
+    const others = Object.fromEntries(
+      Object.entries(room.meta.paints ?? {}).filter(([id]) => id !== att.userId),
+    );
+    room.meta.paints = att.paint === undefined ? others : { ...others, [att.userId]: att.paint };
+  }
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
     room.meta.disconnectedSince = Object.fromEntries(
       Object.entries(room.meta.disconnectedSince).filter(([id]) => id !== att.userId),

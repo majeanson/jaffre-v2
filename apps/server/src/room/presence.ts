@@ -398,6 +398,35 @@ export function clearUserState(room: GameRoom, userId: string): void {
 }
 
 /**
+ * Drop every per-user meta entry whose owner no longer holds a seat.
+ *
+ * `clearUserState` only fires on an explicit unseat or kick, so a room that
+ * ran for a while accumulated entries for everyone who was ever displaced by
+ * a seat swap, bot takeover or between-games reshuffle. Meta is rewritten on
+ * EVERY action, so this is not just storage — it is bytes re-serialised a few
+ * hundred times a game. Called at game_over, after history has been persisted
+ * (which reads names for the seats it is recording).
+ *
+ * Seated users are always kept, so this can never take a name off the roster.
+ */
+export function pruneMeta(room: GameRoom): boolean {
+  const seated = new Set(room.meta.seats.filter((s): s is string => typeof s === 'string'));
+  let dirty = false;
+  const kept = <T>(bag: Record<string, T>): Record<string, T> => {
+    const out = Object.fromEntries(Object.entries(bag).filter(([id]) => seated.has(id)));
+    if (Object.keys(out).length !== Object.keys(bag).length) dirty = true;
+    return out;
+  };
+  room.meta.names = kept(room.meta.names);
+  if (room.meta.paints !== undefined) room.meta.paints = kept(room.meta.paints);
+  if (room.meta.disconnectedSince !== undefined) {
+    room.meta.disconnectedSince = kept(room.meta.disconnectedSince);
+  }
+  if (room.meta.autoPlay !== undefined) room.meta.autoPlay = kept(room.meta.autoPlay);
+  return dirty;
+}
+
+/**
  * Vacate a user's seat permanently. Mid-game the seat goes to a bot (the
  * game must stay playable for the other three); otherwise it simply frees
  * up. Their sockets, if any, drop to spectator. False if they had no seat.

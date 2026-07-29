@@ -13,13 +13,39 @@ const TELEMETRY_KIND_MAX_LEN = 32;
 const TELEMETRY_SUMMARY_DAYS = 7;
 const TELEMETRY_SUMMARY_LIMIT = 200;
 
-/** Sanitizes a telemetry kind for use as a counter bucket: a short string, or
- * 'unknown' for anything else (missing, non-string, or oversized). */
+/**
+ * Every kind the client can actually send — the four error kinds plus the two
+ * window listeners in apps/web/src/net/telemetry.ts, and one entry per
+ * `FunnelStep`.
+ *
+ * This is an ALLOWLIST rather than a length check because the bucket is a D1
+ * primary-key column and this endpoint is unauthenticated: a client-controlled
+ * string meant one row per distinct value, so anyone with curl could mint
+ * unbounded rows in `telemetry_counts` AND one error-level log line each —
+ * burying the real errors in exactly the tool you'd reach for during the
+ * incident. Anything unrecognised still counts, under 'unknown'; nothing is
+ * dropped, so a kind added to the client shows up as 'unknown' here rather
+ * than vanishing, which is the failure mode you can actually notice.
+ */
+const TELEMETRY_KINDS: ReadonlySet<string> = new Set([
+  'react-error',
+  'ws-error',
+  'ws-reconnect-loop',
+  'mint-failed',
+  'error',
+  'unhandledrejection',
+  ...['home', 'play', 'start', 'bid', 'finish', 'tutorial', 'daily', 'daily-score'].map(
+    (step) => `funnel:${step}`,
+  ),
+]);
+
+/** Sanitizes a telemetry kind for use as a counter bucket: a known kind, or
+ * 'unknown' for anything else (missing, non-string, oversized, unrecognised). */
 function telemetryKindBucket(kind: unknown): string {
   if (typeof kind !== 'string' || kind.length === 0 || kind.length > TELEMETRY_KIND_MAX_LEN) {
     return 'unknown';
   }
-  return kind;
+  return TELEMETRY_KINDS.has(kind) ? kind : 'unknown';
 }
 
 /**

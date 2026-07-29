@@ -8,6 +8,20 @@ workers_dev = true
 
 routes = [{ pattern = "jaffre.marcportal.com", custom_domain = true }]
 
+# Workers Logs is OPT-IN. Without this block every console.error in this
+# codebase — the rating guard, history persistence, alarm failures, the
+# first-party client telemetry beacons — existed only inside a live
+# `wrangler tail` and was gone the moment you closed it. A player reporting
+# "my game froze last night" was unanswerable by construction.
+#
+# Sampling stays at 1: this is a small game, the log volume is a handful of
+# lines per finished game plus real errors, and a sampled-away error during
+# the one incident you care about is a false economy. Lower it if a flood
+# ever shows up in billing.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [assets]
 binding = "ASSETS"
 directory = "../web/dist"

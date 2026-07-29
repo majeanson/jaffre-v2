@@ -95,6 +95,13 @@ export interface Attachment {
   name: string;
   viewer: Viewer;
   joined: boolean;
+  /** The avatar painting this socket arrived with, held on the SOCKET rather
+   * than in room meta until its owner actually sits. Paints are up to 16KB
+   * each and meta is rewritten on every action, so storing one per spectator
+   * — in a public room anyone with a free guest token can watch — grew the
+   * meta value toward the 2MB DO ceiling, past which `storage.put` throws
+   * inside applyEngineAction and the game can never advance again. */
+  paint?: string;
 }
 
 export interface LogEntry {

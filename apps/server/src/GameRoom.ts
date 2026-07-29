@@ -37,6 +37,7 @@ import {
   onImHere,
   onReady,
   onSetAutoPlay,
+  pruneMeta,
   roster,
   scheduleNextWake,
   unseatUser,
@@ -503,8 +504,16 @@ export class GameRoom implements DurableObject {
       try {
         await persistHistory(this, game);
       } catch (err) {
-        console.error('[history] game history write failed', err);
+        console.error('[history] game history write failed', {
+          room: this.meta.roomCode,
+          err,
+        });
       }
+      // AFTER history, which reads names for the seats it records: forget
+      // everyone who no longer holds a seat. A long-lived room otherwise
+      // carried an entry for every player ever displaced by a swap, takeover
+      // or between-games reshuffle — re-serialised on every single action.
+      if (pruneMeta(this)) await this.ctx.storage.put('meta', this.meta);
       // Broadcast so every client's GameRecap picks up the freshly-incremented
       // standing-table tally without waiting for the next roster-triggering event.
       broadcastRoster(this, {});
@@ -612,8 +621,12 @@ export class GameRoom implements DurableObject {
           await this.ctx.storage.put('meta', this.meta);
         }
       }
-    } catch {
+    } catch (err) {
       // Leave the persisted flag as-is so the next message retries the sync.
+      // But SAY so: a silently-failing lobby sync is a matchmaking registry
+      // that quietly stops listing open tables, and "the lobby shows nothing"
+      // is exactly the report you cannot act on without this line.
+      console.error('[lobby] sync failed', { room: this.meta.roomCode, err });
     }
   }
 

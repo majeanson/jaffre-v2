@@ -124,6 +124,9 @@ export async function runAlarm(room: GameRoom): Promise<void> {
     // the alarm on the same null — log loudly instead; the next
     // join/message re-kicks the table via scheduleNextWake.
     console.error('[alarm] bot policy returned no action', {
+      // The room code is the whole point of this line: without it you learn
+      // that A room wedged, not WHICH, and there is nothing to go look at.
+      room: room.meta.roomCode,
       seat: turnSeat,
       phase: game.phase,
       seq: room.seq,

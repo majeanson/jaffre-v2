@@ -2190,6 +2190,68 @@ describe('GameRoom', () => {
       await endQuiet(room, alice, bob, carol);
     },
   );
+
+  /**
+   * Room meta is rewritten on EVERY action and has a hard 2MB ceiling; past it
+   * `storage.put` throws inside applyEngineAction and the game can never
+   * advance again. A public room accepts any spectator holding a free guest
+   * token, and each one used to leave a name (and up to 16KB of avatar) behind
+   * forever — nothing pruned them, because clearUserState only runs on an
+   * unseat, which a spectator never does.
+   */
+  it('keeps nothing in meta for a spectator who only ever watched', async () => {
+    const room = 'room-meta-spectators';
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(alice, 0);
+
+    // A watcher arrives carrying an avatar, and never sits.
+    const watcher = await Client.connect(room, 'watcher', 'Watcher');
+    watcher.send({ t: 'join', paint: 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E' });
+    await watcher.next('welcome');
+
+    const meta = await runInDurableObject(stub, async (_i, state) =>
+      state.storage.get<{
+        names: Record<string, string>;
+        paints?: Record<string, string>;
+      }>('meta'),
+    );
+    // Only the seated player is remembered — by name and by paint.
+    expect(Object.keys(meta?.names ?? {})).toEqual(['alice']);
+    expect(Object.keys(meta?.paints ?? {})).not.toContain('watcher');
+
+    await endQuiet(room, alice, watcher);
+  });
+
+  it('promotes a watcher’s avatar into meta the moment they take a seat', async () => {
+    // The paint rides the socket until it matters — but it must still be there
+    // when a spectator takes over a seat mid-game, or their avatar would
+    // silently vanish from the felt for everyone else.
+    const room = 'room-meta-promote';
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(alice, 0);
+
+    const paint = `data:image/svg+xml,%3Csvg%3E${'B'.repeat(500)}%3C/svg%3E`;
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join', paint });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(bob, 1);
+
+    const meta = await runInDurableObject(stub, async (_i, state) =>
+      state.storage.get<{ paints?: Record<string, string> }>('meta'),
+    );
+    expect(meta?.paints?.bob).toBe(paint);
+
+    await endQuiet(room, alice, bob);
+  });
 });
 
 /* ── Shared music queue ──────────────────────────────────────────────────── */

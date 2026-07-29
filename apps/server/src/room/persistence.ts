@@ -107,7 +107,12 @@ export async function persistHistory(room: GameRoom, game: GameState): Promise<v
     try {
       await retryRatingWrite(db, info);
     } catch (err) {
-      console.error('[rating] retry failed, leaving rating unchanged', err);
+      // game id, not room code: the games row is what you'd go read.
+      console.error('[rating] retry failed, leaving rating unchanged', {
+        game: record.id,
+        user: info.userId,
+        err,
+      });
     }
   }
 
@@ -117,14 +122,14 @@ export async function persistHistory(room: GameRoom, game: GameState): Promise<v
   try {
     await grantFoils(db, record.id, record.players);
   } catch (err) {
-    console.error('[foil] grant failed, no drop this game', err);
+    console.error('[foil] grant failed, no drop this game', { game: record.id, err });
   }
 
   // Credit anyone who WATCHED this game to the end. Same best-effort rule.
   try {
     await creditSpectators(room, db, record.id);
   } catch (err) {
-    console.error('[spectate] credit failed', err);
+    console.error('[spectate] credit failed', { game: record.id, err });
   }
 }
 
