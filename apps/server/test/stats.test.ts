@@ -282,4 +282,44 @@ describe('GET /api/stats', () => {
     // The unknown-trump contract is still a contract for the overall record.
     expect(data.bids).toEqual({ attempted: 2, made: 2 });
   });
+
+  /**
+   * D1 refuses more than 100 bound parameters in one query, and the roster
+   * lookup binds one per game. `computeStats` reads EVERY finished game a
+   * player has, so this used to break the moment somebody finished their
+   * 101st — permanently, and it took /api/awards down with it, since that
+   * evaluates the same aggregate. 120 games puts us well past the ceiling.
+   */
+  it('survives a player with more than 100 finished games', async () => {
+    const uid = 'century-player';
+    const total = 120;
+    for (let i = 0; i < total; i++) {
+      await seedGame({
+        id: `century-${String(i)}`,
+        roomCode: 'century',
+        finishedAt: 1_000_000 + i,
+        // Alternate the winning team so wins are a number we can predict.
+        winnerTeam: i % 2 === 0 ? 0 : 1,
+        scores: [5, 3],
+        roundSummaries: null,
+        players: [
+          { seat: 0, userId: uid, isBot: 0, name: 'Century' },
+          { seat: 1, userId: null, isBot: 1, name: 'Bot 2' },
+          { seat: 2, userId: null, isBot: 1, name: 'Bot 3' },
+          { seat: 3, userId: null, isBot: 1, name: 'Bot 4' },
+        ],
+      });
+    }
+
+    const res = await SELF.fetch(`https://example.com/api/stats?u=${uid}`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { games: number; wins: number };
+    expect(data.games).toBe(total);
+    // Seat 0 is team 0, and team 0 took every even-indexed game.
+    expect(data.wins).toBe(total / 2);
+
+    // The awards endpoint shares computeStats — it must not 500 either.
+    const awards = await SELF.fetch(`https://example.com/api/awards?u=${uid}`);
+    expect(awards.status).toBe(200);
+  });
 });

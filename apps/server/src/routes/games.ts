@@ -20,35 +20,51 @@ export interface GamePlayer {
 /** {seat, name, isBot, userId}[] per game_id, ordered by seat — shared by
  * history, replay and stats (userId is dropped before it reaches the client
  * in the history/replay responses; stats needs it for the partner lookup). */
+/**
+ * D1 refuses a query with more than 100 bound parameters, and this builds one
+ * per game id. History asks for 20, but `computeStats` asks for EVERY finished
+ * game a player has — so the un-chunked version broke on a player's 101st game
+ * and stayed broken, taking `/api/awards` down with it (same computeStats), and
+ * silently stopping progression for the most invested players. Chunked well
+ * under the ceiling; the id list is the only thing that grows.
+ */
+const ID_CHUNK = 80;
+
 export async function playersByGame(
   env: Env,
   gameIds: readonly string[],
 ): Promise<Map<string, GamePlayer[]>> {
   const map = new Map<string, GamePlayer[]>();
-  if (gameIds.length === 0 || env.DB === undefined) return map;
-  const placeholders = gameIds.map((_, i) => `?${String(i + 1)}`).join(', ');
-  const rows = await env.DB.prepare(
-    `SELECT game_id, seat, name, is_bot, user_id FROM game_players WHERE game_id IN (${placeholders}) ORDER BY seat`,
-  )
-    .bind(...gameIds)
-    .all<{
-      game_id: string;
-      seat: number;
-      name: string | null;
-      is_bot: number;
-      user_id: string | null;
-    }>();
-  for (const r of rows.results) {
-    const list = map.get(r.game_id) ?? [];
-    // Disambiguated at READ, not at write: the game_players row is a snapshot
-    // taken when the game ended, and rewriting history is not this layer's job.
-    list.push({
-      seat: r.seat,
-      name: r.is_bot === 1 ? (r.name ?? 'Player') : displayName(r.name, r.user_id),
-      isBot: r.is_bot === 1,
-      userId: r.user_id,
-    });
-    map.set(r.game_id, list);
+  const db = env.DB;
+  if (gameIds.length === 0 || db === undefined) return map;
+
+  for (let start = 0; start < gameIds.length; start += ID_CHUNK) {
+    const chunk = gameIds.slice(start, start + ID_CHUNK);
+    const placeholders = chunk.map((_, i) => `?${String(i + 1)}`).join(', ');
+    const rows = await db
+      .prepare(
+        `SELECT game_id, seat, name, is_bot, user_id FROM game_players WHERE game_id IN (${placeholders}) ORDER BY seat`,
+      )
+      .bind(...chunk)
+      .all<{
+        game_id: string;
+        seat: number;
+        name: string | null;
+        is_bot: number;
+        user_id: string | null;
+      }>();
+    for (const r of rows.results) {
+      const list = map.get(r.game_id) ?? [];
+      // Disambiguated at READ, not at write: the game_players row is a snapshot
+      // taken when the game ended, and rewriting history is not this layer's job.
+      list.push({
+        seat: r.seat,
+        name: r.is_bot === 1 ? (r.name ?? 'Player') : displayName(r.name, r.user_id),
+        isBot: r.is_bot === 1,
+        userId: r.user_id,
+      });
+      map.set(r.game_id, list);
+    }
   }
   return map;
 }

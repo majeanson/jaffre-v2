@@ -561,7 +561,7 @@ export class GameRoom implements DurableObject {
     if (!gameLive || humans.length === 0) return null;
     return {
       code,
-      host: this.meta.names[humans[0] as string] ?? 'Player',
+      host: displayName(this.meta.names[humans[0] as string], humans[0] as string),
       players: humans.length,
       capacity: 4,
       phase: 'playing',
