@@ -181,7 +181,10 @@ export function DealBoard({ onLeave, demoBoard, demoNow }: DealBoardProps) {
               aria-current={d.id === deal.id}
               className={`rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.7em] py-[0.25em] font-arcade-ui text-[0.78em] uppercase tracking-wide shadow-(--shadow-ap-sm) ${
                 d.id === deal.id
-                  ? 'bg-(--color-ap-violet) text-white'
+                  ? // Ink, not white: white on violet is 3.9:1, and the whole
+                    // app pairs violet with ink at 5.1:1. Third instance of
+                    // this exact slip on this screen alone.
+                    'bg-(--color-ap-violet) text-(--color-ap-ink)'
                   : 'bg-(--color-ap-panel) text-(--color-ap-muted)'
               }`}
             >

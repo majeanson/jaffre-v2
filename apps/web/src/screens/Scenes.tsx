@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import {
+  DEMO_CHALLENGE_BOARD,
   DEMO_EARNED_AWARDS,
   DEMO_HISTORY,
   DEMO_HISTORY_NEW,
   DEMO_HISTORY_VETERAN,
   DEMO_LEADERBOARD,
+  DEMO_NOW,
   DEMO_PUBLIC_ROOMS,
   DEMO_REPLAY,
   DEMO_STATS,
@@ -27,6 +29,7 @@ import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { PaintStudio } from './PaintStudio.js';
 import { PublicLobby } from './PublicLobby.js';
+import { DealBoard } from './DealBoard.js';
 import { Hand } from './Hand.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
@@ -284,6 +287,14 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           key={current.id}
           position={{ gameId: 'demo-1', actionIndex: 24, seat: 0 }}
           demo={DEMO_REPLAY}
+          onLeave={onLeave}
+        />
+      )}
+      {current.screen === 'dealboard' && (
+        <DealBoard
+          key={current.id}
+          demoBoard={DEMO_CHALLENGE_BOARD}
+          demoNow={DEMO_NOW}
           onLeave={onLeave}
         />
       )}

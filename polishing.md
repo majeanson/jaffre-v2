@@ -564,16 +564,35 @@ the one thing still owed — noted at the bottom.
 - `awards-arranging` at desktop: the move buttons row fits; the ledge
   misalignment above was the only defect.
 
+### Phone pass — run, and clean
+
+140 shots at 390px (phone-dark + phone-light), zero automated overflow or
+top-bar warnings. The brief's specific worry — the trophy shelf's move-buttons
+row at phone width — is a non-issue: the shelf drops to two columns and the
+arrow pairs sit comfortably under each ledge. The new "How it looks" panel fits
+without horizontal scroll, its caption wrapping to two lines.
+
+### The Deal Board had never been photographed
+
+It had no scene, so 63 catalog entries and 505 shots per sweep had never once
+included it. It has two now (`daily`, `daily-fr`) and the very first axe run
+against them found a THIRD instance of the white-on-violet slip — the active
+deal tab, 3.9:1 — right after the same bug was fixed on two buttons. Three of
+one mistake on one screen is a pattern worth naming: **violet pairs with ink in
+this app, never with white.**
+
+The FR tab row, the other flagged risk, wraps to two lines at 390px and reads
+fine. Confirmed by eye, not inferred.
+
 ### Still open
 
-- **Phone-width pass not run** (Low-Medium). `npm run shots` covers 4 viewports
-  × 12 skins; only desktop was reached. The brief's specific worry — the trophy
-  shelf's move-buttons row at 390px — is untested. Cheapest close:
-  `npx playwright test -c apps/web/playwright.shots.config.ts --grep "phone-dark|phone-light"`
-  (~4 min).
-- **Deal Board FR tab row wrapping** (Low). Untested: there is no `#daily`
-  scene in the catalog, so the gallery never shoots it. Worth adding one — the
-  hand screen just showed what a screen with no scene costs.
+- **Nothing from the hardening brief.** The items below are new work this audit
+  suggests, not gaps left in it.
+- **The other 36 viewport×skin combos** were not shot (desktop dark/light,
+  small-desktop-light and phone dark/light were). A full 48-combo sweep is ~90
+  minutes of CPU and starves everything else on the machine — including the
+  engine's property tests, which time out under it. Worth scheduling rather
+  than running interactively beside other work.
 - **Main bundle is 828KB** (Low, no action). Checked whether `@jaffre/bots` can
   move behind the practice entry points: it cannot. `useTableDerived.ts` imports
   `suggest` for the Coach, which runs on EVERY table including online rooms, so

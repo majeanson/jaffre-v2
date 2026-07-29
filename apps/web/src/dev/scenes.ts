@@ -2,6 +2,7 @@ import { chooseAction } from '@jaffre/bots';
 import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre/engine';
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, MusicState, Roster } from '@jaffre/protocol';
+import type { ChallengeBoard } from '../net/challenge.js';
 import type { HistoryGame, Leaderboard, ReplayData, Stats } from '../net/history.js';
 import type { PublicRoom, TableEntry } from '../net/rooms.js';
 import type { Connection } from '../state/gameStore.js';
@@ -361,6 +362,26 @@ export const DEMO_LEADERBOARD: Leaderboard = {
   you: { id: 'me', name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
 };
 
+/** Staged Deal Board — a played daily with the viewer sitting mid-table.
+ *
+ * `DEMO_NOW` pins the clock so the derived deal (and therefore the id in every
+ * shot) is stable: a scene whose content changes at midnight UTC is not a
+ * reference image. The names are the same cast as the leaderboard, so the two
+ * boards read as one game's population. */
+export const DEMO_NOW = Date.UTC(2026, 6, 28, 12);
+
+export const DEMO_CHALLENGE_BOARD: ChallengeBoard = {
+  challenge: { id: 'd-2026-07-28', cadence: 'daily', periodKey: '2026-07-28', seed: 8_675_309 },
+  board: [
+    { id: 'u1', name: 'Ginette', color: '#f2b712', score: 24, tricks: 7, rank: 1 },
+    { id: 'u2', name: 'Marcel', color: '#e05252', score: 19, tricks: 6, rank: 2 },
+    { id: 'me', name: 'Marc', color: '#7a6ff0', score: 14, tricks: 5, rank: 3 },
+    { id: 'u3', name: 'Réal', color: '#3f8bff', score: 9, tricks: 4, rank: 4 },
+    { id: 'u4', name: 'Lise', color: '#1e7a52', score: -6, tricks: 2, rank: 5 },
+  ],
+  you: { score: 14, tricks: 5, rank: 3 },
+};
+
 /** Awards ids staged as already earned (must exist in awards.ts's AWARDS).
  * Coherent with DEMO_STATS: every award whose requirement those stats meet is
  * in this list — a full progress bar on an unearned tile read as a broken
@@ -643,6 +664,9 @@ const LOADERS: Record<SceneId, () => void> = {
   // The shared-hand screen folds its own state out of the staged replay data
   // and starts practice mode from it — nothing to inject into the store.
   hand: () => undefined,
+  // The Deal Board renders from staged props (board + pinned clock) — no-op.
+  daily: () => undefined,
+  'daily-fr': () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.
   'share-sheet': () => undefined,

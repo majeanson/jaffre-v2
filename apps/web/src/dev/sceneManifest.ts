@@ -12,6 +12,7 @@ export type SceneScreen =
   | 'stats'
   | 'replay'
   | 'hand'
+  | 'dealboard'
   | 'visitor'
   | 'share'
   | 'collection'
@@ -354,6 +355,22 @@ export const SCENE_METAS = [
     label: 'Check this play — a shared position',
     screen: 'hand',
     probe: 'role=button[name="Play it out"]',
+  },
+  {
+    id: 'daily',
+    label: 'Deal Board — today, already played',
+    screen: 'dealboard',
+    probe: 'role=heading[name="Deal Board"]',
+  },
+  {
+    // The FR twin exists for the tab row specifically: four deal tabs whose
+    // French labels ("La main du jour", "Donne 1…3") are markedly longer than
+    // the English, on the narrowest viewport the sweep shoots.
+    id: 'daily-fr',
+    label: 'Deal Board — French (tab row width)',
+    screen: 'dealboard',
+    lang: 'fr',
+    probe: 'role=heading[name="Tableau des donnes"]',
   },
   {
     id: 'visitor',
