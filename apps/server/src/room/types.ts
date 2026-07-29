@@ -39,6 +39,13 @@ export interface Meta {
   preGameVacateMs?: number;
   /** Optional per-room override of TURN_TIMER_MS (used by tests). */
   turnTimerMs?: number;
+  /** Date.now() when the room's LAST socket closed — the storage
+   * self-destruct clock (room/reaper.ts). Absent whenever anyone is attached;
+   * stamped on the close that empties the room, cleared on the connect that
+   * repopulates it. */
+  emptySince?: number;
+  /** Optional per-room override of the reap grace (used by tests). */
+  reapMs?: number;
   /** Per-seat readiness for the next round (round_over phase only). */
   readyNextRound?: [boolean, boolean, boolean, boolean];
   /** Standing-table tally across games at this room: [Sun wins, Moon wins],

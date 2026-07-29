@@ -48,6 +48,13 @@ import {
 } from './room/presence.js';
 import { runAlarm } from './room/bots.js';
 import {
+  armReaper,
+  clearEmptyStamp,
+  reapIfDue,
+  ABANDONED_REAP_MS,
+  EMPTY_REAP_MS,
+} from './room/reaper.js';
+import {
   onAddBot,
   onJoin,
   onKick,
@@ -62,7 +69,15 @@ import {
 
 // Re-exported so `../src/GameRoom.js` remains the one import path tests and
 // index.ts use, even though the constants and helper now live in room/*.ts.
-export { BOT_SWAP_MS, PREGAME_VACATE_MS, TRICK_HOLD_MS, TURN_TIMER_MS, extractVideoId };
+export {
+  ABANDONED_REAP_MS,
+  BOT_SWAP_MS,
+  EMPTY_REAP_MS,
+  PREGAME_VACATE_MS,
+  TRICK_HOLD_MS,
+  TURN_TIMER_MS,
+  extractVideoId,
+};
 
 const CHAT_CAP = 100;
 /** Sliding-window chat rate limit: at most this many messages per uid within
@@ -121,6 +136,20 @@ export class GameRoom implements DurableObject {
     this.loaded = true;
   }
 
+  /** Drop the in-memory mirror of storage that no longer exists — called by
+   * the reaper right after deleteAll(). Without it a woken instance would
+   * keep serving the deleted room's meta/game from memory (`loaded` short-
+   * circuits load()), so a reaped code would answer with a ghost table until
+   * the instance happened to evict. */
+  forgetCache(): void {
+    this.loaded = false;
+    this.meta = emptyMeta();
+    this.game = null;
+    this.seq = 0;
+    this.chat = [];
+    this.music = emptyMusic();
+  }
+
   async fetch(request: Request): Promise<Response> {
     // Lightweight status peek (no socket) — powers the home "Your tables" row's
     // live turn/waiting badge without opening a full connection to every room.
@@ -164,10 +193,12 @@ export class GameRoom implements DurableObject {
     await this.load();
     // Remember the room code for game-history rows (idFromName is one-way).
     const roomCode = /^\/ws\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname)?.[1];
-    if (roomCode !== undefined && this.meta.roomCode !== roomCode) {
-      this.meta.roomCode = roomCode;
-      await this.ctx.storage.put('meta', this.meta);
-    }
+    let dirty = roomCode !== undefined && this.meta.roomCode !== roomCode;
+    if (roomCode !== undefined) this.meta.roomCode = roomCode;
+    // Someone is here again: stop the storage self-destruct clock, so the
+    // grace is always measured from the LAST socket to leave (room/reaper.ts).
+    if (clearEmptyStamp(this)) dirty = true;
+    if (dirty) await this.ctx.storage.put('meta', this.meta);
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
@@ -308,14 +339,23 @@ export class GameRoom implements DurableObject {
     broadcastRoster(this, { exclude: ws });
     // A disconnect can empty the room or free a seat — reconcile the lobby.
     await this.syncLobby();
+    // Last one out starts the storage self-destruct clock. AFTER the branches
+    // above, which arm real wakes (bot-swap, pre-game vacate) — armReaper
+    // only lowers the alarm, never pushes one out.
+    await armReaper(this, ws);
   }
 
-  webSocketError(ws: WebSocket): void {
+  async webSocketError(ws: WebSocket): Promise<void> {
     try {
       ws.close(1011, 'error');
     } catch {
       // Socket already gone.
     }
+    // An abnormally-terminated socket gets webSocketError INSTEAD of
+    // webSocketClose, so the self-destruct clock has to start here too or a
+    // room emptied by a dropped connection would never be reaped.
+    await this.load();
+    await armReaper(this, ws);
   }
 
   /** Bot turns, round_over auto-continue, and disconnected-human bot-swaps
@@ -323,7 +363,13 @@ export class GameRoom implements DurableObject {
   async alarm(): Promise<void> {
     this.loaded = false; // always re-read after a wake — memory is not trusted
     await this.load();
+    // The storage self-destruct is checked FIRST and re-armed LAST, which is
+    // what lets room/bots.ts stay ignorant of it: nothing else in the alarm
+    // path can run against deleted storage, and every early return in
+    // runAlarm (game_over, no human present) still leaves the reap wake armed.
+    if (await reapIfDue(this)) return;
     await runAlarm(this);
+    await armReaper(this);
   }
 
   /* ── Message handlers kept here (small, or tightly bound to applyEngineAction) ── */

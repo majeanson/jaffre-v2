@@ -5,6 +5,7 @@ import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
 import {
+  ABANDONED_REAP_MS,
   BOT_SWAP_MS,
   PREGAME_VACATE_MS,
   TRICK_HOLD_MS,
@@ -1492,6 +1493,7 @@ describe('GameRoom', () => {
     async () => {
       interface StoredMeta {
         disconnectedSince?: Record<string, number>;
+        emptySince?: number;
       }
       const room = 'room-pause-empty';
       const alice = await Client.connect(room, 'alice', 'Alice');
@@ -1513,20 +1515,26 @@ describe('GameRoom', () => {
         'the disconnect clock',
       );
 
-      // No human present → the close handler armed no alarm. The table is paused.
-      const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
-      expect(armed).toBeNull();
+      // No human present → the close handler armed no GAME wake. The only
+      // thing on the slot is the storage self-destruct (room/reaper.ts), days
+      // out and identifiable by its deadline — the table itself is paused.
+      const armed = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return { at: await state.storage.getAlarm(), emptySince: meta?.emptySince };
+      });
+      expect(armed.emptySince).toBeTypeOf('number');
+      expect(armed.at).toBe((armed.emptySince ?? 0) + ABANDONED_REAP_MS);
 
-      // Even after the bot-swap deadline passes, nothing is scheduled to advance
-      // the game — bots don't play into an empty room. (runDurableObjectAlarm
-      // returns false when no alarm is on the slot to fire.)
+      // Even after the bot-swap deadline passes, no wake advances the game —
+      // bots don't play into an empty room. The reap wake fires (it is the one
+      // armed alarm) and leaves the game exactly where it was.
       await runInDurableObject(stub, async (_instance, state) => {
         const meta = await state.storage.get<StoredMeta>('meta');
         if (meta === undefined) throw new Error('meta missing');
         meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
         await state.storage.put('meta', meta);
       });
-      expect(await runDurableObjectAlarm(stub)).toBe(false);
+      await runDurableObjectAlarm(stub);
       const afterPause = await snapshot(stub);
       expect(afterPause.seq).toBe(seqBefore);
       expect(afterPause.phase).toBe(before.phase);
