@@ -65,15 +65,17 @@ test('a started public game is watchable from the lobby, and a spectator can tak
   await expect(card).toBeVisible();
   await expect(card).toContainText('LIVE');
 
-  // The card's action button reads "Watch" for a game in progress. NOTE: its
-  // *accessible name* is actually the longer aria-label
-  // ("Game in progress — join as a spectator") — PublicLobby.tsx sets
-  // aria-label on the Cta only when playing, which overrides the visible
-  // "Watch" text for a11y tooling. Asserting the rendered text (not the a11y
-  // name) is the honest, non-brittle check here.
-  const watchBtn = card.getByRole('button');
-  await expect(watchBtn).toHaveText('Watch');
-  await watchBtn.click();
+  // This game is live but only ONE seat is human — the rest are bots — so the
+  // card offers "Drop in", not "Watch". (It read "Watch" before drop-in seats
+  // shipped, which undersold a table you could actually join: the rest of this
+  // test then takes a bot's seat, which was always the real affordance.)
+  // NOTE: its *accessible name* is the longer aria-label ("Game in progress —
+  // take a bot's seat") — PublicLobby.tsx sets aria-label on the Cta, which
+  // overrides the visible text for a11y tooling. Asserting the rendered text
+  // (not the a11y name) is the honest, non-brittle check here.
+  const dropInBtn = card.getByRole('button');
+  await expect(dropInBtn).toHaveText('Drop in');
+  await dropInBtn.click();
 
   // B lands on the room hash. Because B never sat and the game is already
   // started, App.tsx's routing shows the Visitor landing screen FIRST — its

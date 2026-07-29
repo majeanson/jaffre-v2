@@ -54,8 +54,11 @@ const T: Record<
     share: 'Share this code with your table.',
     connecting: 'Connecting…',
     start: 'Start the game',
+    // Bots are the liquidity engine, not a consolation prize: a public table
+    // that starts with them stays joinable, and arrivals take their seats.
+    // The old line ("add bots or share the code") read as "give up on people".
     waitingHelper: (n) =>
-      `${String(n)} seat${n === 1 ? '' : 's'} left — add bots or share the code`,
+      `${String(n)} seat${n === 1 ? '' : 's'} left — start with bots, people can drop in`,
     // "Home" — the one exit word across the app (MetaHeader, Visitor, here).
     back: '← Home',
     howToPlay: 'How to play',
@@ -78,7 +81,7 @@ const T: Record<
     connecting: 'Connexion…',
     start: 'Commencer la partie',
     waitingHelper: (n) =>
-      `${String(n)} siège${n === 1 ? '' : 's'} à remplir — ajoute des bots ou partage le code`,
+      `${String(n)} siège${n === 1 ? '' : 's'} à remplir — pars avec des bots, le monde peut embarquer`,
     // "Accueil" (the meta screens' home label), not "Retour à l'accueil": the
     // long form wrapped the footer pair into a stack and pushed "Comment
     // jouer" below the 900px fold.

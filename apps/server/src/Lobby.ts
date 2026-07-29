@@ -28,9 +28,8 @@ export interface LobbyEntry {
 
 // ── Pure registry logic (DB/DO-free, unit-tested in lobby.test.ts) ──────────
 
-/** Live (un-expired) open rooms with a free seat, freshest first. Used by
- * Quick Play (claimBest/claimRoom) — a room that's already started must NEVER
- * be claimed, so this stays scoped to phase 'waiting' only. */
+/** Live (un-expired) rooms that haven't dealt yet and have a free seat,
+ * freshest first. The first choice for Quick Play. */
 export function openRooms(rooms: Record<string, LobbyEntry>, now: number): LobbyEntry[] {
   return Object.values(rooms)
     .filter(
@@ -39,17 +38,50 @@ export function openRooms(rooms: Record<string, LobbyEntry>, now: number): Lobby
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** Live (un-expired) rooms with a game in progress — browsable to watch (join
- * as a spectator) but never claimable by Quick Play, freshest first. */
+/** Live (un-expired) rooms with a game in progress — all of them watchable,
+ * freshest first. Some are also joinable; see droppableRooms. */
 export function watchableRooms(rooms: Record<string, LobbyEntry>, now: number): LobbyEntry[] {
   return Object.values(rooms)
     .filter((e) => now - e.updatedAt < LOBBY_TTL_MS && e.phase === 'playing')
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** The best room to Quick Play into — the fullest joinable one, or null. */
+/**
+ * In-progress rooms a human can still DROP INTO, freshest first.
+ *
+ * `players` counts humans only, so `players < capacity` means at least one
+ * seat is held by a bot — and a spectator may take over a bot seat mid-game
+ * (see `midGameTakeover` in room/seats.ts): the hand, tricks and turn carry
+ * over untouched.
+ *
+ * This exists because "started" used to mean "closed forever", which was the
+ * cold-start death spiral: a lone player quick-plays into an empty room, adds
+ * bots so they can actually play, the room flips to 'playing' and becomes
+ * watch-only — so the NEXT lone player creates another empty room instead of
+ * joining them. Two people five minutes apart never met. Now the bots hold
+ * the table open and humans replace them as they arrive.
+ */
+export function droppableRooms(rooms: Record<string, LobbyEntry>, now: number): LobbyEntry[] {
+  return watchableRooms(rooms, now).filter((e) => e.players < e.capacity);
+}
+
+/**
+ * The best room to Quick Play into, or null to host a fresh one.
+ *
+ * Prefer a table that hasn't dealt yet — arriving before the first deal is a
+ * better first experience than inheriting a bot's half-played hand. Only when
+ * there is none do we drop into a live game, which is exactly the case that
+ * used to send everyone off to their own empty room. Fullest-first either way,
+ * so games consolidate rather than scattering.
+ */
 export function claimBest(rooms: Record<string, LobbyEntry>, now: number): string | null {
-  return openRooms(rooms, now).sort((a, b) => b.players - a.players)[0]?.code ?? null;
+  const fullestFirst = (list: LobbyEntry[]): LobbyEntry | undefined =>
+    [...list].sort((a, b) => b.players - a.players)[0];
+  return (
+    fullestFirst(openRooms(rooms, now))?.code ??
+    fullestFirst(droppableRooms(rooms, now))?.code ??
+    null
+  );
 }
 
 /**
@@ -89,14 +121,21 @@ export function pruneExpired(
 /** The list as published to clients — updatedAt is registry bookkeeping, and
  * stripping it here is what lets broadcast() detect REAL changes (the 30s
  * heartbeat re-register only bumps updatedAt; watchers shouldn't hear it).
- * Waiting (joinable) rooms sort first, then in-progress (watch-only) rooms —
- * both TTL-filtered — capped at LIST_LIMIT total so a busy lobby doesn't push
- * an unbounded list to every watcher. */
+ *
+ * Sorted by what a player can DO with each: tables not yet dealt, then live
+ * games holding a bot seat you can drop into, then games that are full and
+ * can only be watched. All TTL-filtered, capped at LIST_LIMIT total so a busy
+ * lobby doesn't push an unbounded list to every watcher. The client derives
+ * join-vs-watch from `phase` and `players < capacity` — the same rule as
+ * droppableRooms, so no field had to be added to say it twice. */
 export function publicList(
   rooms: Record<string, LobbyEntry>,
   now: number,
 ): Omit<LobbyEntry, 'updatedAt'>[] {
-  return [...openRooms(rooms, now), ...watchableRooms(rooms, now)]
+  const droppable = droppableRooms(rooms, now);
+  const dropCodes = new Set(droppable.map((e) => e.code));
+  const spectateOnly = watchableRooms(rooms, now).filter((e) => !dropCodes.has(e.code));
+  return [...openRooms(rooms, now), ...droppable, ...spectateOnly]
     .slice(0, LIST_LIMIT)
     .map(({ code, host, players, capacity, phase }) => ({ code, host, players, capacity, phase }));
 }

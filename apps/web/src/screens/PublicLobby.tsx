@@ -22,6 +22,8 @@ const T: Record<
     join: string;
     watch: string;
     watchHint: string;
+    dropIn: string;
+    dropInHint: string;
     full: string;
     seats: (n: number, cap: number) => string;
     playing: (n: number, cap: number) => string;
@@ -37,6 +39,8 @@ const T: Record<
     join: 'Join',
     watch: 'Watch',
     watchHint: 'Game in progress — join as a spectator',
+    dropIn: 'Drop in',
+    dropInHint: 'Game in progress — take a bot’s seat',
     full: 'Full',
     seats: (n, cap) => `${String(n)}/${String(cap)} seated`,
     playing: (n, cap) => `${String(n)}/${String(cap)} playing`,
@@ -51,6 +55,8 @@ const T: Record<
     join: 'Joindre',
     watch: 'Regarder',
     watchHint: 'Partie en cours — regarde en spectateur',
+    dropIn: 'Embarque',
+    dropInHint: 'Partie en cours — prends la place d’un bot',
     full: 'Complète',
     seats: (n, cap) => `${String(n)}/${String(cap)} assis`,
     playing: (n, cap) => `${String(n)}/${String(cap)} en jeu`,
@@ -107,11 +113,18 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
           <ul className="flex flex-col gap-2">
             {rooms.map((r) => {
               const playing = r.phase === 'playing';
+              // `players` counts humans, so a live game short of capacity is
+              // holding a bot seat — and a spectator can take one over
+              // mid-hand. That is the difference between "come watch" and
+              // "come play", and it is what keeps tables alive when only one
+              // or two people are online.
+              const droppable = playing && r.players < r.capacity;
               const full = !playing && r.players >= r.capacity;
+              const hint = droppable ? t.dropInHint : playing ? t.watchHint : undefined;
               return (
                 <li
                   key={r.code}
-                  title={playing ? t.watchHint : undefined}
+                  title={hint}
                   className="flex items-center gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.9em] py-[0.6em] shadow-(--shadow-ap-sm)"
                 >
                   <span className="min-w-0 flex-1">
@@ -139,9 +152,15 @@ export function PublicLobby({ onLeave, onJoin, demoRooms }: PublicLobbyProps) {
                   <Cta
                     disabled={full}
                     onClick={() => onJoin(r.code)}
-                    aria-label={playing ? `${t.watch} — ${t.watchHint}` : undefined}
+                    aria-label={
+                      droppable
+                        ? `${t.dropIn} — ${t.dropInHint}`
+                        : playing
+                          ? `${t.watch} — ${t.watchHint}`
+                          : undefined
+                    }
                   >
-                    {full ? t.full : playing ? t.watch : t.join}
+                    {full ? t.full : droppable ? t.dropIn : playing ? t.watch : t.join}
                   </Cta>
                 </li>
               );

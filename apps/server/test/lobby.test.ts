@@ -65,9 +65,32 @@ describe('claimBest', () => {
     expect(claimBest({}, NOW)).toBeNull();
   });
 
-  it('never claims a playing (in-progress) room, even if it were the only one', () => {
+  /**
+   * "Started" used to mean "closed forever", which was the cold-start death
+   * spiral: a lone player quick-plays into an empty room, adds bots so they
+   * can actually play, the room flips to 'playing' and goes watch-only — so
+   * the NEXT lone player creates another empty room instead of joining them.
+   * A live game with a bot seat is now the fallback, since a spectator can
+   * take that seat over mid-hand.
+   */
+  it('drops into a live game holding a bot seat when nothing is waiting', () => {
     const rooms = map(entry({ code: 'live', phase: 'playing', players: 2 }));
+    expect(claimBest(rooms, NOW)).toBe('live');
+  });
+
+  it('still refuses a live game with no seat left — four humans is full', () => {
+    const rooms = map(entry({ code: 'live', phase: 'playing', players: 4 }));
     expect(claimBest(rooms, NOW)).toBeNull();
+  });
+
+  it('prefers a table that has not dealt yet over dropping into a live one', () => {
+    // Arriving before the first deal beats inheriting a bot's half-played
+    // hand, even though the live table has more humans in it.
+    const rooms = map(
+      entry({ code: 'live', phase: 'playing', players: 3 }),
+      entry({ code: 'fresh', phase: 'waiting', players: 1 }),
+    );
+    expect(claimBest(rooms, NOW)).toBe('fresh');
   });
 });
 
@@ -89,7 +112,7 @@ describe('claimRoom', () => {
     expect(result.rooms).toEqual({});
   });
 
-  it('never claims a playing room even alongside waiting ones', () => {
+  it('never claims a FULL playing room, and prefers a waiting one regardless', () => {
     const rooms = map(
       entry({ code: 'live', phase: 'playing', players: 4 }),
       entry({ code: 'waiting', phase: 'waiting', players: 1 }),
@@ -97,6 +120,17 @@ describe('claimRoom', () => {
     const result = claimRoom(rooms, NOW);
     expect(result.code).toBe('waiting');
     expect(result.rooms.live?.players).toBe(4); // untouched — never reserved into
+  });
+
+  it('reserves the seat when dropping into a live game too', () => {
+    // Same anti-double-claim rule as a waiting room: two people quick-playing
+    // at once must not both be sent at the one remaining bot seat.
+    const rooms = map(entry({ code: 'live', phase: 'playing', players: 3 }));
+    const first = claimRoom(rooms, NOW);
+    expect(first.code).toBe('live');
+    expect(first.rooms.live?.players).toBe(4);
+    // Now full: the next claimer is sent to host their own instead.
+    expect(claimRoom(first.rooms, NOW).code).toBeNull();
   });
 });
 
@@ -108,6 +142,25 @@ describe('publicList', () => {
       entry({ code: 'stale-live', phase: 'playing', updatedAt: NOW - 999_999 }),
     );
     expect(publicList(rooms, NOW).map((r) => r.code)).toEqual(['waiting', 'live']);
+  });
+
+  it('sorts by what you can DO: not-yet-dealt, then droppable, then watch-only', () => {
+    // The browse list leads with tables you can act on. A full live game is
+    // still listed — watching is a real thing to do — but it sorts last, and
+    // the client reads join-vs-watch off `phase` + `players < capacity`.
+    const rooms = map(
+      entry({ code: 'full-live', phase: 'playing', players: 4 }),
+      entry({ code: 'drop-in', phase: 'playing', players: 2 }),
+      entry({ code: 'fresh', phase: 'waiting', players: 1 }),
+    );
+    expect(publicList(rooms, NOW).map((r) => r.code)).toEqual(['fresh', 'drop-in', 'full-live']);
+  });
+
+  it('lists a droppable room exactly once', () => {
+    // droppableRooms is a subset of watchableRooms — concatenating them
+    // without deduping would show the same table twice.
+    const rooms = map(entry({ code: 'drop-in', phase: 'playing', players: 2 }));
+    expect(publicList(rooms, NOW).map((r) => r.code)).toEqual(['drop-in']);
   });
 });
 
