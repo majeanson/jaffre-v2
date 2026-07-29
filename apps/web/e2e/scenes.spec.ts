@@ -50,7 +50,7 @@ test('help sheet overlays the viewport (fixed positioning not captured by animat
   expect(overlay.height).toBe(viewport.height);
 });
 
-test('advanced strategy: five themed sections inside the disclosure', async ({ page }) => {
+test('advanced strategy: six themed sections inside the disclosure', async ({ page }) => {
   await page.goto('/#scenes/home-help');
   const dialog = page.getByRole('dialog', { name: 'How to play' });
   await expect(dialog).toBeVisible();
@@ -62,6 +62,7 @@ test('advanced strategy: five themed sections inside the disclosure', async ({ p
     'Declarer play',
     'Defense & inference',
     'Playing to 41',
+    'Hail-Mary 12 sans atout',
   ]) {
     await expect(dialog.getByText(section, { exact: true })).toBeVisible();
   }
