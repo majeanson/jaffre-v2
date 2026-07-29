@@ -48,9 +48,10 @@ Last checkpoint: **2026-07-29**.
 
 ## The gates (all green at checkpoint)
 
-- 176 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
-  only project that watches pixels move) · 63-scene catalog, each axe-gated ·
-  110 web unit · 164 server · engine property tests (100% cov).
+- 182 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
+  only project that watches pixels move) · 67-scene catalog, each axe-gated
+  (`npm run e2e:scenes`, 100 tests — fast, and the first thing to run) ·
+  112 web unit · 194 server · engine property tests (100% cov).
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Full shots sweep 2026-07-29: **60/60 viewport×skin combos, ~4,300 shots,
@@ -115,8 +116,31 @@ button, and skipping it is safe.
 
 ## Open threads
 
-**None.** The list this file carried for weeks is closed, and each item is
-struck by name so nobody re-audits it:
+Two, both from the 2026-07-29 review, both deliberately NOT started:
+
+- **Head-to-head view** — the Stats SocialPanel's nemesis/best-partner tiles
+  are dead ends. Tapping one should open the record vs/with that player, the
+  shared games (each already links to its replay) and a derived "regulars"
+  list (anyone faced/partnered ≥3 games). No stored social graph — derive it,
+  like everything else here.
+- **Room storage self-destruct** — nothing ever deletes a GameRoom DO's
+  storage (zero `deleteAll()` calls in `apps/server`), and merely CONNECTING
+  to a room code persists a `meta` write, so every mistyped code and expired
+  invite mints permanent billed storage. The fix (a long-dated alarm at
+  game_over/never-started with zero sockets) has to weave into the existing
+  single-alarm arbitration in `scheduleNextWake`/`runAlarm`, which is
+  load-bearing — give it a fresh session and its own tests, not the tail end
+  of a long one.
+
+Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
+(the constants are frozen by design; the monthly ladder is the real answer), a
+stronger-than-hard bot (the bench is a graveyard of intuitive ideas that lose),
+friends/DMs/clans (the room is the social unit), and any currency or shop (it
+would cheapen every already-earned unlock). Cutting "Host a public table" was
+also proposed and rejected: drop-in seats changed Quick Play's job, so hosting
+a fresh public table is now a capability rather than a duplicate.
+
+These threads are closed for good:
 
 - **Visitor TTF** — decided, not deferred. Silkscreen IS the display face;
   the app was drawn and shot against it. The `'Visitor'` fallback is gone
@@ -127,6 +151,3 @@ struck by name so nobody re-audits it:
 - **QR** — finished (`components/QrCode.tsx`: bundled encoder,
   dynamic-imported, crisp SVG path with a quiet zone).
 - **`index.ts` carve** — done; see Server above.
-
-Next session starts from a clean board: find the next thing by playing the
-app, not by reading this list.
