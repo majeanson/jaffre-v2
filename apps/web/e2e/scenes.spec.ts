@@ -291,6 +291,47 @@ for (const width of MEDIA_WIDTHS) {
     });
     expect(overflows, `controls overflowing their card at ${String(width)}px`).toEqual([]);
   });
+
+  /**
+   * The two newest people-shaped surfaces, at every media width: the record's
+   * regulars strip (a wrap-flow of name chips — a long name is the thing that
+   * escapes) and the head-to-head screen (a two-column record grid that has to
+   * survive 360px). Asserted rather than eyeballed: these are the widths the
+   * shots sweep looks at, and an assertion doesn't need a human to notice.
+   */
+  test(`the record's regulars and the head-to-head fit at ${String(width)}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1200 });
+    await page.goto('/#scenes/stats');
+    const list = page.getByTestId('regulars-list');
+    await expect(list).toBeVisible();
+    const listBox = await list.boundingBox();
+    await fitsWithin(listBox, width, 0, 'regulars list', width);
+    if (listBox === null) throw new Error('missing regulars list');
+    for (const chip of await list.locator('li > a').all()) {
+      await fitsWithin(
+        await chip.boundingBox(),
+        listBox.x + listBox.width,
+        listBox.x,
+        'regular chip',
+        width,
+      );
+    }
+
+    await page.goto('/#scenes/head-to-head');
+    await expect(page.getByTestId('h2h-name')).toBeVisible();
+    for (const section of await page.locator('main section').all()) {
+      await fitsWithin(await section.boundingBox(), width, 0, 'head-to-head panel', width);
+    }
+    // The name is the one string with no length bound — it must truncate
+    // inside its hero panel rather than push the panel wide.
+    await fitsWithin(
+      await page.getByTestId('h2h-name').boundingBox(),
+      width,
+      0,
+      'head-to-head name',
+      width,
+    );
+  });
 }
 
 test('scene picker: hash is the source of truth, unknown ids fall back', async ({ page }) => {

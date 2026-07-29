@@ -106,6 +106,11 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
   useEffect(() => {
     if (demo !== undefined || demoLoading) return;
     let live = true;
+    // A different person: drop the previous record first. The screen stays
+    // mounted across a hash change (#h2h/a → #h2h/b), so without this it would
+    // show one player's name over another's games until the fetch lands.
+    setData(null);
+    setError(false);
     fetchHeadToHead(pid)
       .then((d) => live && setData(d))
       .catch(() => live && setError(true));

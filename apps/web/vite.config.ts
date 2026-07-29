@@ -119,11 +119,24 @@ export default defineConfig({
             },
           },
           {
-            // Read-only personal data: instant paint from cache, refresh behind.
+            // Read-only personal data, network FIRST with a cache fallback.
+            //
+            // This was StaleWhileRevalidate ("instant paint, refresh behind"),
+            // which is wrong for a record: the app reads the resolved response
+            // ONCE, so "refresh behind" updated Cache Storage while the screen
+            // kept showing the stale body for the whole visit. Finish a game and
+            // your record still showed the previous total — and the recap's XP
+            // strip read the same stale number, then stored it as the baseline
+            // the next game's "+N XP" is measured against.
+            //
+            // The 3s timeout keeps the offline promise (an installed app with no
+            // network still opens your last-seen record) without letting a slow
+            // connection hang the screen.
             urlPattern: /^https?:\/\/[^/]+\/api\/(history|stats)(\?|$)/,
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'api-reads',
+              networkTimeoutSeconds: 3,
               expiration: { maxEntries: 32, maxAgeSeconds: 24 * 3600 },
             },
           },

@@ -2,6 +2,7 @@ import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
+import { bustStatsCache } from './history.js';
 import { localizeNotice } from './noticeCodes.js';
 import { rememberTable } from './rooms.js';
 import { reportError } from './telemetry.js';
@@ -170,6 +171,18 @@ function handle(msg: ServerMessage): void {
       store.applyEvents(msg.events, msg.seq);
       break;
     case 'view':
+      // A room game that just ENDED is the one event that makes every cached
+      // aggregate wrong — and the recap reads one immediately (XpStrip's
+      // fetchStats, through the same 30s cache), so a stale entry would show
+      // "+0 XP" for the game you just played AND persist that stale total as
+      // the baseline the NEXT recap measures its gain against. bustStatsCache
+      // has existed for exactly this since the cache landed; nothing called it.
+      // (The server writes the history row inside the same game_over action, so
+      // the read that follows this is nearly always behind it — nearly, not
+      // provably: there is no "history persisted" signal to wait on.)
+      if (msg.view.phase === 'game_over' && store.view?.phase !== 'game_over') {
+        bustStatsCache();
+      }
       store.setView(msg.view, msg.seq);
       break;
     case 'roster':
