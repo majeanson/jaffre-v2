@@ -46,6 +46,7 @@ const T: Record<
     score: string;
     rematch: string;
     swapSeats: string;
+    playPeople: string;
     leave: string;
     leaveTable: string;
     leaveConfirm: string;
@@ -89,6 +90,7 @@ const T: Record<
     score: 'Score',
     rematch: 'Rematch',
     swapSeats: 'Swap seats',
+    playPeople: 'Play people →',
     leave: 'Leave',
     leaveTable: 'Leave table',
     leaveConfirm: 'Sure? Seat frees up',
@@ -132,6 +134,7 @@ const T: Record<
     score: 'Pointage',
     rematch: 'Revanche',
     swapSeats: 'Échanger les sièges',
+    playPeople: 'Joue avec du monde →',
     leave: 'Quitter',
     leaveTable: 'Quitter la table',
     leaveConfirm: 'Certain? Le siège se libère',
@@ -174,6 +177,12 @@ export interface GameRecapProps {
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
   readonly onLeave: () => void;
+  /** PRACTICE recaps only: quick-play into a table with real people.
+   * Somebody who just finished (and enjoyed) their first game had no way to
+   * humans from here — they had to back out to the title screen and reopen
+   * the PLAY door, which is a long way to walk from the moment they were
+   * most willing to try. */
+  readonly onPlayPeople?: (() => void) | undefined;
   /** Online: leaving here frees the seat for good — arm a two-tap confirm.
    * Practice leaves have nothing to lose and stay one tap. */
   readonly confirmLeave?: boolean;
@@ -427,6 +436,7 @@ export function GameRecap({
   avatars,
   onRematch,
   onSwapSeats,
+  onPlayPeople,
   onLeave,
   confirmLeave = false,
   endReason,
@@ -810,6 +820,11 @@ export function GameRecap({
             </Cta>
           )}
           <div className="flex w-full items-center justify-center gap-2">
+            {onPlayPeople !== undefined && (
+              <Cta type="button" variant="secondary" onClick={onPlayPeople} className="flex-1">
+                {t.playPeople}
+              </Cta>
+            )}
             {onSwapSeats !== undefined && (
               <Cta type="button" variant="secondary" onClick={onSwapSeats} className="flex-1">
                 {t.swapSeats}

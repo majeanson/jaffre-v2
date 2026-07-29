@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
+import { quickPlay } from '../net/rooms.js';
 import { useGameStore } from '../state/gameStore.js';
 import { RoomComms, toggleRoomComms } from '../comms/RoomComms.js';
 import {
@@ -325,6 +326,19 @@ export function Table({
         onSwapSeats={onSwapSeats}
         onLeave={onLeaveTable ?? onLeave}
         confirmLeave={onLeaveTable !== undefined}
+        // Practice only (an online table has onLeaveTable). The moment right
+        // after a first game is when somebody is most willing to try real
+        // opponents, and it used to be the moment we sent them back to the
+        // title screen to find the door themselves.
+        {...(onLeaveTable === undefined
+          ? {
+              onPlayPeople: () => {
+                void quickPlay().then((code) => {
+                  location.hash = `#room/${code}`;
+                });
+              },
+            }
+          : {})}
       />
       <UtilityRow
         you={seatInfo(0)}

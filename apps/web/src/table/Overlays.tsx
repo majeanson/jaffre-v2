@@ -21,6 +21,8 @@ export interface OverlaysProps {
   readonly onReady: () => void;
   readonly onRematch?: (() => void) | undefined;
   readonly onSwapSeats?: (() => void) | undefined;
+  /** Practice only: hop from a finished practice game into a real table. */
+  readonly onPlayPeople?: (() => void) | undefined;
   readonly onLeave: () => void;
   /** Online rooms: the recap's leave is permanent (seat freed) — two-tap it. */
   readonly confirmLeave?: boolean;
@@ -35,6 +37,7 @@ export function Overlays({
   onReady,
   onRematch,
   onSwapSeats,
+  onPlayPeople,
   onLeave,
   confirmLeave = false,
 }: OverlaysProps) {
@@ -90,6 +93,7 @@ export function Overlays({
           onSwapSeats={onSwapSeats}
           onLeave={onLeave}
           confirmLeave={confirmLeave}
+          onPlayPeople={onPlayPeople}
         />
       )}
     </>

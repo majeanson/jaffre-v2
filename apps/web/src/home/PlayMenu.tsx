@@ -235,6 +235,12 @@ export function PlayMenu({
             className="relative z-10 flex w-full cursor-pointer flex-wrap items-center justify-center gap-3 py-[clamp(0.8rem,2.4vmin,1.5rem)] font-arcade-display text-[clamp(1.5rem,3.4vmin,2.1rem)] uppercase tracking-wide transition-transform duration-(--duration-flick) active:translate-y-[2px]"
           >
             {t.play}
+            {/* This badge slot is for URGENCY only — somebody is waiting on
+                your turn. Anything else living here (a daily that is unplayed
+                almost every morning, say) would sit here permanently, devalue
+                the slot, AND rename the button: the badge text is inside it,
+                so the accessible name stops being "Play". The daily gets its
+                own row above the door instead — see DailyDoor. */}
             {yourTurn ? (
               // A proper little badge, not a loose dot + word: panel-filled so
               // it reads on the violet in every skin, ink-bordered like every

@@ -12,6 +12,7 @@ import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
 import { PracticeNudge } from '../home/PracticeNudge.js';
+import { DailyDoor } from '../home/DailyDoor.js';
 import { LevelBadge } from '../home/LevelBadge.js';
 import type { RecoveryStage } from '../home/RecoveryCard.js';
 import { getGuestToken, getProfile, saveProfile, type Profile } from '../net/auth.js';
@@ -168,6 +169,9 @@ export function Home({
               }}
             />
           )}
+          {/* The returning player's counterpart to that nudge: same slot, same
+              weight, hidden while the door it points past is open. */}
+          {!staged && !playDoorOpen && <DailyDoor />}
           <PlayMenu
             onPractice={() => {
               saveName();

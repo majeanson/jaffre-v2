@@ -25,6 +25,13 @@ export interface ChallengeBoard {
   };
   readonly board: readonly BoardRow[];
   readonly you: { readonly score: number; readonly tricks: number; readonly rank: number } | null;
+  /** Everyone who posted to this board, not just the rows shown — so a share
+   * line can say "#3 of 47". Absent on older responses. */
+  readonly entries?: number;
+  /** Consecutive days you've posted a daily score, derived server-side from
+   * challenge_scores (no stored counter). 0 when the run is broken or you
+   * haven't started one. */
+  readonly streak?: number;
 }
 
 /** Today's daily board, or a named challenge's. Null when offline / no server. */

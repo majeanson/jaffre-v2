@@ -9,6 +9,7 @@ import {
 } from '../local/localGame.js';
 import { fetchBoard, submitRun, type ChallengeBoard } from '../net/challenge.js';
 import { reportFunnel } from '../net/telemetry.js';
+import { markDailyPlayed } from '../dailyPlayed.js';
 import { useGameStore } from '../state/gameStore.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
@@ -38,6 +39,11 @@ const T: Record<
     weeklyDeal: (n: number) => string;
     tricksTaken: (n: number) => string;
     backToBoard: string;
+    streak: (n: number) => string;
+    share: string;
+    shared: string;
+    yesterday: string;
+    rankOf: (rank: number, of: number) => string;
   }
 > = {
   en: {
@@ -61,6 +67,11 @@ const T: Record<
     weeklyDeal: (n) => `Deal ${String(n)}`,
     tricksTaken: (n) => (n === 1 ? '1 trick taken' : `${String(n)} tricks taken`),
     backToBoard: 'Back to the board',
+    streak: (n) => (n === 1 ? 'Day 1 of a streak' : `${String(n)} days in a row`),
+    share: 'Share',
+    shared: 'Copied!',
+    yesterday: 'See yesterday’s board →',
+    rankOf: (rank, of) => `#${String(rank)} of ${String(of)}`,
   },
   fr: {
     title: 'Tableau des donnes',
@@ -83,6 +94,11 @@ const T: Record<
     weeklyDeal: (n) => `Donne ${String(n)}`,
     tricksTaken: (n) => (n === 1 ? '1 levée prise' : `${String(n)} levées prises`),
     backToBoard: 'Retour au tableau',
+    streak: (n) => (n === 1 ? 'Jour 1 d’une séquence' : `${String(n)} jours de suite`),
+    share: 'Partager',
+    shared: 'Copié!',
+    yesterday: 'Voir le tableau d’hier →',
+    rankOf: (rank, of) => `#${String(rank)} sur ${String(of)}`,
   },
 };
 
@@ -134,7 +150,40 @@ export function DealBoard({
   const [run, setRun] = useState<{ readonly score: number; readonly tricks: number } | null>(
     staged ? { score: 14, tricks: 6 } : null,
   );
+  const [copied, setCopied] = useState(false);
   const gamePhase = useGameStore((s) => s.view?.phase);
+
+  /**
+   * The share line. Carries the CHALLENGE URL, so a recipient lands on the
+   * same deal against the same bots — which is what makes the per-deal board
+   * a duel rather than a boast. Native share sheet where there is one, else
+   * the clipboard, matching shareHand() in replay/position.ts.
+   */
+  const shareResult = (): void => {
+    if (run === null) return;
+    const rank = board?.you?.rank;
+    const of = board?.entries ?? board?.board.length ?? 0;
+    const where = rank !== undefined && of > 0 ? ` · ${t.rankOf(rank, of)}` : '';
+    const label = deal.cadence === 'daily' ? t.dailyName : t.weeklyName;
+    const text = `Jaffré · ${label} · ${String(run.score)} pts${where}`;
+    const url = `${location.origin}/#daily`;
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+    if (typeof nav.share === 'function') {
+      void nav.share({ text, url }).catch(() => {
+        // Dismissed or unavailable despite the check — fall back rather than
+        // leaving the tap with no effect at all.
+        void navigator.clipboard.writeText(`${text}\n${url}`).then(
+          () => setCopied(true),
+          () => undefined,
+        );
+      });
+      return;
+    }
+    void navigator.clipboard.writeText(`${text}\n${url}`).then(
+      () => setCopied(true),
+      () => undefined,
+    );
+  };
 
   useEffect(() => {
     if (demoBoard !== undefined) return;
@@ -183,6 +232,9 @@ export function DealBoard({
         );
         setRun({ score: result.score, tricks: result.tricks });
         if (result.accepted) reportFunnel('daily-score');
+        // Only the daily: the home door's chip advertises today's hand, and
+        // the weeklies have their own tabs rather than a front-door slot.
+        if (deal.cadence === 'daily') markDailyPlayed(deal.id);
       }
       // The run STOPS here, it does not vanish. The felt tore itself down the
       // instant the last trick landed and dropped the player back on the board
@@ -246,9 +298,31 @@ export function DealBoard({
               </p>
               {board?.you != null && (
                 <span className="font-arcade-display text-[1.1em] uppercase text-(--color-ap-ink)">
-                  {t.you(board.you.rank)}
+                  {board.entries !== undefined && board.entries > 0
+                    ? t.rankOf(board.you.rank, board.entries)
+                    : t.you(board.you.rank)}
                 </span>
               )}
+              {/* The reason to come back tomorrow, stated. Derived from the
+                  rows already in challenge_scores — nothing stored, nothing
+                  to repair, retroactive for everyone who ever played. */}
+              {/* INK, not --color-ap-gold-deep. That token is documented as
+                  ≥3:1 on paper, which is the LARGE-text bar — fine for the
+                  3em score above, but this line is 0.85em and needs 4.5:1.
+                  Axe flagged exactly this element and not the score. The
+                  flame carries the warmth instead of the text colour. */}
+              {board?.streak !== undefined && board.streak > 0 && (
+                <span className="font-arcade-ui text-[0.85em] text-(--color-ap-ink)">
+                  🔥 {t.streak(board.streak)}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={shareResult}
+                className="font-arcade-ui text-[0.8em] text-(--color-ap-ink)/70 underline decoration-dotted underline-offset-2 hover:text-(--color-ap-ink)"
+              >
+                {copied ? t.shared : t.share}
+              </button>
             </>
           )}
           <button
@@ -364,6 +438,22 @@ export function DealBoard({
             <p className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
               {t.you(board.you.rank)} · {t.scored(board.you.score)}
             </p>
+          )}
+          {/* Yesterday is a LINK, not a fifth tab: challengeIsOpen is false for
+              a closed deal, so it can only be read, and the tab row is for
+              deals you can still play. Missing a day stops meaning the result
+              is gone. */}
+          {deal.cadence === 'daily' && (
+            <button
+              type="button"
+              onClick={() => {
+                const prev = dailyChallenge(now - 86_400_000);
+                if (prev.id !== deal.id) setDeal(prev);
+              }}
+              className="self-start font-arcade-ui text-[0.8em] text-(--color-ap-muted) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+            >
+              {t.yesterday}
+            </button>
           )}
         </section>
       </div>

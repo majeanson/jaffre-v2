@@ -1,6 +1,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { publicId } from '../src/publicId.js';
+import { monthStart } from '../src/routes/leaderboard.js';
 
 /**
  * /api/leaderboard ranks users by stored rating, gated at 10 rated games. Seed
@@ -64,5 +65,81 @@ describe('GET /api/leaderboard', () => {
     const data = (await res.json()) as { you: { id: string; rank: number } | null };
     expect(data.you?.id).toBe(publicId('lb-me'));
     expect(typeof data.you?.rank).toBe('number');
+  });
+});
+
+/**
+ * This month's race. Derived from `games` + `game_players` rather than a
+ * monthly Elo, because no per-game rating delta is stored anywhere — only the
+ * running users.rating. Wins and margins are already there, so this needs no
+ * migration and is retroactive for every game ever played.
+ */
+describe('monthStart', () => {
+  it('is the first instant of the UTC month', () => {
+    expect(monthStart(Date.UTC(2026, 6, 29, 18, 42))).toBe(Date.UTC(2026, 6, 1));
+  });
+
+  it('puts the very first and last instants of a month in the same month', () => {
+    // UTC for the same reason the daily challenge uses it: a ladder that rolls
+    // over per timezone is not a shared ladder.
+    const first = Date.UTC(2026, 6, 1, 0, 0, 0, 0);
+    const last = Date.UTC(2026, 6, 31, 23, 59, 59, 999);
+    expect(monthStart(first)).toBe(monthStart(last));
+  });
+
+  it('does not bleed across a year boundary', () => {
+    expect(monthStart(Date.UTC(2027, 0, 1, 0, 30))).toBe(Date.UTC(2027, 0, 1));
+    expect(monthStart(Date.UTC(2026, 11, 31, 23, 30))).toBe(Date.UTC(2026, 11, 1));
+  });
+});
+
+describe('GET /api/leaderboard?period=month', () => {
+  /** One finished game with the given seat-0 user on the winning/losing side. */
+  async function seedGame(id: string, uid: string, won: boolean, finishedAt: number) {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO games (id, room_code, seed, started_at, finished_at, winner_team, score_0, score_1, action_log)
+         VALUES (?1, 'month', 1, ?2, ?2, ?3, ?4, ?5, '[]')`,
+      ).bind(id, finishedAt, won ? 0 : 1, won ? 41 : 20, won ? 20 : 41),
+      env.DB.prepare(
+        'INSERT INTO game_players (game_id, seat, user_id, is_bot, name) VALUES (?1, 0, ?2, 0, ?3)',
+      ).bind(id, uid, 'Monthly'),
+    ]);
+  }
+
+  it('ranks by wins this month and ignores games from before it', async () => {
+    const now = Date.now();
+    const thisMonth = monthStart(now) + 1000;
+    const lastMonth = monthStart(now) - 86_400_000;
+
+    await seedGame('m-win-1', 'month-a', true, thisMonth);
+    await seedGame('m-win-2', 'month-a', true, thisMonth + 1);
+    await seedGame('m-win-3', 'month-b', true, thisMonth + 2);
+    // Plenty of wins, but last month — must not count toward this board.
+    await seedGame('m-old-1', 'month-b', true, lastMonth);
+    await seedGame('m-old-2', 'month-b', true, lastMonth - 1);
+
+    const res = await SELF.fetch('https://example.com/api/leaderboard?period=month');
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      top: { id: string; wins: number; games: number; rank: number }[];
+    };
+    const a = data.top.find((r) => r.id === publicId('month-a'));
+    const b = data.top.find((r) => r.id === publicId('month-b'));
+    expect(a?.wins).toBe(2);
+    expect(b?.wins).toBe(1); // the two old wins are out of scope
+    // Ranked, and ordered by wins.
+    expect((a?.rank ?? 99) < (b?.rank ?? 0)).toBe(true);
+    // Never the raw uid — it doubles as the ?u= credential.
+    expect(data.top.map((r) => r.id)).not.toContain('month-a');
+  });
+
+  it('has no min-games gate — one finished game puts you on it', async () => {
+    // The all-time board asks for 10 rated games, which a newcomer cannot
+    // reach for a week. This one they join immediately.
+    await seedGame('m-rookie', 'month-rookie', false, monthStart(Date.now()) + 5);
+    const res = await SELF.fetch('https://example.com/api/leaderboard?period=month&u=month-rookie');
+    const data = (await res.json()) as { you: { games: number } | null };
+    expect(data.you?.games).toBe(1);
   });
 });

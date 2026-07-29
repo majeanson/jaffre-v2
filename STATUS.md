@@ -68,6 +68,39 @@ Last checkpoint: **2026-07-29**.
 - Timing goes through `paced()`; reduced motion = instant everywhere.
 - Colocated `T` tables for copy; check e2e-pinned strings before rewording.
 
+## Liquidity, renewal and operability (2026-07-29)
+
+- **Drop-in seats.** `players` counts humans, so a live public room under
+  capacity holds a bot seat a spectator can take over mid-hand
+  (`droppableRooms` in `Lobby.ts`). Quick Play prefers a not-yet-dealt table,
+  then drops into one of these. Bots now KEEP a table joinable instead of
+  closing it — that loop ("host alone → add bots → room goes watch-only → next
+  player hosts their own empty room") was the cold-start death spiral. A FULL
+  live room is still unclaimable. The client derives join-vs-watch from
+  `phase` + `players < capacity`, the same rule, so the two cannot disagree.
+- **Renewal.** Deal Board runs end on a result card you have to dismiss (they
+  used to tear the felt down instantly), with a share line carrying the
+  challenge URL, a daily streak, and a link to yesterday's board. The
+  leaderboard has a **This month** tab: ranked by WINS, derived from
+  `games` + `game_players` — there is no per-game rating delta stored anywhere,
+  so a monthly Elo would need a migration, and an Elo *reset* would punish a
+  small pool. No min-games gate, so a newcomer is on it after one game.
+- **Operability.** `[observability]` is ON in wrangler.toml (it is opt-in;
+  without it every `console.error` lived only in a `wrangler tail`). Room-code
+  and game-id are on the logs that matter, and `syncLobby`'s catch no longer
+  swallows failures silently.
+- **Bounded growth.** Room `meta` is rewritten on every action against a 2MB
+  DO ceiling, past which `storage.put` throws inside `applyEngineAction` and
+  the game can never advance. Paint rides the SOCKET until its owner sits
+  (`onSit` promotes it), and `pruneMeta` at game_over forgets everyone no
+  longer seated. Telemetry `kind` is an allowlist (it is a PK column on an
+  unauthenticated endpoint); expired `login_codes` are swept.
+- **`playersByGame` is chunked at 80.** D1 caps bound parameters at 100 and
+  `computeStats` passes every finished game — `/api/stats` and `/api/awards`
+  broke permanently on a player's 101st game. Regression-tested at 120.
+
+Known gap: the monthly board finds "you" only within the returned top 100.
+
 ## Identity in public (2026-07-29)
 
 One rule, server-side: a name that is still the untouched default leaves

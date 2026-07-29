@@ -6,6 +6,7 @@ import {
   DEMO_HISTORY_NEW,
   DEMO_HISTORY_VETERAN,
   DEMO_LEADERBOARD,
+  DEMO_MONTHLY,
   DEMO_NOW,
   DEMO_PUBLIC_ROOMS,
   DEMO_REPLAY,
@@ -231,6 +232,9 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         <Leaderboard
           key={current.id}
           demo={current.id === 'leaderboard-empty' ? { top: [], you: null } : DEMO_LEADERBOARD}
+          // Mounts straight onto the monthly tab — the toggle is a new violet
+          // surface and the wins/net row shape is its own layout.
+          {...(current.id === 'leaderboard-month' ? { demoMonth: DEMO_MONTHLY } : {})}
           onLeave={onLeave}
         />
       )}

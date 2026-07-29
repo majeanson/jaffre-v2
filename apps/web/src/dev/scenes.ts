@@ -3,7 +3,13 @@ import type { Action, GameEvent, GameState, RoundSummary, Viewer } from '@jaffre
 import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffre/engine';
 import type { ChatEntry, MusicState, Roster } from '@jaffre/protocol';
 import type { ChallengeBoard } from '../net/challenge.js';
-import type { HistoryGame, Leaderboard, ReplayData, Stats } from '../net/history.js';
+import type {
+  HistoryGame,
+  Leaderboard,
+  MonthlyLeaderboard,
+  ReplayData,
+  Stats,
+} from '../net/history.js';
 import type { PublicRoom, TableEntry } from '../net/rooms.js';
 import type { Connection } from '../state/gameStore.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -362,6 +368,21 @@ export const DEMO_LEADERBOARD: Leaderboard = {
   you: { id: 'me', name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
 };
 
+/** Staged monthly race — same cast, ranked by WINS this month rather than
+ * rating, and the viewer is ON it (the point of a monthly board is that you
+ * don't need 10 rated games to appear). One unnamed guest, so the shot also
+ * proves the disambiguated-name rule reaches this board. */
+export const DEMO_MONTHLY: MonthlyLeaderboard = {
+  top: [
+    { id: 'u1', name: 'Ginette', color: '#f2b712', games: 14, wins: 11, net: 96, rank: 1 },
+    { id: 'u2', name: 'Marcel', color: '#e05252', games: 12, wins: 8, net: 61, rank: 2 },
+    { id: 'me', name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
+    { id: 'u9', name: 'Player 3f9a', color: null, games: 7, wins: 4, net: 12, rank: 4 },
+    { id: 'u4', name: 'Lise', color: '#1e7a52', games: 5, wins: 1, net: -18, rank: 5 },
+  ],
+  you: { id: 'me', name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
+};
+
 /** Staged Deal Board — a played daily with the viewer sitting mid-table.
  *
  * `DEMO_NOW` pins the clock so the derived deal (and therefore the id in every
@@ -380,6 +401,11 @@ export const DEMO_CHALLENGE_BOARD: ChallengeBoard = {
     { id: 'u4', name: 'Lise', color: '#1e7a52', score: -6, tricks: 2, rank: 5 },
   ],
   you: { score: 14, tricks: 5, rank: 3 },
+  // More entries than rows shown: the board caps at 20, so the share line and
+  // the result card say "#3 of 47" rather than a rank with nothing behind it.
+  entries: 47,
+  // A live streak, so the result card's flame line is actually shot.
+  streak: 4,
 };
 
 /** Awards ids staged as already earned (must exist in awards.ts's AWARDS).
@@ -720,6 +746,7 @@ const LOADERS: Record<SceneId, () => void> = {
   'awards-arranging': () => undefined,
   leaderboard: () => undefined,
   'leaderboard-empty': () => undefined,
+  'leaderboard-month': () => undefined,
   'corner-empty': () => undefined,
   'journey-new': () => undefined,
   // Home overlays (sheet open flags travel via SceneUi) — plain home states.

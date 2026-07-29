@@ -17,6 +17,7 @@ import {
   type Action,
   type ChallengeDeal,
 } from '@jaffre/engine';
+import { dailyStreak } from '../src/routes/dealBoard.js';
 import { chooseAction } from '@jaffre/bots';
 import { parseActions, verifyChallengeRun } from '../src/challenge.js';
 
@@ -377,5 +378,44 @@ describe('submit rate limiting', () => {
       body: JSON.stringify({ challengeId: today.id, actions: honestRun(today) }),
     });
     expect(res.status).toBe(200);
+  });
+});
+
+/**
+ * The daily streak is DERIVED from the rows already in challenge_scores — no
+ * counter, no column, nothing to migrate or repair, and retroactive for
+ * everyone who ever played. Same house rule as XP and cosmetic unlocks.
+ */
+describe('dailyStreak', () => {
+  const DAY = 86_400_000;
+  const NOW = Date.UTC(2026, 6, 29, 12);
+  const keys = (...offsets: number[]) => new Set(offsets.map((d) => utcDayKey(NOW - d * DAY)));
+
+  it('counts consecutive days ending today', () => {
+    expect(dailyStreak(keys(0, 1, 2), NOW)).toBe(3);
+  });
+
+  it('stays alive when today is still unplayed but yesterday was', () => {
+    // Today's hand is ahead of you, not missed. Reading "0" before you have
+    // had the chance to play would be both wrong and discouraging.
+    expect(dailyStreak(keys(1, 2, 3), NOW)).toBe(3);
+  });
+
+  it('breaks once a whole day has gone by unplayed', () => {
+    // Nothing today and nothing yesterday — the run is over regardless of how
+    // long it was before that.
+    expect(dailyStreak(keys(2, 3, 4), NOW)).toBe(0);
+  });
+
+  it('stops at the first gap rather than counting every day ever played', () => {
+    expect(dailyStreak(keys(0, 1, 3, 4, 5), NOW)).toBe(2);
+  });
+
+  it('is 0 for someone who has never posted a daily', () => {
+    expect(dailyStreak(new Set(), NOW)).toBe(0);
+  });
+
+  it('counts a single day as a streak of 1', () => {
+    expect(dailyStreak(keys(0), NOW)).toBe(1);
   });
 });

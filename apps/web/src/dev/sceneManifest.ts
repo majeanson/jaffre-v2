@@ -136,7 +136,9 @@ export const SCENE_METAS = [
     id: 'lobby-open',
     label: 'Lobby — seats open',
     screen: 'lobby',
-    probe: 'text=seats left — add bots',
+    // Reworded with drop-in seats: bots keep a public table joinable rather
+    // than being the thing you settle for, so the line says so.
+    probe: 'text=start with bots, people can drop in',
   },
   {
     id: 'lobby-full',
@@ -530,6 +532,13 @@ export const SCENE_METAS = [
     label: 'Leaderboard — no ranked players',
     screen: 'leaderboard',
     probe: 'text=No ranked players yet',
+  },
+  {
+    // This month's race — ranked by wins, open from your first finished game.
+    id: 'leaderboard-month',
+    label: 'Leaderboard — this month',
+    screen: 'leaderboard',
+    probe: 'text=of 9 played',
   },
   {
     id: 'corner-empty',

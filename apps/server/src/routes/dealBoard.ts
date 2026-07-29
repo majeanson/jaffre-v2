@@ -16,6 +16,49 @@ import { noDb, resolveUserId } from './http.js';
 /** How many rows a Deal Board shows. */
 const BOARD_LIMIT = 20;
 
+const DAY_MS = 86_400_000;
+
+/**
+ * Consecutive days ending today (or yesterday) on which this player posted a
+ * daily score.
+ *
+ * Derived from the rows already in `challenge_scores` — no counter, no new
+ * column, nothing to migrate or repair, and it is retroactive for everyone
+ * who ever played. Same house rule as XP and every cosmetic unlock: the games
+ * table is the single source.
+ *
+ * A streak counts as alive when TODAY is unplayed but yesterday was — today's
+ * hand is still ahead of you, and reading "0" before you have had the chance
+ * to play would be both wrong and discouraging. It only breaks once a whole
+ * day has gone by unplayed.
+ */
+export function dailyStreak(playedDayKeys: ReadonlySet<string>, nowMs: number): number {
+  const start = playedDayKeys.has(utcDayKey(nowMs)) ? 0 : 1;
+  if (start === 1 && !playedDayKeys.has(utcDayKey(nowMs - DAY_MS))) return 0;
+  let n = 0;
+  for (let i = start; playedDayKeys.has(utcDayKey(nowMs - i * DAY_MS)); i++) n++;
+  return n;
+}
+
+/** The day keys this player has a DAILY score for. Weeklies share the table
+ * but have their own id prefix, so they can't inflate a daily streak. */
+async function playedDailyKeys(db: D1Database, userId: string): Promise<Set<string>> {
+  try {
+    const rows = await db
+      .prepare(
+        "SELECT challenge_id FROM challenge_scores WHERE user_id = ?1 AND challenge_id LIKE 'd-%'",
+      )
+      .bind(userId)
+      .all<{ challenge_id: string }>();
+    // 'd-2026-07-28' → '2026-07-28'.
+    return new Set(rows.results.map((r) => r.challenge_id.slice(2)));
+  } catch (err) {
+    // Best-effort: a streak is a flourish, never a reason to fail the board.
+    console.error('[challenge] streak read failed', err);
+    return new Set();
+  }
+}
+
 /**
  * How many run VERIFICATIONS one user may ask for in a UTC day.
  *
@@ -205,6 +248,10 @@ export async function handleChallengeBoard(
   }));
 
   let you: { score: number; tricks: number; rank: number } | null = null;
+  // Total entries on this board, so a share line can say "#3 of 47" rather
+  // than a rank with nothing to measure it against.
+  let entries = board.length;
+  let streak = 0;
   const userId = await resolveUserId(request, env, url);
   if (typeof userId === 'string' && userId !== '') {
     const mine = await db
@@ -223,11 +270,23 @@ export async function handleChallengeBoard(
         .first<{ n: number }>();
       you = { score: mine.score, tricks: mine.tricks, rank: (ahead?.n ?? 0) + 1 };
     }
+    streak = dailyStreak(await playedDailyKeys(db, userId), now);
+  }
+  // Only worth a query when the board is capped — otherwise we already have
+  // the true count in hand.
+  if (board.length >= BOARD_LIMIT) {
+    const total = await db
+      .prepare('SELECT COUNT(*) AS n FROM challenge_scores WHERE challenge_id = ?1')
+      .bind(deal.id)
+      .first<{ n: number }>();
+    entries = total?.n ?? board.length;
   }
 
   return Response.json({
     challenge: { id: deal.id, cadence: deal.cadence, periodKey: deal.periodKey, seed: deal.seed },
     board,
     you,
+    entries,
+    streak,
   });
 }

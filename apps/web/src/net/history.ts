@@ -220,6 +220,39 @@ async function fetchLeaderboardUncached(): Promise<Leaderboard> {
   return (await res.json()) as Leaderboard;
 }
 
+/** One row of THIS MONTH's board. A different shape from the all-time ladder
+ * on purpose: it answers a different question (who has won the most this
+ * month) and carries no rating, because no per-game rating delta is stored
+ * anywhere to build a monthly Elo from. */
+export interface MonthlyRow {
+  readonly id: string;
+  readonly name: string;
+  readonly color: string | null;
+  readonly games: number;
+  readonly wins: number;
+  readonly net: number;
+  readonly rank: number;
+}
+
+export interface MonthlyLeaderboard {
+  readonly top: readonly MonthlyRow[];
+  readonly you: MonthlyRow | null;
+}
+
+async function fetchMonthlyUncached(): Promise<MonthlyLeaderboard> {
+  const path = '/api/leaderboard?period=month';
+  const res = (await authedFetch(path)) ?? (await fetch(path));
+  if (!res.ok) throw new Error(`monthly leaderboard ${String(res.status)}`);
+  return (await res.json()) as MonthlyLeaderboard;
+}
+
+const monthlyCache = cached(fetchMonthlyUncached);
+
+/** Session-cached like the all-time board (30s TTL, in-flight-deduped). */
+export function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboard> {
+  return monthlyCache.run();
+}
+
 const leaderboardCache = cached(fetchLeaderboardUncached);
 
 /** Session-cached (30s TTL, in-flight-deduped) — PlayerPeek and every other
