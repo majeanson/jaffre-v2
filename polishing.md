@@ -623,3 +623,14 @@ fine. Confirmed by eye, not inferred.
     before Bidding so "trick points" means something when the auction card arrives.
 - Still owed from audit #3: the 36 unshot viewport×skin combos — `npm run shots`
   overnight, triage the next morning.
+
+## Full-gallery sweep 2026-07-29 — the owed 36 combos (and then some)
+
+The audit-#3 debt, paid with interest: the skin roster had grown to 15, so the
+full run was 60 viewport×skin combos (~4,300 shots, 1.7h). Result: **60/60
+passed, and report.txt logged ZERO layout warnings** — the first sweep ever to
+come back completely clean. Spot-checked by eye: synthwave trick-held (the new
+felt toast stack), goldleaf Deal Board at 390px, sakura auction (light-family
+ink borders hold), terminal corner on phone. Nothing to file. The 13
+never-photographed skins are now baselined, dark/light re-baselined over this
+week's toast/delivery changes.
