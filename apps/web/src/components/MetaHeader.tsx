@@ -21,7 +21,12 @@ export function MetaHeader({ title, homeLabel, onLeave }: MetaHeaderProps) {
       {/* min-w-0 + phone type scale: long titles (COLLECTION, LEADERBOARD) were
           pushing the Home Cta off the 390px viewport's right edge. */}
       <div className="flex min-w-0 items-center gap-[0.5em]">
-        <AvatarChip name={playerName()} color={getProfile().color ?? undefined} size="sm" />
+        <AvatarChip
+          name={playerName()}
+          color={getProfile().color ?? undefined}
+          size="sm"
+          paint={getProfile().paint}
+        />
         <h1 className="min-w-0 break-words font-arcade-display text-[2.2em] uppercase leading-none text-(--color-ap-gold) max-sm:text-[1.5em]">
           {title}
         </h1>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { AvatarChip, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
 import { ProgressBar } from '../components/ProgressBar.js';
@@ -10,6 +10,8 @@ import { AWARDS } from '../awards.js';
 import { levelProgress, xpFromStats } from '../progression.js';
 import { CARD_SKINS, currentCardSkin } from '../cosmetics.js';
 import { THEMES, currentTheme } from '../theme.js';
+import { getProfile } from '../net/auth.js';
+import { playerName } from '../net/socket.js';
 
 export interface CornerProps {
   readonly onLeave: () => void;
@@ -43,6 +45,7 @@ const T: Record<
     unrankedHint: string;
     paint: string;
     paintGo: string;
+    paintEdit: string;
     paintHint: string;
   }
 > = {
@@ -66,6 +69,7 @@ const T: Record<
     unrankedHint: '10 rated games to join the board',
     paint: 'Your avatar',
     paintGo: 'Paint it',
+    paintEdit: 'Repaint it',
     paintHint: 'Pixel-art studio — your face at every table',
   },
   fr: {
@@ -88,6 +92,7 @@ const T: Record<
     unrankedHint: '10 parties cotées pour entrer au classement',
     paint: 'Ton avatar',
     paintGo: 'Peins-le',
+    paintEdit: 'Repeins-le',
     paintHint: 'Studio pixel — ton visage à chaque table',
   },
 };
@@ -192,6 +197,7 @@ function CornerTiles({
 }) {
   const progress = levelProgress(xpFromStats(stats));
   const barPct = progress.span === 0 ? 100 : (progress.into / progress.span) * 100;
+  const profile = getProfile();
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -277,11 +283,24 @@ function CornerTiles({
           previously reachable just by clicking the home hero card. */}
       <a href="#paint" className={`${TILE_CLASS} sm:col-span-2`}>
         <span className={MICRO_LABEL}>{t.paint}</span>
-        <span className="flex items-baseline gap-[0.6em]">
-          <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
-            {t.paintGo}
+        {/* The tile shows the painting itself — the same chip the felt, the
+            chrome bar and every seat draw from, so "your avatar" is a look,
+            not a promise. Unpainted, the chip falls back to the initial. */}
+        <span className="flex items-center gap-[0.7em]">
+          <AvatarChip
+            name={playerName()}
+            color={profile.color ?? undefined}
+            size="md"
+            paint={profile.paint}
+          />
+          <span className="flex min-w-0 flex-col gap-[0.2em]">
+            <span className="font-arcade-display text-[0.95em] uppercase text-(--color-ap-text)">
+              {profile.paint === null || profile.paint === '' ? t.paintGo : t.paintEdit}
+            </span>
+            <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
+              {t.paintHint}
+            </span>
           </span>
-          <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">{t.paintHint}</span>
         </span>
       </a>
     </div>
