@@ -10,6 +10,13 @@ import { EVENT_AWARD_IDS, earnedStatAwardIds } from '../awards.js';
 import type { Env } from '../env.js';
 import { noDb, resolveUserId } from './http.js';
 import { playersByGame } from './games.js';
+import { publicId } from '../publicId.js';
+
+/** How many shared games make someone a REGULAR. Two is a coincidence (and
+ * already the floor for best-partner/nemesis); three is a habit. Counts games
+ * with AND against them together — the person you keep running into is the
+ * same fact either way. */
+const REGULAR_MIN = 3;
 
 /** Narrows a persisted `RoundSummary.trump` to a real suit. */
 function isSuit(value: unknown): value is Suit {
@@ -43,16 +50,36 @@ interface StatsPayload {
    * field existed, so this is fully retroactive for every past game.
    */
   readonly mastery: Readonly<Record<Suit, { readonly attempted: number; readonly made: number }>>;
+  /** `pid` is their PUBLIC id — the same one the roster and the ladder use, so
+   * the client can link a tile to that player's head-to-head record without
+   * ever seeing a uid (and without keying on a display name, which duplicates). */
   readonly bestPartner: {
+    readonly pid: string;
     readonly name: string;
     readonly games: number;
     readonly wins: number;
   } | null;
   readonly nemesis: {
+    readonly pid: string;
     readonly name: string;
     readonly games: number;
     readonly losses: number;
   } | null;
+  /**
+   * The people you keep sitting with: anyone you've shared REGULAR_MIN+ games
+   * with, partnered or opposed, most-played first. Derived from the same
+   * rosters the partner/nemesis picks come from — there is no stored social
+   * graph in this codebase and this doesn't add one.
+   *
+   * Uncapped on purpose: it is a handful of names at this game's scale, and a
+   * cap here would silently hide the person you play with fourth-most.
+   */
+  readonly regulars: readonly {
+    readonly pid: string;
+    readonly name: string;
+    readonly withGames: number;
+    readonly vsGames: number;
+  }[];
   readonly streak: { readonly current: number; readonly best: number };
   /** Games watched through to the end as a spectator. Its own counter, NOT an
    * XP source — see the note in apps/server/src/awards.ts. */
@@ -80,6 +107,7 @@ const EMPTY_STATS: StatsPayload = {
   mastery: emptyMastery(),
   bestPartner: null,
   nemesis: null,
+  regulars: [],
   streak: { current: 0, best: 0 },
   spectated: 0,
 };
@@ -136,9 +164,11 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
   const mastery = emptyMastery();
   let running = 0;
   let best = 0;
-  const partners = new Map<string, { name: string; games: number; wins: number }>();
+  // Both keyed by the other player's uid (the roster's own key); each entry
+  // carries their pid, which is what ever leaves the worker.
+  const partners = new Map<string, { pid: string; name: string; games: number; wins: number }>();
   // Opponents you've faced: "losses" counts games they beat you → your nemesis.
-  const opponents = new Map<string, { name: string; games: number; losses: number }>();
+  const opponents = new Map<string, { pid: string; name: string; games: number; losses: number }>();
 
   for (const g of games) {
     const yourTeam = g.seat % 2;
@@ -174,7 +204,12 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
       (p) => p.seat % 2 === yourTeam && p.seat !== g.seat && !p.isBot && p.userId !== null,
     );
     if (teammate?.userId !== null && teammate !== undefined) {
-      const entry = partners.get(teammate.userId) ?? { name: teammate.name, games: 0, wins: 0 };
+      const entry = partners.get(teammate.userId) ?? {
+        pid: publicId(teammate.userId),
+        name: teammate.name,
+        games: 0,
+        wins: 0,
+      };
       entry.games++;
       if (won) entry.wins++;
       partners.set(teammate.userId, entry);
@@ -184,25 +219,61 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     const decided = g.winner_team !== null;
     for (const p of roster) {
       if (p.seat % 2 === yourTeam || p.isBot || p.userId === null) continue;
-      const entry = opponents.get(p.userId) ?? { name: p.name, games: 0, losses: 0 };
+      const entry = opponents.get(p.userId) ?? {
+        pid: publicId(p.userId),
+        name: p.name,
+        games: 0,
+        losses: 0,
+      };
       entry.games++;
       if (decided && !won) entry.losses++;
       opponents.set(p.userId, entry);
     }
   }
 
-  let bestPartner: { name: string; games: number; wins: number } | null = null;
+  let bestPartner: { pid: string; name: string; games: number; wins: number } | null = null;
   for (const entry of partners.values()) {
     if (entry.games < 2) continue;
     if (bestPartner === null || entry.wins > bestPartner.wins) bestPartner = entry;
   }
 
   // Nemesis: the opponent (min 2 games faced) who has beaten you the most.
-  let nemesis: { name: string; games: number; losses: number } | null = null;
+  let nemesis: { pid: string; name: string; games: number; losses: number } | null = null;
   for (const entry of opponents.values()) {
     if (entry.games < 2 || entry.losses === 0) continue;
     if (nemesis === null || entry.losses > nemesis.losses) nemesis = entry;
   }
+
+  // Regulars: the two maps merged per person (someone can be both — teams get
+  // reshuffled between games at the same table), then thresholded on the TOTAL.
+  const regularsByUid = new Map<
+    string,
+    { pid: string; name: string; withGames: number; vsGames: number }
+  >();
+  for (const [uid, entry] of partners) {
+    regularsByUid.set(uid, {
+      pid: entry.pid,
+      name: entry.name,
+      withGames: entry.games,
+      vsGames: 0,
+    });
+  }
+  for (const [uid, entry] of opponents) {
+    const merged = regularsByUid.get(uid);
+    if (merged === undefined) {
+      regularsByUid.set(uid, {
+        pid: entry.pid,
+        name: entry.name,
+        withGames: 0,
+        vsGames: entry.games,
+      });
+    } else {
+      merged.vsGames = entry.games;
+    }
+  }
+  const regulars = [...regularsByUid.values()]
+    .filter((r) => r.withGames + r.vsGames >= REGULAR_MIN)
+    .sort((a, b) => b.withGames + b.vsGames - (a.withGames + a.vsGames));
 
   return {
     games: games.length,
@@ -214,6 +285,7 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     mastery,
     bestPartner,
     nemesis,
+    regulars,
     streak: { current: running, best },
     spectated,
   };

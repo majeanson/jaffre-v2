@@ -5,6 +5,7 @@ import {
   fetchStats,
   type HistoryGame,
   type Stats as StatsData,
+  type StatsRegular,
 } from '../net/history.js';
 import {
   MASTERY_LANE_IDS,
@@ -15,6 +16,7 @@ import {
   masteryStyle,
   masterySpread,
 } from '../mastery.js';
+import { GameRow } from '../components/GameRow.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
 import { ProgressBar } from '../components/ProgressBar.js';
@@ -72,10 +74,10 @@ const T: Record<
     thScore: string;
     won: string;
     lost: string;
-    room: (code: string) => string;
-    seat: (n: number) => string;
-    withMate: (name: string) => string;
-    vsThem: (names: string) => string;
+    regulars: string;
+    regularsHint: string;
+    regularShare: (withGames: number, vsGames: number) => string;
+    headToHead: (name: string) => string;
   }
 > = {
   en: {
@@ -121,10 +123,10 @@ const T: Record<
     thScore: 'Score',
     won: 'Won',
     lost: 'Lost',
-    room: (code) => `Room ${code}`,
-    seat: (n) => `seat ${String(n)}`,
-    withMate: (name) => `with ${name}`,
-    vsThem: (names) => `vs ${names}`,
+    regulars: 'Regulars',
+    regularsHint: "Everyone else you've shared 3 or more games with.",
+    regularShare: (withGames, vsGames) => `${String(withGames)} with · ${String(vsGames)} against`,
+    headToHead: (name) => `Head to head with ${name}`,
   },
   fr: {
     title: 'Ton record',
@@ -178,10 +180,10 @@ const T: Record<
     thScore: 'Pointage',
     won: 'Gagnée',
     lost: 'Perdue',
-    room: (code) => `Salon ${code}`,
-    seat: (n) => `siège ${String(n)}`,
-    withMate: (name) => `avec ${name}`,
-    vsThem: (names) => `contre ${names}`,
+    regulars: 'Les habitués',
+    regularsHint: 'Les autres avec qui tu as joué 3 parties ou plus.',
+    regularShare: (withGames, vsGames) => `${String(withGames)} avec · ${String(vsGames)} contre`,
+    headToHead: (name) => `Face à face avec ${name}`,
   },
 };
 
@@ -290,70 +292,6 @@ function ScorepadRow({ game }: { readonly game: HistoryGame }) {
   );
 }
 
-function formatDate(ms: number | null, lang: Lang): string {
-  if (ms === null) return '';
-  const d = new Date(ms);
-  return d.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-/** "with Ginette · vs Marcel & Réal" — teammate first, then both opponents. */
-function rosterLine(game: HistoryGame, t: Strings): string | null {
-  const yourTeam = game.yourSeat % 2;
-  const teammate = game.players.find((p) => p.seat !== game.yourSeat && p.seat % 2 === yourTeam);
-  const opponents = game.players.filter((p) => p.seat % 2 !== yourTeam);
-  if (teammate === undefined && opponents.length === 0) return null;
-  const vs = opponents.map((p) => p.name).join(' & ');
-  if (teammate === undefined) return vs === '' ? null : t.vsThem(vs);
-  return vs === '' ? t.withMate(teammate.name) : `${t.withMate(teammate.name)} · ${t.vsThem(vs)}`;
-}
-
-/** One finished (or in-progress) game as a link into its replay — the "All" list row. */
-function GameRow({ game }: { readonly game: HistoryGame }) {
-  const lang = useLang();
-  const t = T[lang];
-  const won = game.winnerTeam !== null && game.winnerTeam === game.yourSeat % 2;
-  const decided = game.winnerTeam !== null;
-  const roster = rosterLine(game, t);
-  return (
-    <a
-      href={`#replay/${game.id}`}
-      className="flex items-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
-    >
-      <span
-        className={`inline-block shrink-0 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.5em] py-1 text-center font-arcade-display text-sm uppercase shadow-(--shadow-ap-sm) ${
-          !decided
-            ? 'bg-(--color-ap-panel-hover) text-(--color-ap-muted)'
-            : won
-              ? 'bg-(--color-ap-ok) text-(--color-ap-ink)'
-              : 'bg-(--color-ap-danger) text-(--color-ap-ink)'
-        }`}
-      >
-        {decided ? (won ? t.won : t.lost) : '—'}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold text-(--color-ap-text)">
-          {t.room(game.roomCode)}
-        </span>
-        <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-          {formatDate(game.finishedAt, lang)} · {t.seat(game.yourSeat + 1)}
-          {roster !== null ? ` · ${roster}` : ''}
-        </span>
-      </span>
-      <span className="font-arcade-display text-lg tabular-nums text-(--color-ap-text)">
-        {game.scores[0]}
-        <span className="mx-1 text-(--color-ap-muted)">—</span>
-        {game.scores[1]}
-      </span>
-      <span aria-hidden className="text-(--color-ap-muted)">
-        ›
-      </span>
-    </a>
-  );
-}
-
 /** A muted uppercase micro-label — reused across the record's panels. */
 const MICRO_LABEL =
   'font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)';
@@ -441,48 +379,126 @@ function MasteryPanel({
   );
 }
 
-/** One social fact (best partner / nemesis) — an avatar + name + relation. */
+/**
+ * One social fact (best partner / nemesis) — an avatar + name + relation.
+ *
+ * A link when the server told us their public id: the tile names a person, and
+ * a named person you can't ask about is a dead end. Without a pid (an older
+ * worker's response) it stays exactly what it was, a plain fact.
+ */
 function SocialPanel({
   heading,
   headingClass,
   chipColor,
+  pid,
   name,
   relation,
+  linkLabel,
   testId,
   empty,
 }: {
   readonly heading: string;
   readonly headingClass: string;
   readonly chipColor: string;
+  readonly pid: string | undefined;
   readonly name: string | undefined;
   readonly relation: string;
+  readonly linkLabel: (name: string) => string;
   readonly testId: string;
   readonly empty: string;
 }) {
-  return (
-    <div className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
+  const body =
+    name === undefined ? (
+      <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">{empty}</p>
+    ) : (
+      <div className="flex items-center gap-[0.7em]">
+        <AvatarChip name={name} color={chipColor} size="sm" />
+        <div className="min-w-0 flex-1 font-arcade-ui">
+          <div
+            data-testid={testId}
+            className="truncate font-arcade-display text-[1em] uppercase text-(--color-ap-text)"
+          >
+            {name}
+          </div>
+          <div className="text-[0.8em] tabular-nums text-(--color-ap-muted)">{relation}</div>
+        </div>
+        {pid !== undefined && (
+          <span aria-hidden className="shrink-0 text-(--color-ap-muted)">
+            ›
+          </span>
+        )}
+      </div>
+    );
+  const shell =
+    'rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)';
+  const inner = (
+    <>
       <div
         className={`mb-[0.6em] font-arcade-ui text-[0.68em] font-semibold uppercase tracking-[0.14em] ${headingClass}`}
       >
         {heading}
       </div>
-      {name === undefined ? (
-        <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">{empty}</p>
-      ) : (
-        <div className="flex items-center gap-[0.7em]">
-          <AvatarChip name={name} color={chipColor} size="sm" />
-          <div className="min-w-0 font-arcade-ui">
-            <div
-              data-testid={testId}
-              className="truncate font-arcade-display text-[1em] uppercase text-(--color-ap-text)"
+      {body}
+    </>
+  );
+  if (pid === undefined || name === undefined) return <div className={shell}>{inner}</div>;
+  return (
+    <a
+      href={`#h2h/${pid}`}
+      aria-label={linkLabel(name)}
+      className={`${shell} block transition-colors hover:bg-(--color-ap-panel-hover)`}
+    >
+      {inner}
+    </a>
+  );
+}
+
+/**
+ * The people you keep sitting with — every regular, not a top-N slice, each a
+ * door into that head-to-head. The two tiles above only ever name two people;
+ * this is the rest of the table, and the only way to reach someone you've
+ * neither lost to nor won beside.
+ */
+function RegularsPanel({
+  regulars,
+  t,
+}: {
+  readonly regulars: readonly StatsRegular[];
+  readonly t: Strings;
+}) {
+  return (
+    <section className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
+      <div className="mb-[0.7em] flex items-baseline justify-between gap-3">
+        <span className={MICRO_LABEL}>{t.regulars}</span>
+        <span className="font-arcade-ui text-[0.75em] text-(--color-ap-muted)">
+          {regulars.length}
+        </span>
+      </div>
+      <ul className="flex flex-wrap gap-2" data-testid="regulars-list">
+        {regulars.map((r) => (
+          <li key={r.pid} className="min-w-0">
+            <a
+              href={`#h2h/${r.pid}`}
+              aria-label={t.headToHead(r.name)}
+              className="flex items-center gap-[0.5em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-[0.6em] py-[0.35em] shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
             >
-              {name}
-            </div>
-            <div className="text-[0.8em] tabular-nums text-(--color-ap-muted)">{relation}</div>
-          </div>
-        </div>
-      )}
-    </div>
+              <AvatarChip name={r.name} color="var(--color-suit-brown)" size="sm" />
+              <span className="min-w-0 font-arcade-ui">
+                <span className="block truncate font-arcade-display text-[0.9em] uppercase text-(--color-ap-text)">
+                  {r.name}
+                </span>
+                <span className="block truncate text-[0.7em] tabular-nums text-(--color-ap-muted)">
+                  {t.regularShare(r.withGames, r.vsGames)}
+                </span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-[0.7em] font-arcade-ui text-[0.75em] text-(--color-ap-text)/70">
+        {t.regularsHint}
+      </p>
+    </section>
   );
 }
 
@@ -528,6 +544,11 @@ export function Stats({
           .sort((a, b) => (a.finishedAt ?? 0) - (b.finishedAt ?? 0))
           .slice(-12);
   const recentWins = recent.filter(youWon).length;
+
+  // Regulars minus the two the tiles above already name (see the panel below).
+  const others = (stats?.regulars ?? []).filter(
+    (r) => r.pid !== stats?.bestPartner?.pid && r.pid !== stats?.nemesis?.pid,
+  );
 
   const bidPct = stats === null ? null : accuracyPct(stats.bids.made, stats.bids.attempted);
   const saPct =
@@ -642,6 +663,8 @@ export function Stats({
                 heading={t.bestPartner}
                 headingClass="text-(--color-ap-ok)"
                 chipColor="var(--color-suit-green)"
+                pid={stats.bestPartner?.pid}
+                linkLabel={t.headToHead}
                 name={stats.bestPartner?.name}
                 relation={
                   stats.bestPartner === null
@@ -655,6 +678,8 @@ export function Stats({
                 heading={t.nemesis}
                 headingClass="text-(--color-ap-danger-text)"
                 chipColor="var(--color-suit-blue)"
+                pid={stats.nemesis?.pid}
+                linkLabel={t.headToHead}
                 name={stats.nemesis?.name}
                 relation={
                   stats.nemesis === null
@@ -665,6 +690,13 @@ export function Stats({
                 empty={t.nemesisEmpty}
               />
             </section>
+
+            {/* The rest of the table. The two people the tiles already named
+                are filtered out — one screen naming the same person twice reads
+                as two different facts about two different people. Rendered only
+                when someone is left: an empty "Regulars" panel would be a
+                promise the record can't keep yet. */}
+            {others.length > 0 && <RegularsPanel regulars={others} t={t} />}
 
             {/* Games — ruled ledger, Recent (≤12, scorepad) or All (full list, replay links). */}
             {games !== null && games.length > 0 && (

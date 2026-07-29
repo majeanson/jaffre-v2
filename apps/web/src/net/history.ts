@@ -37,6 +37,10 @@ export interface MasteryLane {
 }
 
 export interface StatsPartner {
+  /** Their PUBLIC id — the head-to-head link's address. Optional because a
+   * client can outrun its server (an older worker answers without it), in
+   * which case the tile stays a plain fact instead of a link. */
+  readonly pid?: string;
   readonly name: string;
   readonly games: number;
   readonly wins: number;
@@ -44,9 +48,18 @@ export interface StatsPartner {
 
 /** The opponent who has beaten you most (min 2 games faced). */
 export interface StatsNemesis {
+  readonly pid?: string;
   readonly name: string;
   readonly games: number;
   readonly losses: number;
+}
+
+/** Someone you've shared 3+ games with, partnered or opposed. */
+export interface StatsRegular {
+  readonly pid: string;
+  readonly name: string;
+  readonly withGames: number;
+  readonly vsGames: number;
 }
 
 export interface Stats {
@@ -69,6 +82,9 @@ export interface Stats {
   readonly mastery?: Readonly<Record<Suit, MasteryLane>>;
   readonly bestPartner: StatsPartner | null;
   readonly nemesis: StatsNemesis | null;
+  /** The people you keep sitting with, most-played first. Optional for the
+   * same reason as `mastery` — read it as `?? []`. */
+  readonly regulars?: readonly StatsRegular[];
   readonly streak: { readonly current: number; readonly best: number };
   /** Games watched to the end as a spectator. Optional for the same reason as
    * `mastery`: a client can outrun its server. Read it as `?? 0`. */
@@ -185,6 +201,31 @@ const statsCache = cached(fetchStatsUncached);
 
 export function fetchStats(): Promise<Stats> {
   return statsCache.run();
+}
+
+/** One shared game, in the history row shape (so the same row component
+ * renders it) plus which side of the table they were on. */
+export interface SharedGame extends HistoryGame {
+  readonly side: 'with' | 'vs';
+}
+
+/** Your record with and against one other player, addressed by their public
+ * id. `name` is null when you have never shared a table with them. */
+export interface HeadToHead {
+  readonly pid: string;
+  readonly name: string | null;
+  readonly together: { readonly games: number; readonly wins: number };
+  readonly against: { readonly games: number; readonly wins: number };
+  readonly games: readonly SharedGame[];
+}
+
+/** Deliberately NOT cached: it is one screen's read, opened on purpose, and a
+ * stale head-to-head right after a game with that very person is exactly the
+ * wrong answer to give. */
+export async function fetchHeadToHead(pid: string): Promise<HeadToHead> {
+  const res = await authedFetch(`/api/head2head?vs=${encodeURIComponent(pid)}`);
+  if (res === null || !res.ok) throw new Error(`head2head ${String(res?.status ?? 'no-identity')}`);
+  return (await res.json()) as HeadToHead;
 }
 
 /** Drop the cached stats/history reads — call this after something that

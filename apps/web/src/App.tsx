@@ -72,6 +72,9 @@ const DealBoard = lazy(() =>
   import('./screens/DealBoard.js').then((m) => ({ default: m.DealBoard })),
 );
 const Hand = lazy(() => import('./screens/Hand.js').then((m) => ({ default: m.Hand })));
+const HeadToHead = lazy(() =>
+  import('./screens/HeadToHead.js').then((m) => ({ default: m.HeadToHead })),
+);
 const Replay = lazy(() => import('./screens/Replay.js').then((m) => ({ default: m.Replay })));
 const Scenes = lazy(() => import('./screens/Scenes.js').then((m) => ({ default: m.Scenes })));
 const Stats = lazy(() => import('./screens/Stats.js').then((m) => ({ default: m.Stats })));
@@ -105,6 +108,9 @@ type Route =
    * every "you unlocked X" link points at, so the news leads to the thing. */
   | { kind: 'collection'; focus: string | null }
   | { kind: 'paint' }
+  /** One other player's shared record, by their PUBLIC id — the destination
+   * every named person in Your record links to. */
+  | { kind: 'h2h'; pid: string }
   | { kind: 'replay'; gameId: string }
   /** A shared POSITION — one moment of one game, playable. See
    * replay/position.ts for the link format and why it is action-indexed. */
@@ -144,6 +150,10 @@ function parseHash(): Route {
   const collectionFocus = /^#collection\/([a-z0-9-]{1,32})$/.exec(h);
   if (collectionFocus !== null) return { kind: 'collection', focus: collectionFocus[1] as string };
   if (h === '#paint') return { kind: 'paint' };
+  // publicId's own shape (16 hex) — anything else is a broken link, not a
+  // player, and falls through to the unknown-link notice below.
+  const h2h = /^#h2h\/([0-9a-f]{16})$/.exec(h);
+  if (h2h !== null) return { kind: 'h2h', pid: h2h[1] as string };
   const replay = /^#replay\/([A-Za-z0-9-]{1,64})$/.exec(h);
   if (replay !== null) return { kind: 'replay', gameId: replay[1] as string };
   const position = parsePositionHash(h);
@@ -413,6 +423,10 @@ function AppRoutes() {
     content = <Collection onLeave={() => (location.hash = '')} focus={route.focus} />;
   } else if (route.kind === 'paint') {
     content = <PaintStudio onLeave={() => (location.hash = '')} />;
+  } else if (route.kind === 'h2h') {
+    // Back to the record, not Home: this screen is only ever reached from
+    // there, and the tile you tapped is what you want to return to.
+    content = <HeadToHead pid={route.pid} onLeave={() => (location.hash = '#stats')} />;
   } else if (route.kind === 'replay') {
     content = <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
   } else if (route.kind === 'dealboard') {

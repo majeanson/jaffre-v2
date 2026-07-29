@@ -1,6 +1,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import type { RoundSummary } from '@jaffre/engine';
+import { publicId } from '../src/publicId.js';
 
 /**
  * /api/stats aggregates games directly from D1 — seeded here without going
@@ -79,6 +80,7 @@ describe('GET /api/stats', () => {
       },
       bestPartner: null,
       nemesis: null,
+      regulars: [],
       streak: { current: 0, best: 0 },
       spectated: 0,
     });
@@ -155,8 +157,9 @@ describe('GET /api/stats', () => {
       netPoints: number;
       bids: { attempted: number; made: number };
       sansAtout: { attempted: number; made: number };
-      bestPartner: { name: string; games: number; wins: number } | null;
-      nemesis: { name: string; games: number; losses: number } | null;
+      bestPartner: { pid: string; name: string; games: number; wins: number } | null;
+      nemesis: { pid: string; name: string; games: number; losses: number } | null;
+      regulars: { pid: string; name: string; withGames: number; vsGames: number }[];
       streak: { current: number; best: number };
     };
     expect(data.games).toBe(3);
@@ -166,11 +169,74 @@ describe('GET /api/stats', () => {
     expect(data.netPoints).toBe(60);
     expect(data.bids).toEqual({ attempted: 2, made: 1 });
     expect(data.sansAtout).toEqual({ attempted: 1, made: 0 });
-    expect(data.bestPartner).toEqual({ name: 'Carol', games: 2, wins: 1 });
+    expect(data.bestPartner).toEqual({
+      pid: publicId('carol'),
+      name: 'Carol',
+      games: 2,
+      wins: 1,
+    });
     // Bob is the only opponent faced twice (g1 win, g2 loss) → beats you once.
-    expect(data.nemesis).toEqual({ name: 'Bob', games: 2, losses: 1 });
+    expect(data.nemesis).toEqual({ pid: publicId('bob'), name: 'Bob', games: 2, losses: 1 });
+    // Regulars: 3+ shared games, partnered or opposed. Carol (2 with) and Bob
+    // (2 vs) are habits-in-progress, not regulars — nobody qualifies yet, and
+    // the threshold has to be able to say no or the list is just "everyone".
+    expect(data.regulars).toEqual([]);
     // Ascending order: win, loss, win — the trailing streak is 1, best is 1.
     expect(data.streak).toEqual({ current: 1, best: 1 });
+  });
+
+  /**
+   * Regulars are the head-to-head view's directory: the whole point is that
+   * "with" and "against" games COUNT TOGETHER, because the person you keep
+   * running into at a public table is one person however the teams fell.
+   */
+  it('lists regulars by total shared games, merging partnered and opposed', async () => {
+    const roster = (mateSeat: number, foeSeat: number, thirdSeat: number) => [
+      { seat: 0, userId: 'reg-me', isBot: 0 as const, name: 'Me' },
+      { seat: mateSeat, userId: 'reg-mate', isBot: 0 as const, name: 'Mate' },
+      { seat: foeSeat, userId: 'reg-foe', isBot: 0 as const, name: 'Foe' },
+      { seat: thirdSeat, userId: null, isBot: 1 as const, name: 'Bot' },
+    ];
+    // Mate partners twice then sits across once → 3 shared. Foe is across all
+    // three times → 3 shared. A one-off (Passing) never reaches the threshold.
+    await seedGame({
+      id: 'reg-g1',
+      roomCode: 'x1',
+      finishedAt: 10_000,
+      winnerTeam: 0,
+      roundSummaries: null,
+      players: roster(2, 1, 3),
+    });
+    await seedGame({
+      id: 'reg-g2',
+      roomCode: 'x2',
+      finishedAt: 20_000,
+      winnerTeam: 1,
+      roundSummaries: null,
+      players: roster(2, 3, 1),
+    });
+    await seedGame({
+      id: 'reg-g3',
+      roomCode: 'x3',
+      finishedAt: 30_000,
+      winnerTeam: 0,
+      roundSummaries: null,
+      players: [
+        { seat: 0, userId: 'reg-me', isBot: 0, name: 'Me' },
+        { seat: 1, userId: 'reg-mate', isBot: 0, name: 'Mate' },
+        { seat: 2, userId: 'reg-passing', isBot: 0, name: 'Passing' },
+        { seat: 3, userId: 'reg-foe', isBot: 0, name: 'Foe' },
+      ],
+    });
+
+    const res = await SELF.fetch('https://example.com/api/stats?u=reg-me');
+    const data = (await res.json()) as {
+      regulars: { pid: string; name: string; withGames: number; vsGames: number }[];
+    };
+    expect(data.regulars).toEqual([
+      { pid: publicId('reg-mate'), name: 'Mate', withGames: 2, vsGames: 1 },
+      { pid: publicId('reg-foe'), name: 'Foe', withGames: 0, vsGames: 3 },
+    ]);
   });
 
   it('splits declared contracts into per-trump mastery lanes', async () => {

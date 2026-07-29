@@ -9,6 +9,7 @@
  *   profile     the player's cosmetics on the users row
  *   games       the archive: finished-game history and replay logs
  *   stats       the aggregate record, and the awards derived from it
+ *   head2head   your record with and against ONE other player, by public id
  *   dealBoard   daily/weekly challenge submit + standings
  *   leaderboard the global Elo ladder
  *   tables      the Lobby DO: quickplay, open tables, the live feed
@@ -34,6 +35,7 @@ import {
 } from './routes/auth.js';
 import { handleChallengeBoard, handleChallengeSubmit } from './routes/dealBoard.js';
 import { handleHistory, handleReplay } from './routes/games.js';
+import { handleHeadToHead } from './routes/head2head.js';
 import { handleIce } from './routes/ice.js';
 import { handleLeaderboard } from './routes/leaderboard.js';
 import { handleProfile } from './routes/profile.js';
@@ -81,6 +83,9 @@ export default {
     if (pathname === '/api/profile' && method === 'POST') return handleProfile(request, env);
     if (pathname === '/api/history' && method === 'GET') return handleHistory(request, env, url);
     if (pathname === '/api/stats' && method === 'GET') return handleStats(request, env, url);
+    if (pathname === '/api/head2head' && method === 'GET') {
+      return handleHeadToHead(request, env, url);
+    }
     if (pathname === '/api/awards' && method === 'GET') return handleAwards(request, env, url);
     if (pathname === '/api/awards/grant' && method === 'POST') {
       return handleAwardGrant(request, env, url);

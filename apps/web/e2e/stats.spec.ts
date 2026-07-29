@@ -54,6 +54,48 @@ test('staged stats scene shows the full aggregate record', async ({ page }) => {
   await expect(page.getByText('beats you 5 of 8')).toBeVisible();
 });
 
+/**
+ * The two social tiles used to be dead ends: they named a person and went
+ * nowhere. Each is now a door into that head-to-head, and the regulars strip
+ * is the rest of the table — the people the two tiles can never name.
+ */
+test('the social tiles and the regulars strip open head-to-head records', async ({ page }) => {
+  await page.goto('/#scenes/stats');
+  // Ginette's pid in src/dev/scenes.ts — the link's address is her public id,
+  // never a uid or a display name.
+  const partner = page.locator('a', { has: page.getByTestId('best-partner-name') });
+  await expect(partner).toHaveAttribute('href', '#h2h/a1b2c3d4e5f60789');
+  const nemesis = page.locator('a', { has: page.getByTestId('nemesis-name') });
+  await expect(nemesis).toHaveAttribute('href', '#h2h/0f1e2d3c4b5a6978');
+  // Regulars are the people those two tiles DON'T name: Lise and Réal, not
+  // Ginette (best partner) or Marcel (nemesis) again.
+  const regulars = page.getByTestId('regulars-list');
+  await expect(regulars.locator('li')).toHaveCount(2);
+  await expect(regulars).toContainText('Lise');
+  await expect(regulars).toContainText('1 with · 3 against');
+  await expect(regulars).not.toContainText('Ginette');
+});
+
+test('staged head-to-head shows both records, the edge, and the shared games', async ({ page }) => {
+  // DEMO_HEAD_TO_HEAD: Ginette — 6 games partnered (4 won), 3 across (1 won).
+  await page.goto('/#scenes/head-to-head');
+  await expect(page.getByRole('heading', { name: 'Head to head' })).toBeVisible();
+  await expect(page.getByTestId('h2h-name')).toHaveText('Ginette');
+  await expect(page.getByText('9 games shared')).toBeVisible();
+  await expect(page.getByText('4/6')).toBeVisible();
+  await expect(page.getByText('1/3')).toBeVisible();
+  // The edge reads only the games you played AGAINST each other: 1 win, 2 losses.
+  await expect(page.getByTestId('h2h-edge')).toHaveText('Ginette has the edge.');
+  // Every shared game is listed, each a link into its replay.
+  await expect(page.locator('a[href^="#replay/h2h-"]')).toHaveCount(9);
+});
+
+test('head-to-head with someone you have never sat with says so', async ({ page }) => {
+  await page.goto('/#scenes/head-to-head-none');
+  await expect(page.getByText('No shared table')).toBeVisible();
+  await expect(page.locator('a[href^="#replay/"]')).toHaveCount(0);
+});
+
 test('the games section toggles Recent | All', async ({ page }) => {
   await page.goto('/#scenes/stats');
   await expect(page.getByText('Your games')).toBeVisible();

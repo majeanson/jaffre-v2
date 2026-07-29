@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import {
   DEMO_CHALLENGE_BOARD,
   DEMO_EARNED_AWARDS,
+  DEMO_HEAD_TO_HEAD,
+  DEMO_HEAD_TO_HEAD_NONE,
   DEMO_HISTORY,
   DEMO_HISTORY_NEW,
   DEMO_HISTORY_VETERAN,
@@ -32,6 +34,7 @@ import { PaintStudio } from './PaintStudio.js';
 import { PublicLobby } from './PublicLobby.js';
 import { DealBoard } from './DealBoard.js';
 import { Hand } from './Hand.js';
+import { HeadToHead } from './HeadToHead.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
 import { Table } from './Table.js';
@@ -280,6 +283,16 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
             onLeave={onLeave}
           />
         ))}
+      {current.screen === 'h2h' && (
+        <HeadToHead
+          key={current.id}
+          pid={
+            current.id === 'head-to-head-none' ? DEMO_HEAD_TO_HEAD_NONE.pid : DEMO_HEAD_TO_HEAD.pid
+          }
+          demo={current.id === 'head-to-head-none' ? DEMO_HEAD_TO_HEAD_NONE : DEMO_HEAD_TO_HEAD}
+          onLeave={onLeave}
+        />
+      )}
       {current.screen === 'replay' && (
         <Replay key={current.id} gameId={null} demo={DEMO_REPLAY} onLeave={onLeave} />
       )}

@@ -10,6 +10,7 @@ export type SceneScreen =
   | 'corner'
   | 'lobby'
   | 'stats'
+  | 'h2h'
   | 'replay'
   | 'hand'
   | 'dealboard'
@@ -344,6 +345,18 @@ export const SCENE_METAS = [
     label: 'Your record — all games',
     screen: 'stats',
     probe: 'a[href="#replay/demo-1"]',
+  },
+  {
+    id: 'head-to-head',
+    label: 'Head to head — with & against',
+    screen: 'h2h',
+    probe: '[data-testid="h2h-name"]',
+  },
+  {
+    id: 'head-to-head-none',
+    label: 'Head to head — never shared a table',
+    screen: 'h2h',
+    probe: 'text=No shared table',
   },
   {
     id: 'replay',

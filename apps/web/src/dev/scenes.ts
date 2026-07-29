@@ -4,6 +4,7 @@ import { applyAction, createGame, legalCards, mulberry32, viewFor } from '@jaffr
 import type { ChatEntry, MusicState, Roster } from '@jaffre/protocol';
 import type { ChallengeBoard } from '../net/challenge.js';
 import type {
+  HeadToHead,
   HistoryGame,
   Leaderboard,
   MonthlyLeaderboard,
@@ -255,6 +256,13 @@ export const DEMO_PUBLIC_ROOMS: readonly PublicRoom[] = [
   { code: 'chalet', host: 'Réal', players: 2, capacity: 4, phase: 'waiting' },
 ];
 
+/** Staged public ids for the staged people — 16 lowercase hex, publicId's own
+ * shape, so the `#h2h/<pid>` links these scenes render are real routes. */
+const PID_GINETTE = 'a1b2c3d4e5f60789';
+const PID_MARCEL = '0f1e2d3c4b5a6978';
+const PID_LISE = '1234abcd5678ef90';
+const PID_REAL = 'fedc0987ba654321';
+
 /** Staged "Your record" data for the stats scene. */
 export const DEMO_STATS: Stats = {
   games: 14,
@@ -271,8 +279,17 @@ export const DEMO_STATS: Stats = {
     green: { attempted: 0, made: 0 },
     blue: { attempted: 0, made: 0 },
   },
-  bestPartner: { name: 'Ginette', games: 6, wins: 4 },
-  nemesis: { name: 'Marcel', games: 8, losses: 5 },
+  bestPartner: { pid: PID_GINETTE, name: 'Ginette', games: 6, wins: 4 },
+  nemesis: { pid: PID_MARCEL, name: 'Marcel', games: 8, losses: 5 },
+  // Coherent with the two tiles above: Ginette's 6 partnered + 3 opposed are
+  // the same games DEMO_HEAD_TO_HEAD lists, and Marcel's 8 are the nemesis
+  // faced count. Lise is the third regular the tiles can never name.
+  regulars: [
+    { pid: PID_MARCEL, name: 'Marcel', withGames: 0, vsGames: 8 },
+    { pid: PID_GINETTE, name: 'Ginette', withGames: 6, vsGames: 3 },
+    { pid: PID_LISE, name: 'Lise', withGames: 1, vsGames: 3 },
+    { pid: PID_REAL, name: 'Réal', withGames: 2, vsGames: 2 },
+  ],
   streak: { current: 3, best: 5 },
 };
 
@@ -350,6 +367,44 @@ export const DEMO_HISTORY_NEW: readonly HistoryGame[] = [
   demoGameRow(0, 'salon', 0, true),
   demoGameRow(1, 'kitchen', 2, false),
 ];
+
+/**
+ * Staged head-to-head with Ginette — the destination DEMO_STATS' best-partner
+ * tile links to, and coherent with it: 6 games partnered (4 won) and 3 across
+ * the table (1 won). In DEMO_PLAYERS_SEAT0 Ginette sits at seat 2 (your
+ * partner) and in DEMO_PLAYERS_SEAT2 at seat 3 (an opponent), so the rows'
+ * `yourSeat` IS which side she was on — the two can't drift apart.
+ */
+const H2H_WITH = [true, true, false, true, true, false];
+const H2H_VS = [true, false, false];
+export const DEMO_HEAD_TO_HEAD: HeadToHead = {
+  pid: PID_GINETTE,
+  name: 'Ginette',
+  together: { games: H2H_WITH.length, wins: H2H_WITH.filter(Boolean).length },
+  against: { games: H2H_VS.length, wins: H2H_VS.filter(Boolean).length },
+  games: [
+    ...H2H_WITH.map((won, i) => ({
+      ...demoGameRow(i, VET_ROOMS[i] ?? 'salon', 0, won),
+      id: `h2h-with-${String(i)}`,
+      side: 'with' as const,
+    })),
+    ...H2H_VS.map((won, i) => ({
+      ...demoGameRow(H2H_WITH.length + i, 'cabin', 2, won),
+      id: `h2h-vs-${String(i)}`,
+      side: 'vs' as const,
+    })),
+  ],
+};
+
+/** The other end of the same screen: a pid you have never shared a table
+ * with. Answered, not errored — see routes/head2head.ts. */
+export const DEMO_HEAD_TO_HEAD_NONE: HeadToHead = {
+  pid: PID_LISE,
+  name: null,
+  together: { games: 0, wins: 0 },
+  against: { games: 0, wins: 0 },
+  games: [],
+};
 
 /** Staged skill ladder — a full top 10 plus the viewer pinned outside it. */
 export const DEMO_LEADERBOARD: Leaderboard = {
@@ -686,6 +741,8 @@ const LOADERS: Record<SceneId, () => void> = {
   'stats-veteran': () => undefined,
   'stats-loading': () => undefined,
   'stats-all-games': () => undefined,
+  'head-to-head': () => undefined,
+  'head-to-head-none': () => undefined,
   replay: () => undefined,
   // The shared-hand screen folds its own state out of the staged replay data
   // and starts practice mode from it — nothing to inject into the store.
