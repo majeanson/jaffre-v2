@@ -116,7 +116,7 @@ export function ProgressToast({ moments, onDone }: ProgressToastProps) {
       <a
         href={momentHref(moment)}
         onClick={onDone}
-        className="shrink-0 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-2.5 py-1 text-[0.75em] font-semibold tracking-wide text-white uppercase shadow-(--shadow-ap-sm)"
+        className="shrink-0 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-2.5 py-1 text-[0.75em] font-semibold tracking-wide text-(--color-ap-ink) uppercase shadow-(--shadow-ap-sm)"
       >
         {action}
       </a>
