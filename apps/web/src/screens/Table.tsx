@@ -1,7 +1,7 @@
 import { sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { useLang, type Lang } from '@jaffre/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
@@ -10,6 +10,7 @@ import { RoomComms, toggleRoomComms } from '../comms/RoomComms.js';
 import {
   BidOverlay,
   ConnectionBanner,
+  FlightLayer,
   GameLogPanel,
   HandSortButton,
   Overlays,
@@ -19,11 +20,16 @@ import {
   TutorialCoach,
   UtilityRow,
   WaitingScreen,
+  hold,
+  launchFlight,
+  scoreTarget,
   useHandSort,
+  useHeldDisplay,
   useQueuedPlay,
   useTableDerived,
   useTableKeys,
   useTrickHold,
+  viewportCentreRect,
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { useDealRun } from '../table/dealPace.js';
@@ -32,6 +38,7 @@ import { IconButton, ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion, IconSeat } from '../components/icons.js';
 import { TrumpCallout } from '../table/TrumpCallout.js';
 import { TeachingGoal } from '../table/TeachingGoal.js';
+import { TEAMS } from '../teams.js';
 import { useWakeLock } from '../pwa/useWakeLock.js';
 import { leaveVoice } from '../voice/rtc.js';
 import { DevConsole, DEV_CONSOLE_ENABLED } from '../dev/DevConsole.js';
@@ -152,6 +159,88 @@ export function Table({
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 
+  // Delivery 3 (see PLAN-scoreboard-delivery.md): the contract-won flight. A
+  // sentinel `undefined` baseline (as opposed to `null`) means "haven't
+  // observed a view yet" — so a page reload landing mid-round, contract
+  // already decided, seeds the baseline as already-set and never fires; only
+  // a genuine null→set transition witnessed live does.
+  const prevContractSeatRef = useRef<number | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    const liveView = derived?.view ?? null;
+    if (liveView === null) return;
+    const seat = liveView.contract?.seat ?? null;
+    const prev = prevContractSeatRef.current;
+    if (prev !== undefined && prev === null && seat !== null) {
+      hold('contract');
+      const viewerSeat = derived?.me ?? null;
+      const position = viewerSeat === null ? seat : (seat - viewerSeat + 4) % 4;
+      const source = document.querySelector(`[data-deal-target="${String(position)}"]`);
+      const contract = liveView.contract;
+      launchFlight({
+        from: source ?? viewportCentreRect(),
+        to: 'contract',
+        key: 'contract',
+        payload: (
+          <span className="grid place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.6em] py-[0.2em] font-arcade-display text-[1.1em] text-(--color-ap-text) shadow-(--shadow-ap-sm)">
+            {contract?.value}
+            {contract?.sansAtout === true ? ' SA' : ''}
+          </span>
+        ),
+      });
+    }
+    prevContractSeatRef.current = seat;
+  }, [derived]);
+
+  // Delivery 5: the round-total flight. Same sentinel-baseline idea as the
+  // contract watcher above, but with `null` (no valid scores tuple yet) doing
+  // that job — a genuine change from ANY previously-observed scores fires,
+  // so a mid-game reload's first real round still gets its flight.
+  const prevScoresRef = useRef<readonly [number, number] | null>(null);
+  useLayoutEffect(() => {
+    const scores = derived?.view.scores ?? null;
+    const prev = prevScoresRef.current;
+    if (scores !== null && prev !== null) {
+      for (const team of [0, 1] as const) {
+        const delta = scores[team] - prev[team];
+        if (delta === 0) continue;
+        const key = scoreTarget(team);
+        hold(key);
+        launchFlight({
+          from: viewportCentreRect(),
+          to: key,
+          key,
+          payload: (
+            <span
+              className="rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[1.3em] shadow-(--shadow-ap-sm)"
+              style={{ color: TEAMS[team].color }}
+            >
+              {delta > 0 ? '+' : ''}
+              {delta}
+            </span>
+          ),
+        });
+      }
+    }
+    prevScoresRef.current = scores;
+  }, [derived]);
+
+  // The bar's displayed scores/trick-counts/trump/contract/specials lag their
+  // real values until the flight carrying each change lands (see flight.tsx).
+  // MUST be called AFTER the two watcher effects above: useHeldDisplay's
+  // previous-value capture runs in effect call order, and every hold has to
+  // land before the capture does — that ordering contract is the whole
+  // wait-for-landing model. Everything else below keeps reading `derived`
+  // directly, unmasked.
+  const heldDisplay = useHeldDisplay(
+    derived?.view ?? null,
+    derived?.trickCounts ?? [0, 0],
+    derived?.contractDisplay ?? null,
+    derived?.teamSpecials ?? [
+      { red: false, brown: false },
+      { red: false, brown: false },
+    ],
+  );
+
   if (derived === null) return <WaitingScreen />;
   const { view, roster, me, myTurn, seatInfo } = derived;
 
@@ -162,17 +251,19 @@ export function Table({
       }`}
     >
       {online && <ConnectionBanner />}
+      {/* Real play only: the scoreboard-delivery flight clones render here.
+          No layer in scenes/replay means every launchFlight call there is a
+          no-op that lands instantly (see flight.ts) — this mount IS the
+          entire scenes/replay story, nothing else has to know about it. */}
+      {dev && <FlightLayer />}
       <NoticeToast />
-      {/* Real play only (dev = App-mounted): scenes and replay stage mid-round
-          states where the fanfare would be noise in every shot. */}
-      {dev && <TrumpCallout />}
       <TopBar
-        view={view}
-        contract={derived.contractDisplay}
+        view={heldDisplay.view ?? view}
+        contract={heldDisplay.contract}
         rounds={derived.scoreboardRounds}
         names={roster.seats.map((s) => s?.name ?? '—')}
-        trickCounts={derived.trickCounts}
-        specials={derived.teamSpecials}
+        trickCounts={heldDisplay.trickCounts}
+        specials={heldDisplay.specials}
         action={derived.headerAction}
         myTeam={me !== null ? ((me % 2) as 0 | 1) : null}
         onLeave={onLeave}
@@ -203,6 +294,9 @@ export function Table({
         coachTip={derived.coach?.tip ?? null}
         capHeight={me === null}
         noDealIntro={noDealIntro}
+        // Real play only (dev = App-mounted): scenes and replay stage
+        // mid-round states where the fanfare would be noise in every shot.
+        announcement={dev ? <TrumpCallout /> : undefined}
         bidOverlay={
           // The auction opens once the cards are in front of you, not over the
           // deal — you can't size up a hand you haven't been given yet.

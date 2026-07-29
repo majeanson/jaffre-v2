@@ -283,3 +283,164 @@ test.describe('the round-start deal', () => {
     await expect(page.getByTestId('deal-intro')).toBeHidden();
   });
 });
+
+test.describe('the scoreboard-delivery flights', () => {
+  // See PLAN-scoreboard-delivery.md and apps/web/src/table/flight.tsx: every
+  // change to the top bar's numbers arrives as a chip flying from the felt
+  // event that caused it, and the bar's DISPLAYED value waits for the chip to
+  // land before it moves. Both specs here drive a real practice game — pass
+  // through the auction, play whatever's playable — and sample the DOM by
+  // rAF from inside the page, the same technique the rest of this file uses,
+  // because the ordering claim ("not yet — not yet — NOW") is exactly what a
+  // single before/after screenshot can't tell apart from a bug.
+
+  test("a trick's points chip flies to the bar before its tally updates", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto('/#practice');
+
+    // Sample every animation frame from page load: a flight-chip's presence,
+    // and each team pill's trick-tally aria-label (the TrickPile span — the
+    // LAST direct child of the pill root, regardless of which side is
+    // mirrored — see ScoreStrip's TeamSide). Stops 2.5s after the first trick
+    // banner appears, which comfortably outlasts the single points flight
+    // (paced(600)) launched the instant that banner mounts.
+    const samplesPromise = page.evaluate(
+      () =>
+        new Promise<{ t: number; chip: boolean; label0: string | null; label1: string | null }[]>(
+          (resolve) => {
+            const samples: {
+              t: number;
+              chip: boolean;
+              label0: string | null;
+              label1: string | null;
+            }[] = [];
+            const start = performance.now();
+            let stop = false;
+            const label = (team: 0 | 1): string | null =>
+              document
+                .querySelector(`[data-flight-target="score-${String(team)}"] > span:last-child`)
+                ?.getAttribute('aria-label') ?? null;
+            const tick = () => {
+              samples.push({
+                t: performance.now() - start,
+                chip: document.querySelector('[data-testid="flight-chip"]') !== null,
+                label0: label(0),
+                label1: label(1),
+              });
+              if (stop) resolve(samples);
+              else requestAnimationFrame(tick);
+            };
+            const observer = new MutationObserver(() => {
+              if (document.querySelector('[data-testid="trick-banner"]') === null) return;
+              observer.disconnect();
+              window.setTimeout(() => {
+                stop = true;
+              }, 2500);
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            requestAnimationFrame(tick);
+            // Safety cap: no trick ever completed.
+            window.setTimeout(() => {
+              stop = true;
+            }, 60_000);
+          },
+        ),
+    );
+
+    const pass = page.getByRole('button', { name: 'Pass' });
+    const playable = page.locator('[role="option"][data-playable="true"]');
+    const trickBanner = page.getByTestId('trick-banner');
+    const deadline = Date.now() + 55_000;
+    while (Date.now() < deadline && !(await trickBanner.isVisible())) {
+      if (await pass.isVisible()) {
+        if (await pass.isEnabled()) await pass.click();
+      } else if ((await playable.count()) > 0) {
+        await playable.first().click();
+      }
+      await page.waitForTimeout(120);
+    }
+    // Let the sampling window (banner + 2.5s) actually finish before reading it.
+    await page.waitForTimeout(3_000);
+
+    const samples = await samplesPromise;
+    expect(samples.length, 'rAF sampling never ran').toBeGreaterThan(10);
+
+    const chipIdx = samples.findIndex((s) => s.chip);
+    expect(chipIdx, 'no flight-chip ever appeared').toBeGreaterThanOrEqual(0);
+    const chipGoneIdx = samples.findIndex((s, i) => i > chipIdx && !s.chip);
+    expect(chipGoneIdx, 'flight-chip never disappeared').toBeGreaterThan(chipIdx);
+
+    // Exactly one side's tally is the one this trick moved — the other team's
+    // never budges (only the winning team's points/trick-count are held).
+    const first = samples[0] as { label0: string | null; label1: string | null };
+    const last = samples[samples.length - 1] as { label0: string | null; label1: string | null };
+    const movedTeam: 'label0' | 'label1' = first.label0 !== last.label0 ? 'label0' : 'label1';
+    expect(first[movedTeam], 'the tally never changed at all').not.toBe(last[movedTeam]);
+
+    // While the chip was airborne, that side's tally still read its OLD
+    // value — it only moves to the new one once the chip is gone.
+    for (let i = chipIdx; i < chipGoneIdx; i++) {
+      expect(samples[i]?.[movedTeam], `sample ${String(i)} moved before landing`).toBe(
+        first[movedTeam],
+      );
+    }
+  });
+
+  test('the trump badge appears only after its flight lands', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto('/#practice');
+
+    // Trump is set the instant the contract holder leads their first card —
+    // sample from page load until the strip's trump slot actually gets a
+    // child (see ScoreStrip's TrumpBadge: the slot itself always exists, but
+    // stays empty while trumpDecided is masked false).
+    const samplesPromise = page.evaluate(
+      () =>
+        new Promise<{ t: number; chip: boolean; trumpShown: boolean }[]>((resolve) => {
+          const samples: { t: number; chip: boolean; trumpShown: boolean }[] = [];
+          const start = performance.now();
+          const tick = () => {
+            const slot = document.querySelector('[data-flight-target="trump"]');
+            const trumpShown = slot !== null && slot.children.length > 0;
+            samples.push({
+              t: performance.now() - start,
+              chip: document.querySelector('[data-testid="flight-chip"]') !== null,
+              trumpShown,
+            });
+            if (trumpShown || samples.length > 4000) resolve(samples);
+            else requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+    );
+
+    const pass = page.getByRole('button', { name: 'Pass' });
+    const playable = page.locator('[role="option"][data-playable="true"]');
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
+      const trumpShown = await page
+        .locator('[data-flight-target="trump"]')
+        .evaluate((el) => el.children.length > 0)
+        .catch(() => false);
+      if (trumpShown) break;
+      if (await pass.isVisible()) {
+        if (await pass.isEnabled()) await pass.click();
+      } else if ((await playable.count()) > 0) {
+        await playable.first().click();
+      }
+      await page.waitForTimeout(120);
+    }
+
+    const samples = await samplesPromise;
+    expect(samples.length, 'rAF sampling never ran').toBeGreaterThan(5);
+    const shownIdx = samples.findIndex((s) => s.trumpShown);
+    // Sans-atout contracts skip the callout (and the flight) entirely by
+    // design — the badge still shows, just never masked in the first place —
+    // so only assert the ordering when a chip was actually seen airborne.
+    const chipIdx = samples.findIndex((s) => s.chip);
+    expect(shownIdx, 'trump badge never appeared').toBeGreaterThanOrEqual(0);
+    if (chipIdx >= 0) {
+      expect(samples[chipIdx]?.trumpShown, 'badge showed before its flight landed').toBe(false);
+    }
+  });
+});

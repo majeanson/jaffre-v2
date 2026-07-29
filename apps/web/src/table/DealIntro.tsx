@@ -1,23 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayingCard } from '@jaffre/ui';
 import { paceScale, paced } from './pacePref.js';
-import { DEAL_TOTAL_MS, RIM_FLIGHTS, YOUR_FLIGHTS, flightDelayMs } from './dealPace.js';
+import {
+  DEAL_TOTAL_MS,
+  DECK_SIZE,
+  FLIGHT_MS,
+  HAND_SIZE,
+  flightDelayMs,
+  flightSlot,
+} from './dealPace.js';
 
 /** How long the fly-out itself takes before the layer starts fading — the
  * shared deal clock (see dealPace), so the hand and the auction agree. */
 const DEAL_MS = DEAL_TOTAL_MS;
 /** The fade-to-nothing tail after the cards land. */
 const FADE_MS = 350;
-/** Flights toward each seat: the rim gets 3 — just enough to read as "a
- * hand", not the real count (that's redacted game state the deck has no
- * business showing) — while your own seat gets the real 8, so the fly-out
- * and your fan below are counting the same deal. */
-const CARDS_PER_SEAT: Record<0 | 1 | 2 | 3, number> = {
-  0: YOUR_FLIGHTS,
-  1: RIM_FLIGHTS,
-  2: RIM_FLIGHTS,
-  3: RIM_FLIGHTS,
-};
 
 /** A face-down card, always the same rank — its BACK is all that's ever shown,
  * so which card it "is" is irrelevant. */
@@ -63,11 +60,24 @@ function measureTargets(deck: HTMLElement): Targets {
   return out as Targets;
 }
 
+/** Every card is BOTH a layer of the stack and a flight: `both` fill holds it
+ * at the 0% frame (its resting spot in the stack) until its own delay, then it
+ * peels off and flies — so the stack visibly shrinks one card per departure
+ * and is simply gone when the last card leaves. Arrival is the 70% keyframe
+ * (dealPace.ARRIVE_MS = FLIGHT_MS * 0.7 — keep them in step). Cards to the
+ * rim hold where they land, a little pile at each avatar; cards to YOUR seat
+ * dissolve the instant they arrive, because that same instant the real card
+ * pops into your fan below (PlayerHand reads the same clock) — the flight
+ * "becomes" the card in your hand instead of piling on top of it. */
 const KEYFRAMES = `
 @keyframes deal-fly {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  10% { opacity: 1; }
-  62%, 100% { transform: translate(var(--dtx), var(--dty)) rotate(var(--dtr)); opacity: 1; }
+  0% { transform: translate(var(--sx), var(--sy)) rotate(var(--sr)); opacity: 1; }
+  70%, 100% { transform: translate(var(--dtx), var(--dty)) rotate(var(--dtr)); opacity: 1; }
+}
+@keyframes deal-fly-merge {
+  0% { transform: translate(var(--sx), var(--sy)) rotate(var(--sr)); opacity: 1; }
+  70% { transform: translate(var(--dtx), var(--dty)) rotate(var(--dtr)); opacity: 1; }
+  100% { transform: translate(var(--dtx), var(--dty)) rotate(var(--dtr)); opacity: 0; }
 }
 `;
 
@@ -122,54 +132,61 @@ export function DealIntro({ dealKey }: { readonly dealKey: number }) {
       }`}
     >
       <style>{KEYFRAMES}</style>
-      {/* The deck itself: a few stacked face-down cards, top-left inside the
-          felt oval, clear of the top seat chip which is centered. */}
+      {/* The whole deck, top-left inside the felt oval, clear of the centered
+          top seat chip. All 32 cards render up front as one thick stack; each
+          card holds its stack spot until its own departure slot, then flies
+          (see KEYFRAMES) — the stack thins one card per flight and is simply
+          gone when the last card leaves. Delays come from dealPace's single
+          schedule — the same one your fan below reads — so a card's flight
+          and its arrival in the fan are one event. */}
       <div ref={deckRef} className="absolute top-[6%] left-[4%] max-sm:top-[8%] max-sm:left-[3%]">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div
-            key={i}
-            className="absolute"
-            style={{ left: `${String(i * 0.12)}rem`, top: `${String(i * -0.12)}rem` }}
-          >
-            <PlayingCard card={BACK_CARD} size="sm" faceDown />
-          </div>
-        ))}
+        {seats.flatMap((seat) =>
+          Array.from({ length: HAND_SIZE }, (_, i) => {
+            const [tx, ty] = targets[seat];
+            // Stagger and flight time ride the same scale as the phase timers
+            // above, so the animation still finishes inside its own window.
+            const scale = paceScale();
+            const slot = flightSlot(seat, i);
+            const delay = (flightDelayMs(seat, i) / 1000) * scale;
+            // Slot 0 deals first, off the TOP: depth counts up from the
+            // bottom of the pile, and z falls with slot so the pile paints
+            // top card over the rest.
+            const depth = DECK_SIZE - 1 - slot;
+            // Landing spread: dead-centre landings would stack all 8 cards
+            // into what reads as ONE card — a small sideways fan per flight
+            // makes the pile at each seat legibly "a hand of cards".
+            const fan = i - (HAND_SIZE - 1) / 2;
+            return (
+              <div
+                key={`${String(seat)}-${String(i)}`}
+                className="absolute top-0 left-0"
+                style={
+                  {
+                    // The card's resting spot in the stack: a nudge up and
+                    // right per card of depth gives the pile its thickness,
+                    // and a touch of deterministic jitter keeps it looking
+                    // squared by hand rather than machined.
+                    '--sx': `${String(depth * 0.016)}rem`,
+                    '--sy': `${String(depth * -0.045)}rem`,
+                    '--sr': `${String((((slot * 13) % 7) - 3) * 0.6)}deg`,
+                    '--dtx': `calc(${tx} + ${String(fan * 0.34)}rem)`,
+                    '--dty': ty,
+                    // The fan's rotation ramp, plus a light per-seat lean —
+                    // landed hands read as fanned cards, not a machined row.
+                    '--dtr': `${String(fan * 5 + seat * 2)}deg`,
+                    zIndex: DECK_SIZE - slot,
+                    animation: `${seat === 0 ? 'deal-fly-merge' : 'deal-fly'} ${String(
+                      (FLIGHT_MS / 1000) * scale,
+                    )}s cubic-bezier(0.2, 0.7, 0.3, 1) ${String(delay)}s 1 both`,
+                  } as CSSProperties
+                }
+              >
+                <PlayingCard card={BACK_CARD} size="sm" faceDown />
+              </div>
+            );
+          }),
+        )}
       </div>
-      {/* The fly-out: a handful of cards per seat, staggered, arcing from the
-          deck's corner out toward that seat's edge of the felt. Delays come
-          from dealPace's single schedule — the same one your fan below reads
-          — so a card's flight and its arrival in the fan are one event. */}
-      {seats.flatMap((seat) =>
-        Array.from({ length: CARDS_PER_SEAT[seat] }, (_, i) => {
-          const [tx, ty] = targets[seat];
-          // Stagger and flight time ride the same scale as the phase timers
-          // above, so the animation still finishes inside its own window.
-          const scale = paceScale();
-          const delay = (flightDelayMs(seat, i) / 1000) * scale;
-          return (
-            <div
-              key={`${String(seat)}-${String(i)}`}
-              // Same anchor as the deck itself — the measured offsets are
-              // deck-centre → chip-centre, so the flight starts where they do.
-              className="absolute top-[6%] left-[4%] max-sm:top-[8%] max-sm:left-[3%]"
-              style={
-                {
-                  '--dtx': tx,
-                  '--dty': ty,
-                  // Cycles every 3 flights rather than growing with `i` —
-                  // your seat gets 8 flights now, and a bare `i` would spin
-                  // the later ones far past a natural card-toss angle.
-                  '--dtr': `${String(((i % 3) - 1) * 10 + seat * 3)}deg`,
-                  opacity: 0,
-                  animation: `deal-fly ${String(0.75 * scale)}s ease-out ${String(delay)}s 1 both`,
-                } as CSSProperties
-              }
-            >
-              <PlayingCard card={BACK_CARD} size="sm" faceDown />
-            </div>
-          );
-        }),
-      )}
     </div>
   );
 }

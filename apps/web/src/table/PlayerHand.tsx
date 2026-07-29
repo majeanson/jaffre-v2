@@ -5,7 +5,7 @@ import { feedback, playClick } from '../audio/clicks.js';
 import { IconButton } from '../components/IconButton.js';
 import { IconSort } from '../components/icons.js';
 import { getProfile } from '../net/auth.js';
-import { DEAL_TOTAL_MS, YOUR_FLIGHTS, fanShowMs } from './dealPace.js';
+import { DEAL_TOTAL_MS, HAND_SIZE, fanShowMs } from './dealPace.js';
 import { paced } from './pacePref.js';
 
 const FR_SUIT: Record<Suit, string> = { red: 'rouge', brown: 'brun', green: 'vert', blue: 'bleu' };
@@ -67,6 +67,19 @@ export function useHandSort(cards: readonly Card[]): HandSort {
 
   // Each press applies one of the two orders, alternating: colours ⇄ values.
   const [sortMode, setSortMode] = useState<'colour' | 'value'>('colour');
+
+  // A hand only ever shrinks within a round, so a growing one is a fresh deal:
+  // drop the previous round's order (some card keys repeat, so the fallback
+  // alone would half-apply it) and restart the cycle at colours — the first
+  // press of EVERY hand tidies by suit, not by value.
+  const handCount = useRef(cards.length);
+  useEffect(() => {
+    if (cards.length > handCount.current) {
+      setOrder([]);
+      setSortMode('colour');
+    }
+    handCount.current = cards.length;
+  }, [cards.length]);
 
   const sortHand = () => {
     const sorted = (sortMode === 'colour' ? sortByColour : sortByValue)(displayCards);
@@ -161,7 +174,7 @@ export function PlayerHand({
     // Each card appears the instant ITS flight lands (dealPace's one shared
     // schedule — the deck's fly-out reads the same numbers), not on a lead +
     // even stagger of our own that could drift from what's on screen.
-    const timers = Array.from({ length: YOUR_FLIGHTS }, (_, i) =>
+    const timers = Array.from({ length: HAND_SIZE }, (_, i) =>
       setTimeout(
         () => {
           setDealt(i + 1);

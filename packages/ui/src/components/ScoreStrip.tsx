@@ -286,6 +286,10 @@ function TeamSide({
   }
   return (
     <span
+      // The scoreboard-delivery flight system's landing pad for this team's
+      // score pill (trick-points and round-total chips both fly here — see
+      // apps/web/src/table/flight.tsx).
+      data-flight-target={`score-${team}`}
       className={`flex min-w-0 items-center gap-2.5 max-sm:gap-1.5 ${mirrored ? 'flex-row-reverse' : ''} ${
         // Your team's side gets a soft tint — no heavy ring boxing it in.
         isMine
@@ -661,27 +665,33 @@ export function ScorePad({
   );
 }
 
-/** The trump suit, called out with its mark + color — the key fact of the round. */
+/** The trump suit, called out with its mark + color — the key fact of the
+ * round. The outer span is the scoreboard-delivery flight system's landing
+ * pad (see apps/web/src/table/flight.tsx) — it MUST exist, and keep its
+ * rect, even before trump is decided: the trump-set flight targets it at the
+ * moment `trumpDecided` is still (masked) false, so an outer node that only
+ * appeared once decided would give it nothing to land on. */
 function TrumpBadge({ trump, trumpDecided }: { trump: SuitId | null; trumpDecided: boolean }) {
   const lang = useLang();
   const t = T[lang];
-  if (!trumpDecided) return null;
-  if (trump === null) {
-    return (
-      <span
-        className={`${ARCADE.inner} bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase`}
-      >
-        {t.noTrump}
-      </span>
-    );
-  }
   return (
-    <span
-      title={t.trumpTitle(suitName(trump, lang))}
-      className={`${ARCADE.inner} grid size-[1.7em] place-items-center bg-(--color-ap-panel)`}
-    >
-      <SuitShape suit={trump} size="0.9em" />
-      <span className="sr-only">{t.trumpSr(suitName(trump, lang))}</span>
+    <span data-flight-target="trump" className="inline-flex">
+      {trumpDecided &&
+        (trump === null ? (
+          <span
+            className={`${ARCADE.inner} bg-(--color-ap-panel) px-[0.5em] py-[0.15em] font-arcade-display text-[0.6em] tracking-wide text-(--color-ap-text) uppercase`}
+          >
+            {t.noTrump}
+          </span>
+        ) : (
+          <span
+            title={t.trumpTitle(suitName(trump, lang))}
+            className={`${ARCADE.inner} grid size-[1.7em] place-items-center bg-(--color-ap-panel)`}
+          >
+            <SuitShape suit={trump} size="0.9em" />
+            <span className="sr-only">{t.trumpSr(suitName(trump, lang))}</span>
+          </span>
+        ))}
     </span>
   );
 }
@@ -750,8 +760,16 @@ export function ScoreStrip({
             </span>
           )}
           <span className="flex min-w-0 items-center gap-2">
+            {/* data-flight-target="contract" on BOTH branches (only one is
+                ever mounted): the contract-won flight targets this slot at
+                the moment `contract` is still (masked) null, so the target
+                must resolve regardless of which branch that masked render
+                is showing. */}
             {contract !== null ? (
-              <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-(--color-ap-text) tabular-nums">
+              <span
+                data-flight-target="contract"
+                className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-(--color-ap-text) tabular-nums"
+              >
                 {/* The bet value rides in the fraction's denominator once play
                     starts — repeating it next to the name reads "Broski 7 0/7". */}
                 <span className="truncate font-arcade-display uppercase">
@@ -766,7 +784,10 @@ export function ScoreStrip({
                 )}
               </span>
             ) : (
-              <span className="text-[0.85em] whitespace-nowrap text-(--color-ap-muted)">
+              <span
+                data-flight-target="contract"
+                className="text-[0.85em] whitespace-nowrap text-(--color-ap-muted)"
+              >
                 {t.noBetYet}
               </span>
             )}

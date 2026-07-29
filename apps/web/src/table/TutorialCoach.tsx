@@ -256,20 +256,29 @@ export function TutorialCoach({
           document.body,
         )}
       {current !== null &&
-        createPortal(
-          // key: each mark MOUNTS fresh — the pop-in replays and the arm-delay
-          // guard resets, so when one tip follows another the swap is visible
-          // and the tap (or ghost click) that closed the first can't also land
-          // on the second's identically-placed ✕.
-          <Mark
-            key={current}
-            copy={MARKS[current][lang]}
-            lang={lang}
-            onLearn={() => setHelpJump(MARKS[current][lang].concept)}
-            onClose={dismissMark}
-          />,
-          document.body,
-        )}
+        (() => {
+          // Live-play marks join the felt's toast stack (Stage renders the
+          // node) so they can never bury — or be buried by — the trump
+          // callout or the trick banner. The round-over mark floats: the
+          // z-[45] summary overlay covers the stage, stack included.
+          const stack =
+            current === 'roundOver' ? null : document.getElementById('table-toast-stack');
+          return createPortal(
+            // key: each mark MOUNTS fresh — the pop-in replays and the
+            // arm-delay guard resets, so when one tip follows another the
+            // swap is visible and the tap (or ghost click) that closed the
+            // first can't also land on the second's identically-placed ✕.
+            <Mark
+              key={current}
+              copy={MARKS[current][lang]}
+              lang={lang}
+              onLearn={() => setHelpJump(MARKS[current][lang].concept)}
+              onClose={dismissMark}
+              floating={stack === null}
+            />,
+            stack ?? document.body,
+          );
+        })()}
       {showPip &&
         createPortal(
           <ProgressPip lang={lang} seen={progress} total={total} done={progress >= total} />,
@@ -413,11 +422,18 @@ function Mark({
   lang,
   onLearn,
   onClose,
+  floating,
 }: {
   readonly copy: MarkCopy;
   readonly lang: Lang;
   readonly onLearn: () => void;
   readonly onClose: () => void;
+  /** True when portaled to <body> (round-over: the z-[45] summary overlay
+   * would bury the felt's z-30 toast stack, so this one floats at z-[48],
+   * matching ConnectionBanner's slot). Every live-play mark instead renders
+   * INSIDE Stage's toast stack, under the trump callout and trick banner,
+   * so simultaneous notices stack instead of covering each other. */
+  readonly floating: boolean;
 }) {
   const u = UI[lang];
   // A tip is inert for its first beat: after one mark replaces another the ✕
@@ -429,10 +445,13 @@ function Mark({
     return () => clearTimeout(t);
   }, []);
   return (
-    // z-[48]: above every in-game overlay (the round summary is a full-screen
-    // z-[45] scene that was burying the round-over tip) but below the z-50
-    // sheets, matching ConnectionBanner's slot.
-    <div className="pointer-events-none fixed left-1/2 top-[4.75rem] z-[48] w-[min(94vw,30rem)] -translate-x-1/2 px-2 max-sm:top-[4.25rem]">
+    <div
+      className={
+        floating
+          ? 'pointer-events-none fixed left-1/2 top-[4.75rem] z-[48] w-[min(94vw,30rem)] -translate-x-1/2 px-2 max-sm:top-[4.25rem]'
+          : 'pointer-events-none w-[min(94vw,30rem)] max-w-full'
+      }
+    >
       {/* An ink card with a gold spark — permanently dark, so its text is white
           (not the theme-flipping --color-ap-text). Matches CoachHint's look. */}
       <div

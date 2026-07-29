@@ -71,6 +71,10 @@ test('queues a card while waiting and it auto-plays on your turn', async ({ page
       // trick hold can precede our turn.
       await expect(options).toHaveCount(handSize - 1, { timeout: 30_000 });
       await expect(queued).toHaveCount(0);
+      // This project runs under reducedMotion: 'reduce' — every scoreboard
+      // flight (see flight.ts) must have landed instantly, never spawning a
+      // clone, across the whole hand of tricks played to get here.
+      await expect(page.getByTestId('flight-chip')).toHaveCount(0);
       return;
     }
 

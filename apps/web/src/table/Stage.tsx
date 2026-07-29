@@ -1,6 +1,6 @@
 import { TrickArea, useLang, type Lang } from '@jaffre/ui';
 import type { ReactNode } from 'react';
-import { CoachHint } from './CoachHint.js';
+import { CoachTipPill } from './CoachHint.js';
 import { DealIntro } from './DealIntro.js';
 import { SeatChip } from './SeatChip.js';
 import { TrickBanner } from './TrickBanner.js';
@@ -24,6 +24,10 @@ export interface StageProps {
   readonly dealKey: number;
   /** Auction controls, rendered over the stage on your bidding turn. */
   readonly bidOverlay?: ReactNode;
+  /** A transient game announcement (the trump callout) — rendered at the TOP
+   * of the felt's toast stack, above the trick banner. Table passes it only
+   * in real play (dev), same gate the callout always had. */
+  readonly announcement?: ReactNode;
   /** The Coach's one-line tip, shown when a trick result isn't already up. */
   readonly coachTip?: string | null;
   /** Spectator view: no hand dock below, so the stage would absorb the whole
@@ -43,6 +47,7 @@ export function Stage({
   seatInfo,
   dealKey,
   bidOverlay,
+  announcement,
   coachTip = null,
   capHeight = false,
   noDealIntro = false,
@@ -91,10 +96,23 @@ export function Stage({
           className="absolute inset-[7%] z-[11] cursor-pointer rounded-[46%] max-sm:inset-x-[2%] max-sm:inset-y-[3%]"
         />
       )}
-      {banner !== null && <TrickBanner banner={banner} />}
-      {banner === null && !bidding && coachTip !== null && coachTip !== '' && (
-        <CoachHint tip={coachTip} />
-      )}
+      {/* ONE bottom-anchored stack for everything that announces over the
+          felt: the trump callout (passed in as `announcement`), the trick
+          banner, the Coach's tip — and the tutorial coach-marks, which portal
+          themselves into this node by id (TutorialCoach). Before, the trump
+          callout and the coach-marks sat under the top bar at the SAME fixed
+          coordinates and buried each other; now simultaneous notices stack in
+          a column and every one stays readable. */}
+      <div
+        id="table-toast-stack"
+        className="pointer-events-none absolute bottom-[4%] left-1/2 z-30 flex w-max max-w-[94vw] -translate-x-1/2 flex-col items-center gap-2 px-3 max-sm:bottom-[12%]"
+      >
+        {announcement}
+        {banner !== null && <TrickBanner banner={banner} />}
+        {banner === null && !bidding && coachTip !== null && coachTip !== '' && (
+          <CoachTipPill tip={coachTip} />
+        )}
+      </div>
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·
           bot"). Phone: compact avatar tokens pulled ONTO the felt, diagonally
           offset beside their own played card, so the rim isn't dead space.

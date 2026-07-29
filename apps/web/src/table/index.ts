@@ -3,6 +3,7 @@ export * from './BidOverlay.js';
 export * from './CoachHint.js';
 export * from './ConnectionBanner.js';
 export * from './Confetti.js';
+export * from './flight.js';
 export * from './GameLogPanel.js';
 export * from './GameRecap.js';
 export * from './LastTrickPeek.js';
