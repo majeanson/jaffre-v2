@@ -159,7 +159,8 @@ export function Table({
   // Leaving the table (or the room) always tears the voice mesh down.
   useEffect(() => (online ? () => leaveVoice() : undefined), [online]);
 
-  // Delivery 3 (see PLAN-scoreboard-delivery.md): the contract-won flight. A
+  // Delivery 3 (see docs/archive/PLAN-scoreboard-delivery.md): the
+  // contract-won flight. A
   // sentinel `undefined` baseline (as opposed to `null`) means "haven't
   // observed a view yet" — so a page reload landing mid-round, contract
   // already decided, seeds the baseline as already-set and never fires; only

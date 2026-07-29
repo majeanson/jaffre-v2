@@ -3,6 +3,9 @@
 Online 4-player trick-taking card game (2v2, 32 cards, bidding with sans-atout, first team to 41).
 Ground-up rehaul of [majeanson/Jaffre](https://github.com/majeanson/Jaffre) with a fully tested pure engine.
 
+Current state of the project: [STATUS.md](STATUS.md). Completed plans and the retired
+polishing backlog: [docs/archive/](docs/archive/).
+
 ## Architecture
 
 | Package             | Role                                                                                         |

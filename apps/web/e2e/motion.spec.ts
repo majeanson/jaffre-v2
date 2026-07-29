@@ -285,7 +285,7 @@ test.describe('the round-start deal', () => {
 });
 
 test.describe('the scoreboard-delivery flights', () => {
-  // See PLAN-scoreboard-delivery.md and apps/web/src/table/flight.tsx: every
+  // See docs/archive/PLAN-scoreboard-delivery.md and apps/web/src/table/flight.tsx: every
   // change to the top bar's numbers arrives as a chip flying from the felt
   // event that caused it, and the bar's DISPLAYED value waits for the chip to
   // land before it moves. Both specs here drive a real practice game — pass

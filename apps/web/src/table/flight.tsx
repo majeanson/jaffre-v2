@@ -18,7 +18,8 @@ import type { ContractDisplay } from './useTableDerived.js';
  * as a visible delivery from the felt event that caused it. The mid-felt toast
  * stack (TrickBanner, TrumpCallout) and Table's own contract/score watchers
  * are the launch pads; the bar's chips (ScoreStrip's `data-flight-target`s)
- * are the landing pads. See PLAN-scoreboard-delivery.md for the full picture
+ * are the landing pads. See docs/archive/PLAN-scoreboard-delivery.md for the
+ * full picture
  * — this file is the ONE mechanism every delivery rides: FlightLayer renders
  * the clones, launchFlight animates one, and the hold store makes the bar's
  * DISPLAYED value wait for the landing instead of jumping ahead of it.

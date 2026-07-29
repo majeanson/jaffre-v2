@@ -31,7 +31,7 @@ function versionStamp(): Plugin {
  * content hash only known at build time — this plugin reads the final bundle
  * and injects `<link rel="preload">` tags, so the browser fetches them
  * alongside the JS instead of discovering them after CSS parses (the
- * guaranteed cold-load FOUT polishing.md flagged). */
+ * guaranteed cold-load FOUT the polishing backlog (docs/archive) flagged). */
 const PRELOAD_FONTS = [
   /^assets\/silkscreen-latin-400-normal-.*\.woff2$/,
   /^assets\/rubik-latin-wght-normal-.*\.woff2$/,
