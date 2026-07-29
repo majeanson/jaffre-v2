@@ -1,3 +1,4 @@
+import { SELF } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import {
   CHALLENGE_BOT_DIFFICULTY,
@@ -216,5 +217,165 @@ describe('verifying a submitted run', () => {
   it('refuses an absurdly long log without replaying it', () => {
     const filler = Array.from({ length: 500 }, () => ({ type: 'continue' }) as Action);
     expect(verifyChallengeRun(DEAL, filler)).toEqual({ ok: false, reason: 'too-long' });
+  });
+});
+
+/**
+ * The endpoints. Everything above proves the verifier is right; this proves the
+ * route around it is — which is where a correct verifier can still be reached
+ * with the wrong status code, or not reached at all.
+ *
+ * `dailyChallenge(Date.now())` rather than the frozen DEAL above: only the open
+ * period takes scores, so the happy path has to use the challenge that is
+ * actually open while the test runs.
+ */
+describe('POST /api/challenge/submit', () => {
+  const submit = (userId: string, body: unknown) =>
+    SELF.fetch(`https://example.com/api/challenge/submit?u=${userId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  it('accepts an honest run, and takes only the first attempt', async () => {
+    const today = dailyChallenge(Date.now());
+    const actions = honestRun(today);
+    const expected = verifyChallengeRun(today, actions);
+    expect(expected.ok).toBe(true);
+
+    const first = await submit('ch-alice', { challengeId: today.id, actions });
+    expect(first.status).toBe(200);
+    const got = (await first.json()) as { accepted: boolean; score: number; tricks: number };
+    expect(got.accepted).toBe(true);
+    // The score is the verifier's, never the client's — there is no score field
+    // in the request at all.
+    expect(got.score).toBe(expected.ok ? expected.score : NaN);
+
+    // Second attempt: recorded once, and the stored score stands. "Best of many
+    // tries" must not quietly become the game.
+    const again = await submit('ch-alice', { challengeId: today.id, actions });
+    expect(again.status).toBe(200);
+    const twice = (await again.json()) as { accepted: boolean; score: number };
+    expect(twice.accepted).toBe(false);
+    expect(twice.score).toBe(got.score);
+  });
+
+  it('refuses a closed challenge with 409', async () => {
+    const old = dailyChallenge(Date.UTC(2025, 0, 2));
+    const res = await submit('ch-bob', { challengeId: old.id, actions: honestRun(old) });
+    expect(res.status).toBe(409);
+  });
+
+  it('400s an unknown challenge id, a missing id and malformed actions', async () => {
+    const today = dailyChallenge(Date.now());
+    expect((await submit('ch-bob', { challengeId: 'd-not-a-date', actions: [] })).status).toBe(400);
+    expect((await submit('ch-bob', { actions: [] })).status).toBe(400);
+    expect((await submit('ch-bob', { challengeId: today.id, actions: [null] })).status).toBe(400);
+    expect((await submit('ch-bob', { challengeId: today.id, actions: 'nope' })).status).toBe(400);
+  });
+
+  it('422s a run the verifier rejects, and records nothing', async () => {
+    const today = dailyChallenge(Date.now());
+    // A single legal-SHAPED action that is not what the game allows here.
+    const res = await submit('ch-carol', {
+      challengeId: today.id,
+      actions: [{ type: 'play_card', seat: 0, card: { suit: 'red', value: 0 } }],
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json()) as { reason: string }).toHaveProperty('reason');
+
+    const board = (await (
+      await SELF.fetch(`https://example.com/api/challenge?id=${today.id}&u=ch-carol`)
+    ).json()) as { you: unknown };
+    expect(board.you).toBeNull();
+  });
+
+  it('400s a request with no user at all', async () => {
+    const today = dailyChallenge(Date.now());
+    const res = await SELF.fetch('https://example.com/api/challenge/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId: today.id, actions: [] }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /api/challenge', () => {
+  it(`serves today's deal when no id is given`, async () => {
+    const res = await SELF.fetch('https://example.com/api/challenge');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      challenge: { id: string; cadence: string; seed: number };
+      board: unknown[];
+      you: unknown;
+    };
+    expect(body.challenge.id).toBe(dailyChallenge(Date.now()).id);
+    expect(body.challenge.cadence).toBe('daily');
+    expect(Array.isArray(body.board)).toBe(true);
+    // Anonymous: a board, but no row of your own.
+    expect(body.you).toBeNull();
+  });
+
+  it('400s an unknown id', async () => {
+    const res = await SELF.fetch('https://example.com/api/challenge?id=d-not-a-date');
+    expect(res.status).toBe(400);
+  });
+
+  it('gives a scored player their own row and rank', async () => {
+    const today = dailyChallenge(Date.now());
+    await SELF.fetch('https://example.com/api/challenge/submit?u=ch-dave', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId: today.id, actions: honestRun(today) }),
+    });
+    const res = await SELF.fetch(`https://example.com/api/challenge?id=${today.id}&u=ch-dave`);
+    const body = (await res.json()) as {
+      board: { id: string; score: number; rank: number }[];
+      you: { score: number; rank: number } | null;
+    };
+    expect(body.you).not.toBeNull();
+    expect(body.you?.rank).toBeGreaterThanOrEqual(1);
+    expect(body.board.length).toBeGreaterThanOrEqual(1);
+    // Never the raw uid on the wire — the board is public.
+    for (const row of body.board) expect(row.id).not.toBe('ch-dave');
+  });
+});
+
+describe('submit rate limiting', () => {
+  it('stops a user hammering the verifier, and says 429', async () => {
+    // Rejected runs insert nothing, so the score PK does not slow them down at
+    // all — this counter is the only thing that does. Drive one user past the
+    // daily cap with runs the verifier refuses, and check the answer changes
+    // from "no" to "not today".
+    const today = dailyChallenge(Date.now());
+    const junk = { challengeId: today.id, actions: [{ type: 'continue' }] };
+    const post = () =>
+      SELF.fetch('https://example.com/api/challenge/submit?u=ch-flood', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(junk),
+      });
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 42; i++) statuses.push((await post()).status);
+
+    // The first ones are refused on their merits (the log is not a finished
+    // round), not by the limiter.
+    expect(statuses[0]).toBe(422);
+    expect(statuses.at(-1)).toBe(429);
+    expect(statuses.filter((s) => s === 429).length).toBeGreaterThan(0);
+    // And the cap is not so tight that an honest handful of tries trips it.
+    expect(statuses.slice(0, 10).every((s) => s === 422)).toBe(true);
+  });
+
+  it('does not spend another user quota', async () => {
+    const today = dailyChallenge(Date.now());
+    const res = await SELF.fetch('https://example.com/api/challenge/submit?u=ch-bystander', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId: today.id, actions: honestRun(today) }),
+    });
+    expect(res.status).toBe(200);
   });
 });

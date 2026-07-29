@@ -8,6 +8,7 @@ import {
   sendLocalAction,
 } from '../local/localGame.js';
 import { fetchBoard, submitRun, type ChallengeBoard } from '../net/challenge.js';
+import { reportFunnel } from '../net/telemetry.js';
 import { useGameStore } from '../state/gameStore.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
@@ -127,6 +128,15 @@ export function DealBoard({ onLeave, demoBoard, demoNow }: DealBoardProps) {
   // would otherwise still be there behind the next screen.
   useEffect(() => () => stopLocalGame(), []);
 
+  // Two funnel steps, because the interesting question is the gap between
+  // them: plenty of people will find the Deal Board, and the number who
+  // actually finish a hand and land on it is the one worth watching. Latched
+  // once per browser, so this is first-run reach, not daily usage. Never fires
+  // for the scene viewer, which isn't a player finding anything.
+  useEffect(() => {
+    if (demoBoard === undefined) reportFunnel('daily');
+  }, [demoBoard]);
+
   // The run ends when the ROUND ends: a challenge is one deal, not a game.
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -142,6 +152,7 @@ export function DealBoard({ onLeave, demoBoard, demoNow }: DealBoardProps) {
         setOutcome(`${t.alreadyPlayed} ${t.scored(result.score)}`);
       } else {
         setOutcome(t.scored(result.score));
+        reportFunnel('daily-score');
       }
       setPhase('done');
       // Re-read the board so the player sees where their score landed.

@@ -86,6 +86,11 @@ export function reportError(error: unknown, componentStack?: string, kind = 'rea
  * localStorage latch), so this measures first-run drop-off, not usage — and
  * the volume is a few beacons per install, ever.
  *
+ * Because the latch is per STEP, a stage that has an opening and a completion
+ * needs two of them: `daily` says the Deal Board was found at all, and
+ * `daily-score` says a run made it onto the board. One step reported twice
+ * would only ever tell us the first half.
+ *
  * Deliberately anonymous: the kind is the only payload, so nothing here
  * identifies anyone. The server already buckets unknown kinds by name, so
  * they land in /api/telemetry/summary with no schema change.
@@ -96,7 +101,9 @@ export type FunnelStep =
   | 'start' // first game started (mode in the message)
   | 'bid' // first bid ever placed
   | 'finish' // first game played to the end
-  | 'tutorial'; // finished the practice tutorial
+  | 'tutorial' // finished the practice tutorial
+  | 'daily' // first time the Deal Board was opened
+  | 'daily-score'; // first score actually posted to a board
 
 const FUNNEL_KEY = 'jaffre:funnel';
 

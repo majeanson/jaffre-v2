@@ -3,6 +3,7 @@ import {
   challengeById,
   challengeIsOpen,
   dailyChallenge,
+  utcDayKey,
   type RoundSummary,
   type Suit,
 } from '@jaffre/engine';
@@ -1199,6 +1200,46 @@ const LEADERBOARD_LIMIT = 100;
 const BOARD_LIMIT = 20;
 
 /**
+ * How many run VERIFICATIONS one user may ask for in a UTC day.
+ *
+ * Verification is the expensive endpoint: it folds a whole action log through
+ * the engine and recomputes every bot move to prove none were tampered with.
+ * The challenge_scores PRIMARY KEY already refuses a second SCORE, so honest
+ * play needs one call per open challenge (a daily plus three weeklies, times a
+ * retry or two after a dropped response). Rejected runs record nothing, which
+ * is exactly why they could otherwise be repeated without limit — so the
+ * counter sits on the attempt, not on the result.
+ *
+ * Set well above any honest day and well below "free CPU".
+ */
+const CHALLENGE_VERIFY_PER_DAY = 40;
+
+/**
+ * Count this attempt and say whether it is over the cap.
+ *
+ * The upsert both increments and reports in one statement, so two tabs racing
+ * cannot each read "under the cap" and both proceed. Degrades OPEN on a DB
+ * error: a counter that is unavailable must not become an outage for people
+ * trying to play today's hand.
+ */
+async function overVerifyCap(db: D1Database, userId: string): Promise<boolean> {
+  try {
+    const row = await db
+      .prepare(
+        `INSERT INTO challenge_attempts (user_id, day_key, n) VALUES (?1, ?2, 1)
+           ON CONFLICT (user_id, day_key) DO UPDATE SET n = n + 1
+         RETURNING n`,
+      )
+      .bind(userId, utcDayKey(Date.now()))
+      .first<{ n: number }>();
+    return (row?.n ?? 0) > CHALLENGE_VERIFY_PER_DAY;
+  } catch (err) {
+    console.error('[challenge] attempt counter failed', err);
+    return false;
+  }
+}
+
+/**
  * POST /api/challenge/submit { challengeId, actions } → { score, tricks, rank }.
  *
  * The score is NOT taken from the client. The action log is re-played against
@@ -1246,6 +1287,18 @@ async function handleChallengeSubmit(request: Request, env: Env, url: URL): Prom
   // (or next year's). Only the open period takes scores.
   if (!challengeIsOpen(deal, Date.now())) {
     return Response.json({ error: 'That challenge is closed' }, { status: 409 });
+  }
+
+  // Counted here and nowhere earlier: everything above is a cheap shape check,
+  // and a player whose id or challenge is malformed should not be spending a
+  // quota meant for the fold below.
+  if (await overVerifyCap(db, userId)) {
+    return Response.json(
+      { error: 'Too many runs submitted today — try again tomorrow' },
+      {
+        status: 429,
+      },
+    );
   }
 
   const verdict = verifyChallengeRun(deal, actions);
