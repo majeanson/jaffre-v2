@@ -1,14 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayingCard } from '@jaffre/ui';
 import { paceScale, paced } from './pacePref.js';
+import { DEAL_TOTAL_MS, RIM_FLIGHTS, YOUR_FLIGHTS, flightDelayMs } from './dealPace.js';
 
-/** How long the fly-out itself takes before the layer starts fading. */
-const DEAL_MS = 1000;
+/** How long the fly-out itself takes before the layer starts fading — the
+ * shared deal clock (see dealPace), so the hand and the auction agree. */
+const DEAL_MS = DEAL_TOTAL_MS;
 /** The fade-to-nothing tail after the cards land. */
 const FADE_MS = 350;
-/** Cards dealt toward each seat — just enough to read as "a hand", not the
- * real count (that's redacted game state the deck has no business showing). */
-const CARDS_PER_SEAT = 3;
+/** Flights toward each seat: the rim gets 3 — just enough to read as "a
+ * hand", not the real count (that's redacted game state the deck has no
+ * business showing) — while your own seat gets the real 8, so the fly-out
+ * and your fan below are counting the same deal. */
+const CARDS_PER_SEAT: Record<0 | 1 | 2 | 3, number> = {
+  0: YOUR_FLIGHTS,
+  1: RIM_FLIGHTS,
+  2: RIM_FLIGHTS,
+  3: RIM_FLIGHTS,
+};
 
 /** A face-down card, always the same rank — its BACK is all that's ever shown,
  * so which card it "is" is irrelevant. */
@@ -72,8 +81,7 @@ type Phase = 'idle' | 'dealing' | 'fading';
  * play. Purely decorative: the viewer's own card-skin BACK is what's shown
  * (cosmetics are per-viewer, like the felt), same as the fan used to.
  */
-export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
-  const prevRound = useRef<number | undefined>(undefined);
+export function DealIntro({ dealKey }: { readonly dealKey: number }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const deckRef = useRef<HTMLDivElement>(null);
   const [targets, setTargets] = useState<Targets>(FALLBACK_TARGETS);
@@ -88,18 +96,9 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
   }, [phase]);
 
   useEffect(() => {
-    const isFirstMount = prevRound.current === undefined;
-    const changed = prevRound.current !== roundIndex;
-    prevRound.current = roundIndex;
-    // A mid-game reload or a spectator joining mid-round mounts this with no
-    // prior roundIndex to compare against — the deal for the round already
-    // happened before we were here, so don't replay it. Only an OBSERVED
-    // transition (this component alive across the change) triggers the
-    // animation. roundIndex (not phase) is the signal: it increments exactly
-    // once per round, at the moment a new deal happens, regardless of how
-    // bidding/playing phases cycle within it.
-    if (isFirstMount || !changed) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // dealPace owns the decision (which deals animate, and when) — this
+    // component only draws one. dealKey 0 means no deal has run yet.
+    if (dealKey === 0) return;
     setPhase('dealing');
     const dealMs = paced(DEAL_MS);
     const toFade = window.setTimeout(() => setPhase('fading'), dealMs);
@@ -108,7 +107,7 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
       window.clearTimeout(toFade);
       window.clearTimeout(toIdle);
     };
-  }, [roundIndex]);
+  }, [dealKey]);
 
   if (phase === 'idle') return null;
 
@@ -137,14 +136,16 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
         ))}
       </div>
       {/* The fly-out: a handful of cards per seat, staggered, arcing from the
-          deck's corner out toward that seat's edge of the felt. */}
+          deck's corner out toward that seat's edge of the felt. Delays come
+          from dealPace's single schedule — the same one your fan below reads
+          — so a card's flight and its arrival in the fan are one event. */}
       {seats.flatMap((seat) =>
-        Array.from({ length: CARDS_PER_SEAT }, (_, i) => {
+        Array.from({ length: CARDS_PER_SEAT[seat] }, (_, i) => {
           const [tx, ty] = targets[seat];
           // Stagger and flight time ride the same scale as the phase timers
           // above, so the animation still finishes inside its own window.
           const scale = paceScale();
-          const delay = (seat * CARDS_PER_SEAT + i) * 0.09 * scale;
+          const delay = (flightDelayMs(seat, i) / 1000) * scale;
           return (
             <div
               key={`${String(seat)}-${String(i)}`}
@@ -155,7 +156,10 @@ export function DealIntro({ roundIndex }: { readonly roundIndex: number }) {
                 {
                   '--dtx': tx,
                   '--dty': ty,
-                  '--dtr': `${String((i - 1) * 10 + seat * 3)}deg`,
+                  // Cycles every 3 flights rather than growing with `i` —
+                  // your seat gets 8 flights now, and a bare `i` would spin
+                  // the later ones far past a natural card-toss angle.
+                  '--dtr': `${String(((i % 3) - 1) * 10 + seat * 3)}deg`,
                   opacity: 0,
                   animation: `deal-fly ${String(0.75 * scale)}s ease-out ${String(delay)}s 1 both`,
                 } as CSSProperties

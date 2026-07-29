@@ -5,6 +5,8 @@ import { feedback, playClick } from '../audio/clicks.js';
 import { IconButton } from '../components/IconButton.js';
 import { IconSort } from '../components/icons.js';
 import { getProfile } from '../net/auth.js';
+import { DEAL_TOTAL_MS, YOUR_FLIGHTS, fanShowMs } from './dealPace.js';
+import { paced } from './pacePref.js';
 
 const FR_SUIT: Record<Suit, string> = { red: 'rouge', brown: 'brun', green: 'vert', blue: 'bleu' };
 
@@ -123,6 +125,9 @@ export interface PlayerHandProps {
   readonly queueable?: readonly Card[];
   /** Tap on a queueable card while waiting — queues or unqueues it. */
   readonly onQueueToggle?: (card: Card) => void;
+  /** Bumped once per animated deal (dealPace): the fan then fills one card at
+   * a time, in step with the deck's fly-out, instead of appearing whole. */
+  readonly dealKey?: number;
 }
 
 /** Owns your hand along the bottom edge, with legality + disabled-reason hints. */
@@ -137,18 +142,54 @@ export function PlayerHand({
   queued = null,
   queueable = [],
   onQueueToggle,
+  dealKey = 0,
 }: PlayerHandProps) {
   const t = T[useLang()];
   // Your painted card (if any) personalises only YOUR red-0/brown-0 — the Hand
   // renders only your cards, so this never leaks onto an opponent's specials.
   const paint = getProfile().paint;
 
-  // A fresh full hand (a new round's deal) ticks each card in as it lands —
-  // synced to the visual deal-in stagger. Skips the cascade under reduced motion.
+  // The deal actually deals: the fan holds back and takes its cards one at a
+  // time, each landing (and clicking) as the deck's fly-out reaches you.
+  // `null` = show the whole hand, the state every moment outside a deal.
+  const [dealt, setDealt] = useState<number | null>(null);
+  const dealRunning = useRef(false);
+  useEffect(() => {
+    if (dealKey === 0) return undefined;
+    dealRunning.current = true;
+    setDealt(0);
+    // Each card appears the instant ITS flight lands (dealPace's one shared
+    // schedule — the deck's fly-out reads the same numbers), not on a lead +
+    // even stagger of our own that could drift from what's on screen.
+    const timers = Array.from({ length: YOUR_FLIGHTS }, (_, i) =>
+      setTimeout(
+        () => {
+          setDealt(i + 1);
+          feedback('deal', 5);
+        },
+        paced(fanShowMs(i)),
+      ),
+    );
+    // Back to "show everything": a hand shrinks as you play it, so a fixed
+    // count must never outlive its own deal.
+    const done = setTimeout(() => {
+      dealRunning.current = false;
+      setDealt(null);
+    }, paced(DEAL_TOTAL_MS));
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(done);
+      dealRunning.current = false;
+      setDealt(null);
+    };
+  }, [dealKey]);
+
+  // The click cascade for every OTHER way a full hand arrives (reduced motion,
+  // replay scrubbing, a mid-round reload) — the deal above brings its own.
   const hadFull = useRef(false);
   useEffect(() => {
     const nowFull = cards.length === 8;
-    if (nowFull && !hadFull.current) {
+    if (nowFull && !hadFull.current && !dealRunning.current) {
       const reduced =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -166,6 +207,8 @@ export function PlayerHand({
     return undefined;
   }, [cards.length]);
 
+  const shown = dealt === null ? cards : cards.slice(0, dealt);
+
   return (
     // min-h reserves the fan's full footprint (lg card height 7/5 × its width
     // clamp, + the ListBox pt-4 + our pb-1) even when the hand is empty, so
@@ -178,7 +221,7 @@ export function PlayerHand({
           onReorder(keys);
           feedback('select', 4);
         }}
-        cards={cards.map((card) => {
+        cards={shown.map((card) => {
           const isQueueable = queueable.some((c) => sameCard(c, card));
           return {
             card,

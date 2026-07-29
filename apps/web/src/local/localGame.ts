@@ -14,6 +14,7 @@ import type { Roster } from '@jaffre/protocol';
 import { loadPracticeBots, PRACTICE_BOT_NAMES, type PracticeBots } from '../home/practiceBots.js';
 import { playerName } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
+import { dealActiveUntil } from '../table/dealPace.js';
 import { paced } from '../table/pacePref.js';
 import { SKIP_HOLD_EVENT } from '../table/useTrickHold.js';
 
@@ -251,17 +252,34 @@ function scheduleBots(afterTrick = false, skipped = false): void {
   // round_over waits for the human's Ready click — bots are always ready.
   if (state.phase === 'round_over') return;
   if (state.turn === humanSeat) return;
-  botTimer = setTimeout(
-    () => {
-      if (state === null || (state.phase !== 'playing' && state.phase !== 'bidding')) return;
-      const seat = state.turn as Seat;
-      const action = chooseAction(viewFor(state, seat), rng, botDifficulties[botSlot(seat)]);
-      if (action !== null) apply(action);
-    },
-    // Leave room for the trick-hold + sweep animation before the next play —
-    // both of which scale with the pacing preference, so this must too.
-    paced(afterTrick ? (skipped ? AFTER_SKIP_MS : AFTER_TRICK_MS) : 750),
-  );
+  // Leave room for the trick-hold + sweep animation before the next play —
+  // both of which scale with the pacing preference, so this must too.
+  let delay = paced(afterTrick ? (skipped ? AFTER_SKIP_MS : AFTER_TRICK_MS) : 750);
+  // A fresh round's deal animation runs on its own clock (dealPace), started
+  // by the Table screen, not by us — a bot's own delay above knows nothing
+  // about it. Stretch to whichever is longer, so the first bid never lands
+  // while cards from this deal are still flying to a seat.
+  if (state.phase === 'bidding') {
+    delay = Math.max(delay, dealActiveUntil() - Date.now() + 200);
+  }
+  const fire = (): void => {
+    if (state === null || (state.phase !== 'playing' && state.phase !== 'bidding')) return;
+    // Re-check the deal clock at FIRE time: the game's very first schedule
+    // happens before Table has mounted and armed it, so the delay above was
+    // computed against 0. Waiting out the remainder here (instead of bidding
+    // into the fly-out) is what keeps the first bubble off a mid-deal felt.
+    if (state.phase === 'bidding') {
+      const wait = dealActiveUntil() + 200 - Date.now();
+      if (wait > 0) {
+        botTimer = setTimeout(fire, wait);
+        return;
+      }
+    }
+    const seat = state.turn as Seat;
+    const action = chooseAction(viewFor(state, seat), rng, botDifficulties[botSlot(seat)]);
+    if (action !== null) apply(action);
+  };
+  botTimer = setTimeout(fire, delay);
 }
 
 /**

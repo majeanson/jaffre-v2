@@ -249,3 +249,37 @@ test.describe('animations actually run', () => {
     await probe.evaluate((el) => el.parentElement?.remove());
   });
 });
+
+test.describe('the round-start deal', () => {
+  test('blocks the auction until the fan is dealt, then hands off', async ({ page }) => {
+    // The two halves of the deal (dealPace's fly-out and PlayerHand's fan)
+    // and the auction's own gate (Table.tsx: `!deal.dealing`) all read the
+    // same schedule now — this is the seam where a drift between them would
+    // show up as either an early "Marcel PASS" or a fan stuck short of 8.
+    test.setTimeout(60_000);
+    await page.goto('/#practice');
+
+    const dealIntro = page.getByTestId('deal-intro');
+    // role="group" aria-label="Bid cards" wraps the auction's own bet cards
+    // regardless of whose turn it is (waiting or not) — a stable probe for
+    // "the panel is up" that doesn't depend on the first bidder being seat 0.
+    const bidPanel = page.getByRole('group', { name: 'Bid cards' });
+
+    await expect(dealIntro).toBeVisible();
+    await expect(bidPanel).toBeHidden();
+
+    await expect.poll(() => page.getByRole('option').count(), { timeout: 15_000 }).toBe(8);
+
+    await expect(bidPanel).toBeVisible();
+  });
+
+  test('a staged auction scene never deals', async ({ page }) => {
+    // Scenes freeze an arbitrary GameState straight into the store — there is
+    // no "fresh round" and no observed roundIndex change, so useDealRun's
+    // both triggers stay silent. A staged table must show the auction READY,
+    // not mid-deal.
+    await page.goto('/#scenes/auction-you');
+    await expect(page.getByRole('group', { name: 'Bid cards' })).toBeVisible();
+    await expect(page.getByTestId('deal-intro')).toBeHidden();
+  });
+});

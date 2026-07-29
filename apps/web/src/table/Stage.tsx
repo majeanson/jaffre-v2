@@ -19,9 +19,9 @@ export interface StageProps {
   /** Winning card's position while the resolved trick is held (glow). */
   readonly winnerPosition: 0 | 1 | 2 | 3 | null;
   readonly seatInfo: TableDerived['seatInfo'];
-  /** Drives the deck's one-shot deal animation at the start of each round —
-   * see DealIntro for why roundIndex, not phase, is the trigger signal. */
-  readonly roundIndex: number;
+  /** Bumped once per animated deal (see dealPace) — drives the deck's one-shot
+   * fly-out, in step with the hand filling and the auction's short wait. */
+  readonly dealKey: number;
   /** Auction controls, rendered over the stage on your bidding turn. */
   readonly bidOverlay?: ReactNode;
   /** The Coach's one-line tip, shown when a trick result isn't already up. */
@@ -41,7 +41,7 @@ export function Stage({
   banner,
   winnerPosition,
   seatInfo,
-  roundIndex,
+  dealKey,
   bidOverlay,
   coachTip = null,
   capHeight = false,
@@ -72,7 +72,7 @@ export function Stage({
       {/* One-shot deal animation, anchored to the felt's own positioning
           context (not persistent — see DealIntro). Sits under the seat chips
           (z-20) but over the felt so the flung cards read as on-table. */}
-      {!noDealIntro && <DealIntro roundIndex={roundIndex} />}
+      {!noDealIntro && <DealIntro dealKey={dealKey} />}
       {/* Trick insets keep cards clear of the seat chips. On phones the box
           widens with the felt so the bigger cards use the space. */}
       <div className="absolute inset-x-[21%] inset-y-[13%] z-10 max-sm:inset-x-[15%] max-sm:inset-y-[10%]">

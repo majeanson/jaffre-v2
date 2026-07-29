@@ -26,6 +26,7 @@ import {
   useTrickHold,
 } from '../table/index.js';
 import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { useDealRun } from '../table/dealPace.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { IconButton, ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion, IconSeat } from '../components/icons.js';
@@ -118,6 +119,18 @@ export function Table({
   const [coachOn, setCoachOn] = useState(() => loadCoachPref(!online));
   const derived = useTableDerived(coachOn);
   const handSort = useHandSort(derived?.view.hand ?? []);
+  // The round-start deal, on one clock: deck fly-out, your hand filling a card
+  // at a time, and the auction waiting until the cards have landed. A round
+  // nothing has happened in yet, at mount, IS the game's first deal — real
+  // play only (scenes and the replay viewer stage states mid-round).
+  const freshRound =
+    dev &&
+    !noDealIntro &&
+    derived !== null &&
+    derived.view.phase === 'bidding' &&
+    derived.view.bids.length === 0 &&
+    derived.view.currentTrick.length === 0;
+  const deal = useDealRun(derived?.view.roundIndex ?? null, freshRound);
   useTrickHold(frozenHold);
   useQueuedPlay(onAction);
   // Keyboard play: 1–8 cards, 1–6 + P in the auction, L log, C chat.
@@ -186,12 +199,15 @@ export function Table({
         banner={derived.heldBanner}
         winnerPosition={derived.winnerPosition}
         seatInfo={seatInfo}
-        roundIndex={view.roundIndex}
+        dealKey={deal.dealKey}
         coachTip={derived.coach?.tip ?? null}
         capHeight={me === null}
         noDealIntro={noDealIntro}
         bidOverlay={
-          view.phase === 'bidding' && (
+          // The auction opens once the cards are in front of you, not over the
+          // deal — you can't size up a hand you haven't been given yet.
+          view.phase === 'bidding' &&
+          !deal.dealing && (
             <BidOverlay
               options={derived.bidOptions}
               order={derived.auctionOrder}
@@ -255,6 +271,7 @@ export function Table({
       {me !== null && (
         <PlayerHand
           cards={handSort.displayCards}
+          dealKey={deal.dealKey}
           legal={derived.legal}
           ledSuit={derived.ledSuit}
           // Hold-inactive: while a finished trick is held, taps queue your
