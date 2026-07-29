@@ -151,14 +151,17 @@ const T: Record<
         sa === null ? '' : ` · ${String(sa)} % à sans atout`
       }.`,
     mastery: 'Maîtrise des couleurs',
+    // "misé", not "demandé": the glossary settled on miser/mise for bidding,
+    // and a lane you never bid is one you never MISED. Two words for the same
+    // act would read as two different acts.
     masteryLane: (made, attempted) =>
-      attempted === 0 ? 'jamais demandé' : `${String(made)} sur ${String(attempted)} de réussis`,
-    masteryEmpty: "Tu n'as pas encore pris de contrat — les couloirs se remplissent en misant.",
+      attempted === 0 ? 'jamais misé' : `${String(made)} réussis sur ${String(attempted)}`,
+    masteryEmpty: 'Tu n’as pas encore pris de contrat — ça se remplit quand tu mises.',
     masteryEven: 'Tu répartis tes contrats également.',
     // "en rouge" / "en sans atout" — works for every lane without needing a
     // gendered article, unlike "sur le ___".
     masteryNarrow: (lane) => `Tu mises surtout en ${lane.toLowerCase()}.`,
-    masteryUntouched: (lanes) => `Jamais demandé : ${lanes}.`,
+    masteryUntouched: (lanes) => `Jamais misé : ${lanes}.`,
     bestPartner: 'Meilleur partenaire',
     nemesis: 'Némésis',
     partnerRelation: (wins, games) =>

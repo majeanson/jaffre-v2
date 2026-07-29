@@ -103,8 +103,8 @@ const T: Record<
     sweeps: 'Ramassage des levées',
     showAll: 'Tout afficher (dev)',
     blurb:
-      'Les habillages et thèmes du Parcours arrivent avec les niveaux; les autres sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
-    paintFirst: "Peins ta carte d'abord",
+      'Les habillages et thèmes du Parcours arrivent avec les niveaux ; les autres sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
+    paintFirst: 'Peins ta carte d’abord',
     equipped: (name) => `Équipé : ${name}`,
   },
 };

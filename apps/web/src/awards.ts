@@ -126,9 +126,9 @@ export const AWARDS: readonly AwardDef[] = [
     id: 'watcher',
     icon: '👀',
     name: (l) => t(l, 'Watcher', 'Spectateur'),
-    desc: (l) => t(l, 'Watch a game through to the end.', "Regarde une partie jusqu'à la fin."),
+    desc: (l) => t(l, 'Watch a game through to the end.', 'Regarde une partie jusqu’à la fin.'),
     requirement: (s, l) => ({
-      text: t(l, 'Watch 1 game to the end', "Regarde 1 partie jusqu'au bout"),
+      text: t(l, 'Watch 1 game to the end', 'Regarde 1 partie jusqu’au bout'),
       have: s.spectated ?? 0,
       need: 1,
     }),
@@ -145,7 +145,7 @@ export const AWARDS: readonly AwardDef[] = [
       ),
     reward: 'slate',
     requirement: (s, l) => ({
-      text: t(l, 'Watch 10 games to the end', "Regarde 10 parties jusqu'au bout"),
+      text: t(l, 'Watch 10 games to the end', 'Regarde 10 parties jusqu’au bout'),
       have: s.spectated ?? 0,
       need: 10,
     }),
@@ -156,7 +156,7 @@ export const AWARDS: readonly AwardDef[] = [
     name: (l) => t(l, 'The Rail', 'La galerie'),
     desc: (l) => t(l, 'Watch fifty games to the end.', 'Regarde cinquante parties jusqu’à la fin.'),
     requirement: (s, l) => ({
-      text: t(l, 'Watch 50 games to the end', "Regarde 50 parties jusqu'au bout"),
+      text: t(l, 'Watch 50 games to the end', 'Regarde 50 parties jusqu’au bout'),
       have: s.spectated ?? 0,
       need: 50,
     }),
