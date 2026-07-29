@@ -33,6 +33,7 @@ const T: Record<
     monthEmpty: string;
     winCount: (n: number) => string;
     ofGames: (n: number) => string;
+    headToHead: (name: string) => string;
   }
 > = {
   en: {
@@ -48,6 +49,7 @@ const T: Record<
     monthEmpty: 'No games finished this month yet. Play one and you are on the board.',
     winCount: (n) => (n === 1 ? '1 win' : `${String(n)} wins`),
     ofGames: (n) => `of ${String(n)} played`,
+    headToHead: (name) => `Head to head with ${name}`,
   },
   fr: {
     title: 'Classement',
@@ -62,6 +64,7 @@ const T: Record<
     monthEmpty: 'Aucune partie terminée ce mois-ci. Joues-en une et tu es au tableau.',
     winCount: (n) => (n === 1 ? '1 victoire' : `${String(n)} victoires`),
     ofGames: (n) => `sur ${String(n)} jouées`,
+    headToHead: (name) => `Face à face avec ${name}`,
   },
 };
 
@@ -153,6 +156,7 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
                   youLabel={t.you}
                   metric={t.winCount(row.wins)}
                   sub={t.ofGames(row.games)}
+                  headToHeadLabel={t.headToHead}
                 />
               ))}
             </ol>
@@ -176,6 +180,7 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
                 youLabel={t.you}
                 metric={String(Math.round(row.rating))}
                 sub={t.games(row.ratingGames)}
+                headToHeadLabel={t.headToHead}
               />
             ))}
             {board.you != null && !topHasYou && (
@@ -190,6 +195,7 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
                   youLabel={t.you}
                   metric={String(Math.round(board.you.rating))}
                   sub={t.games(board.you.ratingGames)}
+                  headToHeadLabel={t.headToHead}
                 />
               </>
             )}
@@ -200,9 +206,17 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
   );
 }
 
-/** One ladder row. Takes its two numbers as ALREADY-FORMATTED strings so the
+/**
+ * One ladder row. Takes its two numbers as ALREADY-FORMATTED strings so the
  * all-time board (rating / games) and the monthly one (wins / net) share the
- * row instead of forking it — the layout is the same question either way. */
+ * row instead of forking it — the layout is the same question either way.
+ *
+ * Someone else's row is a LINK into their head-to-head: `row.id` on both
+ * boards is already the public id that `#h2h/<pid>` takes (see
+ * routes/leaderboard.ts — it hashes the uid on the way out), and a ladder row
+ * naming a player above you raises exactly one question. Your own row isn't a
+ * link: your record against yourself is not a thing.
+ */
 function Row({
   rank,
   row,
@@ -210,20 +224,18 @@ function Row({
   youLabel,
   metric,
   sub,
+  headToHeadLabel,
 }: {
   readonly rank: number;
-  readonly row: { readonly name: string; readonly color: string | null };
+  readonly row: { readonly id: string; readonly name: string; readonly color: string | null };
   readonly mine: boolean;
   readonly youLabel: string;
   readonly metric: string;
   readonly sub: string;
+  readonly headToHeadLabel: (name: string) => string;
 }) {
-  return (
-    <li
-      className={`flex items-center gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) px-[0.9em] py-[0.6em] shadow-(--shadow-ap-sm) ${
-        mine ? 'bg-(--color-ap-violet)/15' : 'bg-(--color-ap-panel)'
-      }`}
-    >
+  const inner = (
+    <>
       <span className="w-[2ch] shrink-0 text-right font-arcade-display text-[1.1em] text-(--color-ap-gold)">
         {rank}
       </span>
@@ -242,6 +254,25 @@ function Row({
         </span>
         <span className="block font-arcade-ui text-[0.7em] text-(--color-ap-muted)">{sub}</span>
       </span>
+    </>
+  );
+  const shell = `flex items-center gap-3 rounded-(--radius-ap-card) border-2 border-(--color-ap-ink) px-[0.9em] py-[0.6em] shadow-(--shadow-ap-sm) ${
+    mine ? 'bg-(--color-ap-violet)/15' : 'bg-(--color-ap-panel)'
+  }`;
+  if (mine) return <li className={shell}>{inner}</li>;
+  return (
+    <li>
+      <a
+        href={`#h2h/${row.id}`}
+        className={`${shell} transition-colors hover:bg-(--color-ap-panel-hover)`}
+      >
+        {inner}
+        {/* An sr-only suffix, NOT an aria-label: a label would REPLACE the row's
+            own text as the link's accessible name, so a screen reader tabbing
+            the ladder would hear "head to head with Ginette" and lose the rank
+            and rating the row exists to state. */}
+        <span className="sr-only">{headToHeadLabel(row.name)}</span>
+      </a>
     </li>
   );
 }

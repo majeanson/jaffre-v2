@@ -90,6 +90,29 @@ test('staged head-to-head shows both records, the edge, and the shared games', a
   await expect(page.locator('a[href^="#replay/h2h-"]')).toHaveCount(9);
 });
 
+/**
+ * Lives with the other head-to-head coverage rather than in a leaderboard spec:
+ * the assertion is about the door, not the ladder. A ladder row already carries
+ * the public id (routes/leaderboard.ts hashes the uid on the way out), so the
+ * row naming the player above you leads to your record against them.
+ */
+test('ladder rows open head-to-head, except your own', async ({ page }) => {
+  await page.goto('/#scenes/leaderboard');
+  await expect(page.getByRole('heading', { name: 'Leaderboard' })).toBeVisible();
+  // DEMO_LEADERBOARD: 10 ranked rows plus the viewer's own pinned row. Ginette
+  // carries the SAME pid here as on the record's best-partner tile — one staged
+  // cast, one identity per person.
+  // Substring, not an exact name: the row's accessible name is its own text
+  // (rank · name · rating) with the destination appended sr-only — see Row().
+  await expect(page.getByRole('link', { name: /Head to head with Ginette/ })).toHaveAttribute(
+    'href',
+    '#h2h/a1b2c3d4e5f60789',
+  );
+  await expect(page.locator('a[href^="#h2h/"]')).toHaveCount(10);
+  // Your own row names you and links nowhere — no record against yourself.
+  await expect(page.locator('a[href="#h2h/aaaa1111bbbb2222"]')).toHaveCount(0);
+});
+
 test('head-to-head with someone you have never sat with says so', async ({ page }) => {
   await page.goto('/#scenes/head-to-head-none');
   await expect(page.getByText('No shared table')).toBeVisible();

@@ -239,6 +239,37 @@ describe('GET /api/stats', () => {
     ]);
   });
 
+  /**
+   * `game_players.name` is a per-game snapshot, so a player who renames leaves
+   * old rows behind. The tile has to show who they are NOW — otherwise it
+   * disagrees with the head-to-head screen it links to, which reads their most
+   * recent shared game.
+   */
+  it('names a renamed partner by their newest game, not their oldest', async () => {
+    for (const [i, name] of ['Bob', 'Bob', 'Roberta'].entries()) {
+      await seedGame({
+        id: `rename-g${String(i)}`,
+        roomCode: 'rn',
+        finishedAt: 50_000 + i * 1000,
+        winnerTeam: 0,
+        roundSummaries: null,
+        players: [
+          { seat: 0, userId: 'rn-me', isBot: 0, name: 'Me' },
+          { seat: 1, userId: null, isBot: 1, name: 'Bot 2' },
+          { seat: 2, userId: 'rn-mate', isBot: 0, name },
+          { seat: 3, userId: null, isBot: 1, name: 'Bot 4' },
+        ],
+      });
+    }
+    const res = await SELF.fetch('https://example.com/api/stats?u=rn-me');
+    const data = (await res.json()) as {
+      bestPartner: { name: string } | null;
+      regulars: { name: string }[];
+    };
+    expect(data.bestPartner?.name).toBe('Roberta');
+    expect(data.regulars.map((r) => r.name)).toEqual(['Roberta']);
+  });
+
   it('splits declared contracts into per-trump mastery lanes', async () => {
     // One game, four of Zoe's own contracts across three trumps, plus a
     // sans-atout (no trump) and an OPPONENT's green contract that must not

@@ -445,10 +445,13 @@ function SocialPanel({
   return (
     <a
       href={`#h2h/${pid}`}
-      aria-label={linkLabel(name)}
       className={`${shell} block transition-colors hover:bg-(--color-ap-panel-hover)`}
     >
       {inner}
+      {/* Appended, never an aria-label: a label REPLACES the tile's own text as
+          the accessible name, so a screen reader would lose the heading and the
+          relation ("beats you 5 of 8") that are the whole point of the tile. */}
+      <span className="sr-only">{linkLabel(name)}</span>
     </a>
   );
 }
@@ -479,7 +482,6 @@ function RegularsPanel({
           <li key={r.pid} className="min-w-0">
             <a
               href={`#h2h/${r.pid}`}
-              aria-label={t.headToHead(r.name)}
               className="flex items-center gap-[0.5em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-[0.6em] py-[0.35em] shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
             >
               <AvatarChip name={r.name} color="var(--color-suit-brown)" size="sm" />
@@ -491,6 +493,7 @@ function RegularsPanel({
                   {t.regularShare(r.withGames, r.vsGames)}
                 </span>
               </span>
+              <span className="sr-only">{t.headToHead(r.name)}</span>
             </a>
           </li>
         ))}

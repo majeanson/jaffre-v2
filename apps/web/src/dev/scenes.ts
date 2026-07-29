@@ -256,12 +256,30 @@ export const DEMO_PUBLIC_ROOMS: readonly PublicRoom[] = [
   { code: 'chalet', host: 'Réal', players: 2, capacity: 4, phase: 'waiting' },
 ];
 
-/** Staged public ids for the staged people — 16 lowercase hex, publicId's own
- * shape, so the `#h2h/<pid>` links these scenes render are real routes. */
-const PID_GINETTE = 'a1b2c3d4e5f60789';
-const PID_MARCEL = '0f1e2d3c4b5a6978';
-const PID_LISE = '1234abcd5678ef90';
-const PID_REAL = 'fedc0987ba654321';
+/**
+ * One public id per staged person — 16 lowercase hex, publicId's own shape, so
+ * every `#h2h/<pid>` link these scenes render is a route that actually
+ * resolves (a 'u1' would fall through to the unknown-link notice, making the
+ * scene a lie about the screen).
+ *
+ * Shared by the record, the ladder, the monthly race and the Deal Board so the
+ * staged cast is ONE population: the Ginette on the ladder is the Ginette who
+ * is your best partner, and both link to the same head-to-head.
+ */
+const PID = {
+  me: 'aaaa1111bbbb2222',
+  ginette: 'a1b2c3d4e5f60789',
+  marcel: '0f1e2d3c4b5a6978',
+  lise: '1234abcd5678ef90',
+  real: 'fedc0987ba654321',
+  alix: '00aa11bb22cc33dd',
+  bob: '9988776655443322',
+  chantal: 'c0ffee0011223344',
+  marco: 'abcdef0123456789',
+  suzanne: '5a5a5a5a6b6b6b6b',
+  tiGuy: '0102030405060708',
+  guest: 'deadbeef00003f9a',
+} as const;
 
 /** Staged "Your record" data for the stats scene. */
 export const DEMO_STATS: Stats = {
@@ -279,16 +297,16 @@ export const DEMO_STATS: Stats = {
     green: { attempted: 0, made: 0 },
     blue: { attempted: 0, made: 0 },
   },
-  bestPartner: { pid: PID_GINETTE, name: 'Ginette', games: 6, wins: 4 },
-  nemesis: { pid: PID_MARCEL, name: 'Marcel', games: 8, losses: 5 },
+  bestPartner: { pid: PID.ginette, name: 'Ginette', games: 6, wins: 4 },
+  nemesis: { pid: PID.marcel, name: 'Marcel', games: 8, losses: 5 },
   // Coherent with the two tiles above: Ginette's 6 partnered + 3 opposed are
   // the same games DEMO_HEAD_TO_HEAD lists, and Marcel's 8 are the nemesis
   // faced count. Lise is the third regular the tiles can never name.
   regulars: [
-    { pid: PID_MARCEL, name: 'Marcel', withGames: 0, vsGames: 8 },
-    { pid: PID_GINETTE, name: 'Ginette', withGames: 6, vsGames: 3 },
-    { pid: PID_LISE, name: 'Lise', withGames: 1, vsGames: 3 },
-    { pid: PID_REAL, name: 'Réal', withGames: 2, vsGames: 2 },
+    { pid: PID.marcel, name: 'Marcel', withGames: 0, vsGames: 8 },
+    { pid: PID.ginette, name: 'Ginette', withGames: 6, vsGames: 3 },
+    { pid: PID.lise, name: 'Lise', withGames: 1, vsGames: 3 },
+    { pid: PID.real, name: 'Réal', withGames: 2, vsGames: 2 },
   ],
   streak: { current: 3, best: 5 },
 };
@@ -378,7 +396,7 @@ export const DEMO_HISTORY_NEW: readonly HistoryGame[] = [
 const H2H_WITH = [true, true, false, true, true, false];
 const H2H_VS = [true, false, false];
 export const DEMO_HEAD_TO_HEAD: HeadToHead = {
-  pid: PID_GINETTE,
+  pid: PID.ginette,
   name: 'Ginette',
   together: { games: H2H_WITH.length, wins: H2H_WITH.filter(Boolean).length },
   against: { games: H2H_VS.length, wins: H2H_VS.filter(Boolean).length },
@@ -399,7 +417,7 @@ export const DEMO_HEAD_TO_HEAD: HeadToHead = {
 /** The other end of the same screen: a pid you have never shared a table
  * with. Answered, not errored — see routes/head2head.ts. */
 export const DEMO_HEAD_TO_HEAD_NONE: HeadToHead = {
-  pid: PID_LISE,
+  pid: PID.lise,
   name: null,
   together: { games: 0, wins: 0 },
   against: { games: 0, wins: 0 },
@@ -409,18 +427,18 @@ export const DEMO_HEAD_TO_HEAD_NONE: HeadToHead = {
 /** Staged skill ladder — a full top 10 plus the viewer pinned outside it. */
 export const DEMO_LEADERBOARD: Leaderboard = {
   top: [
-    { id: 'u1', name: 'Ginette', color: '#f2b712', rating: 1592, ratingGames: 64 },
-    { id: 'u2', name: 'Marcel', color: '#e05252', rating: 1571, ratingGames: 58 },
-    { id: 'u3', name: 'Réal', color: '#3f8bff', rating: 1544, ratingGames: 41 },
-    { id: 'u4', name: 'Lise', color: '#1e7a52', rating: 1502, ratingGames: 37 },
-    { id: 'u5', name: 'Alix', color: '#7a6ff0', rating: 1488, ratingGames: 52 },
-    { id: 'u6', name: 'Bob', color: null, rating: 1463, ratingGames: 19 },
-    { id: 'u7', name: 'Chantal', color: '#d97800', rating: 1440, ratingGames: 28 },
-    { id: 'u8', name: 'Marco', color: '#0f9c72', rating: 1421, ratingGames: 22 },
-    { id: 'u9', name: 'Suzanne', color: '#ff4d7d', rating: 1397, ratingGames: 33 },
-    { id: 'u10', name: 'Ti-Guy', color: '#4fd8ff', rating: 1355, ratingGames: 12 },
+    { id: PID.ginette, name: 'Ginette', color: '#f2b712', rating: 1592, ratingGames: 64 },
+    { id: PID.marcel, name: 'Marcel', color: '#e05252', rating: 1571, ratingGames: 58 },
+    { id: PID.real, name: 'Réal', color: '#3f8bff', rating: 1544, ratingGames: 41 },
+    { id: PID.lise, name: 'Lise', color: '#1e7a52', rating: 1502, ratingGames: 37 },
+    { id: PID.alix, name: 'Alix', color: '#7a6ff0', rating: 1488, ratingGames: 52 },
+    { id: PID.bob, name: 'Bob', color: null, rating: 1463, ratingGames: 19 },
+    { id: PID.chantal, name: 'Chantal', color: '#d97800', rating: 1440, ratingGames: 28 },
+    { id: PID.marco, name: 'Marco', color: '#0f9c72', rating: 1421, ratingGames: 22 },
+    { id: PID.suzanne, name: 'Suzanne', color: '#ff4d7d', rating: 1397, ratingGames: 33 },
+    { id: PID.tiGuy, name: 'Ti-Guy', color: '#4fd8ff', rating: 1355, ratingGames: 12 },
   ],
-  you: { id: 'me', name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
+  you: { id: PID.me, name: 'Marc', color: '#7a6ff0', rating: 1287, ratingGames: 15, rank: 14 },
 };
 
 /** Staged monthly race — same cast, ranked by WINS this month rather than
@@ -429,13 +447,13 @@ export const DEMO_LEADERBOARD: Leaderboard = {
  * proves the disambiguated-name rule reaches this board. */
 export const DEMO_MONTHLY: MonthlyLeaderboard = {
   top: [
-    { id: 'u1', name: 'Ginette', color: '#f2b712', games: 14, wins: 11, net: 96, rank: 1 },
-    { id: 'u2', name: 'Marcel', color: '#e05252', games: 12, wins: 8, net: 61, rank: 2 },
-    { id: 'me', name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
-    { id: 'u9', name: 'Player 3f9a', color: null, games: 7, wins: 4, net: 12, rank: 4 },
-    { id: 'u4', name: 'Lise', color: '#1e7a52', games: 5, wins: 1, net: -18, rank: 5 },
+    { id: PID.ginette, name: 'Ginette', color: '#f2b712', games: 14, wins: 11, net: 96, rank: 1 },
+    { id: PID.marcel, name: 'Marcel', color: '#e05252', games: 12, wins: 8, net: 61, rank: 2 },
+    { id: PID.me, name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
+    { id: PID.guest, name: 'Player 3f9a', color: null, games: 7, wins: 4, net: 12, rank: 4 },
+    { id: PID.lise, name: 'Lise', color: '#1e7a52', games: 5, wins: 1, net: -18, rank: 5 },
   ],
-  you: { id: 'me', name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
+  you: { id: PID.me, name: 'Marc', color: '#7a6ff0', games: 9, wins: 6, net: 34, rank: 3 },
 };
 
 /** Staged Deal Board — a played daily with the viewer sitting mid-table.
@@ -449,11 +467,11 @@ export const DEMO_NOW = Date.UTC(2026, 6, 28, 12);
 export const DEMO_CHALLENGE_BOARD: ChallengeBoard = {
   challenge: { id: 'd-2026-07-28', cadence: 'daily', periodKey: '2026-07-28', seed: 8_675_309 },
   board: [
-    { id: 'u1', name: 'Ginette', color: '#f2b712', score: 24, tricks: 7, rank: 1 },
-    { id: 'u2', name: 'Marcel', color: '#e05252', score: 19, tricks: 6, rank: 2 },
-    { id: 'me', name: 'Marc', color: '#7a6ff0', score: 14, tricks: 5, rank: 3 },
-    { id: 'u3', name: 'Réal', color: '#3f8bff', score: 9, tricks: 4, rank: 4 },
-    { id: 'u4', name: 'Lise', color: '#1e7a52', score: -6, tricks: 2, rank: 5 },
+    { id: PID.ginette, name: 'Ginette', color: '#f2b712', score: 24, tricks: 7, rank: 1 },
+    { id: PID.marcel, name: 'Marcel', color: '#e05252', score: 19, tricks: 6, rank: 2 },
+    { id: PID.me, name: 'Marc', color: '#7a6ff0', score: 14, tricks: 5, rank: 3 },
+    { id: PID.real, name: 'Réal', color: '#3f8bff', score: 9, tricks: 4, rank: 4 },
+    { id: PID.lise, name: 'Lise', color: '#1e7a52', score: -6, tricks: 2, rank: 5 },
   ],
   you: { score: 14, tricks: 5, rank: 3 },
   // More entries than rows shown: the board caps at 20, so the share line and

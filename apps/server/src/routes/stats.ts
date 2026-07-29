@@ -212,6 +212,13 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
       };
       entry.games++;
       if (won) entry.wins++;
+      // `game_players.name` is a snapshot taken when that game ended, and this
+      // loop runs oldest-first — so re-assigning every time leaves the NEWEST
+      // name, not the name they had the first time you sat together. Without
+      // it a renamed player showed a stale name on the tile while the
+      // head-to-head screen it links to (which reads their latest shared game)
+      // showed the current one.
+      entry.name = teammate.name;
       partners.set(teammate.userId, entry);
     }
 
@@ -227,6 +234,7 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
       };
       entry.games++;
       if (decided && !won) entry.losses++;
+      entry.name = p.name; // newest snapshot wins — see the partner loop above
       opponents.set(p.userId, entry);
     }
   }
