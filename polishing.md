@@ -524,3 +524,59 @@ ghost click.
   sound.
 - FR gameplay glossary (levée/mise/brasseur/ronde/siège) is clean everywhere — the drift
   is register (tu/vous) and duplication, not vocabulary.
+
+---
+
+## Visual audit #3 — hardening week, 2026-07-28
+
+Not a full 505-shot sweep. The gallery run was stopped after the desktop
+dark/light passes (10 of 48 viewport×skin combos, ~740 shots) because the
+remaining 38 combos are ~90 minutes of CPU and the week's question was narrow:
+do the FIVE surfaces that shipped last week hold up. The phone-width pass is
+the one thing still owed — noted at the bottom.
+
+### Fixed in flight
+
+- **The `+5` chip went muddy on the light theme.** The red 0's bonus plate used
+  `--color-ap-ok` + ink; that token darkens for text-on-panel use, so ink on top
+  of it landed at 3.8:1. axe had been failing the `felt-arborite-light` scene —
+  and with it EVERY E2E run on main — since 2026-07-27. Now a fixed green plate
+  with white text (~6:1), symmetric with the brown 0's `−3` plate, which had
+  been built that way all along. (78ef8a1)
+- **The shelf plank sat at two heights.** A trophy carrying a reward line
+  ("On Fire → Lamplight Foil") is taller than its neighbours, so its ledge
+  dropped below theirs in the same row — which is exactly the illusion the
+  ledge exists to create. Trophy block grows; ledges share a bottom. (d7a99de)
+- **Two primary CTAs named no text colour.** "Play it out" (shared hand) and
+  "Play the hand" (Deal Board) inherited the page's light text over violet at
+  2.6:1. Every other violet CTA in the app uses ink on violet at 5.1:1. Found
+  the moment the hand screen got a scene of its own to be scanned in. (d7a99de)
+- **"How it looks" showed two of five axes.** See e1babf4 — the felt and the
+  sweep were missing from the one panel whose whole job is the combination.
+
+### Checked and fine
+
+- `felt-tavern`, `felt-rink`, `felt-arborite-light` at desktop dark + light.
+  The ivory-on-light risk the brief flagged does not bite: the cards keep their
+  ink borders and read cleanly on both pale surfaces.
+- Rink Ice's blue centre stripe is a deliberate hockey line, not a texture
+  artifact. It looked like a rendering bug in the small preview and is not one.
+- `awards-arranging` at desktop: the move buttons row fits; the ledge
+  misalignment above was the only defect.
+
+### Still open
+
+- **Phone-width pass not run** (Low-Medium). `npm run shots` covers 4 viewports
+  × 12 skins; only desktop was reached. The brief's specific worry — the trophy
+  shelf's move-buttons row at 390px — is untested. Cheapest close:
+  `npx playwright test -c apps/web/playwright.shots.config.ts --grep "phone-dark|phone-light"`
+  (~4 min).
+- **Deal Board FR tab row wrapping** (Low). Untested: there is no `#daily`
+  scene in the catalog, so the gallery never shoots it. Worth adding one — the
+  hand screen just showed what a screen with no scene costs.
+- **Main bundle is 828KB** (Low, no action). Checked whether `@jaffre/bots` can
+  move behind the practice entry points: it cannot. `useTableDerived.ts` imports
+  `suggest` for the Coach, which runs on EVERY table including online rooms, so
+  the bots package is critical path for the app's main screen — not just for
+  practice. The engine is likewise needed everywhere for rules and types.
+  Deferring either would buy a loading hop on the most common first action.
