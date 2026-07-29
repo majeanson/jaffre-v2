@@ -17,7 +17,13 @@ Last checkpoint: **2026-07-29**.
   persistence · types). Presence hardening (disconnect clocks, bot takeover,
   `botSwapAt`/`botPlaying` roster contract, recap ready-timeout, all-bots
   unfreeze) is settled — treat as load-bearing. Lobby DO: matchmaking + Elo
-  leaderboard, claim reservation/vacate closed.
+  leaderboard, claim reservation/vacate closed. The worker entry got the same
+  carve: `index.ts` is a 135-line router and nothing else, with every handler
+  in `apps/server/src/routes/` (http · auth · profile · games · stats ·
+  dealBoard · leaderboard · tables · socket · telemetry · ice · push). One
+  `computeStats` backs both the record and the awards derived from it; the
+  three client-capability routes each state their own degradation contract
+  (telemetry never throws · ice falls back to STUN · push refuses).
 - **Felt table** — the felt itself is deliberate (an "arena" rewrite was
   tried and reverted; change it surgically, shot-verified). One deal clock
   (`table/dealPace.ts`) drives the fly-out, the fan's 1-by-1 fill, the
@@ -64,7 +70,14 @@ Last checkpoint: **2026-07-29**.
 
 ## Open threads (the honest short list)
 
-- `apps/server/src/index.ts` (1,906 lines) — same carve treatment as
-  GameRoom when a session allows.
-- Phase-4 cosmetics follow-ups that never bit: Visitor TTF, QR polish,
-  nemesis stat.
+- **Visitor TTF** — the arcade display face is still Silkscreen
+  (`@fontsource/silkscreen`, loaded in `main.tsx`; token
+  `--font-arcade-display` already lists `'Visitor'` behind it). Blocked on
+  the licensed font file, not on code: drop the webfont in, move `'Visitor'`
+  to the front of the token, done.
+
+Two threads this list carried for a while were already closed in the code
+and are struck for good: the **nemesis stat** ships (server → `Stats.tsx`
+SocialPanel → pinned by `stats.spec.ts`), and the **QR** is finished
+(`components/QrCode.tsx` — bundled encoder, dynamic-imported, crisp SVG
+path with a quiet zone). Re-audit them and you'll find nothing to do.
