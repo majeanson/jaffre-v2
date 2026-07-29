@@ -69,3 +69,45 @@ test('#history redirects into Your record', async ({ page }) => {
   await page.goto('/#history');
   await expect(page.getByRole('heading', { name: 'Your record' })).toBeVisible();
 });
+
+/**
+ * Suit mastery: five lanes, always all five, whether or not you have ever
+ * called them. The panel is the only place the game says what it thinks your
+ * game LOOKS like, so the shape is the assertion — a panel that quietly
+ * dropped a lane, or filled one that was never bid, would still be a
+ * plausible-looking panel.
+ */
+test('the mastery panel shows all five lanes, and says so when none are called', async ({
+  page,
+}) => {
+  // stats-new: a real record (2 games) with no contract ever taken — the state
+  // the empty copy exists for.
+  await page.goto('/#scenes/stats-new');
+  const panel = page.getByTestId('mastery-panel');
+  await expect(panel).toBeVisible();
+  // Four suits and sans-atout.
+  await expect(panel.locator('li')).toHaveCount(5);
+  await expect(panel).toContainText("You haven't taken a contract yet");
+  // Nothing claimed: every lane reads as never called.
+  await expect(panel.getByText('never called')).toHaveCount(5);
+});
+
+test('a played record fills the mastery lanes it earned', async ({ page }) => {
+  await page.goto('/#scenes/stats');
+  const panel = page.getByTestId('mastery-panel');
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('li')).toHaveCount(5);
+  // Some lane has been called, so the empty-state line is gone.
+  await expect(panel).not.toContainText("You haven't taken a contract yet");
+});
+
+test('a player with no games at all sees no mastery panel', async ({ browser }) => {
+  // The panel lives inside the "you have a record" branch: five empty bars is
+  // not a welcome, it is a report on nothing.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto('/#stats');
+  await expect(page.getByText('No games yet')).toBeVisible();
+  await expect(page.getByTestId('mastery-panel')).toHaveCount(0);
+  await context.close();
+});

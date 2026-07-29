@@ -640,6 +640,9 @@ const LOADERS: Record<SceneId, () => void> = {
   'stats-loading': () => undefined,
   'stats-all-games': () => undefined,
   replay: () => undefined,
+  // The shared-hand screen folds its own state out of the staged replay data
+  // and starts practice mode from it — nothing to inject into the store.
+  hand: () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.
   'share-sheet': () => undefined,

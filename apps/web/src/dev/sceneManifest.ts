@@ -11,6 +11,7 @@ export type SceneScreen =
   | 'lobby'
   | 'stats'
   | 'replay'
+  | 'hand'
   | 'visitor'
   | 'share'
   | 'collection'
@@ -342,6 +343,17 @@ export const SCENE_METAS = [
     label: 'Replay viewer',
     screen: 'replay',
     probe: '[data-testid="replay-controls"]',
+  },
+  {
+    // The receiving end of a shared hand. Hand.tsx has always taken staged
+    // replay data for exactly this, but nothing wired it up — so the screen a
+    // stranger lands on from someone else's link had no scene, no shot in the
+    // gallery, and no way to be tested without first playing a whole game to
+    // game_over against the real server.
+    id: 'hand',
+    label: 'Check this play — a shared position',
+    screen: 'hand',
+    probe: 'role=button[name="Play it out"]',
   },
   {
     id: 'visitor',

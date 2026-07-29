@@ -27,6 +27,7 @@ import { Home, type IdentityStage } from './Home.js';
 import { Lobby } from './Lobby.js';
 import { PaintStudio } from './PaintStudio.js';
 import { PublicLobby } from './PublicLobby.js';
+import { Hand } from './Hand.js';
 import { Replay } from './Replay.js';
 import { Stats } from './Stats.js';
 import { Table } from './Table.js';
@@ -274,6 +275,17 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
         ))}
       {current.screen === 'replay' && (
         <Replay key={current.id} gameId={null} demo={DEMO_REPLAY} onLeave={onLeave} />
+      )}
+      {/* The same staged game the replay scene uses, entered as a shared
+          position: mid-round (the screen rewinds to the top of that trick on
+          its own) and seated where the sharer was. */}
+      {current.screen === 'hand' && (
+        <Hand
+          key={current.id}
+          position={{ gameId: 'demo-1', actionIndex: 24, seat: 0 }}
+          demo={DEMO_REPLAY}
+          onLeave={onLeave}
+        />
       )}
       {current.screen === 'visitor' && (
         <Visitor key={current.id} code="scene" onSit={noop} onWatch={noop} onLeave={onLeave} />
