@@ -14,7 +14,7 @@ Last checkpoint: **2026-07-29**.
   lose), Zod protocol, redaction as the anti-cheat boundary.
 - **Server** — one `GameRoom` DO per room, carved into invariant-owning
   modules (`apps/server/src/room/`: presence · bots · seats · music ·
-  persistence · types). Presence hardening (disconnect clocks, bot takeover,
+  persistence · reaper · types). Presence hardening (disconnect clocks, bot takeover,
   `botSwapAt`/`botPlaying` roster contract, recap ready-timeout, all-bots
   unfreeze) is settled — treat as load-bearing. Lobby DO: matchmaking + Elo
   leaderboard, claim reservation/vacate closed. The worker entry got the same
@@ -48,10 +48,10 @@ Last checkpoint: **2026-07-29**.
 
 ## The gates (all green at checkpoint)
 
-- 182 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
-  only project that watches pixels move) · 67-scene catalog, each axe-gated
-  (`npm run e2e:scenes`, 100 tests — fast, and the first thing to run) ·
-  112 web unit · 194 server · engine property tests (100% cov).
+- 188 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
+  only project that watches pixels move) · 69-scene catalog, each axe-gated
+  (`npm run e2e:scenes`, 102 tests — fast, and the first thing to run) ·
+  112 web unit · 207 server · engine property tests (100% cov).
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Full shots sweep 2026-07-29: **60/60 viewport×skin combos, ~4,300 shots,
@@ -114,23 +114,33 @@ differ only in their final character (a test pins this). The rename card
 not a defence — it guards the lobby seat pick and the Deal Board's play
 button, and skipping it is safe.
 
-## Open threads
+## Both open threads closed (2026-07-29, later session)
 
-Two, both from the 2026-07-29 review, both deliberately NOT started:
-
-- **Head-to-head view** — the Stats SocialPanel's nemesis/best-partner tiles
-  are dead ends. Tapping one should open the record vs/with that player, the
-  shared games (each already links to its replay) and a derived "regulars"
-  list (anyone faced/partnered ≥3 games). No stored social graph — derive it,
-  like everything else here.
-- **Room storage self-destruct** — nothing ever deletes a GameRoom DO's
-  storage (zero `deleteAll()` calls in `apps/server`), and merely CONNECTING
-  to a room code persists a `meta` write, so every mistyped code and expired
-  invite mints permanent billed storage. The fix (a long-dated alarm at
-  game_over/never-started with zero sockets) has to weave into the existing
-  single-alarm arbitration in `scheduleNextWake`/`runAlarm`, which is
-  load-bearing — give it a fresh session and its own tests, not the tail end
-  of a long one.
+- **Room storage self-destruct** — SHIPPED (`apps/server/src/room/reaper.ts`).
+  One rule: while a room has no open sockets it carries `meta.emptySince`, and
+  the first alarm past the grace deletes everything it ever wrote (24 h for a
+  never-started or game_over room, 7 days for one frozen mid-hand, which takes
+  a resumable game away). The alarm arbitration is the load-bearing part:
+  `alarm()` checks the reaper FIRST and re-arms it LAST, so `bots.ts` and
+  `scheduleNextWake` are untouched; the reaper only arms while socket-empty
+  (every game wake needs a connected human, so they never contend), it
+  min-arms with `getAlarm()` so the pre-game vacate wake can't be pushed a day
+  out, and the deadline lives in persisted `emptySince` — NOT in the alarm
+  time — so a re-arm can never restart the clock. `test/reaper.test.ts` (7)
+  pins all of it. Note: `room.test.ts`'s empty-room pause test now asserts
+  what the pause means (the game doesn't advance), not an empty alarm slot.
+  Residual gap: rooms whose last socket closed BEFORE this shipped have no
+  stamp and are only reaped if someone connects to them again.
+- **Head-to-head view** — SHIPPED. `#h2h/<pid>`
+  (`screens/HeadToHead.tsx`) off both Stats social tiles: record with, record
+  across, and every shared game (rows via the extracted
+  `components/GameRow.tsx`, so the record's list and this one cannot drift).
+  `/api/head2head` derives it from `game_players`; the address is the
+  one-way PUBLIC id, and a test pins that no uid appears in the body. Stats
+  also gained `regulars` (3+ shared games, with AND against counted together,
+  uncapped, minus the two the tiles already name). The "edge" line reads ONLY
+  the against-games — folding in games won side by side made every good
+  partner look like a rival. Scenes `head-to-head` / `head-to-head-none`.
 
 Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
 (the constants are frozen by design; the monthly ladder is the real answer), a
