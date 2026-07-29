@@ -155,6 +155,11 @@ export function stopLocalGame(): void {
   paused = false;
   state = null;
   actionLog = null;
+  // The published view dies with the game. A local roster says `started: true`,
+  // so leaving it behind told every later screen — the room you join next, the
+  // PWA badge — that a game was still underway. (Every start path calls this
+  // first and then republishes, so the reset is never visible mid-game.)
+  useGameStore.getState().reset();
 }
 
 export function sendLocalAction(action: ClientAction): void {
