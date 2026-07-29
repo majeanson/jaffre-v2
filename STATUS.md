@@ -80,16 +80,20 @@ differ only in their final character (a test pins this). The rename card
 not a defence — it guards the lobby seat pick and the Deal Board's play
 button, and skipping it is safe.
 
-## Open threads (the honest short list)
+## Open threads
 
-- **Visitor TTF** — the arcade display face is still Silkscreen
-  (`@fontsource/silkscreen`, loaded in `main.tsx`; token
-  `--font-arcade-display` already lists `'Visitor'` behind it). Blocked on
-  the licensed font file, not on code: drop the webfont in, move `'Visitor'`
-  to the front of the token, done.
+**None.** The list this file carried for weeks is closed, and each item is
+struck by name so nobody re-audits it:
 
-Two threads this list carried for a while were already closed in the code
-and are struck for good: the **nemesis stat** ships (server → `Stats.tsx`
-SocialPanel → pinned by `stats.spec.ts`), and the **QR** is finished
-(`components/QrCode.tsx` — bundled encoder, dynamic-imported, crisp SVG
-path with a quiet zone). Re-audit them and you'll find nothing to do.
+- **Visitor TTF** — decided, not deferred. Silkscreen IS the display face;
+  the app was drawn and shot against it. The `'Visitor'` fallback is gone
+  from `--font-arcade-display` and the "swap it later" note is gone from
+  `main.tsx`. Don't put either back.
+- **nemesis stat** — ships (server → `Stats.tsx` SocialPanel → pinned by
+  `stats.spec.ts`).
+- **QR** — finished (`components/QrCode.tsx`: bundled encoder,
+  dynamic-imported, crisp SVG path with a quiet zone).
+- **`index.ts` carve** — done; see Server above.
+
+Next session starts from a clean board: find the next thing by playing the
+app, not by reading this list.

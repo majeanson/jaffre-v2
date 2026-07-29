@@ -3,10 +3,11 @@
 // typeface), so their bare imports are already minimal.
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/instrument-sans';
-// Arcade shell type: Silkscreen (display — the compact-pixel stand-in for the
-// design's "Visitor" face; swap in the licensed Visitor TTF via the arcade
-// --font-arcade-display token later) + Rubik (UI). Silkscreen's own default
-// stylesheet is already latin/latin-ext only (same reason as above).
+// Arcade shell type: Silkscreen (display) + Rubik (UI). Silkscreen began as a
+// stand-in for the handoff's licensed "Visitor" face and is now the real
+// choice — the app was drawn and shot against it. No swap pending.
+// Silkscreen's own default stylesheet is already latin/latin-ext only (same
+// reason as above).
 import '@fontsource/silkscreen';
 import '@fontsource/silkscreen/700.css';
 // Rubik Variable's bare import pulls arabic/cyrillic/cyrillic-ext/hebrew

@@ -105,7 +105,12 @@
    * live in the --color-ap-* namespace and FLIP under [data-theme='light'];
    * the type / border / shadow / radius tokens are constant across skins so the
    * shell reads the same everywhere. Card faces reuse --color-card-face. */
-  --font-arcade-display: 'Silkscreen', 'Visitor', ui-monospace, monospace;
+  /* Silkscreen is the display face, chosen and settled — not a placeholder.
+     The design handoff named "Visitor"; we shipped on Silkscreen, the whole
+     app was drawn and screenshot-swept against it, and it stays. Don't
+     reintroduce a 'Visitor' fallback: it could never apply behind a loaded
+     Silkscreen anyway, and it only ever read as an unfinished intent. */
+  --font-arcade-display: 'Silkscreen', ui-monospace, monospace;
   --font-arcade-ui: 'Rubik Variable', ui-sans-serif, system-ui, sans-serif;
   --color-ap-ground: #181225;
   --color-ap-panel: #221a35;
