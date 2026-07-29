@@ -180,6 +180,53 @@ test.describe('animations actually run', () => {
     }
   });
 
+  test('the "How it looks" panel plays the EQUIPPED sweep', async ({ page }) => {
+    // The hero panel is the only place all five axes are shown as one table,
+    // and the sweep is the one axis a still image cannot state at all. So the
+    // panel has to actually run it — and run the one you picked, not the
+    // default. Riffle is locked on a fresh identity; the dev toggle owns that.
+    await page.getByRole('checkbox', { name: 'Show all (dev)' }).check();
+    await page.getByTestId('cosmetic-tile-riffle').click();
+
+    const panel = page.getByTestId('live-preview');
+    await expect(panel.getByTestId('trick-card')).toHaveCount(4);
+
+    // The panel's cycle is deliberately slow (3.4s on the felt, 1.2s gone), so
+    // watch a full one plus a margin.
+    const frames = await page.evaluate(
+      (ms: number) =>
+        new Promise<{ t: number; op: number[] }[]>((resolve) => {
+          const root = document.querySelector('[data-testid="live-preview"]');
+          const out: { t: number; op: number[] }[] = [];
+          const start = performance.now();
+          const tick = () => {
+            const t = performance.now() - start;
+            out.push({
+              t,
+              op: [...(root?.querySelectorAll('[data-testid="trick-card"]') ?? [])].map((el) =>
+                Number.parseFloat(getComputedStyle(el).opacity),
+              ),
+            });
+            if (t >= ms) resolve(out);
+            else requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+      5200,
+    );
+
+    const asFrames: Frame[] = frames.map((f) => ({
+      t: f.t,
+      cards: f.op.map((opacity) => ({ opacity, transform: '' })),
+    }));
+    const times = departureTimes(asFrames);
+    expect(times, 'the hero panel never swept').not.toBeNull();
+    // Riffle's signature, in the panel as on the table: one card at a time.
+    expect(stagger(times as readonly number[])).toBeGreaterThan(320);
+
+    await page.getByTestId('cosmetic-tile-sweep').click();
+  });
+
   test('the foil sheen animates', async ({ page }) => {
     // Foils are server-granted, so there is no client-side way to equip one in
     // a test. The thing worth proving is the CSS itself: that a `[data-foil]`

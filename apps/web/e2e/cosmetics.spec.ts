@@ -70,6 +70,39 @@ test('equipping a felt applies it independently of the theme, and persists', asy
   await expect(html).not.toHaveAttribute('data-felt', /.*/);
 });
 
+test('the "How it looks" panel wears the equipped felt, and lets go of it', async ({ page }) => {
+  await page.goto('/#collection');
+  await expect(page.getByRole('heading', { name: 'Collection' })).toBeVisible();
+  const oval = page.getByTestId('live-preview').locator('.felt-oval');
+
+  // A real surface, not the 4px sliver the felt TILES shipped as.
+  const box = await oval.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThan(150);
+  expect(box?.height ?? 0).toBeGreaterThan(80);
+
+  // Read the felt through its own tokens rather than a pixel: `--color-felt-800`
+  // is what both the oval and the real table paint with.
+  const surface = () =>
+    oval.evaluate((el) => ({
+      base: getComputedStyle(el).getPropertyValue('--color-felt-800').trim(),
+      texture: getComputedStyle(el).getPropertyValue('--felt-texture').trim(),
+    }));
+
+  const house = await surface();
+  expect(house.texture).toBe('none'); // the default felt has no grain of its own
+
+  await page.getByTestId('cosmetic-tile-tavern').click();
+  const tavern = await surface();
+  expect(tavern.base).not.toBe(house.base);
+  expect(tavern.texture).not.toBe('none');
+
+  // The bug this pins: with no attribute of its own, a "default" surface
+  // inherits whatever is equipped on <html> — so going back to House Green
+  // left the panel (and the felt tiles, twice) still showing tavern wood.
+  await page.getByTestId('cosmetic-tile-house').click();
+  expect(await surface()).toEqual(house);
+});
+
 test('a locked skin shows its requirement and cannot be equipped', async ({ browser }) => {
   const context = await browser.newContext(); // fresh identity → no games played
   const page = await context.newPage();

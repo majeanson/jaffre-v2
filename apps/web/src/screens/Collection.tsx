@@ -78,7 +78,7 @@ const T: Record<
     title: 'Collection',
     home: 'Home',
     preview: 'How it looks',
-    previewHint: 'Your equipped skin + theme, together.',
+    previewHint: 'Your whole table — deck, felt, and the way tricks leave it.',
     cardSkins: 'Card skins',
     bonhommes: 'Bonhommes',
     themes: 'Themes',
@@ -94,7 +94,8 @@ const T: Record<
     title: 'Collection',
     home: 'Accueil',
     preview: 'Aperçu',
-    previewHint: 'Ton habillage + thème équipés, ensemble.',
+    previewHint:
+      'Ta table au complet — tes cartes, ton tapis, et la façon dont les levées partent.',
     cardSkins: 'Habillages de cartes',
     bonhommes: 'Bonhommes',
     themes: 'Thèmes',
@@ -239,6 +240,14 @@ function FeltPreview({ id }: { readonly id: string }) {
  * shows the REAL motion rather than an approximation of it. */
 const SWEEP_STAGE_PX = 220;
 const SWEEP_STAGE_SCALE = 0.42;
+/** The hero panel's stage. Wider than the tiles' (300 vs 220) because it plays
+ * its trick with `md` cards rather than `sm` ones: TrickArea seats a card
+ * against each edge, so four cards of a given size need a stage with room for
+ * two of them end to end, or the trick piles up in the middle. Scaled down to
+ * ~186px, which is where a card reads as a card and the sweep still has room
+ * to be a journey. */
+const LIVE_STAGE_PX = 300;
+const LIVE_STAGE_SCALE = 0.62;
 
 function SweepPreview({ id }: { readonly id: string }) {
   const [sweeping, setSweeping] = useState(false);
@@ -344,26 +353,73 @@ function BonhommePreview({ id, paintHint }: { readonly id: string; readonly pain
 
 /**
  * The "How it looks" preview — the ONE place the equipped combination is shown
- * together. Scopes BOTH the current theme (`data-theme`) and the current card
- * skin to a felt scene with the two team chips + a fanned hand, so players see
- * the real table look before the selection grids (which each preview a single
- * cosmetic in isolation, and so never shift when the other axis changes).
+ * together, so it has to be the WHOLE outfit. All five axes: the theme and the
+ * card skin scope the panel, the felt is the real surface underneath, a trick
+ * of your cards leaves it on your sweep, and your bonhomme rides the red 0 in
+ * the fan. The selection grids below each preview a single cosmetic in
+ * isolation (and so never shift when another axis changes); this is the only
+ * place they are ever seen as one table.
  */
 function LivePreview({
   cardSkin,
   theme,
   bonhomme,
+  felt,
+  sweep,
 }: {
   readonly cardSkin: string;
   readonly theme: string;
   readonly bonhomme: 'pixel' | 'painted' | 'og';
+  readonly felt: string;
+  readonly sweep: string;
 }) {
+  // A slow, LOPSIDED cycle: the trick sits on the felt for 3.4s and is gone
+  // for 1.2s. The sweep tiles below run an even 1400ms toggle because they are
+  // a demonstration you are meant to study; this is ambience under your own
+  // hand, and an even split would both twitch and leave the hero panel showing
+  // an empty table half the time anyone (or the screenshot sweep) looked at
+  // it. Reduced motion needs no special case: MotionConfig zeroes the
+  // transitions, so the trick simply appears and disappears.
+  const [sweeping, setSweeping] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = (on: boolean) => {
+      timer = setTimeout(
+        () => {
+          setSweeping(on);
+          schedule(!on);
+        },
+        on ? 3400 : 1200,
+      );
+    };
+    schedule(true);
+    return () => clearTimeout(timer);
+  }, []);
+
   const themeAttrs = theme === DEFAULT_THEME ? {} : { 'data-theme': theme };
   const skinAttrs = cardSkin === DEFAULT_CARD_SKIN ? {} : { 'data-card-skin': cardSkin };
+  // Same escape as FeltPreview, for the same reason but the opposite risk: the
+  // default felt means "whatever the theme says", and with no attribute of its
+  // own this surface would inherit the felt equipped on <html> — showing
+  // tavern wood to someone who just went back to House Green.
+  const feltAttrs = felt === DEFAULT_FELT ? { 'data-theme': theme } : { 'data-felt': felt };
+  const skin = {
+    id: cardSkin,
+    renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {},
+    // This local provider SHADOWS App's — it must re-carry `bonhommes`, or
+    // the equipped figure choice silently drops to the default here.
+    bonhommes: bonhomme,
+  };
   return (
     <div
+      data-testid="live-preview"
       {...themeAttrs}
-      className="flex flex-col items-center gap-[0.9em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-felt-800) p-[1.1em]"
+      // Both axes scope the WHOLE panel, exactly as they do on <html>: the
+      // trick on the felt has to be your deck too, and a provider only carries
+      // the renderers — the tokens (face, back, suit colours) ride the
+      // attribute. Scoping it to the fan alone left the played cards arcade.
+      {...skinAttrs}
+      className="flex flex-col items-center gap-[0.9em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-[1.1em]"
     >
       <div className="flex items-center gap-[0.6em]">
         <span
@@ -375,31 +431,61 @@ function LivePreview({
           style={{ background: 'var(--color-team-b)' }}
         />
       </div>
-      {/* This local provider SHADOWS App's — it must re-carry `bonhommes`, or
-          the equipped figure choice silently drops to the default here. */}
-      <div {...skinAttrs}>
-        <CardSkinProvider
-          value={{
-            id: cardSkin,
-            renderers: CARD_SKIN_RENDERERS[cardSkin] ?? {},
-            bonhommes: bonhomme,
+
+      {/* The surface. This panel used to sit on a flat --color-felt-800
+          rectangle, which was honest when the felt was the theme's business;
+          now that it is an axis of its own, "how it looks" has to show the
+          table you actually chose — and a trick of YOUR cards leaving it with
+          YOUR sweep, which is the only way a motion cosmetic can be seen at
+          all. Same scaled-stage trick as SweepPreview: TrickArea lays its
+          seats out in absolute px, so it is rendered at table size and shrunk
+          whole, keeping travel, spacing and card size in proportion. */}
+      <div
+        {...feltAttrs}
+        style={felt === DEFAULT_FELT ? ({ '--felt-texture': 'none' } as CSSProperties) : undefined}
+      >
+        <div
+          className="felt-oval felt-swatch relative overflow-hidden rounded-[46%]"
+          style={{
+            // The oval is as TALL as the scaled stage, so the top and bottom
+            // seats land on the felt instead of hanging off it, and wider than
+            // it is tall so it reads as a table rather than a coin.
+            width: `${String(Math.round(LIVE_STAGE_PX * LIVE_STAGE_SCALE * 1.45))}px`,
+            height: `${String(Math.round(LIVE_STAGE_PX * LIVE_STAGE_SCALE))}px`,
           }}
         >
-          <div className="flex items-end justify-center">
-            {SAMPLE.map((card, i) => (
-              <div key={i} style={{ marginLeft: i === 0 ? 0 : '-1.1em', zIndex: i }}>
-                <PlayingCard card={card} size="md" tilt={(i - 1) * 8} paint={getProfile().paint} />
-              </div>
-            ))}
-            {/* The skin's BACK rides at the fan's end at full size — it's what
-                other players see for the brief instant your deck "deals"
-                each round (DealIntro). */}
-            <div style={{ marginLeft: '-1.1em', zIndex: SAMPLE.length }}>
-              <PlayingCard card={{ suit: 'red', value: 5 }} size="md" tilt={16} faceDown />
-            </div>
+          <div
+            className="absolute top-1/2 left-1/2"
+            style={{
+              width: `${String(LIVE_STAGE_PX)}px`,
+              height: `${String(LIVE_STAGE_PX)}px`,
+              transform: `translate(-50%, -50%) scale(${String(LIVE_STAGE_SCALE)})`,
+            }}
+          >
+            <CardSkinProvider value={skin}>
+              <TrickSweepProvider value={trickSweepById(sweep)}>
+                <TrickArea plays={SWEEP_PREVIEW_TRICK} sweepTo={sweeping ? 2 : null} size="md" />
+              </TrickSweepProvider>
+            </CardSkinProvider>
           </div>
-        </CardSkinProvider>
+        </div>
       </div>
+
+      <CardSkinProvider value={skin}>
+        <div className="flex items-end justify-center">
+          {SAMPLE.map((card, i) => (
+            <div key={i} style={{ marginLeft: i === 0 ? 0 : '-1.1em', zIndex: i }}>
+              <PlayingCard card={card} size="md" tilt={(i - 1) * 8} paint={getProfile().paint} />
+            </div>
+          ))}
+          {/* The skin's BACK rides at the fan's end at full size — it's what
+              other players see for the brief instant your deck "deals"
+              each round (DealIntro). */}
+          <div style={{ marginLeft: '-1.1em', zIndex: SAMPLE.length }}>
+            <PlayingCard card={{ suit: 'red', value: 5 }} size="md" tilt={16} faceDown />
+          </div>
+        </div>
+      </CardSkinProvider>
     </div>
   );
 }
@@ -589,12 +675,23 @@ export function Collection({ onLeave, leaveLabel, demoStats, focus }: Collection
             <h2 className="font-arcade-display text-[1.1em] uppercase tracking-wide text-(--color-ap-violet-soft)">
               {t.preview}
             </h2>
-            <span className="truncate font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
+            {/* Names what the panel shows — all five axes now, and WRAPPING
+                rather than truncating: the sweep sits last and is the one
+                cosmetic whose name you cannot read off the picture, so
+                clipping the line would hide exactly the label that matters
+                most. */}
+            <span className="text-right font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
               {labelOf(CARD_SKINS, cardSkin)} · {bonhommeLabel(bonhomme, lang)} ·{' '}
-              {labelOf(THEMES, theme)}
+              {labelOf(THEMES, theme)} · {labelOf(FELTS, felt)} · {labelOf(SWEEPS, sweep)}
             </span>
           </div>
-          <LivePreview cardSkin={cardSkin} theme={theme} bonhomme={bonhomme} />
+          <LivePreview
+            cardSkin={cardSkin}
+            theme={theme}
+            bonhomme={bonhomme}
+            felt={felt}
+            sweep={sweep}
+          />
           <p className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">{t.previewHint}</p>
         </Panel>
 
