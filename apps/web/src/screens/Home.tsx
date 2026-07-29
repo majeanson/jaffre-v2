@@ -81,6 +81,8 @@ export function Home({
   // probes still find the name field/recovery plates without a click.
   const [customizeOpen, setCustomizeOpen] = useState(staged || customizeOpenProp);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Mirrors the PLAY door's own state so the practice nudge can step aside.
+  const [playDoorOpen, setPlayDoorOpen] = useState(playOpen ?? false);
   const customizeTriggerRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -155,8 +157,10 @@ export function Home({
             column width */}
         <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
           {/* First-visit pointer to the coached practice game. Standing tables
-              mean the player already knows the way in — skip the tutorial hint. */}
-          {!staged && tables.length === 0 && (
+              mean the player already knows the way in — skip the tutorial hint.
+              Hidden while the PLAY door is open: it points at that door, and
+              floating above the opened sheet it read as unrelated chrome. */}
+          {!staged && tables.length === 0 && !playDoorOpen && (
             <PracticeNudge
               onPractice={() => {
                 saveName();
@@ -175,6 +179,7 @@ export function Home({
             }}
             tables={demoTables ?? tables}
             defaultOpen={playOpen ?? false}
+            onOpenChange={setPlayDoorOpen}
             {...(demoTables === undefined
               ? {
                   onQuitTable: (code: string) => {
@@ -185,14 +190,18 @@ export function Home({
               : {})}
           />
 
-          {/* Your corner: the profile overview + meta screens — a smaller
-              sibling of the PLAY door (same violet panel chrome). */}
+          {/* Your corner: the profile overview + meta screens. Deliberately the
+              QUIET door — it used to carry the same filled violet, size and
+              weight as PLAY, which read as two equal choices when one of them
+              is the game and the other, on a first visit, is a room full of
+              "nothing yet". Panel fill, not violet: PLAY should be the only
+              thing on this screen wearing the accent. */}
           <button
             type="button"
             onClick={() => {
               location.hash = '#corner';
             }}
-            className="group/corner flex w-full cursor-pointer items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-5 py-[clamp(0.6rem,1.8vmin,1rem)] font-arcade-display text-[clamp(1rem,2.2vmin,1.3rem)] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap) transition-transform duration-(--duration-flick) active:translate-y-[2px]"
+            className="group/corner flex w-full cursor-pointer items-center justify-center gap-3 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-5 py-[clamp(0.45rem,1.4vmin,0.75rem)] font-arcade-display text-[clamp(0.8rem,1.7vmin,1rem)] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-colors duration-(--duration-flick) hover:bg-(--color-ap-panel-hover) active:translate-y-[2px]"
           >
             {t.corner}
             <span

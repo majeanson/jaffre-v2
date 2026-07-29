@@ -5,7 +5,7 @@
  * `publicId` rather than the raw uid.
  */
 import type { Env } from '../env.js';
-import { publicId } from '../publicId.js';
+import { displayName, publicId } from '../publicId.js';
 import { noDb, resolveUserId } from './http.js';
 
 const LEADERBOARD_MIN_GAMES = 10;
@@ -48,7 +48,9 @@ export async function handleLeaderboard(request: Request, env: Env, url: URL): P
     // read (and worse) by strangers. The same hash rides on roster seats, so
     // PlayerPeek matches seat↔row by id instead of by display name.
     id: publicId(r.id),
-    name: r.name,
+    // A ladder needs to name who beat whom; two unnamed guests reading
+    // identically is the same failure the opaque id above exists to prevent.
+    name: displayName(r.name, r.id),
     color: r.color,
     rating: r.rating,
     ratingGames: r.rating_games,

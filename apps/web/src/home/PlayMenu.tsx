@@ -113,6 +113,10 @@ export interface PlayMenuProps {
   readonly onQuitTable?: (code: string) => void;
   /** Mount with the door already open (scene viewer). */
   readonly defaultOpen?: boolean;
+  /** Told whenever the door opens or shuts. Home uses it to pull the first-run
+   * practice nudge out of the way — the nudge points AT this door, so leaving
+   * it floating above the opened sheet made it read as unrelated chrome. */
+  readonly onOpenChange?: (open: boolean) => void;
 }
 
 /** One labelled way in. The door is violet; each section is a `ground` card on
@@ -164,6 +168,7 @@ export function PlayMenu({
   tables,
   onQuitTable,
   defaultOpen,
+  onOpenChange,
 }: PlayMenuProps) {
   const lang = useLang();
   const t = T[lang];
@@ -173,7 +178,11 @@ export function PlayMenu({
     settingFromBots(loadPracticeBots()),
   );
   // One PLAY door: everything else only appears after you knock.
-  const [open, setOpen] = useState(defaultOpen ?? false);
+  const [open, setOpenState] = useState(defaultOpen ?? false);
+  const setOpen = (next: boolean): void => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   // The three curated lessons, folded behind LEARN so BOTS stays a short
   // stack of buttons until you ask for them.
   const [learnOpen, setLearnOpen] = useState(false);

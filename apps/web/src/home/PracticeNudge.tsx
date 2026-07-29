@@ -32,8 +32,15 @@ const T: Record<Lang, { nudge: string; dismiss: string }> = {
   },
 };
 
-/** First-visit nudge above the PLAY door: one line pointing a newcomer at the
- * coached practice game. One-shot — tapping it (or its ✕) retires it for good. */
+/**
+ * First-visit nudge above the PLAY door: one line pointing a newcomer at the
+ * coached practice game. One-shot — tapping it (or its ✕) retires it for good.
+ *
+ * It carries the most important sentence on a first visit, so it is set at the
+ * shell's readable size with a gold rule down its edge rather than the muted
+ * fine print it started as — it was reading as a caption for the PLAY button
+ * below it instead of as its own door.
+ */
 export function PracticeNudge({ onPractice }: { readonly onPractice: () => void }) {
   const t = T[useLang()];
   const [due, setDue] = useState(loadPracticeNudge);
@@ -45,7 +52,7 @@ export function PracticeNudge({ onPractice }: { readonly onPractice: () => void 
   return (
     <div
       data-testid="practice-nudge"
-      className="rise-in flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) py-1 pr-1 pl-3 shadow-(--shadow-ap-sm)"
+      className="rise-in flex items-center gap-2 rounded-(--radius-ap-control) border-2 border-l-[6px] border-(--color-ap-ink) border-l-(--color-ap-gold) bg-(--color-ap-panel) py-1 pr-1 pl-3 shadow-(--shadow-ap-sm)"
       style={{ '--rise-delay': '20ms' } as CSSProperties}
     >
       <span aria-hidden className="shrink-0 text-(--color-ap-gold)">
@@ -57,7 +64,7 @@ export function PracticeNudge({ onPractice }: { readonly onPractice: () => void 
           retire();
           onPractice();
         }}
-        className="min-w-0 flex-1 cursor-pointer py-1.5 text-left font-arcade-ui text-(length:--text-fluid-xs) leading-snug text-(--color-ap-text) hover:text-(--color-ap-gold)"
+        className="min-w-0 flex-1 cursor-pointer py-1.5 text-left font-arcade-ui text-(length:--text-fluid-sm) leading-snug font-semibold text-(--color-ap-text) hover:text-(--color-ap-gold)"
       >
         {t.nudge}
         <span aria-hidden> →</span>

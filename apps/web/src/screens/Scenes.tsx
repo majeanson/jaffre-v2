@@ -295,6 +295,11 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
           key={current.id}
           demoBoard={DEMO_CHALLENGE_BOARD}
           demoNow={DEMO_NOW}
+          // The name card can't be reached by clicking here: namePromptDue()
+          // is false under navigator.webdriver unless ?nameprompt=1 rides
+          // along, and a scene id can't carry a query string.
+          demoNameGate={current.id.startsWith('dealboard-name-gate')}
+          demoResult={current.id.startsWith('dealboard-result')}
           onLeave={onLeave}
         />
       )}

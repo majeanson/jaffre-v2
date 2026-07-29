@@ -12,7 +12,7 @@
 import type { Roster, RosterSeat } from '@jaffre/protocol';
 import type { GameRoom } from '../GameRoom.js';
 import { notifyUser } from '../push.js';
-import { publicId } from '../publicId.js';
+import { displayName, publicId } from '../publicId.js';
 import { botDifficulty, isBotOwner, SEATS, type Attachment } from './types.js';
 
 const BOT_DELAY_MS = 300;
@@ -211,7 +211,9 @@ export function roster(room: GameRoom, exclude?: WebSocket): Roster {
         : Number.POSITIVE_INFINITY;
     const paint = room.meta.paints?.[owner];
     return {
-      name: room.meta.names[owner] ?? 'Player',
+      // Unnamed guests are disambiguated by their own public id — two fresh
+      // browsers at one table were otherwise both just "Player".
+      name: displayName(room.meta.names[owner], owner),
       isBot: false,
       connected,
       pid: publicId(owner),

@@ -34,16 +34,20 @@ async function actIfOurTurn(page: Page): Promise<boolean> {
   return false;
 }
 
-/** Drive one whole challenge round to its outcome banner. */
+/** Drive one whole challenge round to its result screen.
+ *
+ * The run does not dump you back on the board any more: the last trick lands
+ * on a result card that waits to be read. Returns with that card on screen —
+ * callers assert on it, then dismiss it themselves. */
 async function playTheHand(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Play the hand' }).click();
-  const outcome = page.getByTestId('deal-outcome');
+  const result = page.getByTestId('deal-result');
   const deadline = Date.now() + 150_000;
   while (Date.now() < deadline) {
-    if (await outcome.isVisible().catch(() => false)) return;
+    if (await result.isVisible().catch(() => false)) return;
     if (!(await actIfOurTurn(page))) await page.waitForTimeout(200);
   }
-  throw new Error('the challenge round never reached an outcome');
+  throw new Error('the challenge round never reached its result screen');
 }
 
 test('plays the hand of the day, posts the score, and refuses a second run', async ({ page }) => {
@@ -62,11 +66,20 @@ test('plays the hand of the day, posts the score, and refuses a second run', asy
 
   await playTheHand(page);
 
+  // The hand ends on a result you get to READ — it used to tear the felt down
+  // and drop you beside a greyed-out button before you saw anything.
+  const result = page.getByTestId('deal-result');
+  await expect(result).toContainText('tricks taken');
+
   // The score came back from the server, not from the client: the outcome line
   // only ever says a number the verifier produced.
   const outcome = page.getByTestId('deal-outcome');
   await expect(outcome).toContainText('You scored');
   await expect(outcome).not.toContainText('could not be verified');
+
+  // Nothing moves until the player says so.
+  await page.getByRole('button', { name: 'Back to the board' }).click();
+  await expect(result).toHaveCount(0);
 
   // Your row is on the board, and the board says where you landed.
   await expect(page.getByText(/You’re #\d+/)).toBeVisible();
@@ -94,6 +107,57 @@ test('a brand-new player sees an open board they can still play', async ({ brows
   await page.goto('/#daily');
   await expect(page.getByRole('heading', { name: 'Deal Board' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Play the hand' })).toBeEnabled();
+  await context.close();
+});
+
+/**
+ * The name card before the first public post.
+ *
+ * This board is reachable from home without ever entering a room, so it was
+ * the one place a never-renamed guest competed publicly having never been
+ * asked their name — the lobby's card guards only a fresh pre-game seat pick.
+ * The card hides itself under automation (navigator.webdriver) exactly so the
+ * rest of this suite still finds "Play the hand" live, which is why every test
+ * here opts in explicitly with ?nameprompt=1.
+ */
+test('asks a nameless player who they are, once, before their first hand', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto('/?nameprompt=1#daily');
+  await page.getByRole('button', { name: 'Play the hand' }).click();
+
+  // Play is gated, not started: the card stands between the tap and the deal.
+  const card = page.getByTestId('name-prompt');
+  await expect(card).toBeVisible();
+
+  await card.getByRole('textbox').fill('Ginette');
+  await card.getByRole('button', { name: 'Save' }).click();
+
+  // Answering starts the hand — the tap is not wasted.
+  await expect(page.getByTestId('name-prompt')).toHaveCount(0);
+
+  // One-shot: the answer survives a reload, so nobody is asked twice.
+  // reload(), not goto(): the URL including its hash is unchanged, so a goto
+  // here is a same-document navigation that never remounts the app.
+  await page.reload();
+  await page.getByRole('button', { name: 'Play the hand' }).click();
+  await expect(page.getByTestId('name-prompt')).toHaveCount(0);
+
+  await context.close();
+});
+
+test('"maybe later" still lets a nameless player play', async ({ browser }) => {
+  // Skipping must never be a trap — the server disambiguates unnamed guests on
+  // its own, so declining costs nothing but the nicer label.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto('/?nameprompt=1#daily');
+  await page.getByRole('button', { name: 'Play the hand' }).click();
+  await page.getByTestId('name-prompt').getByRole('button', { name: 'Maybe later' }).click();
+
+  await expect(page.getByTestId('name-prompt')).toHaveCount(0);
   await context.close();
 });
 

@@ -4,9 +4,9 @@ import { RoomComms } from '../comms/RoomComms.js';
 import { LinkNudge } from '../components/LinkAccount.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { HelpButton } from '../help/HelpButton.js';
-import { send } from '../net/socket.js';
+import { connect, send } from '../net/socket.js';
 import { consumeMakePublic } from '../net/rooms.js';
-import { NamePrompt } from '../room/NamePrompt.js';
+import { NamePrompt } from '../components/NamePrompt.js';
 import { SeatPicker } from '../room/SeatPicker.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { ConnectionBanner } from '../table/ConnectionBanner.js';
@@ -167,8 +167,14 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
         <ConnectionBanner inline />
 
         {/* One-shot: players still named "Player" get a single field before
-            they sit, so the default name never becomes their online identity. */}
-        <NamePrompt code={code} />
+            they sit, so the default name never becomes their online identity.
+            Reconnect only on a real rename — there is no rename message, names
+            travel at connect, and the welcome snapshot restores seat + state. */}
+        <NamePrompt
+          onDone={(renamed) => {
+            if (renamed) connect(code);
+          }}
+        />
 
         <SeatPicker
           roster={roster}

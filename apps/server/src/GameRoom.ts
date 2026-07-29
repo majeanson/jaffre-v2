@@ -17,6 +17,7 @@ import { parseClientMessage } from '@jaffre/protocol';
 import type { ChatEntry, ClientAction, ClientMessage, ServerMessage } from '@jaffre/protocol';
 import type { Env } from './env.js';
 import { lobbyStub } from './Lobby.js';
+import { displayName } from './publicId.js';
 import { emptyMeta, SEATS, type Attachment, type LogEntry, type Meta } from './room/types.js';
 import { emptyMusic, extractVideoId, type StoredMusic } from './room/music.js';
 import {
@@ -387,7 +388,10 @@ export class GameRoom implements DurableObject {
     // Chat timestamps are presentation, not game logic — Date.now() is fine here.
     const seat = this.seatOf(att.userId);
     const entry: ChatEntry = {
-      from: att.name,
+      // Spectators can chat without ever sitting — and without ever meeting the
+      // lobby's name card — so this is the one place an unnamed visitor's name
+      // reaches the whole table. Disambiguate it like every other surface.
+      from: displayName(att.name, att.userId),
       text,
       at: Date.now(),
       ...(seat !== null ? { seat } : {}),
@@ -547,7 +551,7 @@ export class GameRoom implements DurableObject {
       if (!open) return null;
       return {
         code,
-        host: this.meta.names[humans[0] as string] ?? 'Player',
+        host: displayName(this.meta.names[humans[0] as string], humans[0] as string),
         players: humans.length,
         capacity: 4,
         phase: 'waiting',

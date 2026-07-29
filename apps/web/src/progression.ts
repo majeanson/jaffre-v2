@@ -123,6 +123,13 @@ export function trackRewardAt(level: number): TrackReward | undefined {
   return LEVEL_TRACK.find((r) => r.level === level);
 }
 
+/** The next reward still ahead of `level`, or null past the last rung. The
+ * "what am I playing towards" line — shared by the Journey screen and the
+ * Corner tile that links to it, so the two can never name different prizes. */
+export function nextTrackReward(level: number): TrackReward | null {
+  return LEVEL_TRACK.find((r) => r.level > level) ?? null;
+}
+
 /** The track level a cosmetic sits at, or undefined if it isn't on the track. */
 export function trackLevelOf(cosmeticId: string): number | undefined {
   return LEVEL_TRACK.find((r) => r.cosmeticId === cosmeticId)?.level;

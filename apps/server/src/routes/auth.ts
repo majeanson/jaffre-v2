@@ -25,6 +25,10 @@ import {
 } from '../auth/login.js';
 import { isUsableSecret, mintToken, verifyToken } from '../auth/session.js';
 import type { Env } from '../env.js';
+// DEFAULT_NAME lives beside publicId because both answer "what do other people
+// see when nobody has said who they are?" — adoptLoginName below upgrades it,
+// displayName disambiguates whatever survives.
+import { DEFAULT_NAME } from '../publicId.js';
 import { bearerToken, noDb, noSecret } from './http.js';
 import { NO_PROFILE, readProfile } from './profile.js';
 
@@ -226,9 +230,6 @@ function readName(value: unknown): string | null {
     ? value.trim()
     : null;
 }
-
-/** The placeholder name every guest starts with. */
-const DEFAULT_NAME = 'Player';
 
 /**
  * A login landing on an account still named the placeholder adopts the

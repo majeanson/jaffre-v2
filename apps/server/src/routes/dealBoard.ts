@@ -10,7 +10,7 @@
 import { challengeById, challengeIsOpen, dailyChallenge, utcDayKey } from '@jaffre/engine';
 import { parseActions, verifyChallengeRun } from '../challenge.js';
 import type { Env } from '../env.js';
-import { publicId } from '../publicId.js';
+import { displayName, publicId } from '../publicId.js';
 import { noDb, resolveUserId } from './http.js';
 
 /** How many rows a Deal Board shows. */
@@ -195,7 +195,9 @@ export async function handleChallengeBoard(
   const board = rows.results.map((r, i) => ({
     // Opaque public id, never the raw uid — same rule as the leaderboard.
     id: publicId(r.user_id),
-    name: r.name ?? 'Player',
+    // The daily board is reachable from home without ever entering a room, so
+    // it is the surface most likely to fill with never-renamed guests.
+    name: displayName(r.name, r.user_id),
     color: r.color,
     score: r.score,
     tricks: r.tricks,

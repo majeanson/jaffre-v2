@@ -96,6 +96,10 @@ export const SCENE_METAS = [
     screen: 'home',
     ui: { playOpen: true },
     probe: 'role=button[name="Play vs bots"]',
+    // The first-run nudge points AT this door; it kept floating above the
+    // opened sheet, reading as unrelated chrome. The base `home` scene shows
+    // it (fresh storage), so this pair covers both halves of that rule.
+    absent: '[data-testid="practice-nudge"]',
   },
   {
     id: 'identity',
@@ -373,6 +377,40 @@ export const SCENE_METAS = [
     probe: 'role=heading[name="Tableau des donnes"]',
   },
   {
+    // The name card, which cannot be reached by clicking under automation:
+    // `namePromptDue()` is false whenever navigator.webdriver is set. Staged
+    // open so it still earns a screenshot and an axe pass.
+    id: 'dealboard-name-gate',
+    label: 'Deal Board — name card before your first post',
+    screen: 'dealboard',
+    probe: '[data-testid="name-prompt"]',
+  },
+  {
+    id: 'dealboard-name-gate-fr',
+    label: 'Deal Board — name card, French',
+    screen: 'dealboard',
+    lang: 'fr',
+    probe: 'text=Comment on t’appelle?',
+  },
+  {
+    // Where a finished run now lands. Staged because the only other way here
+    // is a real round of bot alarms — 40s per shot.
+    id: 'dealboard-result',
+    label: 'Deal Board — your run’s result',
+    screen: 'dealboard',
+    probe: 'role=button[name="Back to the board"]',
+    // The board it came from is deliberately gone: one thing to read, one
+    // way onward.
+    absent: 'role=heading[name="Deal Board"]',
+  },
+  {
+    id: 'dealboard-result-fr',
+    label: 'Deal Board — result, French',
+    screen: 'dealboard',
+    lang: 'fr',
+    probe: 'role=button[name="Retour au tableau"]',
+  },
+  {
     id: 'visitor',
     label: 'Visitor — take a bot seat',
     screen: 'visitor',
@@ -497,7 +535,12 @@ export const SCENE_METAS = [
     id: 'corner-empty',
     label: 'Your corner — brand new player',
     screen: 'corner',
-    probe: 'text=No awards yet',
+    // Cold, this screen reorders to lead with the two tiles that offer
+    // something instead of four reporting an absence — so the awards tile
+    // counts the case rather than saying "No awards yet", and "Latest award"
+    // (the warm label) must not be on screen at all.
+    probe: 'text=waiting to be won',
+    absent: 'text=Latest award',
   },
   {
     id: 'journey-new',

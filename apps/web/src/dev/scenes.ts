@@ -667,6 +667,10 @@ const LOADERS: Record<SceneId, () => void> = {
   // The Deal Board renders from staged props (board + pinned clock) — no-op.
   daily: () => undefined,
   'daily-fr': () => undefined,
+  'dealboard-name-gate': () => undefined,
+  'dealboard-name-gate-fr': () => undefined,
+  'dealboard-result': () => undefined,
+  'dealboard-result-fr': () => undefined,
   visitor: gameScene('visitor', midTrick, { viewer: 'spectator', roster: VISITOR_ROSTER }),
   // The share sheet renders from its own props (no engine state) — no-op.
   'share-sheet': () => undefined,

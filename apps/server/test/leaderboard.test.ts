@@ -43,6 +43,21 @@ describe('GET /api/leaderboard', () => {
     expect(data.you).toBeNull(); // anonymous request
   });
 
+  it('disambiguates never-renamed guests instead of listing two identical rows', async () => {
+    await seedUser('lb-anon-a', 'Player', 1400, 30);
+    await seedUser('lb-anon-b', 'Player', 1350, 30);
+
+    const res = await SELF.fetch('https://example.com/api/leaderboard');
+    const data = (await res.json()) as { top: { id: string; name: string }[] };
+    const a = data.top.find((r) => r.id === publicId('lb-anon-a'));
+    const b = data.top.find((r) => r.id === publicId('lb-anon-b'));
+
+    // Both are still anonymous, but a reader can tell who beat whom.
+    expect(a?.name).not.toBe('Player');
+    expect(a?.name).not.toBe(b?.name);
+    expect(a?.name).toMatch(/^Player [0-9a-f]{4}$/);
+  });
+
   it("includes the caller's own rank when identified and ranked", async () => {
     await seedUser('lb-me', 'Me', 1200, 15);
     const res = await SELF.fetch('https://example.com/api/leaderboard?u=lb-me');

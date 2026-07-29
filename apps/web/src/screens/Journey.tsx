@@ -11,20 +11,20 @@ import {
 import { MetaHeader } from '../components/MetaHeader.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import {
-  LEVEL_TRACK,
   MAX_LEVEL,
   XP_PER_BID_MADE,
   XP_PER_GAME,
   XP_PER_SA_MADE,
   XP_PER_WIN,
   levelProgress,
+  nextTrackReward,
   trackRewardAt,
   xpBreakdown,
   xpToReach,
-  type TrackReward,
 } from '../progression.js';
-import { CARD_SKINS, DEFAULT_CARD_SKIN } from '../cosmetics.js';
-import { THEMES, currentTheme } from '../theme.js';
+import { trackRewardLabel } from '../trackReward.js';
+import { DEFAULT_CARD_SKIN } from '../cosmetics.js';
+import { currentTheme } from '../theme.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { MetaNav } from '../components/MetaNav.js';
 
@@ -126,10 +126,7 @@ const T: Record<
   },
 };
 
-function labelOf(reward: TrackReward): string {
-  const catalog = reward.kind === 'skin' ? CARD_SKINS : THEMES;
-  return catalog.find((c) => c.id === reward.cosmeticId)?.label ?? reward.cosmeticId;
-}
+const labelOf = trackRewardLabel;
 
 /** A skin reward previews as its face-DOWN card — the back is the star here
  * (it's what the whole table sees of your deck all game long). Scaled into the
@@ -224,8 +221,7 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
 
   const breakdown = stats === null ? null : xpBreakdown(stats);
   const progress = breakdown === null ? null : levelProgress(breakdown.total);
-  const nextReward =
-    progress === null ? null : (LEVEL_TRACK.find((r) => r.level > progress.level) ?? null);
+  const nextReward = progress === null ? null : nextTrackReward(progress.level);
   const pct =
     progress === null ? 0 : progress.span === 0 ? 100 : (progress.into / progress.span) * 100;
 

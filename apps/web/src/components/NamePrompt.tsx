@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
-import { connect, playerName, setPlayerName } from '../net/socket.js';
+import { playerName, setPlayerName } from '../net/socket.js';
 
 const T: Record<
   Lang,
@@ -36,7 +36,7 @@ function latch(): void {
   try {
     localStorage.setItem(LATCH_KEY, '1');
   } catch {
-    // Storage unavailable — worst case the prompt shows again next lobby.
+    // Storage unavailable — worst case the prompt shows again next time.
   }
 }
 
@@ -51,38 +51,63 @@ function promptEnabled(): boolean {
 }
 
 /**
- * One-shot lobby card for players still carrying the default name: a single
- * field, save or skip. Saving persists the name and reconnects the room socket
- * so the rename rides the fresh identity (there is no rename message — names
- * travel at connect). Never shows again once answered or skipped.
+ * Whether this browser still owes us a name.
+ *
+ * Exported because a caller may need to decide BEFORE rendering: the Deal
+ * Board gates its play button on this, and a button that sometimes silently
+ * did nothing would be worse than no gate at all.
+ *
+ * Gates on the NAME, not on the latch key's existence: Home writes 'Player'
+ * verbatim the first time you tap any play action, so a key check would mean
+ * this never fired for the very players it exists for.
  */
-export function NamePrompt({ code }: { readonly code: string }) {
+export function namePromptDue(): boolean {
+  return promptEnabled() && !latched() && playerName() === 'Player';
+}
+
+/**
+ * One-shot card for players still carrying the default name: a single field,
+ * save or skip, never shown again once answered either way.
+ *
+ * Deliberately NOT room-specific (it used to live in room/). The lobby was the
+ * only place that asked, which meant every other way a name reaches other
+ * people — the daily board, spectator chat, a mid-game seat takeover — could
+ * never trigger it. The server now disambiguates unnamed guests on its own
+ * (see `displayName` server-side), so this card is an invitation rather than a
+ * last line of defence, and "Maybe later" is a safe answer.
+ *
+ * `onDone` fires after either outcome, carrying whether a real rename
+ * happened: the lobby reconnects only on true (names travel at connect-time),
+ * while the Deal Board proceeds into the hand either way.
+ */
+export function NamePrompt({
+  onDone,
+  forceOpen = false,
+}: {
+  readonly onDone?: (renamed: boolean) => void;
+  /** Scene viewer: render regardless of latch/automation state, so the card
+   * gets a screenshot and an axe pass it could never earn by being clicked
+   * (`promptEnabled()` is false under webdriver). */
+  readonly forceOpen?: boolean;
+}) {
   const t = T[useLang()];
-  // Gate on the NAME, not on the key's existence: Home writes 'Player'
-  // verbatim the first time you tap any play action, so a key check would
-  // mean this prompt never fired for the very players it exists for.
-  const [gone, setGone] = useState(
-    () => !promptEnabled() || latched() || playerName() !== 'Player',
-  );
+  const [gone, setGone] = useState(() => !forceOpen && !namePromptDue());
   const [value, setValue] = useState('');
   if (gone) return null;
 
-  const dismiss = (): void => {
+  const finish = (renamed: boolean): void => {
     latch();
     setGone(true);
+    onDone?.(renamed);
   };
   const save = (): void => {
     const name = value.trim();
     if (name === '' || name === playerName()) {
-      dismiss();
+      finish(false);
       return;
     }
     setPlayerName(name);
-    latch();
-    setGone(true);
-    // Reconnect so the new name rides the identity token; the welcome
-    // snapshot restores the room state (and any seat) seamlessly.
-    connect(code);
+    finish(true);
   };
 
   return (
@@ -100,7 +125,7 @@ export function NamePrompt({ code }: { readonly code: string }) {
         </span>
         <button
           type="button"
-          onClick={dismiss}
+          onClick={() => finish(false)}
           className="shrink-0 cursor-pointer text-xs text-(--color-ap-muted) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
         >
           {t.later}

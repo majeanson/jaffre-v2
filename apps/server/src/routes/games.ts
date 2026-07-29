@@ -7,6 +7,7 @@
  * it for the partner/nemesis lookup.
  */
 import type { Env } from '../env.js';
+import { displayName } from '../publicId.js';
 import { noDb, resolveUserId } from './http.js';
 
 export interface GamePlayer {
@@ -39,7 +40,14 @@ export async function playersByGame(
     }>();
   for (const r of rows.results) {
     const list = map.get(r.game_id) ?? [];
-    list.push({ seat: r.seat, name: r.name ?? 'Player', isBot: r.is_bot === 1, userId: r.user_id });
+    // Disambiguated at READ, not at write: the game_players row is a snapshot
+    // taken when the game ended, and rewriting history is not this layer's job.
+    list.push({
+      seat: r.seat,
+      name: r.is_bot === 1 ? (r.name ?? 'Player') : displayName(r.name, r.user_id),
+      isBot: r.is_bot === 1,
+      userId: r.user_id,
+    });
     map.set(r.game_id, list);
   }
   return map;
