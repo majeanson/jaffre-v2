@@ -68,6 +68,18 @@ Last checkpoint: **2026-07-29**.
 - Timing goes through `paced()`; reduced motion = instant everywhere.
 - Colocated `T` tables for copy; check e2e-pinned strings before rewording.
 
+## Identity in public (2026-07-29)
+
+One rule, server-side: a name that is still the untouched default leaves
+as `Player <4 hex of its publicId>` (`publicId.ts`'s `displayName`), applied
+at every point a name reaches other people — roster, chat, deal board,
+leaderboard, replay rosters. Anonymous but never ambiguous, no new state.
+Use the LAST 4 hex: FNV-1a leaves the leading hex identical for uids that
+differ only in their final character (a test pins this). The rename card
+(`components/NamePrompt.tsx`, no longer room-specific) is now an invitation,
+not a defence — it guards the lobby seat pick and the Deal Board's play
+button, and skipping it is safe.
+
 ## Open threads (the honest short list)
 
 - **Visitor TTF** — the arcade display face is still Silkscreen
