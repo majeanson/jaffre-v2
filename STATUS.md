@@ -48,10 +48,10 @@ Last checkpoint: **2026-07-29**.
 
 ## The gates (all green at checkpoint)
 
-- 188 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
+- 197 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
   only project that watches pixels move) · 69-scene catalog, each axe-gated
-  (`npm run e2e:scenes`, 102 tests — fast, and the first thing to run) ·
-  112 web unit · 207 server · engine property tests (100% cov).
+  (`npm run e2e:scenes`, 110 tests — fast, and the first thing to run) ·
+  112 web unit · 208 server · engine property tests (100% cov).
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Full shots sweep 2026-07-29: **60/60 viewport×skin combos, ~4,300 shots,
@@ -100,7 +100,12 @@ Last checkpoint: **2026-07-29**.
   `computeStats` passes every finished game — `/api/stats` and `/api/awards`
   broke permanently on a player's 101st game. Regression-tested at 120.
 
-Known gap: the monthly board finds "you" only within the returned top 100.
+Not a gap, a decision (the code says so at the call site): the monthly board
+finds "you" only within the returned top 100. The all-time board runs a second
+COUNT for an off-page caller because its 10-rated-games gate means most callers
+ARE off-page; the monthly board has no gate and a small pool, so being outside
+one month's top 100 is rare enough that a per-request COUNT would cost more
+than it tells anyone. Don't "fix" it without a pool big enough to need it.
 
 ## Identity in public (2026-07-29)
 
@@ -141,6 +146,45 @@ button, and skipping it is safe.
   uncapped, minus the two the tiles already name). The "edge" line reads ONLY
   the against-games — folding in games won side by side made every good
   partner look like a rival. Scenes `head-to-head` / `head-to-head-none`.
+
+## Rules the follow-up audit turned up (2026-07-29, same session)
+
+- **Every named player is a door.** Stats' two tiles, the regulars strip and
+  BOTH leaderboard rows link to `#h2h/<pid>` — the ladder already carried the
+  public id (`routes/leaderboard.ts` hashes the uid on the way out), so the row
+  naming the player above you leads to your record against them. Your own row
+  stays inert. The Deal Board's standings are deliberately NOT linked: that
+  list is about one deal, not about people you have played.
+- **A player's name comes from their NEWEST shared game.** `game_players.name`
+  is a per-game snapshot; `computeStats` walks oldest-first, so keeping the
+  first name it saw showed a renamed partner's old name on the tile while the
+  head-to-head behind it showed the new one. Pinned by a Bob→Roberta test.
+- **Destinations are appended sr-only, never an `aria-label`.** A label
+  REPLACES an element's own text as its accessible name: the aria-labels this
+  work first added made a screen reader hear "head to head with Ginette" and
+  lose the rank, the rating, the "beats you 5 of 8" — the very facts the row
+  exists to state. Same class of law as violet-pairs-with-ink.
+- **A record is fetched, not painted.** `/api/stats` + `/api/history` are
+  NetworkFirst (3s timeout) in the service worker, not StaleWhileRevalidate:
+  the app reads a resolved response ONCE, so "refresh behind" left the screen
+  showing the stale body for the whole visit — an installed app showed the
+  pre-game record after finishing a game, and the recap's XP strip stored that
+  stale total as the baseline the next "+N XP" was measured against. The
+  in-memory 30s cache is now busted on the game_over view (`net/socket.ts`);
+  `bustStatsCache` had existed for exactly that and was called from nowhere.
+- **Staged people have real public ids.** One `PID` map in `dev/scenes.ts`, 16
+  hex like the real thing, shared by the record, both boards and the Deal
+  Board — the old `'u1'` ids rendered links that fell through to the
+  unknown-link notice (a scene lying about its screen), and two different
+  staged people shared one id.
+- **A lazy route isn't lazy if an eager module imports it.** The table's TopBar
+  statically imported `CollectionSheet` → the Collection screen, so the whole
+  gallery rode in the one index chunk every first-time visitor downloads —
+  while App.tsx's `lazy()` claimed otherwise and rollup warned it on every
+  build. The sheet lazies it now: index 859 → 844 kB (261 kB gzip), Collection
+  a 15 kB chunk fetched on open. Next lever if first paint ever matters again:
+  `@jaffre/bots` is eager for practice games and is the biggest remaining
+  passenger — nobody has measured it, so don't assume.
 
 Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
 (the constants are frozen by design; the monthly ladder is the real answer), a

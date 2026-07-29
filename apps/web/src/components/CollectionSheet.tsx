@@ -1,7 +1,18 @@
-import { useEffect } from 'react';
-import { useLang, type Lang } from '@jaffre/ui';
-import { Collection } from '../screens/Collection.js';
+import { lazy, Suspense, useEffect } from 'react';
+import { PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { useScrollLock } from './useScrollLock.js';
+
+/**
+ * Loaded on open, not with the app. App.tsx lazies the `#collection` route, but
+ * this sheet is reached from the table's TopBar — which IS the eager path — so a
+ * static import here pulled the whole gallery (every skin preview, theme swatch
+ * and sweep demo) into the one index chunk every first-time visitor downloads
+ * before the title screen. Rollup said so on every build: "dynamic import will
+ * not move module into another chunk".
+ */
+const Collection = lazy(() =>
+  import('../screens/Collection.js').then((m) => ({ default: m.Collection })),
+);
 
 const T: Record<Lang, { close: string; collection: string }> = {
   en: { close: 'Close', collection: 'Collection' },
@@ -35,7 +46,15 @@ export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
       aria-label={t.collection}
       className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain"
     >
-      <Collection onLeave={onClose} leaveLabel={t.close} />
+      <Suspense
+        fallback={
+          <div className="flex min-h-dvh items-center justify-center bg-(--color-ap-ground)">
+            <PixelWave label="…" />
+          </div>
+        }
+      >
+        <Collection onLeave={onClose} leaveLabel={t.close} />
+      </Suspense>
     </div>
   );
 }
