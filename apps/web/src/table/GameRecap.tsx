@@ -586,12 +586,18 @@ export function GameRecap({
               <p className="mt-1 text-[0.85em] leading-snug text-(--color-ap-ink)">
                 {takeaway.text}
               </p>
-              <a
-                href="#stats"
-                className="mt-1.5 inline-block text-[0.8em] text-(--color-ap-ink) underline decoration-dotted underline-offset-2 hover:opacity-80"
-              >
-                {t.seeRecord}
-              </a>
+              {/* Online games only: practice is purely local — it never writes
+                  a history row, so this link led a first-timer to a record
+                  with no replay of the game it just told them to watch.
+                  (onPlayPeople is the practice marker; see the props.) */}
+              {onPlayPeople === undefined && (
+                <a
+                  href="#stats"
+                  className="mt-1.5 inline-block text-[0.8em] text-(--color-ap-ink) underline decoration-dotted underline-offset-2 hover:opacity-80"
+                >
+                  {t.seeRecord}
+                </a>
+              )}
             </div>
           )}
 
