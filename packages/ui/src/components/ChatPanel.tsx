@@ -258,14 +258,21 @@ export function ChatPanel({
         role="region"
         aria-label={t.messages}
         tabIndex={0}
-        className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ap-text)"
+        // Desktop gets a taller list and one type-size up (12→14px): the
+        // popover floats over an empty stretch of felt there, so the room
+        // spent on legibility costs nothing — the phone bottom sheet keeps
+        // the compact scale.
+        className="h-32 space-y-0.5 overflow-y-auto px-1 text-xs leading-5 text-(--color-ap-text) sm:h-48 sm:text-sm sm:leading-6"
       >
         {entries.length === 0 && <p className="text-(--color-ap-muted)">{t.empty}</p>}
         {entries.map((e, i) =>
           e.system !== undefined ? (
             // Table narration, not a person talking — muted, centered, no
             // name/timestamp bubble, so it reads as the room's own voice.
-            <p key={i} className="my-1 text-center text-[11px] text-(--color-ap-muted)">
+            <p
+              key={i}
+              className="my-1.5 text-center text-[11px] text-(--color-ap-muted) sm:text-xs"
+            >
               {systemLine(t, e.system)}
             </p>
           ) : (
@@ -304,7 +311,7 @@ export function ChatPanel({
             key={phrase}
             type="button"
             onClick={() => sendQuick(phrase)}
-            className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-1.5 py-0.5 text-[11px] text-(--color-ap-text) hover:bg-(--color-ap-panel-hover)"
+            className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-1.5 py-0.5 text-[11px] text-(--color-ap-text) hover:bg-(--color-ap-panel-hover) sm:px-2 sm:py-1 sm:text-xs"
           >
             {phrase}
           </button>
@@ -383,9 +390,11 @@ export function ChatPanel({
         )}
       </button>
       {open && (
-        // Desktop: popover above the toggle. Narrow screens: a bottom sheet
-        // pinned to the viewport so it never overflows the 390px layout.
-        <div className="absolute right-0 bottom-full z-30 mb-2 w-72 max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto">
+        // Desktop: popover above the toggle, wide enough that a normal
+        // sentence doesn't wrap and the quick chips sit in two rows, not
+        // four. Narrow screens: a bottom sheet pinned to the viewport so it
+        // never overflows the 390px layout.
+        <div className="absolute right-0 bottom-full z-30 mb-2 w-96 max-w-[min(24rem,92vw)] max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto max-sm:max-w-none">
           {panel}
         </div>
       )}
