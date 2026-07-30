@@ -1,6 +1,8 @@
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
 import type { Lang } from '@jaffre/ui';
 import { currentLang } from '../lang.js';
+import { currentFelt } from '../felt.js';
+import { currentSweep } from '../sweeps.js';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
@@ -151,7 +153,16 @@ async function open(): Promise<void> {
       paint !== null && paint.startsWith('data:image/svg+xml,') && paint.length <= 16_384
         ? paint
         : undefined;
-    send({ t: 'join', ...(sharablePaint !== undefined ? { paint: sharablePaint } : {}) });
+    // I1 — table style: also announce your EQUIPPED felt/sweep, alongside
+    // paint, on the same join. Meaningless unless you end up this table's
+    // host (see onJoin/onSit), but always sent — unlike paint there's no
+    // format/size gate, since these are short catalog ids, not assets.
+    send({
+      t: 'join',
+      ...(sharablePaint !== undefined ? { paint: sharablePaint } : {}),
+      felt: currentFelt(),
+      sweep: currentSweep(),
+    });
     // Replay anything the player did while we were still connecting.
     const queued = pending;
     pending = [];

@@ -237,6 +237,20 @@ async function nextSystemChat(
   }
 }
 
+/** Wait for a roster broadcast matching `pred`, draining (and discarding)
+ * any that don't — mirrors nextSystemChat above. Several unrelated actions
+ * (another user's join, their sit) each broadcast their OWN roster first, so
+ * asserting on "the next roster" by position alone is a trap; this asserts
+ * on shape instead. */
+async function nextRosterMatching(client: Client, pred: (r: Roster) => boolean): Promise<Roster> {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    const msg = await client.next('roster');
+    if (pred(msg.roster)) return msg.roster;
+    if (Date.now() > deadline) throw new Error('no matching roster broadcast');
+  }
+}
+
 /** Poll `read` until it returns non-undefined, with a generous deadline. */
 async function pollUntil<T>(read: () => Promise<T | undefined>, what: string): Promise<T> {
   const deadline = Date.now() + 10_000;
@@ -2319,6 +2333,77 @@ describe('GameRoom', () => {
     expect(meta?.paints?.bob).toBe(paint);
 
     await endQuiet(room, alice, bob);
+  });
+
+  /**
+   * I1 — table-style house rule. The roster's `tableStyle` pair is absent
+   * while the rule is 'own' (not null — a client that never reads the field
+   * must never mistake "missing key" for "override with nothing"), echoes
+   * the CURRENT host's felt+sweep once flipped to 'host', and — because
+   * `Meta.styles` is keyed per-user and read out by whichever uid is
+   * CURRENTLY `hostId` rather than stamped once — follows a host handoff to
+   * the new host's own pair with no extra bookkeeping on the leave path.
+   */
+  it('echoes the host’s felt+sweep on the roster only while table-style is "host", and follows a host handoff', async () => {
+    const room = 'room-table-style';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join', felt: 'tavern', sweep: 'riffle' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    const aliceSeated = await nextRosterMatching(alice, (r) => r.hostSeat === 0);
+    // Default is 'own' — the pair key doesn't even ride the wire then.
+    expect(aliceSeated.rules?.tableStyle).toBe('own');
+    expect(aliceSeated.tableStyle).toBeUndefined();
+
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join', felt: 'slate', sweep: 'fold' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 1 });
+    await nextRosterMatching(bob, (r) => r.seats[1] !== null);
+
+    // Alice (the host) turns the rule on.
+    alice.send({ t: 'set_rules', hailMary12: true, turnTimer: false, tableStyle: 'host' });
+    const withRule = await nextRosterMatching(alice, (r) => r.rules?.tableStyle === 'host');
+    // The HOST's pair (Alice's) — never Bob's, even though he's seated too.
+    expect(withRule.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle' });
+
+    // Bob's own copy of the same broadcast carries the identical pair.
+    const bobSees = await nextRosterMatching(bob, (r) => r.rules?.tableStyle === 'host');
+    expect(bobSees.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle' });
+
+    // Alice leaves — the host role passes to Bob (the only other seated
+    // human). The very next matching roster shows BOB's pair, not a stale
+    // copy of Alice's.
+    alice.send({ t: 'leave' });
+    const afterHandoff = await nextRosterMatching(bob, (r) => r.hostSeat === 1);
+    expect(afterHandoff.tableStyle).toEqual({ felt: 'slate', sweep: 'fold' });
+
+    await endQuiet(room, alice, bob);
+  });
+
+  it('set_rules replaces the whole rule set — a partial send drops the others', async () => {
+    const room = 'room-rules-replace';
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(bob, 0);
+
+    bob.send({ t: 'set_rules', hailMary12: true, turnTimer: false, tableStyle: 'host' });
+    const on = await nextRosterMatching(bob, (r) => r.rules?.tableStyle === 'host');
+    expect(on.rules?.turnTimer).toBe(false);
+
+    // The wipe this pins: meta.rules is REPLACED, not merged, so a client that
+    // sends only the switch it touched silently reverts every rule it left
+    // out. That is why each Lobby switch sends the whole set (see Lobby.tsx) —
+    // this asserts the server semantics that requirement rests on, so nobody
+    // "simplifies" the client back into a partial send.
+    bob.send({ t: 'set_rules', hailMary12: false });
+    const after = await nextRosterMatching(bob, (r) => r.rules?.hailMary12 === false);
+    expect(after.rules?.tableStyle).toBe('own');
+    expect(after.tableStyle).toBeUndefined();
+
+    await endQuiet(room, bob);
   });
 
   it('reaches the absent-host join push for a PRIVATE room too (no meta.public gate)', async () => {

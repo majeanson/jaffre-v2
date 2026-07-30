@@ -55,6 +55,13 @@ export const clientMessageSchema = z.union([
     // Pixel-SVG data URLs only, size-capped — legacy freehand PNG paintings
     // (up to ~512 KB) must never ride every roster broadcast.
     paint: z.string().startsWith('data:image/svg+xml,').max(16384).optional(),
+    // The joiner's EQUIPPED felt/sweep cosmetic ids — short catalog ids, not
+    // assets — alongside paint, on the same pipeline (see onJoin/onSit). Only
+    // matter if the sender is (or becomes) this table's host: the
+    // `tableStyle` house rule (below) echoes the CURRENT host's pair, so a
+    // non-host's ids are simply stored and never surfaced.
+    felt: z.string().min(1).max(64).optional(),
+    sweep: z.string().min(1).max(64).optional(),
   }),
   z.object({ t: z.literal('sit'), seat: seatSchema }),
   z.object({
@@ -65,14 +72,20 @@ export const clientMessageSchema = z.union([
   // Pre-game only: empty a bot seat back to vacant.
   z.object({ t: z.literal('remove_bot'), seat: seatSchema }),
   z.object({ t: z.literal('start') }),
-  // Pre-game only: toggle house rules for the room. `turnTimer` is optional so
-  // older clients that only ever sent hailMary12 keep parsing; the server
-  // echoes back whatever was last set (see Roster.rules) so a client toggling
-  // one rule should send its own current value for the other alongside it.
+  // Pre-game only: toggle house rules for the room. `turnTimer`/`tableStyle`
+  // are optional so older clients that only ever sent hailMary12 keep
+  // parsing; the server echoes back whatever was last set (see Roster.rules)
+  // so a client toggling one rule should send its own current value for the
+  // others alongside it.
   z.object({
     t: z.literal('set_rules'),
     hailMary12: z.boolean(),
     turnTimer: z.boolean().optional(),
+    // 'host': every seat's VIEW (never their own equip — see felt.ts's
+    // overrideFelt) follows the table's host's felt+sweep instead of their
+    // own. Default 'own' — nobody's table is touched by anybody else's until
+    // a host opts in. See Roster.tableStyle for the actual pair this drives.
+    tableStyle: z.enum(['own', 'host']).optional(),
   }),
   // Between games only: re-pair the table (swap seats 1 & 2) before a rematch.
   z.object({ t: z.literal('swap_seats') }),
@@ -190,6 +203,11 @@ export interface Roster {
     /** Idle-player turn timer (off unless a table opts in) — see
      * RosterSeat.turnTimerAt for the per-seat countdown it drives. */
     readonly turnTimer?: boolean;
+    /** 'host': every seat's felt+sweep VIEW follows the host's instead of
+     * their own — see the sibling `tableStyle` PAIR below (Roster-level, not
+     * here), which carries the actual ids while this reads 'host'. Default
+     * 'own'. */
+    readonly tableStyle?: 'own' | 'host';
   };
   /** Epoch ms when the round_over recap auto-readies connected idle humans
    * (turnTimer rule). Present only during round_over with the rule on — the
@@ -207,6 +225,17 @@ export interface Roster {
     readonly rating: number;
     readonly delta: number;
   }[];
+  /** The table's CURRENT host's equipped felt+sweep pair — present only while
+   * `rules.tableStyle` is 'host' (absent, not just null, while it's 'own': a
+   * client that never reads this field must never accidentally treat
+   * "missing key" as "override with nothing"). `null` while the rule is on
+   * but the host hasn't sent a pair yet on this sitting (a legacy client, or
+   * a host who has never joined this room build) — every OTHER seat's view
+   * override falls back to its own felt/sweep in that case, same as 'own'.
+   * Lives here, NOT inside RosterSeat: it names one seat's cosmetics but is
+   * consumed by every OTHER seat, so it isn't "about" any one seat the way
+   * paint/ready/turnTimerAt are. */
+  readonly tableStyle?: { readonly felt: string; readonly sweep: string } | null;
 }
 
 export interface ChatEntry {

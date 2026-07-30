@@ -80,3 +80,25 @@ export function applyFelt(id: FeltId): void {
 export function initFelt(): void {
   applyFelt(currentFelt());
 }
+
+/**
+ * I1 — table-style house rule: a VIEW override, never a choice. `applyFelt`
+ * above PERSISTS to localStorage — calling it here to show the host's felt
+ * would silently overwrite every guest's own equip the moment the rule
+ * turned on, and leave it overwritten after they left the table. This is why
+ * the override is its own function rather than a call site passing a flag:
+ * it only ever touches the `<html data-felt>` attribute (and fires the same
+ * event, so consumers — the felt oval, any live preview — re-render), and
+ * NOTHING here reads or writes `localStorage`. Passing `null` restores the
+ * viewer's own equipped felt (`currentFelt()`) — the caller does this both
+ * when the rule turns off and when the viewer leaves the room.
+ */
+export function overrideFelt(id: FeltId | null): void {
+  const target = id ?? currentFelt();
+  // `house` is STILL the absence of the attribute (see the module doc) even
+  // under an override — otherwise "the host wears house" would render as
+  // literally no felt chosen rather than as the specific house-green felt.
+  if (target === DEFAULT_FELT) delete document.documentElement.dataset['felt'];
+  else document.documentElement.dataset['felt'] = target;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(FELT_EVENT));
+}

@@ -65,7 +65,15 @@ export interface Meta {
    * legacy persisted metas predate it. */
   seriesTricks?: ([number, number, number, number] | null)[];
   /** House rules chosen in the lobby before the game starts. */
-  rules?: { hailMary12: boolean; turnTimer?: boolean };
+  rules?: { hailMary12: boolean; turnTimer?: boolean; tableStyle?: 'own' | 'host' };
+  /** Each SEATED user's equipped felt+sweep pair, as sent on their join/sit —
+   * same shape/reasoning as `paints` just above (short, per-user, promoted
+   * only once seated — see onJoin/onSit). Roster-building reads out whichever
+   * entry belongs to the CURRENT `hostId` (see presence.ts's roster()) rather
+   * than a value stamped once, so a host handoff (a leave, a kick) picks up
+   * the new host's pair automatically with no extra bookkeeping here.
+   * Optional: legacy persisted metas predate it. */
+  styles?: Record<string, { felt: string; sweep: string }>;
   /** Epoch ms when the seat currently on turn (game.turn) became active —
    * i.e. when it became THEIR bid/play to make. Set at game start and
    * refreshed in applyEngineAction every time the acting turn advances; only
@@ -109,6 +117,14 @@ export interface Attachment {
    * meta value toward the 2MB DO ceiling, past which `storage.put` throws
    * inside applyEngineAction and the game can never advance again. */
   paint?: string;
+  /** This socket's join-time equipped felt+sweep — same "ride the socket
+   * until its owner sits" shape as `paint` above, promoted into
+   * `Meta.styles` by onJoin/onSit. Short catalog ids, not assets, so unlike
+   * paint there's no size concern to justify holding them back from meta —
+   * they're kept off it anyway purely to mirror paint's one rule (spectators
+   * never write meta). */
+  felt?: string;
+  sweep?: string;
 }
 
 export interface LogEntry {

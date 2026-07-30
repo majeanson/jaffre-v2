@@ -42,6 +42,8 @@ const T: Record<
     hailMaryHint: string;
     turnTimer: string;
     turnTimerHint: string;
+    tableStyle: string;
+    tableStyleHint: string;
     publicTable: string;
     publicHint: string;
     reclaimHint: string;
@@ -76,6 +78,12 @@ const T: Record<
     hailMaryHint: 'Make 12 sans atout to win the whole game — miss and you lose it.',
     turnTimer: 'Turn timer',
     turnTimerHint: '60 seconds per turn, then a bot plays it.',
+    // Host-only (see the toggle's disabled state below) — the ONE rule here
+    // that isn't about how the game is played, but how the table looks to
+    // everyone at it.
+    tableStyle: "Table style: host's",
+    tableStyleHint:
+      "Everyone at the table sees the host's felt & trick sweep instead of their own.",
     publicTable: 'List on the public lobby',
     publicHint: 'Anyone can join from the public lobby. Untick for invite-only.',
     reclaimHint: 'One of these seats yours? Log in on the home screen to reclaim it.',
@@ -104,6 +112,9 @@ const T: Record<
     hailMaryHint: 'Réussis 12 sans atout et tu gagnes la partie — rate-la et tu la perds.',
     turnTimer: 'Minuterie de tour',
     turnTimerHint: '60 secondes par tour; après, un bot joue à ta place.',
+    tableStyle: "Style de table : celui de l'hôte",
+    tableStyleHint:
+      "Tout le monde à la table voit le tapis et le ramassage des levées de l'hôte, au lieu des siens.",
     publicTable: 'Afficher dans le salon public',
     publicHint:
       'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',
@@ -153,17 +164,25 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
   // Turn timer ships ON (server default matches — turnTimerRuleOn); unchecking
   // it is the deliberate opt-down to an untimed home game.
   const turnTimer = roster?.rules?.turnTimer ?? true;
+  // Table style ships OFF ('own') — opting IN to the host's look is the
+  // deliberate act, same asymmetry as hail-mary/turn-timer's opt-OUT (default
+  // is whichever direction nobody has to think about).
+  const tableStyleOn = (roster?.rules?.tableStyle ?? 'own') === 'host';
+  // Only the host may flip it — everyone else still SEES the toggle (so a
+  // non-default rule is never invisible to them), just can't touch it.
+  const isHost = seated && roster?.hostSeat !== undefined && roster.hostSeat === viewer;
   const isPublic = roster?.public ?? false;
 
   // Rules fold behind one door, closed by default. Auto-open ONCE when the
-  // roster shows a non-default rule (hail-mary OFF or timer OFF) so a changed
-  // rule is never invisible. Public is excluded: created rooms are public by
-  // default, so public=true is the normal state, not a surprise.
+  // roster shows a non-default rule (hail-mary OFF, timer OFF, or table style
+  // ON) so a changed rule is never invisible. Public is excluded: created
+  // rooms are public by default, so public=true is the normal state, not a
+  // surprise.
   const [rulesOpen, setRulesOpen] = useState(false);
   const hasRoster = roster !== null;
   useEffect(() => {
-    if (hasRoster && (!hailMary || !turnTimer)) setRulesOpen(true);
-  }, [hasRoster, hailMary, turnTimer]);
+    if (hasRoster && (!hailMary || !turnTimer || tableStyleOn)) setRulesOpen(true);
+  }, [hasRoster, hailMary, turnTimer, tableStyleOn]);
 
   // Any room this browser created (Quick Play or Create a room) is public by
   // default: once we're seated, flip it on. Unticking the toggle below is the
@@ -263,7 +282,18 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
                 role="switch"
                 checked={hailMary}
                 disabled={!seated}
-                onChange={(e) => send({ t: 'set_rules', hailMary12: e.target.checked, turnTimer })}
+                // Every switch sends the WHOLE rule set, never just its own
+                // field: onSetRules replaces meta.rules outright, so a partial
+                // send silently reverts the rules it left out (this one used to
+                // wipe tableStyle back to 'own').
+                onChange={(e) =>
+                  send({
+                    t: 'set_rules',
+                    hailMary12: e.target.checked,
+                    turnTimer,
+                    tableStyle: tableStyleOn ? 'host' : 'own',
+                  })
+                }
                 className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
               />
               <span className="flex min-w-0 flex-col gap-1">
@@ -288,7 +318,12 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
                 checked={turnTimer}
                 disabled={!seated}
                 onChange={(e) =>
-                  send({ t: 'set_rules', hailMary12: hailMary, turnTimer: e.target.checked })
+                  send({
+                    t: 'set_rules',
+                    hailMary12: hailMary,
+                    turnTimer: e.target.checked,
+                    tableStyle: tableStyleOn ? 'host' : 'own',
+                  })
                 }
                 className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
               />
@@ -298,6 +333,37 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
                 </span>
                 <span className="text-xs leading-snug text-(--color-ap-muted)">
                   {t.turnTimerHint}
+                </span>
+              </span>
+            </label>
+
+            <label
+              className={`flex items-start gap-3 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-3 shadow-(--shadow-ap) ${
+                isHost ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                data-testid="table-style-toggle"
+                checked={tableStyleOn}
+                disabled={!isHost}
+                onChange={(e) =>
+                  send({
+                    t: 'set_rules',
+                    hailMary12: hailMary,
+                    turnTimer,
+                    tableStyle: e.target.checked ? 'host' : 'own',
+                  })
+                }
+                className="mt-0.5 size-5 shrink-0 accent-(--color-ap-gold)"
+              />
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="font-arcade-display text-sm uppercase tracking-wide text-(--color-ap-text)">
+                  {t.tableStyle}
+                </span>
+                <span className="text-xs leading-snug text-(--color-ap-muted)">
+                  {t.tableStyleHint}
                 </span>
               </span>
             </label>

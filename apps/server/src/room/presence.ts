@@ -252,6 +252,17 @@ export function roster(room: GameRoom, exclude?: WebSocket): Roster {
   });
   const spectators = attachments.filter((a) => a.joined && a.viewer === 'spectator').length;
   const hostSeat = room.meta.hostId !== undefined ? room.seatOf(room.meta.hostId) : null;
+  // I1 — table style: default 'own'. While 'host', every OTHER seat's view
+  // follows this pair instead of its own; see Meta.styles' comment for why
+  // this is a live lookup by CURRENT hostId rather than a value stamped once
+  // (a host handoff picks the new host's pair up for free). `null` (not
+  // absent) distinguishes "the rule is on, host hasn't sent a pair yet" from
+  // "the rule is off" (the key is omitted below in that case).
+  const tableStyleRule = room.meta.rules?.tableStyle ?? 'own';
+  const hostStyle: { felt: string; sweep: string } | null =
+    tableStyleRule === 'host' && room.meta.hostId !== undefined && hostSeat !== null
+      ? (room.meta.styles?.[room.meta.hostId] ?? null)
+      : null;
   // Room-level recap deadline (turnTimer rule): when connected idle humans
   // get auto-readied. Mirrors recapReadyDeadline minus the per-user
   // connectivity gate — the client shows it under the Ready button.
@@ -274,10 +285,15 @@ export function roster(room: GameRoom, exclude?: WebSocket): Roster {
     rules: {
       hailMary12: room.meta.rules?.hailMary12 ?? true,
       turnTimer: turnTimerRuleOn(room),
+      tableStyle: tableStyleRule,
     },
     public: room.meta.public ?? false,
     ...(Number.isFinite(readyTimeoutAt) ? { readyTimeoutAt } : {}),
     ...(hostSeat !== null ? { hostSeat } : {}),
+    // Present only while the rule is 'host' — see the tableStyle comment
+    // above for why absent (rule off) and null (rule on, pair unknown) are
+    // kept distinct.
+    ...(tableStyleRule === 'host' ? { tableStyle: hostStyle } : {}),
     ...(room.meta.lastRatings !== undefined ? { ratings: room.meta.lastRatings } : {}),
   };
 }
@@ -437,6 +453,16 @@ export function clearUserState(room: GameRoom, userId: string): void {
       Object.entries(room.meta.paints).filter(([id]) => id !== userId),
     );
   }
+  // Styles are small (two catalog ids), but a leaver's is dead weight the
+  // same way their paint is — and if they were the host, dropping it here
+  // (rather than leaving a stale pair behind) is exactly what makes the next
+  // roster's live hostId lookup show nothing for them once someone else
+  // inherits the role.
+  if (room.meta.styles?.[userId] !== undefined) {
+    room.meta.styles = Object.fromEntries(
+      Object.entries(room.meta.styles).filter(([id]) => id !== userId),
+    );
+  }
   // A permanent leave ends the takeover episode outright — no "back" line is
   // owed for someone who isn't coming back to this seat.
   room.botPlayingAnnounced.delete(userId);
@@ -464,6 +490,7 @@ export function pruneMeta(room: GameRoom): boolean {
   };
   room.meta.names = kept(room.meta.names);
   if (room.meta.paints !== undefined) room.meta.paints = kept(room.meta.paints);
+  if (room.meta.styles !== undefined) room.meta.styles = kept(room.meta.styles);
   if (room.meta.disconnectedSince !== undefined) {
     room.meta.disconnectedSince = kept(room.meta.disconnectedSince);
   }

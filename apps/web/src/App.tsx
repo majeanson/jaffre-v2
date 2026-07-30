@@ -25,6 +25,7 @@ import {
   currentCardSkin,
 } from './cosmetics.js';
 import { SWEEP_EVENT, currentSweep } from './sweeps.js';
+import { overrideFelt } from './felt.js';
 import { refreshFoil } from './foils.js';
 import { parsePositionHash, type HandPosition } from './replay/position.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
@@ -245,7 +246,30 @@ export function App() {
     onChange();
     return () => window.removeEventListener(SWEEP_EVENT, onChange);
   }, []);
-  const sweep = useMemo(() => trickSweepById(sweepId), [sweepId]);
+  // I1 — table-style house rule: while the room we're in has it 'host',
+  // every seat (including spectators) sees the HOST's felt+sweep instead of
+  // their own — Roster.tableStyle carries the pair (messages.ts). Narrow
+  // selector on purpose: it resolves to the SAME `null` reference on every
+  // roster broadcast whenever the rule is 'own' (the common case), so a
+  // table running with the rule off never re-renders App over this.
+  // The felt side is a VIEW OVERRIDE ONLY (felt.ts's overrideFelt, never
+  // applyFelt, which persists — see its own comment for why that would be
+  // wrong here). The sweep side needed no such care: it was already a pure
+  // prop feeding TrickSweepProvider below, so "prefer the table's" is just
+  // picking a different id. Both fall back to "mine" the instant the rule or
+  // the roster goes away — leaving a room resets the store to `roster: null`
+  // — which is the whole point: nobody's own cosmetic choice is ever touched
+  // by someone else's table.
+  const tableStyle = useGameStore((s) =>
+    s.roster?.rules?.tableStyle === 'host' ? (s.roster.tableStyle ?? null) : null,
+  );
+  useEffect(() => {
+    overrideFelt(tableStyle?.felt ?? null);
+  }, [tableStyle?.felt]);
+  const sweep = useMemo(
+    () => trickSweepById(tableStyle?.sweep ?? sweepId),
+    [tableStyle?.sweep, sweepId],
+  );
 
   // Warm the equipped cosmetics' card art (the OG portraits/emblems are real
   // JPGs) as soon as we know what's equipped, and again on every swap — so the

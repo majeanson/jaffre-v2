@@ -21,11 +21,43 @@ import {
   unseatUser,
 } from './presence.js';
 
+/**
+ * Diff-and-store a seated user's felt+sweep pair into `meta.styles` — shared
+ * by onJoin's "already seated, just rejoined" branch and onSit's "just sat
+ * down" branch, the same two call sites `paints` is promoted from right next
+ * to each of these calls. A partial pair (only one of felt/sweep arrived —
+ * an older or malformed client) reads as no pair at all: Roster.tableStyle
+ * needs both ids to draw anything, so a half-pair is worse than none.
+ * Returns whether `meta.styles` actually changed, for callers (onJoin) that
+ * batch their own `metaDirty` flag before one storage write.
+ */
+function syncStyle(
+  room: GameRoom,
+  userId: string,
+  felt: string | undefined,
+  sweep: string | undefined,
+): boolean {
+  const next = felt !== undefined && sweep !== undefined ? { felt, sweep } : undefined;
+  const prev = room.meta.styles?.[userId];
+  const same =
+    next === undefined
+      ? prev === undefined
+      : prev !== undefined && prev.felt === next.felt && prev.sweep === next.sweep;
+  if (same) return false;
+  const others = Object.fromEntries(
+    Object.entries(room.meta.styles ?? {}).filter(([id]) => id !== userId),
+  );
+  room.meta.styles = next === undefined ? others : { ...others, [userId]: next };
+  return true;
+}
+
 export async function onJoin(
   room: GameRoom,
   ws: WebSocket,
   att: Attachment,
   paint?: string,
+  felt?: string,
+  sweep?: string,
 ): Promise<void> {
   const seat = room.seatOf(att.userId);
   att.viewer = seat ?? 'spectator';
@@ -34,6 +66,10 @@ export async function onJoin(
   // viewer ever takes a seat, and gone with the socket if they don't.
   if (paint === undefined) delete att.paint;
   else att.paint = paint;
+  if (felt === undefined) delete att.felt;
+  else att.felt = felt;
+  if (sweep === undefined) delete att.sweep;
+  else att.sweep = sweep;
   ws.serializeAttachment(att);
   let metaDirty = false;
   // Only SEATED users are kept in meta. Every reader of names/paints — the
@@ -55,6 +91,7 @@ export async function onJoin(
       room.meta.paints = paint === undefined ? others : { ...others, [att.userId]: paint };
       metaDirty = true;
     }
+    if (syncStyle(room, att.userId, felt, sweep)) metaDirty = true;
   }
   // Rejoining stops the disconnect clock — the human resumes control.
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
@@ -181,6 +218,9 @@ export async function onSit(
     );
     room.meta.paints = att.paint === undefined ? others : { ...others, [att.userId]: att.paint };
   }
+  // Same promotion for the felt+sweep pair — meaningless while they were a
+  // spectator, and now possibly the pair a 'host' table-style rule echoes.
+  syncStyle(room, att.userId, att.felt, att.sweep);
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
     room.meta.disconnectedSince = Object.fromEntries(
       Object.entries(room.meta.disconnectedSince).filter(([id]) => id !== att.userId),
@@ -424,6 +464,7 @@ export async function onSetRules(
   att: Attachment,
   hailMary12: boolean,
   turnTimer?: boolean,
+  tableStyle?: 'own' | 'host',
 ): Promise<void> {
   // Only seated players may set house rules, and only before a live game —
   // the rule is fixed for the game the moment it starts.
@@ -440,7 +481,11 @@ export async function onSetRules(
     });
     return;
   }
-  room.meta.rules = { hailMary12, ...(turnTimer !== undefined ? { turnTimer } : {}) };
+  room.meta.rules = {
+    hailMary12,
+    ...(turnTimer !== undefined ? { turnTimer } : {}),
+    ...(tableStyle !== undefined ? { tableStyle } : {}),
+  };
   await room.ctx.storage.put('meta', room.meta);
   broadcastRoster(room, {});
 }
