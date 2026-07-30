@@ -1,25 +1,11 @@
 import { type CSSProperties } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
-import { dailyChallenge } from '@jaffre/engine';
-import { dailyPlayedId } from '../dailyPlayed.js';
+import { dailyDue } from '../dailyPlayed.js';
 
 const T: Record<Lang, { line: string }> = {
   en: { line: 'Today’s Hand of the Day is waiting.' },
   fr: { line: 'La main du jour t’attend.' },
 };
-
-/** Today's deal, still unplayed in this browser.
- *
- * Compared by CHALLENGE ID, not by date: the deal rolls at UTC midnight while
- * a player's "today" is local, so a date check would disagree with the board
- * for a few hours every night, somewhere in the world, always. */
-function dailyDue(): boolean {
-  try {
-    return dailyPlayedId() !== dailyChallenge(Date.now()).id;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * One quiet row above the PLAY door pointing at today's hand.

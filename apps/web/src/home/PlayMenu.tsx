@@ -55,7 +55,10 @@ const T: Record<
     resume: 'Resume',
     resumeHint: 'Tables you already have going.',
     bots: 'Bots',
-    botsHint: 'Solo practice — starts instantly, no waiting.',
+    // The Coach mention is the DURABLE pointer to the coached game: Home's
+    // practice nudge is one-shot, and once it retires this hint is the only
+    // place that says practice comes with guidance.
+    botsHint: 'Solo practice — starts instantly, and the Coach can guide you.',
     public: 'Public',
     publicHint: 'Play online with anyone.',
     private: 'Private',
@@ -81,7 +84,7 @@ const T: Record<
     resume: 'Reprendre',
     resumeHint: 'Les tables que t’as déjà en cours.',
     bots: 'Bots',
-    botsHint: 'Pratique solo — ça part tout de suite, sans attendre.',
+    botsHint: 'Pratique solo — ça part tout de suite, et le Coach peut te guider.',
     public: 'Public',
     publicHint: 'Joue en ligne avec n’importe qui.',
     private: 'Privé',

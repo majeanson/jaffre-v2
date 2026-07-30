@@ -103,7 +103,8 @@ export type FunnelStep =
   | 'finish' // first game played to the end
   | 'tutorial' // finished the practice tutorial
   | 'daily' // first time the Deal Board was opened
-  | 'daily-score'; // first score actually posted to a board
+  | 'daily-score' // first score actually posted to a board
+  | 'people'; // took the practice recap's "Play people" door to a real room
 
 const FUNNEL_KEY = 'jaffre:funnel';
 

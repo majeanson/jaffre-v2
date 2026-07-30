@@ -34,7 +34,7 @@ const TELEMETRY_KINDS: ReadonlySet<string> = new Set([
   'mint-failed',
   'error',
   'unhandledrejection',
-  ...['home', 'play', 'start', 'bid', 'finish', 'tutorial', 'daily', 'daily-score'].map(
+  ...['home', 'play', 'start', 'bid', 'finish', 'tutorial', 'daily', 'daily-score', 'people'].map(
     (step) => `funnel:${step}`,
   ),
 ]);

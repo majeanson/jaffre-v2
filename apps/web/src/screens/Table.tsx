@@ -6,6 +6,7 @@ import type { SceneUi } from '../dev/sceneManifest.js';
 import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { quickPlay } from '../net/rooms.js';
+import { reportFunnel } from '../net/telemetry.js';
 import { useGameStore } from '../state/gameStore.js';
 import { RoomComms, toggleRoomComms } from '../comms/RoomComms.js';
 import {
@@ -18,6 +19,7 @@ import {
   PlayerHand,
   Stage,
   TopBar,
+  TurnAlertsNudge,
   TutorialCoach,
   UtilityRow,
   WaitingScreen,
@@ -333,6 +335,9 @@ export function Table({
         {...(onLeaveTable === undefined
           ? {
               onPlayPeople: () => {
+                // The tutorial-to-humans handoff is the funnel's whole point —
+                // without this step, "finish" to online was invisible.
+                reportFunnel('people');
                 void quickPlay().then((code) => {
                   location.hash = `#room/${code}`;
                 });
@@ -414,6 +419,10 @@ export function Table({
           }}
         />
       )}
+      {/* Real rooms only, and only with a seat — a spectator has no turn to
+          be pinged about. One-shot; defers to TutorialCoach's intro card on a
+          first online game (see the component). */}
+      {online && dev && me !== null && <TurnAlertsNudge />}
     </main>
   );
 }

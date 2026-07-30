@@ -1,11 +1,13 @@
-import { useState, type CSSProperties } from 'react';
+import { type CSSProperties } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
 
 const STORAGE_KEY = 'jaffre:practiceNudge';
 
 /** Whether the first-visit "try Practice" nudge is still due. It shows until
- * the player taps it, dismisses it, or has a standing table (see Home). */
-function loadPracticeNudge(): boolean {
+ * the player taps it, dismisses it, or has a standing table (see Home).
+ * Exported because Home keys the slot on it: while this nudge is due, it is
+ * the ONE "start here" row — the DailyDoor waits its turn. */
+export function practiceNudgeDue(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === null;
   } catch {
@@ -41,13 +43,19 @@ const T: Record<Lang, { nudge: string; dismiss: string }> = {
  * fine print it started as — it was reading as a caption for the PLAY button
  * below it instead of as its own door.
  */
-export function PracticeNudge({ onPractice }: { readonly onPractice: () => void }) {
+export function PracticeNudge({
+  onPractice,
+  onRetire,
+}: {
+  readonly onPractice: () => void;
+  /** Home owns visibility (it decides which "start here" row gets the slot),
+   * so retiring must tell it — the latch alone wouldn't re-render Home. */
+  readonly onRetire: () => void;
+}) {
   const t = T[useLang()];
-  const [due, setDue] = useState(loadPracticeNudge);
-  if (!due) return null;
   const retire = () => {
     dismissPracticeNudge();
-    setDue(false);
+    onRetire();
   };
   return (
     <div

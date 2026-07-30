@@ -11,7 +11,7 @@ import { AttractMode } from '../home/AttractMode.js';
 import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
-import { PracticeNudge } from '../home/PracticeNudge.js';
+import { PracticeNudge, practiceNudgeDue } from '../home/PracticeNudge.js';
 import { DailyDoor } from '../home/DailyDoor.js';
 import { LevelBadge } from '../home/LevelBadge.js';
 import type { RecoveryStage } from '../home/RecoveryCard.js';
@@ -84,6 +84,9 @@ export function Home({
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Mirrors the PLAY door's own state so the practice nudge can step aside.
   const [playDoorOpen, setPlayDoorOpen] = useState(playOpen ?? false);
+  // Home owns the nudge's visibility (not the component) because two rows
+  // compete for the one "start here" slot — see the render below.
+  const [nudgeDue, setNudgeDue] = useState(practiceNudgeDue);
   const customizeTriggerRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -157,21 +160,26 @@ export function Home({
         {/* RIGHT — play actions, "Ton coin", then the quiet chrome, all one
             column width */}
         <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
-          {/* First-visit pointer to the coached practice game. Standing tables
-              mean the player already knows the way in — skip the tutorial hint.
-              Hidden while the PLAY door is open: it points at that door, and
-              floating above the opened sheet it read as unrelated chrome. */}
-          {!staged && tables.length === 0 && !playDoorOpen && (
+          {/* ONE "start here" row, never two. First-visit pointer to the
+              coached practice game; standing tables mean the player already
+              knows the way in — skip the tutorial hint. Hidden while the PLAY
+              door is open: it points at that door, and floating above the
+              opened sheet it read as unrelated chrome. */}
+          {!staged && !playDoorOpen && tables.length === 0 && nudgeDue ? (
             <PracticeNudge
+              onRetire={() => setNudgeDue(false)}
               onPractice={() => {
                 saveName();
                 onPractice();
               }}
             />
+          ) : (
+            /* The returning player's counterpart: same slot, same weight.
+               A fresh browser used to stack BOTH rows above the door — two
+               competing "start here"s taught neither, so the daily waits for
+               the practice nudge to be resolved (tap or ✕) before it shows. */
+            !staged && !playDoorOpen && <DailyDoor />
           )}
-          {/* The returning player's counterpart to that nudge: same slot, same
-              weight, hidden while the door it points past is open. */}
-          {!staged && !playDoorOpen && <DailyDoor />}
           <PlayMenu
             onPractice={() => {
               saveName();

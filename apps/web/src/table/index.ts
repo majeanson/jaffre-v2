@@ -15,6 +15,7 @@ export * from './SeatChip.js';
 export * from './Stage.js';
 export * from './TopBar.js';
 export * from './TrickBanner.js';
+export * from './TurnAlertsNudge.js';
 export * from './TutorialCoach.js';
 export * from './UtilityRow.js';
 export * from './WaitingScreen.js';

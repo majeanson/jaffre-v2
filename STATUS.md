@@ -247,8 +247,12 @@ deal animation.)
 Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
 (the constants are frozen by design; the monthly ladder is the real answer), a
 stronger-than-hard bot (the bench is a graveyard of intuitive ideas that lose),
-friends/DMs/clans (the room is the social unit), and any currency or shop (it
-would cheapen every already-earned unlock). Cutting "Host a public table" was
+friends/DMs/clans (the room is the social unit), any currency or shop (it
+would cheapen every already-earned unlock), and scheduled re-engagement pushes
+(2026-07-30: a daily-deal or streak-about-to-break reminder is nag territory —
+a push should mean a PERSON is waiting on you, so turn alerts and host-join
+stay the only pushes and the worker keeps no cron; the in-flow surfaces do the
+inviting instead). Cutting "Host a public table" was
 also proposed and rejected: drop-in seats changed Quick Play's job, so hosting
 a fresh public table is now a capability rather than a duplicate.
 

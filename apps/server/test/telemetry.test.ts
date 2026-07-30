@@ -126,9 +126,14 @@ describe('telemetry daily counters', () => {
   });
 
   it('still counts every funnel step under its own name', async () => {
-    const before = await countOf('funnel:daily-score');
-    expect(await report('funnel:daily-score', 'daily-score')).toBe(204);
-    expect(await countOf('funnel:daily-score')).toBe(before + 1);
+    // Two steps, not a loop over all of them: the latest addition ('people',
+    // the practice recap's Play-people door) is exactly the kind that lands
+    // in 'unknown' when someone forgets the allowlist — pin it explicitly.
+    for (const step of ['funnel:daily-score', 'funnel:people']) {
+      const before = await countOf(step);
+      expect(await report(step, step)).toBe(204);
+      expect(await countOf(step)).toBe(before + 1);
+    }
   });
 });
 

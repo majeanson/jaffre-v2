@@ -9,6 +9,7 @@ import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js
 import { XpStrip } from './XpStrip.js';
 import { DailyFirstWin } from './DailyFirstWin.js';
 import { recapTakeaway } from './recapTakeaway.js';
+import { dailyDue } from '../dailyPlayed.js';
 import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
 /** Sun = seats 0 & 2 (team A), Moon = seats 1 & 3 (team B). */
@@ -58,6 +59,7 @@ const T: Record<
     hailMaryLostMsg: (bidder: string, winner: string) => string;
     takeaway: string;
     seeRecord: string;
+    daily: string;
   }
 > = {
   en: {
@@ -103,6 +105,7 @@ const T: Record<
       `${bidder} went for 12 sans atout and missed — ${winner} take the game.`,
     takeaway: 'One thing to work on',
     seeRecord: 'Replay it from Your record →',
+    daily: 'Today’s Hand of the Day is waiting →',
   },
   fr: {
     gameOver: 'Partie terminée',
@@ -148,6 +151,7 @@ const T: Record<
       `${bidder} a tenté le 12 sans atout et l'a raté — ${winner} remporte la partie.`,
     takeaway: 'Une affaire à travailler',
     seeRecord: 'Rejoue-la depuis Ton record →',
+    daily: 'La main du jour t’attend →',
   },
 };
 
@@ -599,6 +603,28 @@ export function GameRecap({
                 </a>
               )}
             </div>
+          )}
+
+          {/* The bridge between the game just finished and tomorrow's loop:
+              one quiet line to the Hand of the Day while it's still unplayed.
+              Players only (showXp), same rule as the strips above — and it's
+              what DailyFirstWin's "see you tomorrow?" points at today. Wording
+              matches Home's DailyDoor: same door, same words. */}
+          {showXp && dailyDue() && (
+            // --color-ap-text, NOT ink: this line sits on the card's GROUND
+            // (only the takeaway panel above is paper-shade, where ink is the
+            // law) — ink here is dark-on-dark in the dark theme, and axe
+            // caught exactly that on the game-over scene.
+            <a
+              href="#daily"
+              data-testid="recap-daily-door"
+              className="mt-3 inline-block text-[0.85em] text-(--color-ap-text) underline decoration-dotted underline-offset-2 hover:opacity-80"
+            >
+              <span aria-hidden className="mr-1">
+                ★
+              </span>
+              {t.daily}
+            </a>
           )}
 
           {seriesWins !== undefined && (
