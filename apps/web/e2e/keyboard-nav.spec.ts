@@ -152,6 +152,68 @@ test('a sheet opens with focus on its own way out', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Close customize' })).toBeFocused();
 });
 
+test('every control on Home can be reached with nothing but arrows', async ({ page }) => {
+  // The whole promise, as a graph. Tag each focusable, ask the d-pad where it
+  // goes from every one of them, then flood from wherever ArrowDown drops you
+  // and check nothing is left over. A geometry-driven engine has no list of
+  // destinations, so the failure mode is a control marooned in a corner —
+  // this is the only kind of test that would notice.
+  await page.goto('/');
+  await expect(page.getByTestId('chrome-bar')).toBeVisible();
+
+  const ids = await page.evaluate(() => {
+    const SEL = 'a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]';
+    const found: string[] = [];
+    let i = 0;
+    for (const el of document.querySelectorAll(SEL)) {
+      if (el.closest('[data-nav="skip"]') !== null) continue;
+      if (el.closest('[aria-hidden="true"]') !== null) continue;
+      if (!(el instanceof HTMLElement) || el.getClientRects().length === 0) continue;
+      const id = `n${String(i++)}`;
+      el.dataset['reach'] = id;
+      found.push(id);
+    }
+    return found;
+  });
+  expect(ids.length).toBeGreaterThan(6);
+
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('ArrowDown');
+  const entry = await page.evaluate(
+    () => document.activeElement?.getAttribute('data-reach') ?? null,
+  );
+  expect(entry, 'the d-pad found nowhere to start').not.toBeNull();
+
+  const edges: Record<string, string[]> = {};
+  for (const id of ids) {
+    edges[id] = [];
+    for (const key of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight']) {
+      await page.evaluate((from) => {
+        document.querySelector<HTMLElement>(`[data-reach="${from}"]`)?.focus();
+      }, id);
+      await page.keyboard.press(key);
+      const to = await page.evaluate(
+        () => document.activeElement?.getAttribute('data-reach') ?? null,
+      );
+      if (to !== null && to !== id) edges[id]?.push(to);
+    }
+  }
+
+  const seen = new Set<string>();
+  const queue = entry === null ? [] : [entry];
+  while (queue.length > 0) {
+    const id = queue.pop() as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const next of edges[id] ?? []) if (!seen.has(next)) queue.push(next);
+  }
+
+  const stranded = ids.filter((id) => !seen.has(id));
+  expect(stranded, `unreachable by keyboard: ${stranded.join(', ')}`).toEqual([]);
+});
+
 test('the hand keeps its own arrows on the felt', async ({ page }) => {
   await page.goto('/#practice');
   const hand = page.getByRole('listbox', { name: 'Your hand' });
