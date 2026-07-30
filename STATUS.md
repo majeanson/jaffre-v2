@@ -51,7 +51,7 @@ Last checkpoint: **2026-07-29**.
 - 197 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
   only project that watches pixels move) · 69-scene catalog, each axe-gated
   (`npm run e2e:scenes`, 110 tests — fast, and the first thing to run) ·
-  112 web unit · 208 server · engine property tests (100% cov).
+  118 web unit · 208 server · engine property tests (100% cov).
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Full shots sweep 2026-07-29: **60/60 viewport×skin combos, ~4,300 shots,
@@ -145,7 +145,12 @@ button, and skipping it is safe.
   also gained `regulars` (3+ shared games, with AND against counted together,
   uncapped, minus the two the tiles already name). The "edge" line reads ONLY
   the against-games — folding in games won side by side made every good
-  partner look like a rival. Scenes `head-to-head` / `head-to-head-none`.
+  partner look like a rival. The shared games are split into Partnered /
+  Across the table, each headed with that record: one list repeated "with
+  Ginette" on every row of a screen about Ginette while never stating what
+  actually differed. A replay opened from here goes BACK here (App tracks the
+  previous hash; the record stays the default for every other list). Scenes
+  `head-to-head` / `head-to-head-none`.
 
 ## Rules the follow-up audit turned up (2026-07-29, same session)
 
@@ -181,10 +186,34 @@ button, and skipping it is safe.
   statically imported `CollectionSheet` → the Collection screen, so the whole
   gallery rode in the one index chunk every first-time visitor downloads —
   while App.tsx's `lazy()` claimed otherwise and rollup warned it on every
-  build. The sheet lazies it now: index 859 → 844 kB (261 kB gzip), Collection
-  a 15 kB chunk fetched on open. Next lever if first paint ever matters again:
-  `@jaffre/bots` is eager for practice games and is the biggest remaining
-  passenger — nobody has measured it, so don't assume.
+  build. The sheet lazies it now, and Collection is a 15 kB chunk on open.
+- **The recap's "+N XP" survives the read-before-write race.** A finished
+  game's history row is written INSIDE the game_over action that sends the
+  recap, with no "persisted" signal on the wire, so the XP strip's read can
+  arrive first. It re-reads once (busting the read cache, or the second fetch
+  returns the same promise) and only advances the stored baseline on a read it
+  believes — a stale baseline is what made a gain land a game late, on a hand
+  that didn't earn it. The decision is pure (`xpMoment` in `progression.ts`,
+  6 tests); a race can't be tested through a component.
+
+## First paint, measured (2026-07-29)
+
+`1.63 MB` of rendered JS loaded before first paint. What it was made of:
+`react-dom` 441 kB (fixed), a 640 kB shared chunk of **react-aria +
+framer-motion + motion-dom**, and 352 kB of table (help tree 51 kB, recap,
+coach, login/settings sheets).
+
+The table is now lazy plus an idle `import()` warm right after Home paints — it
+is never the first screen, and "where every join flow lands" is a reason to
+warm it, not to block on it. Entry chunk **844 → 483 kB (261 → 150 kB gzip)**;
+eager total 1633 → 1475 kB rendered (it falls less than the entry because Home
+and Lobby genuinely share some of the table's imports).
+
+The remaining lever is that 640 kB of react-aria/framer-motion, shared across
+Home, Lobby and the felt: component-level surgery, not chunking. Nobody should
+assume it is free to remove. Re-measure before believing any of this again —
+the throwaway used here read rollup's own module accounting from a
+`generateBundle` hook, no new dependency.
 
 Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
 (the constants are frozen by design; the monthly ladder is the real answer), a
