@@ -68,10 +68,14 @@ export function MetaNav({ current }: MetaNavProps) {
     <nav className="flex w-full flex-wrap gap-2">
       {ITEMS.map((item) => {
         const label = t[item.id];
+        // The current tab stays a link so the keyboard can walk the whole
+        // strip — a <span> here would drop a hole in the middle of the row
+        // that arrows fall straight through. aria-current still marks it, and
+        // following it is a harmless no-op.
         return item.id === current ? (
-          <span key={item.id} aria-current="page" className={CURRENT_CLASS}>
+          <a key={item.id} href={item.hash} aria-current="page" className={CURRENT_CLASS}>
             {label}
-          </span>
+          </a>
         ) : (
           <a key={item.id} href={item.hash} className={CHIP_CLASS}>
             {label}

@@ -1285,6 +1285,38 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
+
+  /* The d-pad cursor. Arrow-key navigation sets data-kb-nav on <html> (and the
+   * next mouse press clears it), so this louder ring only ever shows for
+   * someone actually driving with the keyboard — a mouse user never meets it,
+   * and neither does a touch device, where the engine doesn't run at all.
+   * Same violet glow the seat-turn highlight uses, so the app has one idea of
+   * "this is the live thing" rather than two. */
+  [data-kb-nav] :focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+    box-shadow:
+      0 0 0 1px var(--color-ap-ink),
+      0 0 0.7em 0.05em rgb(122 111 240 / 0.55);
+  }
+}
+
+/* The cursor lands: a halo contracts onto whatever the arrows just reached.
+ * One shot per move, not a loop — a ring that pulses forever under the thing
+ * you are reading is a distraction, and this only has to answer "where am I
+ * now". No fill-mode, so it settles back onto the static ring above. */
+@keyframes jaffre-kb-cursor {
+  from {
+    box-shadow:
+      0 0 0 1px var(--color-ap-ink),
+      0 0 0 0.4em rgb(122 111 240 / 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-kb-nav] :focus-visible {
+    animation: jaffre-kb-cursor var(--duration-play) var(--ease-snap);
+  }
 }
 
 /* ── Juice moments — theme-independent, all gated on reduced-motion. ───── */

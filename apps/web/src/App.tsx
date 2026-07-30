@@ -17,6 +17,7 @@ import {
   trickSweepById,
 } from '@jaffre/ui';
 import { useCurrentLang } from './lang.js';
+import { useSpatialNav } from './keys/spatialNav.js';
 import {
   BONHOMME_SKIN_EVENT,
   CARD_SKIN_EVENT,
@@ -204,6 +205,10 @@ function parseHash(): Route {
 
 export function App() {
   const lang = useCurrentLang();
+  // Arrow keys move focus anywhere in the app, Enter activates what's focused.
+  // Mounted once, here, because it reads the live DOM rather than a registry:
+  // no screen and no button has to know it exists. Desktop only.
+  useSpatialNav();
   // The active card skin, kept in sync with applyCardSkin() so a swap re-renders
   // the cards in place (the provider sits above every animated card).
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
