@@ -9,6 +9,7 @@ import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
 import { showsTeaching, useHelpLevel } from '../help/helpLevel.js';
 import { AttractMode } from '../home/AttractMode.js';
+import { InstallNudge } from '../home/InstallNudge.js';
 import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
 import { PlayMenu } from '../home/PlayMenu.js';
@@ -235,7 +236,8 @@ export function Home({
               the play actions; icons stay centered. Solid panel so axe reads the
               contrast. Install + turn-alerts are one-time settings, not a door
               you need every visit — they live in the Settings sheet (gear)
-              instead. */}
+              instead; the one exception is the one-shot InstallNudge below,
+              which earns its single appearance (see the component). */}
           <div
             data-testid="chrome-bar"
             className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
@@ -288,6 +290,7 @@ export function Home({
             </button>
             <LoginButton defaultOpen={loginOpen} />
           </div>
+          <InstallNudge />
         </div>
       </div>
 

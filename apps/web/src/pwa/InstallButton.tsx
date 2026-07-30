@@ -27,10 +27,11 @@ const T: Record<Lang, { install: string; iosTitle: string; iosSteps: string; clo
 };
 
 /**
- * Home-chrome install affordance. Renders only when installing is actually
- * possible from here: the captured native prompt (Android/desktop), or iOS
- * Safari where the path is the share sheet — shown as a short instruction
- * card since no API exists. Hidden once running standalone.
+ * THE install affordance — Settings' App row, and the action inside Home's
+ * one-shot InstallNudge. Renders only when installing is actually possible
+ * from here: the captured native prompt (Android/desktop), or iOS Safari
+ * where the path is the share sheet — shown as a short instruction card
+ * since no API exists. Hidden once running standalone.
  */
 export function InstallButton() {
   const t = T[useLang()];

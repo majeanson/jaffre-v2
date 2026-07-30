@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLang, type Lang } from '@jaffre/ui';
 import { applyLang, LANGS } from '../lang.js';
 import { playClick, setSoundEnabled, soundEnabled } from '../audio/clicks.js';
+import { getRecoveryCode, isLinked } from '../net/auth.js';
 import { HELP_T, HelpLevelPicker } from '../help/HelpLevelPicker.js';
 import { useHelpLevel } from '../help/helpLevel.js';
 import { setSnappyPace, snappyPace } from '../table/pacePref.js';
@@ -33,6 +34,10 @@ const T: Record<
     tutorialGo: string;
     account: string;
     accountHint: string;
+    recovery: string;
+    recoveryHint: string;
+    recoveryCopy: string;
+    recoveryCopied: string;
     keys: string;
     keysHint: string;
     keysList: readonly [string, string][];
@@ -56,6 +61,10 @@ const T: Record<
     tutorialGo: '♺ Replay tutorial',
     account: 'Account',
     accountHint: 'Log in so your games follow you.',
+    recovery: 'Recovery code',
+    recoveryHint: 'Three words that bring your name and games back on a new device.',
+    recoveryCopy: 'Copy',
+    recoveryCopied: 'Copied',
     keys: 'Keyboard',
     keysHint: 'Anywhere in the app, and at the table.',
     keysList: [
@@ -86,6 +95,10 @@ const T: Record<
     tutorialGo: '♺ Rejouer le tutoriel',
     account: 'Compte',
     accountHint: 'Connecte-toi pour que tes parties te suivent.',
+    recovery: 'Code de récupération',
+    recoveryHint: 'Trois mots qui ramènent ton nom et tes parties sur un nouvel appareil.',
+    recoveryCopy: 'Copier',
+    recoveryCopied: 'Copié',
     keys: 'Clavier',
     keysHint: 'Partout dans l’app, et à la table.',
     keysList: [
@@ -172,6 +185,13 @@ export function SettingsSheet({ onClose, onOpenCollection }: SettingsSheetProps)
   // stop the two disagreeing. Both read the one reactive level now.
   const level = useHelpLevel();
   const [snappy, setSnappy] = useState(snappyPace);
+  // The 3-word code, surfaced where people look for account things. Read once
+  // per open, and only shown when it already exists: LoginSheet owns minting,
+  // and this sheet opens over a LIVE table where a mint could race the
+  // socket's identity. A linked account doesn't need the words — logging in
+  // IS their recovery — so the row stays out of their way.
+  const [recovery] = useState(() => (isLinked() ? null : getRecoveryCode()));
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Escape, the Tab trap and the return trip to the gear all come from the
   // app-wide stack; focus still lands on the ✕ so the way out is announced
@@ -283,6 +303,32 @@ export function SettingsSheet({ onClose, onOpenCollection }: SettingsSheetProps)
         <Row title={t.account} hint={t.accountHint}>
           <LoginButton />
         </Row>
+
+        {recovery !== null && (
+          <Row title={t.recovery} hint={t.recoveryHint}>
+            <span className="flex flex-col items-end gap-1">
+              <span className="font-arcade-display text-xs text-(--color-ap-text)">{recovery}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(recovery)
+                    .then(() => {
+                      setCodeCopied(true);
+                      setTimeout(() => setCodeCopied(false), 2000);
+                    })
+                    .catch(() => {
+                      // Clipboard unavailable/denied — the words are right
+                      // there to copy by hand.
+                    });
+                }}
+                className="cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-1.5 font-arcade-display text-xs uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover)"
+              >
+                {codeCopied ? t.recoveryCopied : t.recoveryCopy}
+              </button>
+            </span>
+          </Row>
+        )}
 
         {/* Reference, not a control — the one place the table's shortcuts are
             written down. Hidden on touch-only devices, where they're noise. */}

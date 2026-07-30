@@ -21,13 +21,13 @@ async function uidOf(page: Page): Promise<string> {
 }
 
 /** The minted 3-word code from this browser's localStorage (null pre-mint).
- * The words are no longer SHOWN — real login is the durable path and the code
- * is a silent fallback — but the mint still issues + stores them. */
+ * The mint itself is silent — real login is the durable path — but the words
+ * are readable afterwards in the LoginSheet and Settings' Recovery row. */
 function codeOf(page: import('@playwright/test').Page): Promise<string | null> {
   return page.evaluate(() => localStorage.getItem('jaffre-recovery'));
 }
 
-test('first visit mints an identity with a recovery code that persists (hidden)', async ({
+test('first visit mints an identity with a recovery code that persists (silently)', async ({
   browser,
 }) => {
   const context = await browser.newContext();

@@ -9,6 +9,7 @@ import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js
 import { XpStrip } from './XpStrip.js';
 import { DailyFirstWin } from './DailyFirstWin.js';
 import { recapTakeaway } from './recapTakeaway.js';
+import { playClick } from '../audio/clicks.js';
 import { showsCoach, useHelpLevel } from '../help/helpLevel.js';
 import { dailyDue } from '../dailyPlayed.js';
 import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
@@ -480,6 +481,18 @@ export function GameRecap({
   // Which round's starting hands are expanded in the round-by-round table
   // (one at a time), keyed by roundIndex; null when all are collapsed.
   const [openRound, setOpenRound] = useState<number | null>(null);
+  // The payout note, at the call site clicks.ts reserved for it: winning
+  // viewer only — a spectator has no payout to hear. playClick's own gate
+  // covers the sound pref and the still-locked context, so this is silent
+  // unless sound is on and a real gesture already unlocked audio. Latched by
+  // ref, not by mount: a re-held trick can remount this overlay within one
+  // game_over, and the win was still only won once.
+  const sungWin = useRef(false);
+  useEffect(() => {
+    if (sungWin.current || mySeat === null || mySeat % 2 !== winner) return;
+    sungWin.current = true;
+    playClick('win');
+  }, [mySeat, winner]);
   useScrollLock();
   // Same focus contract as RoundSummaryOverlay: the hand unmounts at game
   // over, so without this a keyboard/SR user is dropped on <body> and must

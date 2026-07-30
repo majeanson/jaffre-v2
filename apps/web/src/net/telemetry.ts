@@ -139,6 +139,14 @@ function funnelSeen(): Set<string> {
   }
 }
 
+/** Whether a milestone has already been reached in this browser. Surfaces
+ * that wait for engagement before speaking (the install nudge waits for a
+ * finished game) read this rather than keeping a second latch of their own.
+ * Under automation it is always false — reportFunnel never writes there. */
+export function funnelReached(step: FunnelStep): boolean {
+  return funnelSeen().has(step);
+}
+
 /** Report a first-session milestone, once per browser. `detail` adds context
  * (e.g. which mode the first game was) and is never identifying. */
 export function reportFunnel(step: FunnelStep, detail = ''): void {

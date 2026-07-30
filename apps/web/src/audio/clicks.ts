@@ -194,10 +194,8 @@ export function playClick(kind: ClickKind): void {
     // ── J4 payout notes: the two melodic stings, built from the same `tone`
     //    envelope so they read as one voice at two different sizes.
     case 'win':
-      // The recap's payout note — a short ascending arpeggio for the
-      // winning viewer. Defined here but deliberately unwired: GameRecap.tsx
-      // belongs to another session; it should fire this once per mount,
-      // sound-pref gated, for the winning viewer only.
+      // The recap's payout note — a short ascending arpeggio, fired by
+      // GameRecap once per game_over for the winning viewer only.
       tone(c, now, 523.25, 0.3, 0.16); // C5
       tone(c, now + 0.09, 659.25, 0.32, 0.16); // E5
       tone(c, now + 0.18, 783.99, 0.34, 0.22); // G5
