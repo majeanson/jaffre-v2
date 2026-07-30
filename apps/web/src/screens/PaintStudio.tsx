@@ -5,8 +5,9 @@
  * string and saves it through the unchanged profile pipeline. Transparent cells
  * let your card colour show through, so colour + paint compose into one look.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Cta, Panel, useLang, type Lang } from '@jaffre/ui';
+import { useDismissLayer } from '../keys/layers.js';
 import { getProfile, saveProfile } from '../net/auth.js';
 import { emptyGrid } from '../paint/model.js';
 import { gridToDataUrl, parsePaint } from '../paint/svg.js';
@@ -120,6 +121,29 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
     else onLeave();
   };
 
+  // While a confirm is up it is a layer on the app-wide Escape stack, so
+  // Escape gives the SAFE answer — keep the work (backNav deliberately never
+  // fires on #paint, so without this Escape did nothing at all here). Initial
+  // focus goes to the keep button — the LAST in the row, and never the
+  // destructive one, so a stray Enter can't discard either.
+  const confirmRef = useRef<HTMLDivElement>(null);
+  useDismissLayer(
+    confirmRef,
+    () => {
+      setConfirmLeave(false);
+      setConfirmRemove(false);
+    },
+    {
+      enabled: confirmLeave || confirmRemove,
+      initialFocus: () => {
+        const buttons = confirmRef.current?.querySelectorAll('button');
+        return buttons !== undefined && buttons.length > 0
+          ? (buttons[buttons.length - 1] ?? null)
+          : null;
+      },
+    },
+  );
+
   // The in-app Back button asks; a reload or closed tab must not discard
   // silently. (Browser-back on the hash router stays unguarded — blocking
   // history is more invasive than the loss it prevents.)
@@ -148,7 +172,7 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
           {t.title}
         </h1>
         {confirmLeave ? (
-          <div className="flex items-center gap-[0.5em]">
+          <div ref={confirmRef} className="flex items-center gap-[0.5em]">
             <span className="text-(length:--text-fluid-sm) text-(--color-ap-muted)">
               {t.discardQ}
             </span>
@@ -160,7 +184,7 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
             </Cta>
           </div>
         ) : confirmRemove ? (
-          <div className="flex items-center gap-[0.5em]">
+          <div ref={confirmRef} className="flex items-center gap-[0.5em]">
             <span className="text-(length:--text-fluid-sm) text-(--color-ap-muted)">
               {t.removeQ}
             </span>
