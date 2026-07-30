@@ -62,6 +62,23 @@ describe('staying in line', () => {
     expect(bestCandidate(FROM, [clearOfIt, overlapping], 'right')).toBe(1);
   });
 
+  it('will not leave the row for a nearer button on the row below', () => {
+    // The meta-nav strip wraps into two rows 8px apart, and the second row's
+    // tabs are wider — so a tab down there can sit "nearer" to the right than
+    // the next tab along. Walking a row must be absolute, not a weighing.
+    const from = rect(160, 0, 160, 36);
+    const nextInRow = rect(328, 0, 160, 36);
+    const nearerButBelow = rect(224, 44, 210, 36);
+    expect(bestCandidate(from, [nearerButBelow, nextInRow], 'right')).toBe(1);
+  });
+
+  it('takes a stray only when the row has run out', () => {
+    // Nothing left in line: rather than swallow the key, fall back to the
+    // closest thing that way so focus still goes somewhere sensible.
+    const from = rect(0, 0);
+    expect(bestCandidate(from, [rect(200, 300)], 'right')).toBe(0);
+  });
+
   it('breaks an exact tie in the order it was given', () => {
     // Callers collect in DOM order, so ties resolve down the document.
     expect(bestCandidate(FROM, [rect(120, 0), rect(120, 0)], 'right')).toBe(0);

@@ -6,10 +6,13 @@
  *   - a candidate qualifies when its centre lies beyond the source's centre in
  *     the pressed direction — centres, not edges, so slightly overlapping
  *     elements (the card fan) still navigate;
- *   - nearer beats farther along the pressed axis;
- *   - staying in line beats drifting sideways: cross-axis separation costs
- *     double, and a candidate whose cross-axis span overlaps the source's
- *     counts as no separation at all (aligned rows and columns win);
+ *   - anything still in your row (pressing left/right) or your column (up/down)
+ *     beats everything that isn't, however near that other thing looks. This
+ *     one is absolute rather than weighted: the meta-nav strip wraps to two
+ *     rows eight pixels apart, and any finite penalty let ArrowRight leave the
+ *     row it was walking and land a row below;
+ *   - within that, nearer wins, and a tiny nudge for centre alignment settles
+ *     overlapping candidates;
  *   - exact ties resolve to the lowest index, and callers pass rects in DOM
  *     order, so ties follow the document.
  */
@@ -23,7 +26,7 @@ export interface NavRect {
 
 export type NavDir = 'up' | 'down' | 'left' | 'right';
 
-/** Sideways drift costs double the forward distance. */
+/** Sideways drift costs double the forward distance — among strays only. */
 const DRIFT_WEIGHT = 2;
 
 /**
@@ -62,8 +65,12 @@ export function bestCandidate(
 ): number | null {
   const horizontal = dir === 'left' || dir === 'right';
   const sign = dir === 'right' || dir === 'down' ? 1 : -1;
-  let best: number | null = null;
-  let bestScore = Infinity;
+  // Two tallies: things sharing your row/column, and everything else. The
+  // second is only consulted when the first comes up empty.
+  let inLine: number | null = null;
+  let inLineScore = Infinity;
+  let stray: number | null = null;
+  let strayScore = Infinity;
   for (let i = 0; i < candidates.length; i++) {
     const c = candidates[i];
     if (c === undefined) continue;
@@ -77,11 +84,19 @@ export function bestCandidate(
     const misalign = horizontal
       ? Math.abs(centerY(c) - centerY(from))
       : Math.abs(centerX(c) - centerX(from));
-    const score = forward + DRIFT_WEIGHT * drift + ALIGN_WEIGHT * misalign;
-    if (score < bestScore) {
-      bestScore = score;
-      best = i;
+    if (drift === 0) {
+      const score = forward + ALIGN_WEIGHT * misalign;
+      if (score < inLineScore) {
+        inLineScore = score;
+        inLine = i;
+      }
+    } else {
+      const score = forward + DRIFT_WEIGHT * drift + ALIGN_WEIGHT * misalign;
+      if (score < strayScore) {
+        strayScore = score;
+        stray = i;
+      }
     }
   }
-  return best;
+  return inLine ?? stray;
 }
