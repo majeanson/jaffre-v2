@@ -94,6 +94,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
                   card={play.card}
                   size="sm"
                   raised={play.position === trick.winnerPosition}
+                  paint={play.paint}
                 />
               </span>
             ))}

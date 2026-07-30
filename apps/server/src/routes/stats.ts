@@ -58,12 +58,16 @@ interface StatsPayload {
     readonly name: string;
     readonly games: number;
     readonly wins: number;
+    readonly color: string | null;
+    readonly paint: string | null;
   } | null;
   readonly nemesis: {
     readonly pid: string;
     readonly name: string;
     readonly games: number;
     readonly losses: number;
+    readonly color: string | null;
+    readonly paint: string | null;
   } | null;
   /**
    * The people you keep sitting with: anyone you've shared REGULAR_MIN+ games
@@ -79,11 +83,39 @@ interface StatsPayload {
     readonly name: string;
     readonly withGames: number;
     readonly vsGames: number;
+    readonly color: string | null;
+    readonly paint: string | null;
   }[];
   readonly streak: { readonly current: number; readonly best: number };
   /** Games watched through to the end as a spectator. Its own counter, NOT an
    * XP source — see the note in apps/server/src/awards.ts. */
   readonly spectated: number;
+}
+
+/** D1 refuses more than 100 bound params per query (see ID_CHUNK in
+ * games.ts) — a regulars list is unbounded, so this chunks under that
+ * ceiling the same way. */
+const USER_ID_CHUNK = 80;
+
+/** color+paint for a set of uids, one indexed lookup on `users` — the same
+ * two fields the leaderboard already exposes, joined here so bestPartner /
+ * nemesis / regulars can wear them without the client ever seeing a uid. */
+async function paintByUid(
+  db: D1Database,
+  uids: readonly string[],
+): Promise<Map<string, { color: string | null; paint: string | null }>> {
+  const map = new Map<string, { color: string | null; paint: string | null }>();
+  const unique = [...new Set(uids)];
+  for (let start = 0; start < unique.length; start += USER_ID_CHUNK) {
+    const chunk = unique.slice(start, start + USER_ID_CHUNK);
+    const placeholders = chunk.map((_, i) => `?${String(i + 1)}`).join(', ');
+    const rows = await db
+      .prepare(`SELECT id, color, paint FROM users WHERE id IN (${placeholders})`)
+      .bind(...chunk)
+      .all<{ id: string; color: string | null; paint: string | null }>();
+    for (const r of rows.results) map.set(r.id, { color: r.color, paint: r.paint });
+  }
+  return map;
 }
 
 /** A zeroed mastery table. A function, not a shared const: computeStats
@@ -239,17 +271,27 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     }
   }
 
+  // uid tracked alongside the pick (not just the pid on the entry) — it never
+  // leaves this function, but it's the key the paint lookup below needs.
+  let bestPartnerUid: string | null = null;
   let bestPartner: { pid: string; name: string; games: number; wins: number } | null = null;
-  for (const entry of partners.values()) {
+  for (const [uid, entry] of partners) {
     if (entry.games < 2) continue;
-    if (bestPartner === null || entry.wins > bestPartner.wins) bestPartner = entry;
+    if (bestPartner === null || entry.wins > bestPartner.wins) {
+      bestPartner = entry;
+      bestPartnerUid = uid;
+    }
   }
 
   // Nemesis: the opponent (min 2 games faced) who has beaten you the most.
+  let nemesisUid: string | null = null;
   let nemesis: { pid: string; name: string; games: number; losses: number } | null = null;
-  for (const entry of opponents.values()) {
+  for (const [uid, entry] of opponents) {
     if (entry.games < 2 || entry.losses === 0) continue;
-    if (nemesis === null || entry.losses > nemesis.losses) nemesis = entry;
+    if (nemesis === null || entry.losses > nemesis.losses) {
+      nemesis = entry;
+      nemesisUid = uid;
+    }
   }
 
   // Regulars: the two maps merged per person (someone can be both — teams get
@@ -279,9 +321,20 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
       merged.vsGames = entry.games;
     }
   }
-  const regulars = [...regularsByUid.values()]
-    .filter((r) => r.withGames + r.vsGames >= REGULAR_MIN)
-    .sort((a, b) => b.withGames + b.vsGames - (a.withGames + a.vsGames));
+  const regularEntries = [...regularsByUid.entries()]
+    .filter(([, r]) => r.withGames + r.vsGames >= REGULAR_MIN)
+    .sort(([, a], [, b]) => b.withGames + b.vsGames - (a.withGames + a.vsGames));
+
+  // One chunked batch for every uid these tiles need — bestPartner, nemesis,
+  // and each regular — rather than a query per tile.
+  const paintUids = [
+    ...(bestPartnerUid !== null ? [bestPartnerUid] : []),
+    ...(nemesisUid !== null ? [nemesisUid] : []),
+    ...regularEntries.map(([uid]) => uid),
+  ];
+  const paintMap = await paintByUid(db, paintUids);
+  const NO_PAINT = { color: null, paint: null };
+  const paintOf = (uid: string | null) => (uid === null ? NO_PAINT : (paintMap.get(uid) ?? NO_PAINT));
 
   return {
     games: games.length,
@@ -291,9 +344,9 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
     bids: { attempted: bidsAttempted, made: bidsMade },
     sansAtout: { attempted: saAttempted, made: saMade },
     mastery,
-    bestPartner,
-    nemesis,
-    regulars,
+    bestPartner: bestPartner === null ? null : { ...bestPartner, ...paintOf(bestPartnerUid) },
+    nemesis: nemesis === null ? null : { ...nemesis, ...paintOf(nemesisUid) },
+    regulars: regularEntries.map(([uid, r]) => ({ ...r, ...paintOf(uid) })),
     streak: { current: running, best },
     spectated,
   };

@@ -64,6 +64,33 @@ export interface SeatChipProps {
   readonly defaultPeekOpen?: boolean;
 }
 
+/**
+ * Optimistic auto-play toggle (G7): mirrors the turn-timer "I'm here" pattern
+ * above — `dismissedFor` flips the display immediately on the tap that
+ * requested it, ahead of the round-trip that confirms it. Here, `override`
+ * IS the requested value; it self-clears the instant the roster echo
+ * (`actual`) catches up, so a later externally-driven change (e.g. the
+ * server flipping it off itself) is never masked — once the request is
+ * fulfilled there is nothing left worth preferring over the truth.
+ */
+export function useOptimisticAutoPlay(actual: boolean): {
+  readonly on: boolean;
+  readonly toggle: (send: (next: boolean) => void) => void;
+} {
+  const [override, setOverride] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (override !== null && actual === override) setOverride(null);
+  }, [actual, override]);
+  return {
+    on: override ?? actual,
+    toggle: (send) => {
+      const next = !(override ?? actual);
+      setOverride(next);
+      send(next);
+    },
+  };
+}
+
 /** Owns one player's nameplate + floating bid bubble around the table. Tapping
  * the nameplate opens a small peek with the player's team, connection, and —
  * for your own seat — your record, or a bot's difficulty. */
@@ -166,8 +193,10 @@ export function SeatChip({
         ? 'right-0'
         : 'left-1/2 -translate-x-1/2';
 
-  // Your own seat wears your painted card (if any); bot seats wear their pixel
-  // sprite; other humans never receive paint (the roster doesn't carry it).
+  // Your own seat wears your LOCAL profile paint (instant on load, no roster
+  // round-trip needed); bot seats wear their pixel sprite; other humans wear
+  // the paint the roster already carries for them (info.avatar — resolved in
+  // useTableDerived alongside everyone else's).
   const paint = info.isYou ? getProfile().paint : info.avatar;
 
   return (

@@ -68,6 +68,13 @@ export function lastRoom(): string | null {
   return localStorage.getItem('jaffre-last-room');
 }
 
+/** Consecutive failed reconnect attempts since the last successful `open()` —
+ * `ConnectionBanner` reads this to decide when "still retrying" has gone on
+ * long enough to offer a way out, rather than trusting it forever. */
+export function reconnectAttempts(): number {
+  return attempts;
+}
+
 export function connect(roomCode: string): void {
   disconnect();
   closedByUs = false;

@@ -29,11 +29,18 @@ export interface PlayingCardProps {
   readonly recommended?: boolean;
   /** Queued to auto-play next turn — draws a gold ring around it. */
   readonly queued?: boolean;
+  /** May be tapped to queue while the hand isn't active — the same gold ring
+   * as `queued`, at low opacity, plus a slight lift: a quiet "you could" next
+   * to `queued`'s "you did" and `recommended`'s confident violet. */
+  readonly queueable?: boolean;
   /** Small deterministic tilt (degrees) for a hand-held look. */
   readonly tilt?: number;
-  /** The viewer's painted-card art (data URL). Rendered ONLY on their own
-   * red-0/brown-0 — the Hand passes it; table-played cards never do, so
-   * ownership stays unambiguous and only your specials get personalised. */
+  /** The painted-card art (data URL) belonging to whoever HOLDS or PLAYED this
+   * card. Rendered only on a red-0/brown-0, so a painting always marks the
+   * same two cards and ownership stays unambiguous. The Hand passes your own;
+   * TrickArea and LastTrickPeek pass the player's, resolved per seat from the
+   * roster — a painted 0 used to vanish the moment it was played, which the
+   * profile card had promised it wouldn't. */
   readonly paint?: string | null;
 }
 
@@ -45,6 +52,7 @@ export function PlayingCard({
   dimmed = false,
   recommended = false,
   queued = false,
+  queueable = false,
   tilt = 0,
   paint = null,
 }: PlayingCardProps) {
@@ -88,13 +96,19 @@ export function PlayingCard({
          it. Nothing else targets it, and without a foil granted it costs
          nothing. */
       className={`card-face relative select-none overflow-hidden ${SIZE_CLASSES[size]} aspect-5/7 rounded-(--radius-ap-inner) border-[0.14em] border-(--color-ap-ink) bg-(--color-card-face) transition-[transform,box-shadow] duration-(--duration-flick) ${
-        raised ? 'shadow-(--shadow-ap-lg) -translate-y-2' : 'shadow-(--shadow-ap)'
+        raised
+          ? 'shadow-(--shadow-ap-lg) -translate-y-2'
+          : queueable
+            ? 'shadow-(--shadow-ap) -translate-y-1'
+            : 'shadow-(--shadow-ap)'
       } ${
         queued
           ? 'outline outline-[0.16em] outline-(--color-ap-gold-deep) outline-offset-[0.12em]'
           : recommended
             ? 'outline outline-[0.16em] outline-(--color-ap-violet) outline-offset-[0.12em]'
-            : ''
+            : queueable
+              ? 'outline outline-[0.1em] outline-(--color-ap-gold-deep)/35 outline-offset-[0.1em]'
+              : ''
       } ${dimmed ? 'scale-[0.94] saturate-[0.7]' : ''}`}
     >
       {/* Corner ranks — Silkscreen numerals in the suit colour. */}

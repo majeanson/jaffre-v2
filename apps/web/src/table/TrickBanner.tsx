@@ -1,7 +1,7 @@
 import { useLang, type Lang } from '@jaffre/ui';
 import { useLayoutEffect, useRef } from 'react';
 import { TEAMS } from '../teams.js';
-import { hold, launchFlight, pointsHoldKey, scoreTarget } from './flight.js';
+import { hold, launchFlight, pointsHoldKey, scoreTarget, specialsHoldKey } from './flight.js';
 import { paced } from './pacePref.js';
 import type { HeldBanner } from './useTableDerived.js';
 
@@ -69,15 +69,19 @@ export function TrickBanner({ banner }: TrickBannerProps) {
     });
     if (!special) return undefined;
     // The specials badge is its own, slightly-delayed flight — the emphasis
-    // beat after the number lands, not competing with it for attention. The
-    // points hold above already covers the number; this flight carries no
-    // held value of its own.
+    // beat after the number lands, not competing with it for attention. It
+    // gets its OWN hold (G11), armed here alongside the points hold above:
+    // masking it under points-N instead released the bar's specials chip the
+    // instant the points flight landed, ~200ms before this one actually did.
+    const specialsKey = specialsHoldKey(banner.team);
+    hold(specialsKey);
     const timer = window.setTimeout(() => {
       for (const kind of banner.specials) {
         launchFlight({
           from: chipRef.current ?? new DOMRect(),
           to: scoreTarget(banner.team),
           burst: true,
+          key: specialsKey,
           payload: (
             <span
               className={`rounded-(--radius-ap-inner) border-2 bg-black/70 px-[0.6em] py-px font-arcade-display text-[0.9em] text-white ${

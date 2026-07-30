@@ -400,6 +400,8 @@ function SocialPanel({
   chipColor,
   pid,
   name,
+  color,
+  paint,
   relation,
   linkLabel,
   testId,
@@ -407,9 +409,18 @@ function SocialPanel({
 }: {
   readonly heading: string;
   readonly headingClass: string;
+  /** Thematic fallback when this person hasn't set a colour of their own —
+   * keeps the two tiles visually distinct (ok green / danger blue) even for
+   * a partner/nemesis who never opened the paint screen. */
   readonly chipColor: string;
   readonly pid: string | undefined;
   readonly name: string | undefined;
+  /** Their real colour+paint, from the server's users join — undefined for
+   * the outrun-the-server case, same as `pid` (accepted explicitly, not just
+   * omitted: `stats.bestPartner?.color` reads as `string | null | undefined`
+   * under exactOptionalPropertyTypes). */
+  readonly color?: string | null | undefined;
+  readonly paint?: string | null | undefined;
   readonly relation: string;
   readonly linkLabel: (name: string) => string;
   readonly testId: string;
@@ -420,7 +431,7 @@ function SocialPanel({
       <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)/75">{empty}</p>
     ) : (
       <div className="flex items-center gap-[0.7em]">
-        <AvatarChip name={name} color={chipColor} size="sm" />
+        <AvatarChip name={name} color={color ?? chipColor} paint={paint} size="sm" />
         <div className="min-w-0 flex-1 font-arcade-ui">
           <div
             data-testid={testId}
@@ -492,7 +503,12 @@ function RegularsPanel({
               href={`#h2h/${r.pid}`}
               className="flex items-center gap-[0.5em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-[0.6em] py-[0.35em] shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover)"
             >
-              <AvatarChip name={r.name} color="var(--color-suit-brown)" size="sm" />
+              <AvatarChip
+                name={r.name}
+                color={r.color ?? 'var(--color-suit-brown)'}
+                paint={r.paint}
+                size="sm"
+              />
               <span className="min-w-0 font-arcade-ui">
                 <span className="block truncate font-arcade-display text-[0.9em] uppercase text-(--color-ap-text)">
                   {r.name}
@@ -717,6 +733,8 @@ export function Stats({
                 pid={stats.bestPartner?.pid}
                 linkLabel={t.headToHead}
                 name={stats.bestPartner?.name}
+                color={stats.bestPartner?.color}
+                paint={stats.bestPartner?.paint}
                 relation={
                   stats.bestPartner === null
                     ? ''
@@ -732,6 +750,8 @@ export function Stats({
                 pid={stats.nemesis?.pid}
                 linkLabel={t.headToHead}
                 name={stats.nemesis?.name}
+                color={stats.nemesis?.color}
+                paint={stats.nemesis?.paint}
                 relation={
                   stats.nemesis === null
                     ? ''

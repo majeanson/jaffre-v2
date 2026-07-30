@@ -1,5 +1,6 @@
 import { legalCards, sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
+import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { feedback } from '../audio/clicks.js';
@@ -11,6 +12,11 @@ import { queueStillValid } from './queue.js';
  * read as a play, not a glitch, and leave a beat to see the table. */
 const QUEUE_FIRE_DELAY_MS = 400;
 
+const T: Record<Lang, { released: string }> = {
+  en: { released: 'Queued card released.' },
+  fr: { released: 'Carte en attente libérée.' },
+};
+
 /**
  * Owns the queued-card lifecycle: drops the queue the moment it stops making
  * sense, and auto-plays it (through the same `onAction` as a manual tap) once
@@ -21,7 +27,8 @@ const QUEUE_FIRE_DELAY_MS = 400;
  * it with a normal tap.
  */
 export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
-  const { view, viewer, roster, heldTrick, queued, setQueued } = useGameStore(
+  const t = T[useLang()];
+  const { view, viewer, roster, heldTrick, queued, setQueued, setNotice } = useGameStore(
     useShallow((s) => ({
       view: s.view,
       viewer: s.viewer,
@@ -29,6 +36,7 @@ export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
       heldTrick: s.heldTrick,
       queued: s.queued,
       setQueued: s.setQueued,
+      setNotice: s.setNotice,
     })),
   );
 
@@ -54,9 +62,14 @@ export function useQueuedPlay(onAction: (action: ClientAction) => void): void {
     lastRound.current = view.roundIndex;
     if (queued === null) return;
     if (me === null || roundChanged || autoPiloted || !queueStillValid(queued, view, me, myTurn)) {
+      // This is the drop-for-invalidity path (the queue stopped making sense
+      // against the latest view) — say so. The OTHER way `queued` clears, the
+      // fire effect below, is the queue being CONSUMED by an actual play and
+      // must stay silent (that one already has a play as its own feedback).
       setQueued(null);
+      setNotice(t.released);
     }
-  }, [view, me, myTurn, queued, setQueued, autoPiloted]);
+  }, [view, me, myTurn, queued, setQueued, setNotice, t, autoPiloted]);
 
   useEffect(() => {
     if (queued === null || view === null || me === null || autoPiloted) return;

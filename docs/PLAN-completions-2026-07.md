@@ -134,6 +134,17 @@ muted centered lines (en/fr): "Ginette sat down." "Marcel dropped." "A bot is
 playing Marcel's hand." "Marcel is back." "Game on." System lines do NOT trip
 the unread dot. Respect existing chat truncation.
 
+**Verified mechanics (H1):** `ChatEntry` is
+`{ from: string; text: string; at: number; seat?: number }`
+(`packages/protocol/src/messages.ts`), carried by `welcome.chatTail` and the
+`{t:'chat', entry}` server message. The `seat?` field's own comment already
+establishes the convention for optional additions ("absent for spectators and
+for entries persisted before this field existed") — the system variant follows
+it: add optional `system?: { code: …; name?: string }`, leave `from`/`text` as
+a plain-language fallback so an older client still renders something sane
+rather than an empty bubble. `Roster.spectators` (a number) is already on
+every roster broadcast — H3 needs no protocol change at all.
+
 **H2 — Bot takeover is a felt moment.** Client-side roster-diff detection →
 one toast-stack notice at takeover ("A bot is playing Marcel's hand.") and one
 on return ("Marcel is back."). Existing NoticeToast/stack path, no new
@@ -179,6 +190,26 @@ connected spectators' votes count toward `skipThreshold`. Remove dead
   non-default felt, enables the rule, second client's `<html data-felt>`
   reflects the host's felt at the table and restores after leaving.
 - Keep it to felt + sweep. Card skins/themes stay personal (readability).
+
+**Verified mechanics (read before implementing — these are the traps):**
+- `applyFelt(id)` (`apps/web/src/felt.ts`) **persists to localStorage** and
+  sets `<html data-felt>`. A table-style override must NEVER call it — that
+  would overwrite the player's own equip. Add a separate non-persisting
+  path (e.g. `overrideFelt(id | null)`) that only touches the dataset attr
+  and dispatches `FELT_EVENT`; passing null restores `currentFelt()`. The
+  default felt (`house`) is the ABSENCE of the attribute, so the override
+  must delete the attr for `house`, not set it.
+- The sweep is already a pure prop: `App.tsx` holds `sweepId` state from
+  `currentSweep()` and feeds `<TrickSweepProvider value={sweep}>`. The
+  override is just "use the table's sweep id instead of mine while at a
+  table with the rule on" — no persistence involved, nothing to restore.
+- `set_rules` (`packages/protocol/src/messages.ts`) is
+  `{ hailMary12: boolean, turnTimer?: boolean }` and its comment states the
+  convention: optional fields keep older clients parsing, and a client
+  toggling one rule sends its current value for the others. `tableStyle`
+  follows that exact pattern (optional, echoed in `Roster.rules`).
+- `Roster.rules` is the echo channel every seat already reads; the host's
+  felt+sweep ride alongside it, NOT inside `RosterSeat`.
 
 ---
 

@@ -28,7 +28,9 @@ export interface StageProps {
    * of the felt's toast stack, above the trick banner. Table passes it only
    * in real play (dev), same gate the callout always had. */
   readonly announcement?: ReactNode;
-  /** The Coach's one-line tip, shown when a trick result isn't already up. */
+  /** The Coach's one-line tip. Stacks BELOW the trick banner in the toast
+   * stack while one is up (G5) rather than being hidden by it — the reasoning
+   * for the last play should survive the hold that shows its result. */
   readonly coachTip?: string | null;
   /** Spectator view: no hand dock below, so the stage would absorb the whole
    * portrait height and stretch the felt into a tall oval — cap its height
@@ -109,9 +111,12 @@ export function Stage({
       >
         {announcement}
         {banner !== null && <TrickBanner banner={banner} />}
-        {banner === null && !bidding && coachTip !== null && coachTip !== '' && (
-          <CoachTipPill tip={coachTip} />
-        )}
+        {/* Stacks below the banner instead of waiting for `banner === null` —
+            a held trick's result and the Coach's reasoning for the play that
+            caused it are both worth reading at once (G5). Still hidden during
+            the auction: BidOverlay renders its own tip stacked over the bet
+            panel there, so this one would only duplicate it. */}
+        {!bidding && coachTip !== null && coachTip !== '' && <CoachTipPill tip={coachTip} />}
       </div>
       {/* Desktop: full nameplates on the rim (there's space to show "Marcel ·
           bot"). Phone: compact avatar tokens pulled ONTO the felt, diagonally

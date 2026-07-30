@@ -193,6 +193,7 @@ export function Hand({
                   dimmed={active && entry.disabled === true}
                   recommended={entry.recommended === true}
                   queued={entry.queued === true}
+                  queueable={queueable}
                   paint={paint}
                 />
                 {entry.queued === true && <span className="sr-only">{t.queued}</span>}

@@ -14,6 +14,10 @@ export interface TrickPlayView {
   /** 0 = bottom (you), 1 = left, 2 = top, 3 = right — table-relative. */
   readonly position: 0 | 1 | 2 | 3;
   readonly card: CardData;
+  /** The playing seat's own paint (their roster avatar, same resolution as
+   * every seat chip) — PlayingCard only ever shows it on a red-0/brown-0, so
+   * passing it unconditionally here is exactly what the hand already does. */
+  readonly paint?: string | null;
 }
 
 export interface TrickAreaProps {
@@ -89,7 +93,12 @@ export function TrickArea({
               exit={{ ...SWEEP_TO[play.position], opacity: 0 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
             >
-              <PlayingCard card={play.card} size={size} raised={highlight === play.position} />
+              <PlayingCard
+                card={play.card}
+                size={size}
+                raised={highlight === play.position}
+                paint={play.paint ?? null}
+              />
             </motion.div>
           ))}
         {sweepTo !== null &&
@@ -117,7 +126,7 @@ export function TrickArea({
                   ease: [...step.ease],
                 }}
               >
-                <PlayingCard card={play.card} size={size} />
+                <PlayingCard card={play.card} size={size} paint={play.paint ?? null} />
               </motion.div>
             );
           })}

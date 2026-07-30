@@ -39,6 +39,27 @@ const T: Record<
 const DEAL_STAGGER_MS = 90; // matches the deal-in keyframe stagger in tokens.css
 const SORT_STAGGER_MS = 45; // the satisfying cascade when tidying the hand
 
+/** The player's last APPLIED sort — persisted so a habitual "I sort by
+ * colour" (or value) preference survives a reload and carries into the next
+ * deal, instead of every fresh hand starting from the same hardcoded order. */
+const HAND_SORT_KEY = 'jaffre:handSort';
+
+function loadSortMode(): 'colour' | 'value' {
+  try {
+    return localStorage.getItem(HAND_SORT_KEY) === 'value' ? 'value' : 'colour';
+  } catch {
+    return 'colour'; // Storage can throw (private mode, quota) — session-only then.
+  }
+}
+
+function saveSortMode(mode: 'colour' | 'value'): void {
+  try {
+    localStorage.setItem(HAND_SORT_KEY, mode);
+  } catch {
+    // Same as above: worst case the choice doesn't survive a reload.
+  }
+}
+
 export interface HandSort {
   /** The hand in client display order (sorted / dragged); render this. */
   readonly displayCards: readonly Card[];
@@ -66,26 +87,33 @@ export function useHandSort(cards: readonly Card[]): HandSort {
   }, [cards, order]);
 
   // Each press applies one of the two orders, alternating: colours ⇄ values.
-  const [sortMode, setSortMode] = useState<'colour' | 'value'>('colour');
+  // Seeded from the persisted preference (G3) rather than a hardcoded
+  // 'colour' — the button's very first press picks up where you left off.
+  const [sortMode, setSortMode] = useState<'colour' | 'value'>(loadSortMode);
 
   // A hand only ever shrinks within a round, so a growing one is a fresh deal:
-  // drop the previous round's order (some card keys repeat, so the fallback
-  // alone would half-apply it) and restart the cycle at colours — the first
-  // press of EVERY hand tidies by suit, not by value.
+  // recompute the order from scratch (some card keys repeat, so the previous
+  // round's `order` alone would half-apply) and RE-APPLY the persisted sort —
+  // a fresh hand tidies itself the way you last asked, not a hardcoded colour
+  // pass every time.
   const handCount = useRef(cards.length);
   useEffect(() => {
     if (cards.length > handCount.current) {
-      setOrder([]);
-      setSortMode('colour');
+      const applied = loadSortMode();
+      const sorted = (applied === 'colour' ? sortByColour : sortByValue)(cards);
+      setOrder(sorted.map(cardKey));
+      setSortMode(applied === 'colour' ? 'value' : 'colour');
     }
     handCount.current = cards.length;
-  }, [cards.length]);
+  }, [cards]);
 
   const sortHand = () => {
-    const sorted = (sortMode === 'colour' ? sortByColour : sortByValue)(displayCards);
+    const applied = sortMode;
+    const sorted = (applied === 'colour' ? sortByColour : sortByValue)(displayCards);
     const keys = sorted.map(cardKey);
     setOrder(keys);
-    setSortMode(sortMode === 'colour' ? 'value' : 'colour');
+    setSortMode(applied === 'colour' ? 'value' : 'colour');
+    saveSortMode(applied);
     // The click cascade only when cards actually move — a no-op sort is silent.
     const changed = displayCards.some((c, i) => cardKey(c) !== keys[i]);
     if (!changed) return;

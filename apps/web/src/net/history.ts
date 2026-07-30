@@ -61,6 +61,10 @@ export interface StatsPartner {
   readonly name: string;
   readonly games: number;
   readonly wins: number;
+  /** Their chosen colour/paint, same fields as every other roster — optional
+   * for the same outrun-the-server reason as `pid`. Read as `?? null`. */
+  readonly color?: string | null;
+  readonly paint?: string | null;
 }
 
 /** The opponent who has beaten you most (min 2 games faced). */
@@ -69,6 +73,8 @@ export interface StatsNemesis {
   readonly name: string;
   readonly games: number;
   readonly losses: number;
+  readonly color?: string | null;
+  readonly paint?: string | null;
 }
 
 /** Someone you've shared 3+ games with, partnered or opposed. */
@@ -77,6 +83,8 @@ export interface StatsRegular {
   readonly name: string;
   readonly withGames: number;
   readonly vsGames: number;
+  readonly color?: string | null;
+  readonly paint?: string | null;
 }
 
 export interface Stats {
@@ -242,10 +250,19 @@ export interface SharedGame extends HistoryGame {
 }
 
 /** Your record with and against one other player, addressed by their public
- * id. `name` is null when you have never shared a table with them. */
+ * id. `name` is null when you have never shared a table with them, in which
+ * case `color`/`paint`/`award` are null too — there is no one to look up. */
 export interface HeadToHead {
   readonly pid: string;
   readonly name: string | null;
+  /** Their chosen colour/paint — same fields as every other roster. Optional
+   * for the outrun-the-server reason every other `Stats*` field is: read as
+   * `?? null`. */
+  readonly color?: string | null;
+  readonly paint?: string | null;
+  /** The first id on their trophy shelf (their `awardOrder`), or null when
+   * they haven't arranged one. Optional for the same reason. */
+  readonly award?: string | null;
   readonly together: { readonly games: number; readonly wins: number };
   readonly against: { readonly games: number; readonly wins: number };
   readonly games: readonly SharedGame[];

@@ -314,16 +314,18 @@ export const DEMO_STATS: Stats = {
     green: { attempted: 0, made: 0 },
     blue: { attempted: 0, made: 0 },
   },
-  bestPartner: { pid: PID.ginette, name: 'Ginette', games: 6, wins: 4 },
-  nemesis: { pid: PID.marcel, name: 'Marcel', games: 8, losses: 5 },
+  // color matches this same person's DEMO_LEADERBOARD row below — ONE staged
+  // cast, so a tile and a ladder row for the same Ginette agree.
+  bestPartner: { pid: PID.ginette, name: 'Ginette', games: 6, wins: 4, color: '#f2b712' },
+  nemesis: { pid: PID.marcel, name: 'Marcel', games: 8, losses: 5, color: '#e05252' },
   // Coherent with the two tiles above: Ginette's 6 partnered + 3 opposed are
   // the same games DEMO_HEAD_TO_HEAD lists, and Marcel's 8 are the nemesis
   // faced count. Lise is the third regular the tiles can never name.
   regulars: [
-    { pid: PID.marcel, name: 'Marcel', withGames: 0, vsGames: 8 },
-    { pid: PID.ginette, name: 'Ginette', withGames: 6, vsGames: 3 },
-    { pid: PID.lise, name: 'Lise', withGames: 1, vsGames: 3 },
-    { pid: PID.real, name: 'Réal', withGames: 2, vsGames: 2 },
+    { pid: PID.marcel, name: 'Marcel', withGames: 0, vsGames: 8, color: '#e05252' },
+    { pid: PID.ginette, name: 'Ginette', withGames: 6, vsGames: 3, color: '#f2b712' },
+    { pid: PID.lise, name: 'Lise', withGames: 1, vsGames: 3, color: '#1e7a52' },
+    { pid: PID.real, name: 'Réal', withGames: 2, vsGames: 2, color: '#3f8bff' },
   ],
   streak: { current: 3, best: 5 },
   spectated: 7,
@@ -416,6 +418,11 @@ const H2H_VS = [true, false, false];
 export const DEMO_HEAD_TO_HEAD: HeadToHead = {
   pid: PID.ginette,
   name: 'Ginette',
+  // Same color as her DEMO_LEADERBOARD/DEMO_STATS rows (ONE staged cast), and
+  // a showcased trophy — stages the header chip in the gallery.
+  color: '#f2b712',
+  paint: null,
+  award: 'ten-wins',
   together: { games: H2H_WITH.length, wins: H2H_WITH.filter(Boolean).length },
   against: { games: H2H_VS.length, wins: H2H_VS.filter(Boolean).length },
   games: [
@@ -620,6 +627,9 @@ const LOADERS: Record<SceneId, () => void> = {
   waiting: () => useGameStore.getState().reset(),
   'auction-you': gameScene('auction-you', (s) => s.phase === 'bidding' && s.turn === 0),
   'auction-wait': gameScene('auction-wait', (s) => s.phase === 'bidding' && s.turn !== 0),
+  // Same state as 'auction-you'; only the help dial differs (set by the
+  // manifest), so the two shots isolate exactly what the beginner strip costs.
+  'auction-expert': gameScene('auction-you', (s) => s.phase === 'bidding' && s.turn === 0),
   'your-lead': gameScene(
     'your-lead',
     (s) => s.phase === 'playing' && s.turn === 0 && s.currentTrick.length === 0,

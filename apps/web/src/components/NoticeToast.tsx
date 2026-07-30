@@ -11,12 +11,13 @@ const T: Record<Lang, { dismiss: string }> = {
 const AUTO_DISMISS_MS = TOAST_DWELL_MS;
 
 // Module-level claim: NoticeToast is mounted app-wide (App.tsx, above every
-// screen) AND still locally in Table.tsx/Lobby.tsx (not this task's files to
-// change). Rendering all three would triple the toast. The first instance to
-// render claims `claimed`; every other instance renders nothing. App.tsx
-// mounts its NoticeToast before AppRoutes and never unmounts it, so in
-// practice the app-wide instance wins the claim on first paint and holds it
-// for the life of the app — the per-screen instances are inert no-ops.
+// screen) AND still locally in Lobby.tsx (Table.tsx's own inert local mount
+// was removed — it never won the claim below anyway). Rendering both would
+// double the toast. The first instance to render claims `claimed`; every
+// other instance renders nothing. App.tsx mounts its NoticeToast before
+// AppRoutes and never unmounts it, so in practice the app-wide instance wins
+// the claim on first paint and holds it for the life of the app — Lobby's
+// instance is an inert no-op.
 let claimed = false;
 
 function claimOwnership(): boolean {

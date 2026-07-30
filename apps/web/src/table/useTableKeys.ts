@@ -3,6 +3,7 @@ import { sameCard } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { useEffect, useRef } from 'react';
 import type { BidOption } from '@jaffre/ui';
+import { feedback } from '../audio/clicks.js';
 
 /** The six bid values, in the order the bid cards are shown. */
 const BID_VALUES = [7, 8, 9, 10, 11, 12] as const;
@@ -90,6 +91,7 @@ export function useTableKeys(config: TableKeysConfig): void {
         if (!c.myTurn) return;
         if (key === 'p') {
           e.preventDefault();
+          feedback('play');
           c.onAction({ type: 'place_bid', choice: { kind: 'pass' } });
           return;
         }
@@ -102,6 +104,7 @@ export function useTableKeys(config: TableKeysConfig): void {
         const option = c.bidOptions.find((o) => o.value === value && !o.sansAtout);
         if (option === undefined) return;
         e.preventDefault();
+        feedback('play');
         c.onAction({ type: 'place_bid', choice: { kind: 'bid', value, sansAtout: false } });
         return;
       }
@@ -113,6 +116,7 @@ export function useTableKeys(config: TableKeysConfig): void {
       if (card === undefined) return;
       if (c.legal.some((x) => sameCard(x, card))) {
         e.preventDefault();
+        feedback('play');
         c.onAction({ type: 'play_card', card });
         return;
       }
@@ -120,6 +124,7 @@ export function useTableKeys(config: TableKeysConfig): void {
       // and pressing it again on the queued card takes it back.
       if (c.queueable.some((x) => sameCard(x, card))) {
         e.preventDefault();
+        feedback('select', 4);
         c.setQueued(c.queued !== null && sameCard(card, c.queued) ? null : card);
       }
     };

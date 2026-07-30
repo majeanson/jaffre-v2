@@ -61,6 +61,10 @@ export async function handleHeadToHead(request: Request, env: Env, url: URL): Pr
   );
 
   let name: string | null = null;
+  // Their uid, captured off the same first shared game as `name` — needed to
+  // look up their cosmetics below, but it must never itself leave this
+  // function (see the response at the bottom: color/paint/award only).
+  let theirUid: string | null = null;
   const together = { games: 0, wins: 0 };
   const against = { games: 0, wins: 0 };
   const shared: {
@@ -84,6 +88,7 @@ export async function handleHeadToHead(request: Request, env: Env, url: URL): Pr
     // and playersByGame already applied the displayName rule), so a rename
     // shows up here the same way it does everywhere else.
     name ??= them.name;
+    theirUid ??= them.userId;
     const yourTeam = g.seat % 2;
     const side = them.seat % 2 === yourTeam ? 'with' : 'vs';
     const won = g.winner_team !== null && g.winner_team === yourTeam;
@@ -104,8 +109,35 @@ export async function handleHeadToHead(request: Request, env: Env, url: URL): Pr
     });
   }
 
+  // Their cosmetics, same read as the leaderboard/stats tiles — color, paint,
+  // and whichever award they've put first on their trophy shelf. One extra
+  // query, only when there IS a shared game (theirUid is null otherwise).
+  let color: string | null = null;
+  let paint: string | null = null;
+  let award: string | null = null;
+  if (theirUid !== null) {
+    const row = await db
+      .prepare('SELECT color, paint, award_order FROM users WHERE id = ?1')
+      .bind(theirUid)
+      .first<{ color: string | null; paint: string | null; award_order: string | null }>();
+    if (row !== null) {
+      color = row.color;
+      paint = row.paint;
+      // Best-effort parse: a malformed award_order must not cost the whole
+      // response, just the trophy chip.
+      if (row.award_order !== null) {
+        try {
+          const ids: unknown = JSON.parse(row.award_order);
+          if (Array.isArray(ids) && typeof ids[0] === 'string') award = ids[0];
+        } catch {
+          // leave award null
+        }
+      }
+    }
+  }
+
   // A pid with no shared game answers 200 with a null name rather than 404:
   // "you have never sat with this player" is a true, showable answer, and the
   // pid may simply belong to someone you only ever spectated.
-  return Response.json({ pid, name, together, against, games: shared });
+  return Response.json({ pid, name, color, paint, award, together, against, games: shared });
 }

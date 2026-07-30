@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AvatarChip, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import { fetchHeadToHead, type HeadToHead as H2H, type SharedGame } from '../net/history.js';
-import { GameRow } from '../components/GameRow.js';
+import { AWARDS } from '../awards.js';
+import { formatGameDate, GameRow, yourScore } from '../components/GameRow.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { ShellNote } from '../components/ShellNote.js';
 
@@ -48,6 +49,12 @@ const T: Record<
     edge: (name: string) => string;
     evenEdge: string;
     yourEdge: string;
+    lastPlayed: (date: string) => string;
+    streakYou: (n: number) => string;
+    streakThem: (name: string, n: number) => string;
+    marginBoth: (name: string, you: number, them: number) => string;
+    marginYou: (you: number) => string;
+    marginThem: (name: string, them: number) => string;
   }
 > = {
   en: {
@@ -66,6 +73,13 @@ const T: Record<
     edge: (name) => `${name} has the edge.`,
     evenEdge: 'Dead even.',
     yourEdge: 'You have the edge.',
+    lastPlayed: (date) => `Last played ${date}`,
+    streakYou: (n) => `You've won the last ${String(n)}.`,
+    streakThem: (name, n) => `${name} has won the last ${String(n)}.`,
+    marginBoth: (name, you, them) =>
+      `Biggest win: you by ${String(you)}, ${name} by ${String(them)}.`,
+    marginYou: (you) => `Biggest win: you by ${String(you)}.`,
+    marginThem: (name, them) => `Biggest win: ${name} by ${String(them)}.`,
   },
   fr: {
     title: 'Face à face',
@@ -83,6 +97,13 @@ const T: Record<
     edge: (name) => `${name} a le dessus.`,
     evenEdge: 'Égalité parfaite.',
     yourEdge: 'Tu as le dessus.',
+    lastPlayed: (date) => `Dernière partie : ${date}`,
+    streakYou: (n) => `Tu as gagné les ${String(n)} dernières.`,
+    streakThem: (name, n) => `${name} a gagné les ${String(n)} dernières.`,
+    marginBoth: (name, you, them) =>
+      `Plus grosse victoire : toi par ${String(you)}, ${name} par ${String(them)}.`,
+    marginYou: (you) => `Plus grosse victoire : toi par ${String(you)}.`,
+    marginThem: (name, them) => `Plus grosse victoire : ${name} par ${String(them)}.`,
   },
 };
 
@@ -99,6 +120,62 @@ function edgeLine(data: H2H, t: Strings): string | null {
   const theirs = games - wins;
   if (wins === theirs) return t.evenEdge;
   return wins > theirs ? t.yourEdge : t.edge(data.name);
+}
+
+/** "Last played <date>" off the newest shared game — `data.games` is already
+ * newest-first (see routes/head2head.ts), so that's simply the first row,
+ * with AND against both counting (unlike the edge line above, this is just
+ * "when did we last sit together at all"). */
+function lastPlayedLine(data: H2H, t: Strings, lang: Lang): string | null {
+  const finishedAt = data.games[0]?.finishedAt ?? null;
+  return finishedAt === null ? null : t.lastPlayed(formatGameDate(finishedAt, lang));
+}
+
+/** Did you win this share game? Mirrors Stats.tsx's `youWon`, narrowed to a
+ * SharedGame (same seat/winnerTeam fields). */
+function wonGame(game: SharedGame): boolean {
+  return game.winnerTeam !== null && game.winnerTeam === game.yourSeat % 2;
+}
+
+/**
+ * The run of consecutive VS results, newest first, stopping at the first
+ * flip (or an undecided game, which is simply skipped rather than breaking
+ * the run — a reconciled game with no winner isn't a result either way).
+ * Games played TOGETHER say nothing about who's ahead of whom, so — like
+ * `edgeLine` — this reads the `against` half only. A run of 1 isn't a
+ * streak worth a line; the screen stays quiet until it's at least 2.
+ */
+function vsStreakLine(data: H2H, t: Strings): string | null {
+  const vs = data.games.filter((g) => g.side === 'vs' && g.winnerTeam !== null);
+  const first = vs[0];
+  if (first === undefined || data.name === null) return null;
+  const firstWon = wonGame(first);
+  let count = 0;
+  for (const g of vs) {
+    if (wonGame(g) !== firstWon) break;
+    count++;
+  }
+  if (count < 2) return null;
+  return firstWon ? t.streakYou(count) : t.streakThem(data.name, count);
+}
+
+/** The biggest final-score margin each of you has taken a VS game by — like
+ * the streak, `together` games don't belong: this is a rivalry fact, not a
+ * partnership one. Null on a side that has never won across the table. */
+function biggestMarginLine(data: H2H, t: Strings): string | null {
+  if (data.name === null) return null;
+  let you = 0;
+  let them = 0;
+  for (const g of data.games) {
+    if (g.side !== 'vs' || g.winnerTeam === null) continue;
+    const [mine, theirs] = yourScore(g);
+    const margin = Math.abs(mine - theirs);
+    if (wonGame(g)) you = Math.max(you, margin);
+    else them = Math.max(them, margin);
+  }
+  if (you === 0 && them === 0) return null;
+  if (you > 0 && them > 0) return t.marginBoth(data.name, you, them);
+  return you > 0 ? t.marginYou(you) : t.marginThem(data.name, them);
 }
 
 /** One side's games, or nothing at all when you have never sat that way. */
@@ -128,7 +205,8 @@ function GameList({
 }
 
 export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHeadProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const [data, setData] = useState<H2H | null>(demo ?? null);
   const [error, setError] = useState(false);
 
@@ -149,6 +227,10 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
   }, [pid, demo, demoLoading]);
 
   const edge = data === null ? null : edgeLine(data, t);
+  const lastPlayed = data === null ? null : lastPlayedLine(data, t, lang);
+  const streak = data === null ? null : vsStreakLine(data, t);
+  const margin = data === null ? null : biggestMarginLine(data, t);
+  const trophy = data === null ? undefined : AWARDS.find((a) => a.id === data.award);
 
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 pt-[min(11vh,7rem)] text-(--color-ap-text) max-sm:p-4">
@@ -170,10 +252,18 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
           </ShellNote>
         ) : (
           <div className="flex flex-col gap-4">
-            {/* Who this is: the name, big, with the shared-game count under it. */}
+            {/* Who this is: the name, big, with the shared-game count under it.
+                Real colour+paint when they've set any — the same fields the
+                leaderboard and Stats tiles wear — falling back to the shell's
+                thematic brown for someone who never painted a card. */}
             <section className="flex items-center gap-[0.8em] rounded-(--radius-ap-card) border-[3px] border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap-lg)">
-              <AvatarChip name={data.name} color="var(--color-suit-brown)" size="lg" />
-              <div className="min-w-0">
+              <AvatarChip
+                name={data.name}
+                color={data.color ?? 'var(--color-suit-brown)'}
+                paint={data.paint}
+                size="lg"
+              />
+              <div className="min-w-0 flex-1">
                 <div
                   data-testid="h2h-name"
                   className="truncate font-arcade-display text-[1.8em] uppercase leading-none text-(--color-ap-text) max-sm:text-[1.4em]"
@@ -184,7 +274,32 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
                   {t.sharedCount(data.together.games + data.against.games)}
                 </div>
               </div>
+              {/* The trophy shelf, finally with a viewer: their showcased
+                  award (the first id on their own shelf), when they've
+                  arranged one. Absent, not a locked/empty placeholder — a
+                  shelf nobody's arranged yet says nothing about them. */}
+              {trophy !== undefined && (
+                <div
+                  data-testid="h2h-trophy"
+                  className="flex shrink-0 items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-gold-deep)/60 bg-(--color-ap-gold)/15 px-[0.6em] py-[0.35em] font-arcade-ui text-[0.78em] text-(--color-ap-gold-deep)"
+                >
+                  <span aria-hidden>{trophy.icon}</span>
+                  <span className="max-w-[8em] truncate">{trophy.name(lang)}</span>
+                </div>
+              )}
             </section>
+
+            {/* Three quiet derived facts — last played, the current run
+                across the table, and each side's biggest win. Each line
+                appears only when it has something to say (a fresh pairing,
+                or one still tied, shows none of them). */}
+            {(lastPlayed !== null || streak !== null || margin !== null) && (
+              <section className="flex flex-col gap-[0.3em] rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.9em] font-arcade-ui text-[0.82em] text-(--color-ap-text)/80 shadow-(--shadow-ap-sm)">
+                {lastPlayed !== null && <p data-testid="h2h-last-played">{lastPlayed}</p>}
+                {streak !== null && <p data-testid="h2h-streak">{streak}</p>}
+                {margin !== null && <p data-testid="h2h-margin">{margin}</p>}
+              </section>
+            )}
 
             {/* The two records, side by side — the whole point of the screen.
                 StatPanel's value is the W–G pair; the label says which side of

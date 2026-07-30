@@ -157,8 +157,13 @@ export interface HeldBanner {
 
 /** The previous trick, ready for the peek popover — laid out like the table. */
 export interface LastTrickInfo {
-  /** Each play mapped to its table-relative position (0 = you/bottom). */
-  readonly plays: readonly { readonly position: 0 | 1 | 2 | 3; readonly card: Card }[];
+  /** Each play mapped to its table-relative position (0 = you/bottom), plus
+   * the playing seat's paint (0-value specials only — see TrickPlayView). */
+  readonly plays: readonly {
+    readonly position: 0 | 1 | 2 | 3;
+    readonly card: Card;
+    readonly paint: string | null;
+  }[];
   readonly winnerPosition: 0 | 1 | 2 | 3;
   readonly winnerName: string;
   readonly points: number;
@@ -248,12 +253,24 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       ? legalCards(view.hand, ledSuit)
       : queueableCards(view, me, myTurn);
 
+  // The same per-seat paint every avatar chip already wears (bot sprite, or
+  // the human's own chosen painting) — reused here so a played red-0/brown-0
+  // stays personalised instead of reverting to the plain bonhomme the moment
+  // it leaves the hand. PlayingCard only ever renders it on a 0-value card,
+  // so passing it unconditionally below is exactly what the hand does too.
+  const seatPaint = (seat: number): string | null => {
+    const info = roster.seats[seat];
+    if (info == null) return null;
+    return info.isBot ? botAvatar(seat) : (info.paint ?? null);
+  };
+
   // While a finished trick is held, show it instead of the (already empty)
   // live trick so players see all four cards and the points.
   const shownTrick = heldTrick?.plays ?? view.currentTrick;
   const trickPlays: TrickPlayView[] = shownTrick.map((p) => ({
     position: toPosition(p.seat, viewer),
     card: p.card,
+    paint: seatPaint(p.seat),
   }));
 
   const heldBanner: HeldBanner | null =
@@ -361,7 +378,11 @@ export function useTableDerived(coachOn = false): TableDerived | null {
   const lastTrick: LastTrickInfo | null =
     last !== undefined && view.phase === 'playing'
       ? {
-          plays: last.plays.map((p) => ({ position: toPosition(p.seat, viewer), card: p.card })),
+          plays: last.plays.map((p) => ({
+            position: toPosition(p.seat, viewer),
+            card: p.card,
+            paint: seatPaint(p.seat),
+          })),
           winnerPosition: toPosition(last.winner, viewer),
           winnerName: roster.seats[last.winner]?.name ?? t.player,
           points: last.points,
@@ -405,7 +426,7 @@ export function useTableDerived(coachOn = false): TableDerived | null {
       isDealer: view.dealer === seat,
       isBot: info.isBot,
       difficulty: info.difficulty ?? null,
-      avatar: info.isBot ? botAvatar(seat) : (info.paint ?? null),
+      avatar: seatPaint(seat),
       connected: info.connected,
       botSwapAt: info.botSwapAt ?? null,
       botPlaying: info.botPlaying ?? false,

@@ -30,16 +30,22 @@ import type { ContractDisplay } from './useTableDerived.js';
  * FlightTarget (where a clone lands — the team's pill) and a HoldKey (what's
  * masked while airborne — the big score number). Trick points land on the
  * SAME pill but mask a different sub-part (round points / trick tally), so
- * it gets its own hold key that isn't a flight target at all. */
+ * it gets its own hold key that isn't a flight target at all. The specials
+ * badges (red/brown 0) land on that same pill too, on their OWN delayed
+ * flight (see TrickBanner) — they get a THIRD hold key of their own rather
+ * than reusing points-N, because they don't land when points-N does: masking
+ * them under points-N released the specials chip in the bar before its own
+ * flight had actually arrived (G11). */
 
 type ScoreSlot = `score-${0 | 1}`;
 type PointsSlot = `points-${0 | 1}`;
+type SpecialsSlot = `specials-${0 | 1}`;
 
 /** Where a flight can land — matches a `[data-flight-target="<id>"]` node. */
 export type FlightTarget = ScoreSlot | 'trump' | 'contract';
 
 /** What a hold masks in the bar's display (see `useHeldDisplay`). */
-export type HoldKey = PointsSlot | ScoreSlot | 'trump' | 'contract';
+export type HoldKey = PointsSlot | ScoreSlot | SpecialsSlot | 'trump' | 'contract';
 
 export function scoreTarget(team: 0 | 1): ScoreSlot {
   return `score-${team}`;
@@ -47,6 +53,13 @@ export function scoreTarget(team: 0 | 1): ScoreSlot {
 
 export function pointsHoldKey(team: 0 | 1): PointsSlot {
   return `points-${team}`;
+}
+
+/** Held from the instant a trick with a special is announced until ITS OWN
+ * (delayed, see TrickBanner) flight lands — deliberately separate from
+ * `pointsHoldKey`, which lands ~200ms earlier. */
+export function specialsHoldKey(team: 0 | 1): SpecialsSlot {
+  return `specials-${team}`;
 }
 
 /* ── Holds — the wait-for-landing truth model ────────────────────────────
@@ -200,6 +213,11 @@ export function useHeldDisplay(
       if (!isHeld(pointsHoldKey(team))) {
         prevRoundPoints.current = withAt(prevRoundPoints.current, team, view.roundPoints[team]);
         prevTrickCounts.current = withAt(prevTrickCounts.current, team, trickCounts[team]);
+      }
+      // Specials have their OWN hold (see flight.ts) — it lands later than
+      // points-N, so its capture must gate separately or the pre-change ref
+      // would be overwritten while the specials chip is still airborne.
+      if (!isHeld(specialsHoldKey(team))) {
         prevSpecials.current =
           team === 0
             ? [specials[0], prevSpecials.current[1]]
@@ -220,6 +238,8 @@ export function useHeldDisplay(
 
   const points0Held = isHeld(pointsHoldKey(0));
   const points1Held = isHeld(pointsHoldKey(1));
+  const specials0Held = isHeld(specialsHoldKey(0));
+  const specials1Held = isHeld(specialsHoldKey(1));
   const score0Held = isHeld(scoreTarget(0));
   const score1Held = isHeld(scoreTarget(1));
   const trumpHeld = isHeld('trump');
@@ -238,8 +258,8 @@ export function useHeldDisplay(
     score1Held ? prevScores.current[1] : view.scores[1],
   ];
   const displayedSpecials: readonly [TeamSpecials, TeamSpecials] = [
-    points0Held ? prevSpecials.current[0] : specials[0],
-    points1Held ? prevSpecials.current[1] : specials[1],
+    specials0Held ? prevSpecials.current[0] : specials[0],
+    specials1Held ? prevSpecials.current[1] : specials[1],
   ];
 
   const displayedView: SeatView = {

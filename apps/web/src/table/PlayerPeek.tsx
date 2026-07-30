@@ -45,6 +45,8 @@ const T: Record<
     autoPlay: string;
     botPlaying: string;
     bidThisRound: string;
+    cardsLeft: string;
+    headToHead: string;
   }
 > = {
   en: {
@@ -82,6 +84,8 @@ const T: Record<
     autoPlay: 'Auto-play',
     botPlaying: 'Bot playing',
     bidThisRound: 'Bid this round',
+    cardsLeft: 'Cards left',
+    headToHead: 'Head to head →',
   },
   fr: {
     teams: TEAM_LABELS.fr,
@@ -118,6 +122,8 @@ const T: Record<
     autoPlay: 'Jeu auto',
     botPlaying: 'Le bot joue',
     bidThisRound: 'Mise cette ronde',
+    cardsLeft: 'Cartes restantes',
+    headToHead: 'Face à face →',
   },
 };
 
@@ -197,6 +203,10 @@ function PublicStanding({ name, pid }: { name: string; pid: string | null }) {
   const [board, setBoard] = useState<Leaderboard | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Keyed on `pid` (not just `name`) — the identity the match below ACTUALLY
+  // uses when it's present (name is only the fallback route for a pid-less
+  // roster entry). `[name]` alone missed a pid arriving under an unchanged
+  // name, e.g. the roster resolving a viewer's pid a beat after their seat.
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -213,7 +223,7 @@ function PublicStanding({ name, pid }: { name: string; pid: string | null }) {
     return () => {
       live = false;
     };
-  }, [name]);
+  }, [pid, name]);
 
   if (loading) return <p className="text-(--color-ap-muted)">{t.loading}</p>;
   if (board === null) return <p className="text-(--color-ap-muted)">{t.unranked}</p>;
@@ -430,6 +440,7 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
 
       {/* This seat's own declaration this round, right off the table. */}
       {info.bidText !== null && <StatRow label={t.bidThisRound} value={info.bidText} />}
+      <StatRow label={t.cardsLeft} value={String(info.cards)} />
 
       {info.isBot ? (
         <div className="flex items-center justify-between gap-2">
@@ -448,7 +459,21 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
           <OwnRecord />
         </div>
       ) : (
-        <PublicStanding name={info.name} pid={info.pid} />
+        <>
+          <PublicStanding name={info.name} pid={info.pid} />
+          {/* The peek is the one place every other seat is already named and
+              on screen — a door into their head-to-head belongs right here,
+              not just on the leaderboard/stats screens (G8). No link without
+              a pid: a guest's opaque public id may not have resolved yet. */}
+          {info.pid !== null && (
+            <a
+              href={`#h2h/${info.pid}`}
+              className="-mx-1 mt-0.5 flex items-center justify-between gap-2 rounded-(--radius-ap-inner) px-1 py-1 font-arcade-ui font-semibold text-(--color-ap-violet-soft) transition-colors hover:bg-(--color-ap-panel-hover)"
+            >
+              {t.headToHead}
+            </a>
+          )}
+        </>
       )}
     </section>
   );

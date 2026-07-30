@@ -38,6 +38,17 @@ interface SeedGame {
   }[];
 }
 
+/** A minimal `users` row — just enough for the color/paint join stats.ts now
+ * does for bestPartner/nemesis/regulars. Mirrors leaderboard.test.ts's own
+ * seedUser. */
+async function seedUser(id: string, color: string | null, paint: string | null): Promise<void> {
+  await env.DB.prepare(
+    'INSERT INTO users (id, name, created_at, color, paint) VALUES (?1, ?1, 0, ?2, ?3)',
+  )
+    .bind(id, color, paint)
+    .run();
+}
+
 async function seedGame(g: SeedGame): Promise<void> {
   const [score0, score1] = g.scores ?? [0, 0];
   await env.DB.batch([
@@ -148,6 +159,10 @@ describe('GET /api/stats', () => {
       ],
     });
 
+    // Carol has chosen cosmetics; Bob (the nemesis) never set any — the tiles
+    // must show one and quietly fall back to null for the other.
+    await seedUser('carol', '#112233', 'data:image/svg+xml,carol');
+
     const res = await SELF.fetch('https://example.com/api/stats?u=alice');
     expect(res.status).toBe(200);
     const data = (await res.json()) as {
@@ -157,8 +172,22 @@ describe('GET /api/stats', () => {
       netPoints: number;
       bids: { attempted: number; made: number };
       sansAtout: { attempted: number; made: number };
-      bestPartner: { pid: string; name: string; games: number; wins: number } | null;
-      nemesis: { pid: string; name: string; games: number; losses: number } | null;
+      bestPartner: {
+        pid: string;
+        name: string;
+        games: number;
+        wins: number;
+        color: string | null;
+        paint: string | null;
+      } | null;
+      nemesis: {
+        pid: string;
+        name: string;
+        games: number;
+        losses: number;
+        color: string | null;
+        paint: string | null;
+      } | null;
       regulars: { pid: string; name: string; withGames: number; vsGames: number }[];
       streak: { current: number; best: number };
     };
@@ -174,9 +203,19 @@ describe('GET /api/stats', () => {
       name: 'Carol',
       games: 2,
       wins: 1,
+      color: '#112233',
+      paint: 'data:image/svg+xml,carol',
     });
     // Bob is the only opponent faced twice (g1 win, g2 loss) → beats you once.
-    expect(data.nemesis).toEqual({ pid: publicId('bob'), name: 'Bob', games: 2, losses: 1 });
+    // No `users` row for Bob — the join degrades to null, not a crash.
+    expect(data.nemesis).toEqual({
+      pid: publicId('bob'),
+      name: 'Bob',
+      games: 2,
+      losses: 1,
+      color: null,
+      paint: null,
+    });
     // Regulars: 3+ shared games, partnered or opposed. Carol (2 with) and Bob
     // (2 vs) are habits-in-progress, not regulars — nobody qualifies yet, and
     // the threshold has to be able to say no or the list is just "everyone".
@@ -229,13 +268,38 @@ describe('GET /api/stats', () => {
       ],
     });
 
+    // Only Mate has picked cosmetics — Foe's regular row must still answer
+    // (null, null) rather than drop out of the list.
+    await seedUser('reg-mate', '#abcdef', null);
+
     const res = await SELF.fetch('https://example.com/api/stats?u=reg-me');
     const data = (await res.json()) as {
-      regulars: { pid: string; name: string; withGames: number; vsGames: number }[];
+      regulars: {
+        pid: string;
+        name: string;
+        withGames: number;
+        vsGames: number;
+        color: string | null;
+        paint: string | null;
+      }[];
     };
     expect(data.regulars).toEqual([
-      { pid: publicId('reg-mate'), name: 'Mate', withGames: 2, vsGames: 1 },
-      { pid: publicId('reg-foe'), name: 'Foe', withGames: 0, vsGames: 3 },
+      {
+        pid: publicId('reg-mate'),
+        name: 'Mate',
+        withGames: 2,
+        vsGames: 1,
+        color: '#abcdef',
+        paint: null,
+      },
+      {
+        pid: publicId('reg-foe'),
+        name: 'Foe',
+        withGames: 0,
+        vsGames: 3,
+        color: null,
+        paint: null,
+      },
     ]);
   });
 
