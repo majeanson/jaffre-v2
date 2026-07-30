@@ -72,6 +72,25 @@ test('leaving with unsaved changes asks before discarding', async ({ page }) => 
   await expect(grid).toBeVisible();
 });
 
+test('a colour pick alone is unsaved work, and Discard really drops it', async ({ page }) => {
+  await page.goto('/#paint');
+  await expect(page.getByTestId('pixel-grid')).toBeVisible();
+
+  // Change only the card colour — no pixels touched. The colour used to save
+  // on tap, which made the guard's "Discard" keep it anyway.
+  await page.getByRole('button', { name: 'Card colour #e05252' }).click();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('button', { name: 'Discard' })).toBeVisible();
+  await page.getByRole('button', { name: 'Discard' }).click();
+
+  // Back on Home with the pick gone from the saved profile.
+  await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
+  const color = await page.evaluate(
+    () => (JSON.parse(localStorage.getItem('jaffre-profile') ?? '{}') as { color?: string }).color,
+  );
+  expect(color).not.toBe('#e05252');
+});
+
 test('a legacy (non-pixel) paint offers to import or start fresh', async ({ page }) => {
   // Seed a legacy PNG paint before the app boots.
   await page.addInitScript(() => {

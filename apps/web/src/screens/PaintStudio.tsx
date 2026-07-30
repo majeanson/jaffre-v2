@@ -5,7 +5,7 @@
  * string and saves it through the unchanged profile pipeline. Transparent cells
  * let your card colour show through, so colour + paint compose into one look.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Cta, Panel, useLang, type Lang } from '@jaffre/ui';
 import { getProfile, saveProfile } from '../net/auth.js';
 import { emptyGrid } from '../paint/model.js';
@@ -98,23 +98,40 @@ export function PaintStudio({ onLeave }: PaintStudioProps) {
   // gets the same inline confirm the dirty back-guard uses.
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  const chooseBg = (hex: string) => {
-    setBaseColor(hex);
-    void saveProfile({ color: hex });
-  };
+  // Unsaved work = pixel edits OR a colour pick not yet saved. The colour is
+  // deferred exactly like the pixels — it used to persist on tap, which made
+  // the back-guard's "Discard" a lie (the "discarded" colour stayed saved).
+  const dirty = state.dirty || baseColor !== (profile.color ?? DEFAULT_COLOR);
+
+  const chooseBg = (hex: string) => setBaseColor(hex);
 
   const save = () => {
-    void saveProfile({ paint: gridToDataUrl(state.grid) });
+    void saveProfile({ paint: gridToDataUrl(state.grid), color: baseColor });
     onLeave();
   };
   const remove = () => {
-    void saveProfile({ paint: null });
+    // Remove takes the painting, not the look — the colour you chose (and saw
+    // in the preview strip) still saves.
+    void saveProfile({ paint: null, color: baseColor });
     onLeave();
   };
   const back = () => {
-    if (state.dirty) setConfirmLeave(true);
+    if (dirty) setConfirmLeave(true);
     else onLeave();
   };
+
+  // The in-app Back button asks; a reload or closed tab must not discard
+  // silently. (Browser-back on the hash router stays unguarded — blocking
+  // history is more invasive than the loss it prevents.)
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const importLegacy = async () => {
     setShowLegacy(false);
