@@ -107,6 +107,51 @@ test('an open sheet gets the Escape, and the screen stays put', async ({ page })
   await expect(page).toHaveURL(/(\/|#)$/);
 });
 
+test('a sheet keeps Tab inside it and hands focus back on the way out', async ({ page }) => {
+  // Customize, because it is on the shared layer stack. The sheets still
+  // carrying their own Escape handler have no trap yet — that is what makes
+  // this worth pinning as they migrate across.
+  await page.goto('/');
+  const trigger = page.getByRole('button', { name: 'Customize' });
+  await trigger.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  // Tab far enough to run off the end of the sheet several times over: it must
+  // wrap back to the top rather than walking onto the page behind.
+  for (let i = 0; i < 14; i++) {
+    await page.keyboard.press('Tab');
+    const inside = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+      return dialog !== null && document.activeElement !== null
+        ? dialog.contains(document.activeElement)
+        : false;
+    });
+    expect(inside, `Tab #${String(i + 1)} escaped the sheet`).toBe(true);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test('sheets that never had an Escape have one now', async ({ page }) => {
+  // The login sheet was a modal you could only leave by aiming at the backdrop
+  // or the button — no keyboard way out at all.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+});
+
+test('a sheet opens with focus on its own way out', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Customize' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // The ✕ first, so the exit is the first thing a screen reader announces.
+  await expect(page.getByRole('button', { name: 'Close customize' })).toBeFocused();
+});
+
 test('the hand keeps its own arrows on the felt', async ({ page }) => {
   await page.goto('/#practice');
   const hand = page.getByRole('listbox', { name: 'Your hand' });

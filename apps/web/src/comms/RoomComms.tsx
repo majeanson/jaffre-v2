@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ARCADE, ChatPanel, useLang, type Lang } from '@jaffre/ui';
 import { useChatSend } from '../chat/useChatSend.js';
 import { MusicQueuePanel } from '../music/MusicQueuePanel.js';
+import { useDismissLayer } from '../keys/layers.js';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
@@ -55,6 +56,7 @@ export function RoomComms({
   const musicState = useMusicStore((s) => s.state);
   const seenRef = useRef(0);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
   // System lines (sat/left/dropped/botPlaying/back/started) are table
   // narration, not a person messaging you — they must never trip the badge.
@@ -81,18 +83,22 @@ export function RoomComms({
   }, [variant]);
 
   // Popover: Escape closes and returns focus to the toggle (same contract the
-  // collapsible ChatPanel used to provide).
-  useEffect(() => {
-    if (variant !== 'popover' || !open) return undefined;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        toggleRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [variant, open]);
+  // collapsible ChatPanel used to provide) — through the app-wide layer stack,
+  // so it closes only this and only when it is the topmost thing open. No Tab
+  // trap and no focus grab: the chat input is a place you go on purpose, and
+  // taking the keyboard on open would fight the felt.
+  useDismissLayer(
+    popRef,
+    () => {
+      setOpen(false);
+      toggleRef.current?.focus();
+    },
+    {
+      enabled: variant === 'popover' && open,
+      initialFocus: () => null,
+      restoreFocus: false,
+    },
+  );
 
   const tabButton = (which: Tab, label: string) => (
     <button
@@ -195,7 +201,10 @@ export function RoomComms({
       {open && (
         // Desktop: popover above the toggle. Narrow screens: a bottom sheet
         // pinned to the viewport so it never overflows the 390px layout.
-        <div className="absolute right-0 bottom-full z-30 mb-2 w-72 max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto">
+        <div
+          ref={popRef}
+          className="absolute right-0 bottom-full z-30 mb-2 w-72 max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:mb-0 max-sm:w-auto"
+        >
           {surface}
         </div>
       )}
