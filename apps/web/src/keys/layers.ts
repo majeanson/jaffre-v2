@@ -32,7 +32,13 @@ export interface LayerInit {
   readonly initialFocus?: (() => HTMLElement | null) | undefined;
 }
 
-interface Layer extends LayerInit {
+/**
+ * The init object is held by reference, never spread: callers pass live
+ * getters so that a sheet which changes its mind about trapping (or about
+ * what Escape does) is read as it is now, not as it was when it opened.
+ */
+interface Layer {
+  readonly init: LayerInit;
   readonly opener: HTMLElement | null;
 }
 
@@ -52,12 +58,12 @@ function onKeydown(e: KeyboardEvent): void {
     // listener cannot close a second surface off the same keystroke.
     e.preventDefault();
     e.stopPropagation();
-    top.onClose();
+    top.init.onClose();
     return;
   }
 
-  if (e.key === 'Tab' && top.trap) {
-    const root = top.container();
+  if (e.key === 'Tab' && top.init.trap) {
+    const root = top.init.container();
     if (root === null) return;
     const focusables = collectFocusables(root);
     const first = focusables[0];
@@ -87,7 +93,7 @@ function onKeydown(e: KeyboardEvent): void {
  */
 export function pushLayer(init: LayerInit): () => void {
   const layer: Layer = {
-    ...init,
+    init,
     opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
   };
   if (stack.length === 0) {
@@ -95,9 +101,9 @@ export function pushLayer(init: LayerInit): () => void {
   }
   stack.push(layer);
 
-  const container = layer.container();
+  const container = init.container();
   const target =
-    layer.initialFocus?.() ?? (container !== null ? collectFocusables(container)[0] : undefined);
+    init.initialFocus?.() ?? (container !== null ? collectFocusables(container)[0] : undefined);
   target?.focus();
 
   return function pop(): void {
@@ -106,7 +112,12 @@ export function pushLayer(init: LayerInit): () => void {
     if (stack.length === 0) {
       document.removeEventListener('keydown', onKeydown, true);
     }
-    if (layer.restoreFocus && layer.opener !== null && layer.opener.isConnected) {
+    // Only take focus back if the closing layer still had it: a sheet that
+    // handed focus somewhere deliberate on its way out keeps that.
+    const active = document.activeElement;
+    const held =
+      active === null || active === document.body || container?.contains(active) === true;
+    if (init.restoreFocus && held && layer.opener !== null && layer.opener.isConnected) {
       layer.opener.focus();
     }
   };

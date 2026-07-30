@@ -24,6 +24,7 @@
 import { useEffect } from 'react';
 import { bestCandidate, type NavDir, type NavRect } from './geometry.js';
 import { collectFocusables, defaultIsVisible, getScopeRoot, type IsVisible } from './focusables.js';
+import { handleBackKey } from './backNav.js';
 
 const DIRS: Readonly<Record<string, NavDir>> = {
   ArrowUp: 'up',
@@ -127,6 +128,12 @@ export function handleKey(e: KeyboardEvent, deps: NavDeps = DOM_DEPS): boolean {
 export function useSpatialNav(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
+      // Escape backs out of a screen only when nothing is open to close —
+      // the layer stack gets first refusal, inside handleBackKey.
+      if (handleBackKey(e)) {
+        document.documentElement.dataset.kbNav = '1';
+        return;
+      }
       if (handleKey(e)) {
         document.documentElement.dataset.kbNav = '1';
       }

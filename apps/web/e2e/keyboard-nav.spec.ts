@@ -75,6 +75,38 @@ test('an open sheet keeps the arrows to itself', async ({ page }) => {
   }
 });
 
+test('Escape steps back out of a meta screen, one level at a time', async ({ page }) => {
+  await page.goto('/#journey');
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/#corner$/);
+
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/(\/|#)$/);
+  // Home really is home: nothing further to back out to.
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/(\/|#)$/);
+});
+
+test('Escape does not walk you out of a live table', async ({ page }) => {
+  await page.goto('/#practice');
+  await expect(page.getByRole('listbox', { name: 'Your hand' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/#practice$/);
+});
+
+test('an open sheet gets the Escape, and the screen stays put', async ({ page }) => {
+  await page.goto('/#journey');
+  await page.getByRole('button', { name: 'Home' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  // The sheet closes and that is ALL that happens — the same keystroke must
+  // not also count as backing out of the screen behind it.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page).toHaveURL(/(\/|#)$/);
+});
+
 test('the hand keeps its own arrows on the felt', async ({ page }) => {
   await page.goto('/#practice');
   const hand = page.getByRole('listbox', { name: 'Your hand' });
