@@ -10,8 +10,8 @@ import { InstallButton } from '../pwa/InstallButton.js';
 import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { LoginButton } from './LoginSheet.js';
 import { useScrollLock } from './useScrollLock.js';
-
 import { useDismissLayer } from '../keys/layers.js';
+
 const T: Record<
   Lang,
   {
@@ -59,12 +59,12 @@ const T: Record<
     tutorialGo: '♺ Replay tutorial',
     account: 'Account',
     accountHint: 'Log in so your games follow you.',
-      ['↑ ↓ ← →', 'move around'],
-      ['Enter', 'choose what you landed on'],
-      ['Esc', 'close, or step back'],
     keys: 'Keyboard',
     keysHint: 'Anywhere in the app, and at the table.',
     keysList: [
+      ['↑ ↓ ← →', 'move around'],
+      ['Enter', 'choose what you landed on'],
+      ['Esc', 'close, or step back'],
       ['1–8', 'play that card (or queue it)'],
       ['1–6', 'bid 7–12 during the auction'],
       ['P', 'pass'],
@@ -89,14 +89,14 @@ const T: Record<
     tutorial: 'Tutoriel',
     tutorialHint: 'Rejoue la première partie d’entraînement guidée.',
     tutorialGo: '♺ Rejouer le tutoriel',
-      ['↑ ↓ ← →', 'te déplacer'],
-      ['Entrée', 'choisir ce que tu as atteint'],
-      ['Échap', 'fermer, ou revenir'],
     account: 'Compte',
     accountHint: 'Connecte-toi pour que tes parties te suivent.',
     keys: 'Clavier',
     keysHint: 'Partout dans l’app, et à la table.',
     keysList: [
+      ['↑ ↓ ← →', 'te déplacer'],
+      ['Entrée', 'choisir ce que tu as atteint'],
+      ['Échap', 'fermer, ou revenir'],
       ['1–8', 'joue cette carte (ou la met en attente)'],
       ['1–6', 'mise 7–12 pendant les mises'],
       ['P', 'passe'],
@@ -185,11 +185,11 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
 
   return createPortal(
     <div
-        ref={panel}
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={t.settings}

@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpSheet, type ConceptId } from '../help/HelpSheet.js';
 import { setLocalPaused } from '../local/localGame.js';
+import { useDismissLayer } from '../keys/layers.js';
 import { useGameStore } from '../state/gameStore.js';
 import {
-import { useDismissLayer } from '../keys/layers.js';
   hasSeenOnlineIntro,
   hasSeenTutorial,
   loadTutorialSeen,
@@ -144,10 +144,6 @@ export function TutorialCoach({
     setIntroUp(false);
   }, []);
 
-  // "Skip tutorial" / "I know the rules" — the whole teaching tier off, not
-  // just these marks. Latching the steps alone used to leave the bid panel's
-  // beginner strip preaching for good, which is what made "skip" feel ignored.
-  // Coach, not Off: they said they know the rules, not that they want silence.
   // Detect which coach-marks should fire from the current game state. Each is
   // marked seen the instant its trigger is met, so transient triggers (a 0 on
   // the table) are caught even though the moment passes.
@@ -377,6 +373,7 @@ function IntroOverlay({
         className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
       />
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tut-intro-title"
@@ -416,7 +413,6 @@ function IntroOverlay({
       </div>
     </div>
   );
-        ref={panel}
 }
 
 /** A single top-of-felt coach-mark: title, one line, "Learn more" + dismiss. */
