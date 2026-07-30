@@ -135,6 +135,25 @@ test('the games section toggles Recent | All', async ({ page }) => {
   await expect(page.locator('table')).toBeVisible();
 });
 
+/**
+ * Wave 2c, E6: at most one memorable-game chip per row, priority 12 SA >
+ * comeback > sweep. DEMO_HISTORY (dev/scenes.ts) stages one of each so the
+ * "All" games list scene exercises all three without a live server.
+ */
+test('the All games list shows at most one memorable-game chip per row', async ({ page }) => {
+  await page.goto('/#scenes/stats-all-games');
+  await expect(page.locator('a[href="#replay/demo-1"]')).toContainText('Comeback');
+  await expect(page.locator('a[href="#replay/demo-2"]')).toContainText('Sweep');
+  await expect(page.locator('a[href="#replay/demo-3"]')).toContainText('12 SA!');
+});
+
+/** Wave 2c, E7: a quiet line reading stats.spectated, only when it's > 0. */
+test('Your record shows how many games were watched to the end', async ({ page }) => {
+  await page.goto('/#scenes/stats');
+  // DEMO_STATS.spectated = 7 (dev/scenes.ts).
+  await expect(page.getByText('Games watched to the end: 7')).toBeVisible();
+});
+
 test('#history redirects into Your record', async ({ page }) => {
   await page.goto('/#history');
   await expect(page.getByRole('heading', { name: 'Your record' })).toBeVisible();

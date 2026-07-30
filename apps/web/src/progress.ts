@@ -4,7 +4,8 @@ import { CARD_SKINS, BONHOMME_SKINS, bonhommeLabel } from './cosmetics.js';
 import { FELTS } from './felt.js';
 import { SWEEPS } from './sweeps.js';
 import { THEMES } from './theme.js';
-import { trackRewardAt } from './progression.js';
+import { trackRewardsAt } from './progression.js';
+import { FOIL_PREFIX } from './foils.js';
 
 /**
  * Progress moments — the one place the game tells you something good happened.
@@ -27,8 +28,12 @@ export type ProgressMoment =
       readonly kind: 'level';
       readonly key: string;
       readonly level: number;
-      /** The cosmetic this level handed out, if any. */
-      readonly reward: { readonly id: string; readonly label: string } | null;
+      /** Every cosmetic this level handed out. Usually one, but a felt or
+       * sweep rung can land on the SAME level as an existing skin/theme rung
+       * (see LEVEL_TRACK in progression.ts) — that is still one thing that
+       * happened, not two, so it rides in one moment rather than splitting
+       * into a second announcement. */
+      readonly rewards: readonly { readonly id: string; readonly label: string }[];
     }
   | {
       readonly kind: 'award';
@@ -43,14 +48,28 @@ export type ProgressMoment =
       readonly key: string;
       readonly id: string;
       readonly label: string;
+    }
+  | {
+      // A foil grant (see foils.ts): the skin you already own, with a sheen.
+      // Its own kind, not a 'cosmetic' — it names no new possession, just a
+      // rarer version of one you have, so it reads as "Foil <skin>!" rather
+      // than "Unlocked: <skin>" (which would be a lie — you already had it).
+      readonly kind: 'foil';
+      readonly key: string;
+      readonly skinId: string;
+      readonly label: string;
     };
 
-/** Where a moment takes you. A cosmetic goes to its tile; a bare level or a
- * bare award goes to the screen that explains it. */
+/** Where a moment takes you. A cosmetic (or a foil, which lives on one) goes to
+ * its tile; a bare level or a bare award goes to the screen that explains it. */
 export function momentHref(m: ProgressMoment): string {
   if (m.kind === 'cosmetic') return `#collection/${m.id}`;
-  if (m.reward !== null) return `#collection/${m.reward.id}`;
-  return m.kind === 'level' ? '#journey' : '#awards';
+  if (m.kind === 'foil') return `#collection/${m.skinId}`;
+  if (m.kind === 'level') {
+    const first = m.rewards[0];
+    return first === undefined ? '#journey' : `#collection/${first.id}`;
+  }
+  return m.reward !== null ? `#collection/${m.reward.id}` : '#awards';
 }
 
 /** Display label for any cosmetic id, across every catalog. */
@@ -101,21 +120,35 @@ export function detectMoments(
   // read as level 0, and without this floor the very next visit would
   // congratulate the player on existing.
   for (let level = Math.max(seen.level, 1) + 1; level <= now.level; level++) {
-    const track = trackRewardAt(level);
-    const reward =
-      track === undefined
-        ? null
-        : { id: track.cosmeticId, label: cosmeticLabel(track.cosmeticId, lang) };
-    if (reward !== null) claimed.add(reward.id);
-    moments.push({ kind: 'level', key: `level-${String(level)}`, level, reward });
+    const rewards = trackRewardsAt(level).map((track) => {
+      const reward = { id: track.cosmeticId, label: cosmeticLabel(track.cosmeticId, lang) };
+      claimed.add(reward.id);
+      return reward;
+    });
+    moments.push({ kind: 'level', key: `level-${String(level)}`, level, rewards });
   }
 
   const seenAwards = new Set(seen.awards);
   for (const id of now.awards) {
     if (seenAwards.has(id)) continue;
-    const def = AWARDS.find((a) => a.id === id);
     // A foil grant rides in on the awards list but is not an award — it has no
-    // catalog entry, and announcing "foil:noir" would be gibberish.
+    // AWARDS catalog entry. It still deserves its own moment ("Foil Noir!"),
+    // just resolved against the cosmetic catalog instead. Unresolvable (a skin
+    // id the client's catalog doesn't know, e.g. removed since the grant) is
+    // skipped rather than announcing gibberish.
+    if (id.startsWith(FOIL_PREFIX)) {
+      const skinId = id.slice(FOIL_PREFIX.length);
+      if (CARD_SKINS.some((c) => c.id === skinId)) {
+        moments.push({
+          kind: 'foil',
+          key: `foil-${id}`,
+          skinId,
+          label: cosmeticLabel(skinId, lang),
+        });
+      }
+      continue;
+    }
+    const def = AWARDS.find((a) => a.id === id);
     if (def === undefined) continue;
     const reward =
       def.reward === undefined ? null : { id: def.reward, label: cosmeticLabel(def.reward, lang) };
@@ -137,4 +170,43 @@ export function detectMoments(
   }
 
   return moments;
+}
+
+/** localStorage key for the reconcile's "what was last seen" snapshot. MUST
+ * match cosmeticsBoot.ts's own `PROGRESS_KEY` — kept private there (that file
+ * owns reading/writing the full snapshot every reconcile) and duplicated here
+ * as a literal rather than imported, so this module never has to reach into
+ * cosmeticsBoot.ts (which reaches net/awards.ts's fetchAwards — see this
+ * function's own caller for why that path must stay one-way). */
+const PROGRESS_SEEN_KEY = 'jaffre-progress-seen';
+
+/**
+ * Stamp a just-granted award id into the progress-seen baseline directly,
+ * without waiting for the next full reconcile.
+ *
+ * `grantAward()` (net/awards.ts) already pops a "you earned X" toast the
+ * instant the server confirms the grant (NoticeToast). Without this, the NEXT
+ * reconcile — a hashchange into a menu surface, or the next app load — would
+ * still find that award id missing from the seen set and announce it a
+ * SECOND time via ProgressToast: the same award, told twice, by two different
+ * toast systems. Best-effort: a storage failure here just means the award MAY
+ * be re-announced once, not that the grant itself failed.
+ */
+export function stampAwardSeen(awardId: string): void {
+  try {
+    const raw = localStorage.getItem(PROGRESS_SEEN_KEY);
+    const parsed = raw === null ? null : (JSON.parse(raw) as Partial<ProgressSeen>);
+    const seen: ProgressSeen = {
+      level: typeof parsed?.level === 'number' ? parsed.level : 0,
+      awards: Array.isArray(parsed?.awards) ? parsed.awards : [],
+      cosmetics: Array.isArray(parsed?.cosmetics) ? parsed.cosmetics : [],
+    };
+    if (seen.awards.includes(awardId)) return;
+    localStorage.setItem(
+      PROGRESS_SEEN_KEY,
+      JSON.stringify({ ...seen, awards: [...seen.awards, awardId] } satisfies ProgressSeen),
+    );
+  } catch {
+    /* best-effort — see doc comment above */
+  }
 }

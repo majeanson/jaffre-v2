@@ -94,6 +94,31 @@ const Scenes = lazy(() => import('./screens/Scenes.js').then((m) => ({ default: 
 const Stats = lazy(() => import('./screens/Stats.js').then((m) => ({ default: m.Stats })));
 const Visitor = lazy(() => import('./screens/Visitor.js').then((m) => ({ default: m.Visitor })));
 
+/** Home + the five meta screens where a progress reconcile has somewhere to
+ * land — Corner's tiles, the Journey ladder, the Collection gallery, the
+ * Awards shelf and Stats all read straight from the same snapshot a
+ * reconcile refreshes. Deliberately narrower than the mount-time skip list
+ * below (which only EXCLUDES room/practice/scenes/hand/daily): landing on,
+ * say, a replay or the leaderboard isn't worth a stats re-fetch just to
+ * maybe pop a toast nobody asked to see there. */
+function isMenuSurface(hash: string): boolean {
+  const root = hash.split('/')[0] ?? '';
+  return (
+    root === '' ||
+    root === '#' ||
+    root === '#corner' ||
+    root === '#journey' ||
+    root === '#collection' ||
+    root === '#awards' ||
+    root === '#stats'
+  );
+}
+
+/** Several hashchanges can fire in a burst (a stale '#history' rewrite right
+ * behind a real navigation, a double-tapped back button) — debounce the
+ * re-reconcile so a burst costs one stats fetch, not one per hop. */
+const RECONCILE_DEBOUNCE_MS = 400;
+
 /** Minimal Suspense fallback for a lazy route chunk still loading — the same
  * loading idiom every meta screen uses for its own data fetch (PixelWave),
  * just centered on an empty ground so there's no layout jump once the real
@@ -244,43 +269,67 @@ export function App() {
     };
   }, []);
 
-  // Once per load: reconcile cosmetics with real stats — degrade a now-locked
-  // choice and surface freshly play-unlocked skins/themes as a toast. Skipped in
-  // the scene viewer (a dev tool that shouldn't hit the network or pop toasts).
+  // Once per load, AND again on every navigation into a menu surface:
+  // reconcile cosmetics with real stats — degrade a now-locked choice and
+  // surface freshly play-unlocked skins/themes/levels/awards as a toast.
+  // Skipped mid-game (room/practice/scenes/hand/daily): reconciling there is
+  // pointless, and its stats fetch has no business competing with a live
+  // room's socket.
   const [moments, setMoments] = useState<readonly ProgressMoment[]>([]);
   useEffect(() => {
-    // Only on menu screens: reconciling mid-game is pointless, and its stats
-    // fetch has no business competing with a live room's socket. (`#scenes` is a
-    // dev tool that shouldn't hit the network or pop toasts either.)
-    const h = location.hash;
-    // `#hand` belongs on this list too: a shared position runs a real practice
-    // game, so it is "mid-game" for exactly the same reasons as #practice.
-    if (
-      h.startsWith('#room') ||
-      h.startsWith('#practice') ||
-      h.startsWith('#scenes') ||
-      h.startsWith('#hand') ||
-      h === '#daily'
-    ) {
-      return;
-    }
     let live = true;
+    const hasRic = typeof window.requestIdleCallback === 'function';
+    // Tracks only the MOST RECENT idle/timeout handle — every earlier one
+    // either already fired or is superseded by the debounce below, so there
+    // is never more than one pending at a time to leak.
+    let idleHandle: number | undefined;
+    let debounceHandle: number | undefined;
+
     // Never blocks UI (it only ever surfaces an unlock toast) — defer it off
     // the critical first-paint/hydration path onto idle time, with a
     // setTimeout fallback for browsers without requestIdleCallback (Safari).
     const runReconcile = () => {
-      void reconcileCosmetics(lang).then((found) => {
-        if (live && found.length > 0) setMoments(found);
-      });
+      const fire = () => {
+        void reconcileCosmetics(lang).then((found) => {
+          if (live && found.length > 0) setMoments(found);
+        });
+      };
+      idleHandle = hasRic ? window.requestIdleCallback(fire) : window.setTimeout(fire, 1);
     };
-    const hasRic = typeof window.requestIdleCallback === 'function';
-    const handle = hasRic
-      ? window.requestIdleCallback(runReconcile)
-      : window.setTimeout(runReconcile, 1);
+
+    // `#hand` belongs on this list too: a shared position runs a real
+    // practice game, so it is "mid-game" for exactly the same reasons as
+    // #practice.
+    const midGame = (h: string): boolean =>
+      h.startsWith('#room') ||
+      h.startsWith('#practice') ||
+      h.startsWith('#scenes') ||
+      h.startsWith('#hand') ||
+      h === '#daily';
+
+    // Mount-time run: whatever hash a fresh load or deep link landed on,
+    // as long as it isn't mid-game.
+    if (!midGame(location.hash)) runReconcile();
+
+    // Re-run on navigation INTO a menu surface: finishing a room game can
+    // level you up, earn an award or drop a foil, and wandering back to
+    // Corner/Journey/Collection/Awards/Stats/Home should show that news
+    // without waiting on a full reload. Debounced (see RECONCILE_DEBOUNCE_MS).
+    const onHash = () => {
+      if (!isMenuSurface(location.hash)) return;
+      if (debounceHandle !== undefined) window.clearTimeout(debounceHandle);
+      debounceHandle = window.setTimeout(runReconcile, RECONCILE_DEBOUNCE_MS);
+    };
+    window.addEventListener('hashchange', onHash);
+
     return () => {
       live = false;
-      if (hasRic) window.cancelIdleCallback(handle);
-      else window.clearTimeout(handle);
+      window.removeEventListener('hashchange', onHash);
+      if (debounceHandle !== undefined) window.clearTimeout(debounceHandle);
+      if (idleHandle !== undefined) {
+        if (hasRic) window.cancelIdleCallback(idleHandle);
+        else window.clearTimeout(idleHandle);
+      }
     };
   }, []);
 

@@ -2,6 +2,7 @@ import { authedFetch, cached } from './history.js';
 import { AWARDS } from '../awards.js';
 import { currentLang } from '../lang.js';
 import { useGameStore } from '../state/gameStore.js';
+import { stampAwardSeen } from '../progress.js';
 
 /**
  * Awards REST: the earned-awards read and the event-award grant. Identity
@@ -54,6 +55,9 @@ export async function grantAward(awardId: string): Promise<boolean> {
     if (ok) {
       announceGrant(awardId);
       awardsCache.bust(); // a fresh grant just landed — don't serve the stale earned set
+      // Told once, here — stamp the seen baseline so the NEXT reconcile (a
+      // menu-surface hashchange, or the next load) doesn't tell it again.
+      stampAwardSeen(awardId);
     }
     return ok;
   } catch {

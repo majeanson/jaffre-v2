@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
-import { xpFromStats, xpMoment } from '../progression.js';
+import { trackRewardAt, xpFromStats, xpMoment } from '../progression.js';
+import { trackRewardLabel } from '../trackReward.js';
 import { bustStatsCache, fetchStats } from '../net/history.js';
 
 const SEEN_XP_KEY = 'jaffre-xp-seen';
@@ -17,17 +18,24 @@ const REREAD_MS = 1200;
 
 const T: Record<
   Lang,
-  { level: (n: number) => string; gained: (n: number) => string; levelUp: string }
+  {
+    level: (n: number) => string;
+    gained: (n: number) => string;
+    levelUp: string;
+    levelUpReward: (label: string) => string;
+  }
 > = {
   en: {
     level: (n) => `Level ${String(n)}`,
     gained: (n) => `+${String(n)} XP`,
     levelUp: 'Level up!',
+    levelUpReward: (label) => `Level up! — ${label}`,
   },
   fr: {
     level: (n) => `Niveau ${String(n)}`,
     gained: (n) => `+${String(n)} XP`,
     levelUp: 'Niveau supérieur!',
+    levelUpReward: (label) => `Niveau supérieur! — ${label}`,
   },
 };
 
@@ -36,6 +44,12 @@ interface Moment {
   readonly pct: number;
   readonly gained: number;
   readonly levelUp: boolean;
+  /** The cosmetic THIS level handed out, when the rung it just crossed has
+   * one — the recap's "Level up!" beat is the whole reason to look, so it
+   * should say what waiting there. First reward only when a rung carries
+   * more than one (see LEVEL_TRACK in progression.ts); the badge is a single
+   * line, not a list. */
+  readonly rewardLabel: string | null;
 }
 
 /**
@@ -71,7 +85,14 @@ export function XpStrip() {
             return;
           }
           if (m.advanceBaseline) localStorage.setItem(SEEN_XP_KEY, String(xp));
-          setMoment({ level: m.level, pct: m.pct, gained: m.gained, levelUp: m.levelUp });
+          const reward = m.levelUp ? trackRewardAt(m.level) : undefined;
+          setMoment({
+            level: m.level,
+            pct: m.pct,
+            gained: m.gained,
+            levelUp: m.levelUp,
+            rewardLabel: reward === undefined ? null : trackRewardLabel(reward),
+          });
         })
         .catch(() => {
           /* offline: no strip */
@@ -94,7 +115,7 @@ export function XpStrip() {
     >
       {moment.levelUp && (
         <span className="pop-in rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-gold) px-[0.5em] py-[0.1em] font-arcade-display text-[0.85em] uppercase text-(--color-ap-ink)">
-          {t.levelUp}
+          {moment.rewardLabel !== null ? t.levelUpReward(moment.rewardLabel) : t.levelUp}
         </span>
       )}
       <span className="font-arcade-display text-[0.85em] uppercase text-(--color-ap-text)">

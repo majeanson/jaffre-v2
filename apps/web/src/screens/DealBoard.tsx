@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PixelWave, useLang, type Lang } from '@jaffre/ui';
+import { AvatarChip, PixelWave, useLang, type Lang } from '@jaffre/ui';
 import {
   challengeIsOpen,
   dailyChallenge,
@@ -46,10 +46,22 @@ const T: Record<
     tricksTaken: (n: number) => string;
     backToBoard: string;
     streak: (n: number) => string;
+    /** Shown in place of the flame line once the live streak has broken but
+     * a past one is still worth naming — quieter than the flame (no emoji),
+     * so it reads as a fact rather than a fresh thing to celebrate. */
+    bestRun: (n: number) => string;
     share: string;
     shared: string;
     yesterday: string;
     rankOf: (rank: number, of: number) => string;
+    /** Result card only: how close to the top the run landed, derived
+     * client-side from rank/entries already on the payload. */
+    topPercent: (n: number) => string;
+    pointsOffLead: (n: number) => string;
+    /** Short badge next to your own name in a board row — distinct from
+     * `you`, which is a full sentence used elsewhere on this screen. */
+    youBadge: string;
+    headToHead: (name: string) => string;
     /** Shown instead of Play once a deal has rolled past its own period —
      * viewing yesterday's board must not offer a button that can't submit. */
     closed: string;
@@ -80,10 +92,15 @@ const T: Record<
     tricksTaken: (n) => (n === 1 ? '1 trick taken' : `${String(n)} tricks taken`),
     backToBoard: 'Back to the board',
     streak: (n) => (n === 1 ? 'Day 1 of a streak' : `${String(n)} days in a row`),
+    bestRun: (n) => `Best run: ${String(n)} day${n === 1 ? '' : 's'}.`,
     share: 'Share',
     shared: 'Copied!',
     yesterday: 'See yesterday’s board →',
     rankOf: (rank, of) => `#${String(rank)} of ${String(of)}`,
+    topPercent: (n) => `Top ${String(n)}%`,
+    pointsOffLead: (n) => (n === 1 ? '1 point off the lead' : `${String(n)} points off the lead`),
+    youBadge: 'You',
+    headToHead: (name) => `Head to head with ${name}`,
     closed: 'This deal is closed — today’s is waiting.',
     retry: 'Retry',
   },
@@ -109,10 +126,15 @@ const T: Record<
     tricksTaken: (n) => (n === 1 ? '1 levée prise' : `${String(n)} levées prises`),
     backToBoard: 'Retour au tableau',
     streak: (n) => (n === 1 ? 'Jour 1 d’une séquence' : `${String(n)} jours de suite`),
+    bestRun: (n) => `Meilleure série : ${String(n)} jour${n === 1 ? '' : 's'}.`,
     share: 'Partager',
     shared: 'Copié!',
     yesterday: 'Voir le tableau d’hier →',
     rankOf: (rank, of) => `#${String(rank)} sur ${String(of)}`,
+    topPercent: (n) => `Dans le top ${String(n)} %`,
+    pointsOffLead: (n) => (n === 1 ? 'à 1 point de la tête' : `à ${String(n)} points de la tête`),
+    youBadge: 'Toi',
+    headToHead: (name) => `Face à face avec ${name}`,
     closed: 'Cette donne est fermée — celle d’aujourd’hui t’attend.',
     retry: 'Réessayer',
   },
@@ -174,10 +196,13 @@ export function DealBoard({
   const [retryActions, setRetryActions] = useState<readonly Action[] | null>(null);
 
   /**
-   * The share line. Carries the CHALLENGE URL, so a recipient lands on the
-   * same deal against the same bots — which is what makes the per-deal board
-   * a duel rather than a boast. Native share sheet where there is one, else
-   * the clipboard, matching shareHand() in replay/position.ts.
+   * The share line. The URL only ever points at the Deal Board DOOR (#daily),
+   * never at this specific deal — it used to be documented as "carries the
+   * challenge URL", which was never true: a recipient who opens it tomorrow
+   * lands on TOMORROW's board, not the one this run was posted to. The period
+   * key rides in the TEXT instead, so which deal this was survives even
+   * though the link can't carry it. Native share sheet where there is one,
+   * else the clipboard, matching shareHand() in replay/position.ts.
    */
   const shareResult = (): void => {
     if (run === null) return;
@@ -185,7 +210,7 @@ export function DealBoard({
     const of = board?.entries ?? board?.board.length ?? 0;
     const where = rank !== undefined && of > 0 ? ` · ${t.rankOf(rank, of)}` : '';
     const label = deal.cadence === 'daily' ? t.dailyName : t.weeklyName;
-    const text = `Jaffré · ${label} · ${String(run.score)} pts${where}`;
+    const text = `Jaffré · ${label} · ${deal.periodKey} · ${String(run.score)} pts${where}`;
     const url = `${location.origin}/#daily`;
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
     if (typeof nav.share === 'function') {
@@ -214,6 +239,14 @@ export function DealBoard({
         if (!live) return;
         setBoard(b);
         setLoading(false);
+        // Self-heal a second device: the board is server truth, so if it
+        // already carries a row for YOU on TODAY's daily, this browser must
+        // have missed the markDailyPlayed write that normally happens right
+        // after posting (played elsewhere, or a storage hiccup here) — catch
+        // it up so DailyDoor's chip stops inviting a hand already played.
+        if (b?.you != null && deal.id === dailyChallenge(now).id) {
+          markDailyPlayed(deal.id);
+        }
       })
       .catch(() => live && setLoading(false));
     return () => {
@@ -300,6 +333,27 @@ export function DealBoard({
     setPhase('playing');
   };
 
+  // How close the run landed to the top, purely from what the board payload
+  // already carries (rank/entries, and the leading score sitting at
+  // board.board[0] since rows are already ordered by score desc) — nothing
+  // new to fetch, nothing the server needs to precompute.
+  const topPercentLine: string[] = [];
+  if (board?.you != null && board.entries !== undefined && board.entries > 0) {
+    topPercentLine.push(
+      t.topPercent(Math.max(1, Math.ceil((board.you.rank / board.entries) * 100))),
+    );
+    const leadScore = board.board[0]?.score;
+    if (leadScore !== undefined) {
+      const off = leadScore - board.you.score;
+      if (off > 0) topPercentLine.push(t.pointsOffLead(off));
+    }
+  }
+  // The streak is a DAILY habit — a weekly result card showing it would
+  // misattribute a run at a completely different cadence. Gate on the id
+  // prefix rather than deal.cadence: the id is what the server keys the same
+  // streak read on, so the two can never disagree.
+  const dailyStreakInfo = deal.id.startsWith('d-') ? (board?.streak ?? null) : null;
+
   // The hand is over and the score is in: hold here until the player is done
   // reading it. Everything below (tabs, board, play button) is deliberately
   // absent — this screen has exactly one thing to say and one way onward.
@@ -360,6 +414,13 @@ export function DealBoard({
                     : t.you(board.you.rank)}
                 </span>
               )}
+              {/* Percentile + gap to the lead, both derived client-side from
+                  fields the payload already carries — nothing new fetched. */}
+              {topPercentLine.length > 0 && (
+                <span className="font-arcade-ui text-[0.8em] text-(--color-ap-ink)/80">
+                  {topPercentLine.join(' · ')}
+                </span>
+              )}
               {/* The reason to come back tomorrow, stated. Derived from the
                   rows already in challenge_scores — nothing stored, nothing
                   to repair, retroactive for everyone who ever played. */}
@@ -368,11 +429,20 @@ export function DealBoard({
                   3em score above, but this line is 0.85em and needs 4.5:1.
                   Axe flagged exactly this element and not the score. The
                   flame carries the warmth instead of the text colour. */}
-              {board?.streak !== undefined && board.streak > 0 && (
+              {dailyStreakInfo !== null && dailyStreakInfo.current > 0 && (
                 <span className="font-arcade-ui text-[0.85em] text-(--color-ap-ink)">
-                  🔥 {t.streak(board.streak)}
+                  🔥 {t.streak(dailyStreakInfo.current)}
                 </span>
               )}
+              {/* The streak broke, but a past one still says something — quiet
+                  on purpose (no flame), so it reads as a fact, not a fresh win. */}
+              {dailyStreakInfo !== null &&
+                dailyStreakInfo.current === 0 &&
+                dailyStreakInfo.best > 0 && (
+                  <span className="font-arcade-ui text-[0.85em] text-(--color-ap-ink)/75">
+                    {t.bestRun(dailyStreakInfo.best)}
+                  </span>
+                )}
               <button
                 type="button"
                 onClick={shareResult}
@@ -482,6 +552,28 @@ export function DealBoard({
           <h2 className="font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-muted)">
             {t.board}
           </h2>
+          {/* Same streak the result card names, surfaced here too — the
+              browse screen is where a returning player actually SEES it,
+              since a result card only shows up right after playing. Dailies
+              only (see dailyStreakInfo above). */}
+          {dailyStreakInfo !== null && dailyStreakInfo.current > 0 && (
+            <p
+              data-testid="daily-streak"
+              className="font-arcade-ui text-[0.8em] text-(--color-ap-text)"
+            >
+              🔥 {t.streak(dailyStreakInfo.current)}
+            </p>
+          )}
+          {dailyStreakInfo !== null &&
+            dailyStreakInfo.current === 0 &&
+            dailyStreakInfo.best > 0 && (
+              <p
+                data-testid="daily-streak"
+                className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)"
+              >
+                {t.bestRun(dailyStreakInfo.best)}
+              </p>
+            )}
           {loading ? (
             <PixelWave label={t.loading} />
           ) : board === null || board.board.length === 0 ? (
@@ -489,17 +581,39 @@ export function DealBoard({
           ) : (
             <ol className="flex flex-col gap-1">
               {board.board.map((row) => (
-                <li
+                <BoardRowLink
                   key={row.id}
-                  className="flex items-center gap-3 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-[0.7em] py-[0.35em] font-arcade-ui text-[0.85em]"
-                >
-                  <span className="w-[2em] shrink-0 tabular-nums text-(--color-ap-muted)">
-                    {row.rank}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{row.name}</span>
-                  <span className="shrink-0 tabular-nums text-(--color-ap-gold)">{row.score}</span>
-                </li>
+                  row={row}
+                  mine={row.rank === board.you?.rank}
+                  youBadge={t.youBadge}
+                  headToHeadLabel={t.headToHead}
+                />
               ))}
+              {/* Pinned below the list, same "···" treatment the leaderboard
+                  uses for an off-page caller — only when your row isn't
+                  already one of the ones just rendered above. */}
+              {board.you != null && !board.board.some((r) => r.rank === board.you?.rank) && (
+                <>
+                  <li className="py-1 text-center font-arcade-display text-(--color-ap-muted)">
+                    ···
+                  </li>
+                  <BoardRowLink
+                    row={{
+                      // Inert either way: BoardRowLink never builds a link for
+                      // "mine", so an empty id here never reaches an href.
+                      id: board.you.id ?? '',
+                      name: board.you.name ?? t.you(board.you.rank),
+                      color: board.you.color ?? null,
+                      paint: board.you.paint ?? null,
+                      score: board.you.score,
+                      rank: board.you.rank,
+                    }}
+                    mine
+                    youBadge={t.youBadge}
+                    headToHeadLabel={t.headToHead}
+                  />
+                </>
+              )}
             </ol>
           )}
           {board?.you != null && (
@@ -526,5 +640,71 @@ export function DealBoard({
         </section>
       </div>
     </main>
+  );
+}
+
+/**
+ * One board row: AvatarChip + name + score, linking into `#h2h/<row.id>` —
+ * the same "every named player is a door" rule the leaderboard's Row
+ * follows (routes/leaderboard.ts and routes/dealBoard.ts both hash the uid
+ * on the way out) — except your own row, which stays inert. A record
+ * against yourself isn't a thing, and it's also the row the off-page pin
+ * below the list reuses for "you".
+ */
+function BoardRowLink({
+  row,
+  mine,
+  youBadge,
+  headToHeadLabel,
+}: {
+  readonly row: {
+    readonly id: string;
+    readonly name: string;
+    readonly color: string | null;
+    readonly paint?: string | null | undefined;
+    readonly rank: number;
+    readonly score: number;
+  };
+  readonly mine: boolean;
+  readonly youBadge: string;
+  readonly headToHeadLabel: (name: string) => string;
+}) {
+  const inner = (
+    <>
+      <span className="w-[2em] shrink-0 tabular-nums text-(--color-ap-muted)">{row.rank}</span>
+      <AvatarChip
+        name={row.name}
+        color={row.color ?? undefined}
+        paint={row.paint ?? null}
+        size="sm"
+      />
+      <span className="min-w-0 flex-1 truncate">
+        {row.name}
+        {mine && (
+          <span className="ml-[0.5em] font-arcade-display text-[0.7em] uppercase text-(--color-ap-violet-soft)">
+            {youBadge}
+          </span>
+        )}
+      </span>
+      <span className="shrink-0 tabular-nums text-(--color-ap-gold)">{row.score}</span>
+    </>
+  );
+  const shell = `flex items-center gap-3 rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) px-[0.7em] py-[0.35em] font-arcade-ui text-[0.85em] ${
+    mine ? 'bg-(--color-ap-violet)/15' : 'bg-(--color-ap-panel)'
+  }`;
+  if (mine) return <li className={shell}>{inner}</li>;
+  return (
+    <li>
+      <a
+        href={`#h2h/${row.id}`}
+        className={`${shell} transition-colors hover:bg-(--color-ap-panel-hover)`}
+      >
+        {inner}
+        {/* sr-only suffix, NOT an aria-label — a label would REPLACE the
+            row's own text as the link's accessible name (same rule the
+            leaderboard's Row follows). */}
+        <span className="sr-only">{headToHeadLabel(row.name)}</span>
+      </a>
+    </li>
   );
 }

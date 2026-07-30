@@ -171,7 +171,10 @@ function buildDemoReplay(): ReplayData {
     actions.push(action);
     state = result.state;
   }
-  return { seed: SEED, actions };
+  // winnerTeam/scores are the FINAL state's — real values, not staged ones,
+  // so the header this feeds (Replay.tsx) says what the demo game actually
+  // came to.
+  return { seed: SEED, actions, winnerTeam: state.winner, scores: state.scores };
 }
 
 const DEMO_PLAYERS_SEAT0 = [
@@ -188,7 +191,11 @@ const DEMO_PLAYERS_SEAT2 = [
   { seat: 3, name: 'Ginette', isBot: false },
 ];
 
-/** Staged history rows for the "Your games" scene (fixed dates → deterministic). */
+/** Staged history rows for the "Your games" scene (fixed dates → deterministic).
+ * Each carries a different memorable-game chip (GameRow.tsx) so the "All"
+ * games list scene exercises all three without a live server: demo-1 a
+ * comeback, demo-2 a sweep (by the OTHER team — the chip has nothing to do
+ * with who won), demo-3 a made 12 sans-atout. */
 export const DEMO_HISTORY: readonly HistoryGame[] = [
   {
     id: 'demo-1',
@@ -198,6 +205,7 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     scores: [41, 33],
     yourSeat: 0,
     players: DEMO_PLAYERS_SEAT0,
+    comeback: true,
   },
   {
     id: 'demo-2',
@@ -207,6 +215,7 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     scores: [28, 44],
     yourSeat: 0,
     players: DEMO_PLAYERS_SEAT0,
+    sweep: true,
   },
   {
     id: 'demo-3',
@@ -216,10 +225,18 @@ export const DEMO_HISTORY: readonly HistoryGame[] = [
     scores: [42, 19],
     yourSeat: 2,
     players: DEMO_PLAYERS_SEAT2,
+    hailMary: true,
   },
 ];
 
-export const DEMO_REPLAY: ReplayData = { ...buildDemoReplay(), players: DEMO_PLAYERS_SEAT0 };
+export const DEMO_REPLAY: ReplayData = {
+  ...buildDemoReplay(),
+  players: DEMO_PLAYERS_SEAT0,
+  // Feeds the replay header (Replay.tsx, "Room X · date · 41–33") — the same
+  // shape /api/replay hands back for a real game (see routes/games.ts).
+  roomCode: 'salon',
+  finishedAt: 1_752_000_000_000,
+};
 
 /** Staged "Your tables" row for the home scene — two standing tables. */
 export const DEMO_TABLES: readonly TableEntry[] = [
@@ -309,6 +326,7 @@ export const DEMO_STATS: Stats = {
     { pid: PID.real, name: 'Réal', withGames: 2, vsGames: 2 },
   ],
   streak: { current: 3, best: 5 },
+  spectated: 7,
 };
 
 /** Brand-new player: a game or two in, no contracts bid, no steady partner —
@@ -473,12 +491,12 @@ export const DEMO_CHALLENGE_BOARD: ChallengeBoard = {
     { id: PID.real, name: 'Réal', color: '#3f8bff', score: 9, tricks: 4, rank: 4 },
     { id: PID.lise, name: 'Lise', color: '#1e7a52', score: -6, tricks: 2, rank: 5 },
   ],
-  you: { score: 14, tricks: 5, rank: 3 },
+  you: { id: PID.me, name: 'Marc', color: '#7a6ff0', paint: null, score: 14, tricks: 5, rank: 3 },
   // More entries than rows shown: the board caps at 20, so the share line and
   // the result card say "#3 of 47" rather than a rank with nothing behind it.
   entries: 47,
   // A live streak, so the result card's flame line is actually shot.
-  streak: 4,
+  streak: { current: 4, best: 4 },
 };
 
 /** Awards ids staged as already earned (must exist in awards.ts's AWARDS).

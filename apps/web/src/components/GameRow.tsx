@@ -19,6 +19,9 @@ const T: Record<
     seat: (n: number) => string;
     withMate: (name: string) => string;
     vsThem: (names: string) => string;
+    chipHailMary: string;
+    chipComeback: string;
+    chipSweep: string;
   }
 > = {
   en: {
@@ -28,6 +31,9 @@ const T: Record<
     seat: (n) => `seat ${String(n)}`,
     withMate: (name) => `with ${name}`,
     vsThem: (names) => `vs ${names}`,
+    chipHailMary: '12 SA!',
+    chipComeback: 'Comeback',
+    chipSweep: 'Sweep',
   },
   fr: {
     won: 'Gagnée',
@@ -36,10 +42,34 @@ const T: Record<
     seat: (n) => `siège ${String(n)}`,
     withMate: (name) => `avec ${name}`,
     vsThem: (names) => `contre ${names}`,
+    chipHailMary: '12 SA!',
+    chipComeback: 'Remontée',
+    chipSweep: 'Rafle',
   },
 };
 
 type Strings = (typeof T)[Lang];
+
+/** Your team's score first, then the opponents' — mirrors Stats.tsx's
+ * `yourScore` (the ScorepadRow convention) so a game reads the same score
+ * order everywhere it's listed, not just in "Recent". */
+export function yourScore(game: HistoryGame): readonly [number, number] {
+  const you = game.yourSeat % 2;
+  return you === 0 ? [game.scores[0], game.scores[1]] : [game.scores[1], game.scores[0]];
+}
+
+/** At most one memorable-game chip. Priority: the boldest possible bid beats
+ * a turnaround beats a dominant round — 12 SA is the rarest and hardest, a
+ * comeback is a whole-game story, a sweep is "just" one great round. */
+export function memorableChip(
+  game: Pick<HistoryGame, 'hailMary' | 'comeback' | 'sweep'>,
+  t: Pick<Strings, 'chipHailMary' | 'chipComeback' | 'chipSweep'>,
+): string | null {
+  if (game.hailMary === true) return t.chipHailMary;
+  if (game.comeback === true) return t.chipComeback;
+  if (game.sweep === true) return t.chipSweep;
+  return null;
+}
 
 export function formatGameDate(ms: number | null, lang: Lang): string {
   if (ms === null) return '';
@@ -67,6 +97,8 @@ export function GameRow({ game }: { readonly game: HistoryGame }) {
   const won = game.winnerTeam !== null && game.winnerTeam === game.yourSeat % 2;
   const decided = game.winnerTeam !== null;
   const roster = rosterLine(game, t);
+  const [mine, theirs] = yourScore(game);
+  const chip = memorableChip(game, t);
   return (
     <a
       href={`#replay/${game.id}`}
@@ -84,8 +116,18 @@ export function GameRow({ game }: { readonly game: HistoryGame }) {
         {decided ? (won ? t.won : t.lost) : '—'}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold text-(--color-ap-text)">
-          {t.room(game.roomCode)}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-semibold text-(--color-ap-text)">
+            {t.room(game.roomCode)}
+          </span>
+          {/* At most one — see memorableChip's priority comment. A tint
+              (bg-.../NN), not a solid violet fill, so it doesn't need its own
+              ink-text pairing (violetInk.test.ts scopes to solid fills). */}
+          {chip !== null && (
+            <span className="shrink-0 rounded-(--radius-ap-inner) border border-(--color-ap-gold-deep)/50 bg-(--color-ap-gold)/20 px-[0.45em] py-[0.05em] font-arcade-ui text-[0.65em] font-semibold uppercase tracking-wide text-(--color-ap-gold-deep)">
+              {chip}
+            </span>
+          )}
         </span>
         <span className="block truncate text-(length:--text-fluid-xs) text-(--color-ap-muted)">
           {formatGameDate(game.finishedAt, lang)} · {t.seat(game.yourSeat + 1)}
@@ -93,9 +135,9 @@ export function GameRow({ game }: { readonly game: HistoryGame }) {
         </span>
       </span>
       <span className="font-arcade-display text-lg tabular-nums text-(--color-ap-text)">
-        {game.scores[0]}
+        {mine}
         <span className="mx-1 text-(--color-ap-muted)">—</span>
-        {game.scores[1]}
+        {theirs}
       </span>
       <span aria-hidden className="text-(--color-ap-muted)">
         ›

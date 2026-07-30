@@ -6,8 +6,10 @@
  * `userId` before answering (it never reaches the client), while stats keeps
  * it for the partner/nemesis lookup.
  */
+import type { RoundSummary } from '@jaffre/engine';
 import type { Env } from '../env.js';
 import { displayName } from '../publicId.js';
+import { memorableFlags } from '../history.js';
 import { noDb, resolveUserId } from './http.js';
 
 export interface GamePlayer {
@@ -69,7 +71,17 @@ export async function playersByGame(
   return map;
 }
 
-/** GET /api/history?u=<userId> (or Bearer token) → last 20 finished games. */
+/** Rows per page — kept in one place since both the SQL LIMIT and the
+ * client's "was that a full page" (net/history.ts) guess have to agree. */
+const HISTORY_PAGE_SIZE = 20;
+
+/**
+ * GET /api/history?u=<userId> (or Bearer token)[&before=<finishedAt>] → up to
+ * HISTORY_PAGE_SIZE finished games, newest first. `before` pages backward
+ * (strictly older than that finishedAt) — the client's cursor is always the
+ * OLDEST row of the page it already has, since finishedAt is monotonic with
+ * the ORDER BY. Omitted, it's page one.
+ */
 export async function handleHistory(request: Request, env: Env, url: URL): Promise<Response> {
   if (env.DB === undefined) return noDb();
   const userId = await resolveUserId(request, env, url);
@@ -77,14 +89,16 @@ export async function handleHistory(request: Request, env: Env, url: URL): Promi
   if (userId === null || userId === '') {
     return Response.json({ error: 'Missing user (Bearer token or ?u=)' }, { status: 400 });
   }
+  const beforeParam = url.searchParams.get('before');
+  const before = beforeParam !== null && beforeParam !== '' ? Number(beforeParam) : null;
   const rows = await env.DB.prepare(
-    `SELECT g.id, g.room_code, g.finished_at, g.winner_team, g.score_0, g.score_1, gp.seat
+    `SELECT g.id, g.room_code, g.finished_at, g.winner_team, g.score_0, g.score_1, g.round_summaries, gp.seat
      FROM games g JOIN game_players gp ON gp.game_id = g.id
-     WHERE gp.user_id = ?1
+     WHERE gp.user_id = ?1 AND (?2 IS NULL OR g.finished_at < ?2)
      ORDER BY g.finished_at DESC
-     LIMIT 20`,
+     LIMIT ${String(HISTORY_PAGE_SIZE)}`,
   )
-    .bind(userId)
+    .bind(userId, before)
     .all<{
       id: string;
       room_code: string;
@@ -92,6 +106,7 @@ export async function handleHistory(request: Request, env: Env, url: URL): Promi
       winner_team: number | null;
       score_0: number | null;
       score_1: number | null;
+      round_summaries: string | null;
       seat: number;
     }>();
   const players = await playersByGame(
@@ -99,19 +114,36 @@ export async function handleHistory(request: Request, env: Env, url: URL): Promi
     rows.results.map((r) => r.id),
   );
   return Response.json({
-    games: rows.results.map((r) => ({
-      id: r.id,
-      roomCode: r.room_code,
-      finishedAt: r.finished_at,
-      winnerTeam: r.winner_team,
-      scores: [r.score_0, r.score_1],
-      yourSeat: r.seat,
-      players: (players.get(r.id) ?? []).map((p) => ({
-        seat: p.seat,
-        name: p.name,
-        isBot: p.isBot,
-      })),
-    })),
+    games: rows.results.map((r) => {
+      // A missing/corrupt log must never sink the row it's attached to — just
+      // the flags that would have come from it.
+      let summaries: readonly RoundSummary[] = [];
+      if (r.round_summaries !== null) {
+        try {
+          summaries = JSON.parse(r.round_summaries) as readonly RoundSummary[];
+        } catch {
+          summaries = [];
+        }
+      }
+      const flags = memorableFlags(
+        summaries,
+        r.winner_team === 0 || r.winner_team === 1 ? r.winner_team : null,
+      );
+      return {
+        id: r.id,
+        roomCode: r.room_code,
+        finishedAt: r.finished_at,
+        winnerTeam: r.winner_team,
+        scores: [r.score_0, r.score_1],
+        yourSeat: r.seat,
+        players: (players.get(r.id) ?? []).map((p) => ({
+          seat: p.seat,
+          name: p.name,
+          isBot: p.isBot,
+        })),
+        ...flags,
+      };
+    }),
   });
 }
 
@@ -127,9 +159,20 @@ export async function handleHistory(request: Request, env: Env, url: URL): Promi
  */
 export async function handleReplay(env: Env, gameId: string): Promise<Response> {
   if (env.DB === undefined) return noDb();
-  const row = await env.DB.prepare('SELECT seed, action_log FROM games WHERE id = ?1')
+  const row = await env.DB.prepare(
+    `SELECT seed, action_log, room_code, finished_at, winner_team, score_0, score_1
+     FROM games WHERE id = ?1`,
+  )
     .bind(gameId)
-    .first<{ seed: number; action_log: string | null }>();
+    .first<{
+      seed: number;
+      action_log: string | null;
+      room_code: string;
+      finished_at: number | null;
+      winner_team: number | null;
+      score_0: number;
+      score_1: number;
+    }>();
   if (row === null) return Response.json({ error: 'Unknown game' }, { status: 404 });
   const players = await playersByGame(env, [gameId]);
   return Response.json({
@@ -140,5 +183,11 @@ export async function handleReplay(env: Env, gameId: string): Promise<Response> 
       name: p.name,
       isBot: p.isBot,
     })),
+    // Same D1 row as the /api/history list carries — lets the replay header
+    // (Replay.tsx) show "Room X · date · 41–33" without a second fetch.
+    roomCode: row.room_code,
+    finishedAt: row.finished_at,
+    winnerTeam: row.winner_team,
+    scores: [row.score_0, row.score_1],
   });
 }

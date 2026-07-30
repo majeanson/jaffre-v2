@@ -22,12 +22,29 @@ export interface HistoryGame {
   readonly scores: readonly [number, number];
   readonly yourSeat: number;
   readonly players: readonly HistoryPlayer[];
+  /**
+   * Memorable-game flags (server-derived from round_summaries — see
+   * `memorableFlags` in apps/server/src/history.ts). Optional: a client can
+   * outrun its server, and head2head's SharedGame (which reuses HistoryGame's
+   * shape) doesn't compute them at all. GameRow.tsx shows at most one chip,
+   * reading each as `?? false`.
+   */
+  readonly hailMary?: boolean;
+  readonly sweep?: boolean;
+  readonly comeback?: boolean;
 }
 
 export interface ReplayData {
   readonly seed: number;
   readonly actions: readonly Action[];
   readonly players?: readonly HistoryPlayer[];
+  /** Same D1 row `/api/history` lists this game from — feeds the replay
+   * header (Replay.tsx). Optional: a scene/demo replay (no real game id)
+   * carries none of these, and older cached responses may predate them. */
+  readonly roomCode?: string;
+  readonly finishedAt?: number | null;
+  readonly winnerTeam?: number | null;
+  readonly scores?: readonly [number, number];
 }
 
 /** One mastery lane: contracts declared in a given trump, and how many stood. */
@@ -158,18 +175,33 @@ export function cached<T>(fetcher: () => Promise<T>): {
   return { run, bust: () => (entry = null) };
 }
 
-async function fetchHistoryUncached(): Promise<readonly HistoryGame[]> {
-  const res = await authedFetch('/api/history');
+/** Games per page — mirrors HISTORY_PAGE_SIZE in apps/server/src/routes/games.ts
+ * (the server owns the real LIMIT; this is only for "did that look like a full
+ * page, so Show more might find another one"). */
+export const HISTORY_PAGE_SIZE = 20;
+
+async function fetchHistoryPageUncached(before?: number): Promise<readonly HistoryGame[]> {
+  const path = before === undefined ? '/api/history' : `/api/history?before=${String(before)}`;
+  const res = await authedFetch(path);
   if (res === null) return []; // no identity established yet → nothing to show
   if (!res.ok) throw new Error(`history ${String(res.status)}`);
   const data = (await res.json()) as { games: readonly HistoryGame[] };
   return data.games;
 }
 
-const historyCache = cached(fetchHistoryUncached);
+const historyCache = cached(() => fetchHistoryPageUncached());
 
+/** Page one of "your games" — the only page that's cached (see CACHE_TTL_MS). */
 export function fetchHistory(): Promise<readonly HistoryGame[]> {
   return historyCache.run();
+}
+
+/** The next page, older than `before` (a finishedAt cursor — pass the last
+ * loaded row's `finishedAt`). Deliberately NOT cached: it's a one-shot "Show
+ * more" tap, not a read multiple screens share, and caching it risks handing
+ * back a stale older page on a second click. */
+export function fetchHistoryPage(before: number): Promise<readonly HistoryGame[]> {
+  return fetchHistoryPageUncached(before);
 }
 
 export async function fetchReplay(gameId: string): Promise<ReplayData> {
@@ -243,6 +275,9 @@ export interface LeaderboardRow {
   readonly id: string;
   readonly name: string;
   readonly color: string | null;
+  /** Pixel-art avatar (data URL) — same field every other roster carries, so
+   * a ladder row can show a real AvatarChip instead of just an initial. */
+  readonly paint?: string | null;
   readonly rating: number;
   readonly ratingGames: number;
 }
@@ -269,6 +304,7 @@ export interface MonthlyRow {
   readonly id: string;
   readonly name: string;
   readonly color: string | null;
+  readonly paint?: string | null;
   readonly games: number;
   readonly wins: number;
   readonly net: number;
@@ -280,18 +316,28 @@ export interface MonthlyLeaderboard {
   readonly you: MonthlyRow | null;
 }
 
-async function fetchMonthlyUncached(): Promise<MonthlyLeaderboard> {
-  const path = '/api/leaderboard?period=month';
+async function fetchMonthlyUncached(monthKey?: string): Promise<MonthlyLeaderboard> {
+  const path =
+    monthKey === undefined
+      ? '/api/leaderboard?period=month'
+      : `/api/leaderboard?period=month&month=${encodeURIComponent(monthKey)}`;
   const res = (await authedFetch(path)) ?? (await fetch(path));
   if (!res.ok) throw new Error(`monthly leaderboard ${String(res.status)}`);
   return (await res.json()) as MonthlyLeaderboard;
 }
 
-const monthlyCache = cached(fetchMonthlyUncached);
+const monthlyCache = cached(() => fetchMonthlyUncached());
 
-/** Session-cached like the all-time board (30s TTL, in-flight-deduped). */
-export function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboard> {
-  return monthlyCache.run();
+/**
+ * Session-cached like the all-time board (30s TTL, in-flight-deduped) — but
+ * ONLY the current month (no `monthKey`). An archived month ('yyyy-mm', from
+ * the "Last month →" flip) is a deliberate, occasional read rather than a hot
+ * path shared by every caller, so it goes straight to the network instead of
+ * sharing — and potentially colliding with — the single current-month cache
+ * slot.
+ */
+export function fetchMonthlyLeaderboard(monthKey?: string): Promise<MonthlyLeaderboard> {
+  return monthKey === undefined ? monthlyCache.run() : fetchMonthlyUncached(monthKey);
 }
 
 const leaderboardCache = cached(fetchLeaderboardUncached);

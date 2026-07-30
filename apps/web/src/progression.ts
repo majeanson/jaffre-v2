@@ -88,9 +88,9 @@ export function levelProgress(xp: number): LevelProgress {
 
 export interface TrackReward {
   readonly level: number;
-  /** Cosmetic id in CARD_SKINS or THEMES. */
+  /** Cosmetic id in CARD_SKINS, THEMES, FELTS or SWEEPS, per `kind`. */
   readonly cosmeticId: string;
-  readonly kind: 'skin' | 'theme';
+  readonly kind: 'skin' | 'theme' | 'felt' | 'sweep';
 }
 
 /**
@@ -99,28 +99,50 @@ export interface TrackReward {
  * needed stay at or below the old thresholds (nobody levels DOWN — and the old
  * stat gate is kept as an OR-fallback in the catalogs regardless). 14+ are the
  * long-tail levels with the three track-exclusive skins.
+ *
+ * Felt and sweep rungs (kind 'felt' / 'sweep') are NOT new gates — they mirror
+ * the `atLevel(n)` calls that already ship in felt.ts (L3/6/12/16) and
+ * sweeps.ts (L4/9). Those two axes were unlockable all along; they just had no
+ * line on this ladder saying so, which is why level 16 used to read as a bare
+ * "breather" even though Sugar Shack was waiting there the whole time. Because
+ * they reuse EXISTING gates, several levels now carry two rewards (e.g. level
+ * 3: Noir AND Kitchen Arborite) — see progress.ts's `detectMoments`, which
+ * still announces that as ONE moment, not two.
  */
 export const LEVEL_TRACK: readonly TrackReward[] = [
   { level: 2, cosmeticId: 'juicy', kind: 'theme' },
   { level: 3, cosmeticId: 'noir', kind: 'skin' },
+  { level: 3, cosmeticId: 'arborite', kind: 'felt' },
   { level: 4, cosmeticId: 'sepia', kind: 'theme' },
+  { level: 4, cosmeticId: 'fold', kind: 'sweep' },
   { level: 5, cosmeticId: 'newsprint', kind: 'skin' },
   { level: 6, cosmeticId: 'midnight', kind: 'theme' },
+  { level: 6, cosmeticId: 'rink', kind: 'felt' },
   { level: 7, cosmeticId: 'blueprint', kind: 'skin' },
   { level: 8, cosmeticId: 'og-deck', kind: 'skin' },
   { level: 9, cosmeticId: 'abyss', kind: 'theme' },
+  { level: 9, cosmeticId: 'snow-drift', kind: 'sweep' },
   { level: 10, cosmeticId: 'lamplight-foil', kind: 'skin' },
   { level: 11, cosmeticId: 'synthwave', kind: 'theme' },
   { level: 12, cosmeticId: 'stained-glass', kind: 'skin' },
+  { level: 12, cosmeticId: 'velvet', kind: 'felt' },
   { level: 13, cosmeticId: 'vaporwave', kind: 'skin' },
   { level: 15, cosmeticId: 'circuit', kind: 'skin' },
+  { level: 16, cosmeticId: 'sugarbush', kind: 'felt' },
   { level: 17, cosmeticId: 'starfield', kind: 'skin' },
   { level: 20, cosmeticId: 'royal', kind: 'skin' },
 ];
 
-/** The track reward granted AT a level, if any. */
+/** The track reward granted AT a level, if any — the FIRST one when a level
+ * carries more than one (see `trackRewardsAt` for the full set). */
 export function trackRewardAt(level: number): TrackReward | undefined {
   return LEVEL_TRACK.find((r) => r.level === level);
+}
+
+/** EVERY reward granted AT a level — usually one, but see the LEVEL_TRACK
+ * comment above for why a level can carry two. */
+export function trackRewardsAt(level: number): readonly TrackReward[] {
+  return LEVEL_TRACK.filter((r) => r.level === level);
 }
 
 /** The next reward still ahead of `level`, or null past the last rung. The

@@ -17,7 +17,7 @@ import {
   type Action,
   type ChallengeDeal,
 } from '@jaffre/engine';
-import { dailyStreak } from '../src/routes/dealBoard.js';
+import { bestDailyStreak, dailyStreak } from '../src/routes/dealBoard.js';
 import { chooseAction } from '@jaffre/bots';
 import { parseActions, verifyChallengeRun } from '../src/challenge.js';
 
@@ -333,13 +333,39 @@ describe('GET /api/challenge', () => {
     const res = await SELF.fetch(`https://example.com/api/challenge?id=${today.id}&u=ch-dave`);
     const body = (await res.json()) as {
       board: { id: string; score: number; rank: number }[];
-      you: { score: number; rank: number } | null;
+      you: { id: string; score: number; rank: number } | null;
     };
     expect(body.you).not.toBeNull();
     expect(body.you?.rank).toBeGreaterThanOrEqual(1);
     expect(body.board.length).toBeGreaterThanOrEqual(1);
     // Never the raw uid on the wire — the board is public.
     for (const row of body.board) expect(row.id).not.toBe('ch-dave');
+    expect(body.you?.id).not.toBe('ch-dave');
+  });
+
+  /**
+   * `streak` on the board response — the server half of D2. Shape, not just
+   * presence: `dailyStreak`/`bestDailyStreak` above prove the arithmetic, this
+   * proves the route actually wires BOTH numbers onto the response instead of
+   * just the live one.
+   */
+  it('reports the streak as { current, best }, not a bare number', async () => {
+    const today = dailyChallenge(Date.now());
+    await SELF.fetch('https://example.com/api/challenge/submit?u=ch-streak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeId: today.id, actions: honestRun(today) }),
+    });
+    const res = await SELF.fetch(`https://example.com/api/challenge?id=${today.id}&u=ch-streak`);
+    const body = (await res.json()) as { streak?: { current: number; best: number } };
+    expect(body.streak).toEqual({ current: 1, best: 1 });
+  });
+
+  it('reports 0 streak for an anonymous or unscored caller', async () => {
+    const today = dailyChallenge(Date.now());
+    const res = await SELF.fetch(`https://example.com/api/challenge?id=${today.id}`);
+    const body = (await res.json()) as { streak?: { current: number; best: number } };
+    expect(body.streak).toEqual({ current: 0, best: 0 });
   });
 });
 
@@ -417,5 +443,42 @@ describe('dailyStreak', () => {
 
   it('counts a single day as a streak of 1', () => {
     expect(dailyStreak(keys(0), NOW)).toBe(1);
+  });
+});
+
+/**
+ * The longest run ever, independent of whether the LIVE streak (dailyStreak,
+ * above) is still alive. Same derivation rule: no counter, computed straight
+ * from the day keys already in challenge_scores.
+ */
+describe('bestDailyStreak', () => {
+  const DAY = 86_400_000;
+  const NOW = Date.UTC(2026, 6, 29, 12);
+  const keys = (...offsets: number[]) => new Set(offsets.map((d) => utcDayKey(NOW - d * DAY)));
+
+  it('is 0 for someone who has never posted a daily', () => {
+    expect(bestDailyStreak(new Set())).toBe(0);
+  });
+
+  it('counts a single day as a best run of 1', () => {
+    expect(bestDailyStreak(keys(0))).toBe(1);
+  });
+
+  it('finds the longest run even when it is not the most recent one', () => {
+    // A 3-day run long ago, a gap, then today alone — the LIVE streak here is
+    // 1, but the best-ever run is still 3.
+    expect(bestDailyStreak(keys(0, 10, 11, 12))).toBe(3);
+  });
+
+  it('stays the longest run after it breaks — the whole point of "best"', () => {
+    // Same shape as dailyStreak's "breaks once a whole day has gone by
+    // unplayed" case: dailyStreak(keys(2, 3, 4), NOW) is 0, but the 3-day run
+    // that happened must still read as the best one, not vanish with it.
+    expect(dailyStreak(keys(2, 3, 4), NOW)).toBe(0);
+    expect(bestDailyStreak(keys(2, 3, 4))).toBe(3);
+  });
+
+  it('is order-independent — the Set is unsorted going in', () => {
+    expect(bestDailyStreak(keys(5, 0, 3, 1, 4, 2))).toBe(6);
   });
 });

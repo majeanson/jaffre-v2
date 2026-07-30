@@ -1022,8 +1022,16 @@
  * legibility — the suit shape and value have to stay as clear as they are on
  * the plain skin, in every theme. */
 /* PlayingCard's face is already `relative overflow-hidden`, so the overlay
- * needs no positioning context of its own. */
-[data-foil] .card-face::after {
+ * needs no positioning context of its own.
+ *
+ * Scoped to `.table-felt` (the felt table's own container — Table.tsx, and
+ * every other real-play surface: Lobby, Replay, WaitingScreen), not bare
+ * `[data-foil] .card-face`. `[data-foil]` lives on <html>, so an unscoped
+ * selector painted the sheen on EVERY `.card-face` in the document — the
+ * Collection gallery's tile previews and the Journey rung's card-back
+ * shimmered for skins that were never equipped, let alone foiled. The felt is
+ * the one place a foil is actually being worn. */
+[data-foil] .table-felt .card-face::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1042,7 +1050,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-foil] .card-face::after {
+  [data-foil] .table-felt .card-face::after {
     animation: jaffre-foil 3.4s linear infinite;
   }
 }
@@ -1050,7 +1058,7 @@
 /* Reduced motion keeps the sheen, but still: the point is "this card is
  * special", which a fixed highlight conveys without any movement. */
 @media (prefers-reduced-motion: reduce) {
-  [data-foil] .card-face::after {
+  [data-foil] .table-felt .card-face::after {
     background-position: 50% 0;
   }
 }

@@ -40,6 +40,33 @@ export function dailyStreak(playedDayKeys: ReadonlySet<string>, nowMs: number): 
   return n;
 }
 
+/**
+ * The longest run this player has EVER strung together — not just the one
+ * still (or no longer) alive. A broken streak is still a streak that
+ * happened, and "Best run: N days" is what the board keeps saying once the
+ * live one resets to 0, instead of going quiet exactly when a player might
+ * need the nudge to start a new one.
+ *
+ * Same derivation rule as `dailyStreak`: no counter, no column, computed from
+ * the day keys already in `challenge_scores`.
+ */
+export function bestDailyStreak(playedDayKeys: ReadonlySet<string>): number {
+  if (playedDayKeys.size === 0) return 0;
+  // Day keys are 'YYYY-MM-DD', which Date.parse reads as UTC midnight when
+  // given a 'T00:00:00Z' suffix — turning each into a comparable day number.
+  const days = [...playedDayKeys]
+    .map((k) => Date.parse(`${k}T00:00:00Z`) / DAY_MS)
+    .sort((a, b) => a - b);
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    if (days[i] === (days[i - 1] as number) + 1) run++;
+    else run = 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
 /** The day keys this player has a DAILY score for. Weeklies share the table
  * but have their own id prefix, so they can't inflate a daily streak. */
 async function playedDailyKeys(db: D1Database, userId: string): Promise<Set<string>> {
@@ -220,7 +247,7 @@ export async function handleChallengeBoard(
 
   const rows = await db
     .prepare(
-      `SELECT s.user_id, s.score, s.tricks, u.name, u.color
+      `SELECT s.user_id, s.score, s.tricks, u.name, u.color, u.paint
          FROM challenge_scores s LEFT JOIN users u ON u.id = s.user_id
         WHERE s.challenge_id = ?1
         ORDER BY s.score DESC, s.tricks DESC, s.created_at ASC
@@ -233,6 +260,7 @@ export async function handleChallengeBoard(
       tricks: number;
       name: string | null;
       color: string | null;
+      paint: string | null;
     }>();
 
   const board = rows.results.map((r, i) => ({
@@ -242,24 +270,44 @@ export async function handleChallengeBoard(
     // it is the surface most likely to fill with never-renamed guests.
     name: displayName(r.name, r.user_id),
     color: r.color,
+    paint: r.paint,
     score: r.score,
     tricks: r.tricks,
     rank: i + 1,
   }));
 
-  let you: { score: number; tricks: number; rank: number } | null = null;
+  let you: {
+    id: string;
+    name: string;
+    color: string | null;
+    paint: string | null;
+    score: number;
+    tricks: number;
+    rank: number;
+  } | null = null;
   // Total entries on this board, so a share line can say "#3 of 47" rather
   // than a rank with nothing to measure it against.
   let entries = board.length;
-  let streak = 0;
+  let streak = { current: 0, best: 0 };
   const userId = await resolveUserId(request, env, url);
   if (typeof userId === 'string' && userId !== '') {
+    // Joined the same way as the board rows above — "you" is meant to render
+    // as one more AvatarChip row (see DealBoard's BoardRowLink), pinned below
+    // the list when it's off-page, not a bare number.
     const mine = await db
       .prepare(
-        'SELECT score, tricks FROM challenge_scores WHERE challenge_id = ?1 AND user_id = ?2',
+        `SELECT s.score, s.tricks, u.name, u.color, u.paint
+           FROM challenge_scores s LEFT JOIN users u ON u.id = s.user_id
+          WHERE s.challenge_id = ?1 AND s.user_id = ?2`,
       )
       .bind(deal.id, userId)
-      .first<{ score: number; tricks: number }>();
+      .first<{
+        score: number;
+        tricks: number;
+        name: string | null;
+        color: string | null;
+        paint: string | null;
+      }>();
     if (mine !== null) {
       const ahead = await db
         .prepare(
@@ -268,9 +316,18 @@ export async function handleChallengeBoard(
         )
         .bind(deal.id, mine.score, mine.tricks)
         .first<{ n: number }>();
-      you = { score: mine.score, tricks: mine.tricks, rank: (ahead?.n ?? 0) + 1 };
+      you = {
+        id: publicId(userId),
+        name: displayName(mine.name, userId),
+        color: mine.color,
+        paint: mine.paint,
+        score: mine.score,
+        tricks: mine.tricks,
+        rank: (ahead?.n ?? 0) + 1,
+      };
     }
-    streak = dailyStreak(await playedDailyKeys(db, userId), now);
+    const dailyKeys = await playedDailyKeys(db, userId);
+    streak = { current: dailyStreak(dailyKeys, now), best: bestDailyStreak(dailyKeys) };
   }
   // Only worth a query when the board is capped — otherwise we already have
   // the true count in hand.

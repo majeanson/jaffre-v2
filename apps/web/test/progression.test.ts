@@ -11,12 +11,15 @@ import {
   levelProgress,
   trackLevelOf,
   trackRewardAt,
+  trackRewardsAt,
   xpFromStats,
   xpMoment,
   xpToReach,
 } from '../src/progression.js';
-import { CARD_SKINS, owned } from '../src/cosmetics.js';
+import { CARD_SKINS, owned, type Cosmetic } from '../src/cosmetics.js';
 import { THEMES } from '../src/theme.js';
+import { FELTS } from '../src/felt.js';
+import { SWEEPS } from '../src/sweeps.js';
 import type { Stats } from '../src/net/history.js';
 
 function stats(over: Partial<Stats> = {}): Stats {
@@ -86,9 +89,13 @@ describe('level curve', () => {
 
 describe('level track', () => {
   it('is sorted, within bounds, and rewards each cosmetic at most once', () => {
+    // A LEVEL can repeat now — the felt/sweep axes reuse the SAME atLevel
+    // gates they already shipped with (felt.ts/sweeps.ts), rather than new
+    // ones, so e.g. level 3 grants both Noir (skin) and Kitchen Arborite
+    // (felt). A COSMETIC still appears at most once — that part of the old
+    // invariant still holds.
     const levels = LEVEL_TRACK.map((r) => r.level);
     expect([...levels].sort((a, b) => a - b)).toEqual(levels);
-    expect(new Set(levels).size).toBe(levels.length);
     for (const l of levels) {
       expect(l).toBeGreaterThanOrEqual(2);
       expect(l).toBeLessThanOrEqual(MAX_LEVEL);
@@ -97,9 +104,47 @@ describe('level track', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('felt and sweep rungs sit at their EXISTING atLevel gates, not new ones', () => {
+    // felt.ts: arborite@3, rink@6, velvet@12, sugarbush@16.
+    // sweeps.ts: fold@4, snow-drift@9.
+    expect(
+      LEVEL_TRACK.filter((r) => r.kind === 'felt')
+        .map((r) => r.level)
+        .sort((a, b) => a - b),
+    ).toEqual([3, 6, 12, 16]);
+    expect(
+      LEVEL_TRACK.filter((r) => r.kind === 'sweep')
+        .map((r) => r.level)
+        .sort((a, b) => a - b),
+    ).toEqual([4, 9]);
+  });
+
+  it('trackRewardsAt returns every reward a level carries', () => {
+    expect(
+      trackRewardsAt(3)
+        .map((r) => r.cosmeticId)
+        .sort(),
+    ).toEqual(['arborite', 'noir']);
+    // A single-reward level still comes back as a one-element array.
+    expect(trackRewardsAt(2).map((r) => r.cosmeticId)).toEqual(['juicy']);
+    // A breather level (no reward at all) comes back empty, not undefined.
+    expect(trackRewardsAt(14)).toEqual([]);
+  });
+
+  it('level 16 names its felt — it is no longer a breather', () => {
+    const rewards = trackRewardsAt(16);
+    expect(rewards).toHaveLength(1);
+    expect(rewards[0]?.cosmeticId).toBe('sugarbush');
+    expect(rewards[0]?.kind).toBe('felt');
+  });
+
+  const CATALOG_BY_KIND: Readonly<
+    Record<(typeof LEVEL_TRACK)[number]['kind'], readonly Cosmetic[]>
+  > = { skin: CARD_SKINS, theme: THEMES, felt: FELTS, sweep: SWEEPS };
+
   it('every reward exists in its catalog with the declared kind, gated at that level', () => {
     for (const r of LEVEL_TRACK) {
-      const catalog = r.kind === 'skin' ? CARD_SKINS : THEMES;
+      const catalog = CATALOG_BY_KIND[r.kind];
       const c = catalog.find((x) => x.id === r.cosmeticId);
       expect(c, `${r.cosmeticId} missing from ${r.kind} catalog`).toBeDefined();
       expect(c?.free, `${r.cosmeticId} should not be free`).toBe(false);

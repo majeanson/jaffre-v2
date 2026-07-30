@@ -11,6 +11,9 @@ export interface BoardRow {
   readonly id: string;
   readonly name: string;
   readonly color: string | null;
+  /** Pixel-art avatar (data URL) — same field every other roster carries, so
+   * a board row can render a real AvatarChip instead of just an initial. */
+  readonly paint?: string | null;
   readonly score: number;
   readonly tricks: number;
   readonly rank: number;
@@ -24,14 +27,26 @@ export interface ChallengeBoard {
     readonly seed: number;
   };
   readonly board: readonly BoardRow[];
-  readonly you: { readonly score: number; readonly tricks: number; readonly rank: number } | null;
+  /** Your own row. Score/tricks/rank as always; id/name/color/paint ride
+   * along too so an off-page "you" can be pinned in the same AvatarChip style
+   * as every other row (see DealBoard's BoardRowLink) — optional so a stale
+   * cached response still degrades to the plain text line instead of
+   * breaking. */
+  readonly you:
+    | (Partial<Pick<BoardRow, 'id' | 'name' | 'color' | 'paint'>> & {
+        readonly score: number;
+        readonly tricks: number;
+        readonly rank: number;
+      })
+    | null;
   /** Everyone who posted to this board, not just the rows shown — so a share
    * line can say "#3 of 47". Absent on older responses. */
   readonly entries?: number;
-  /** Consecutive days you've posted a daily score, derived server-side from
-   * challenge_scores (no stored counter). 0 when the run is broken or you
-   * haven't started one. */
-  readonly streak?: number;
+  /** Your daily habit, derived server-side from challenge_scores (no stored
+   * counter): the streak still alive today, and the longest one you've ever
+   * strung together. `current` is 0 when the run is broken or you haven't
+   * started one — `best` still reads truthfully in that case. */
+  readonly streak?: { readonly current: number; readonly best: number };
 }
 
 /** Today's daily board, or a named challenge's. Null when offline / no server. */

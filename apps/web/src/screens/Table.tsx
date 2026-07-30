@@ -74,6 +74,16 @@ export interface TableProps {
   readonly noDealIntro?: boolean;
   /** Real play (App) → show the dev console; scenes/replay leave it off. */
   readonly dev?: boolean;
+  /** Replay: forces PlayerHand inactive (see the `active` prop below) so a
+   * replayed hand never looks live — taps must not queue a play mid-scrub.
+   * Coach keeps working: it reads `coachOn`, not `active`. */
+  readonly replay?: boolean;
+  /** Replay: controls the felt's Coach toggle from the replay control bar
+   * (Replay.tsx) instead of the default TopBar-Options one, so both read and
+   * write the SAME persisted pref (table/coachPref.ts) rather than drifting.
+   * Omitted everywhere else — Table manages coachOn itself, as before. */
+  readonly coachOn?: boolean;
+  readonly onToggleCoach?: () => void;
   /** Practice only: run the one-time first-practice tutorial over the felt. */
   readonly tutorial?: boolean;
   /** Practice only: the seed in play, so a curated teaching deal can show
@@ -120,6 +130,9 @@ export function Table({
   bottomInset = false,
   noDealIntro = false,
   dev = false,
+  replay = false,
+  coachOn: coachOnProp,
+  onToggleCoach: onToggleCoachProp,
   tutorial = false,
   practiceSeed = null,
   onTakeSeat,
@@ -132,7 +145,23 @@ export function Table({
   const setQueued = useGameStore((s) => s.setQueued);
   const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
   // Coach defaults on in practice (the learning table) until explicitly set.
-  const [coachOn, setCoachOn] = useState(() => loadCoachPref(!online));
+  // Uncontrolled by default (own state, as before); a caller that passes
+  // `coachOn`/`onToggleCoach` (Replay.tsx) takes over both reads and writes —
+  // see the props' doc comments. Both still persist through the same
+  // loadCoachPref/saveCoachPref, so the two toggles can never disagree.
+  const [internalCoachOn, setInternalCoachOn] = useState(() => loadCoachPref(!online));
+  const controlled = coachOnProp !== undefined;
+  const coachOn = controlled ? coachOnProp : internalCoachOn;
+  const toggleCoach = (): void => {
+    if (onToggleCoachProp !== undefined) {
+      onToggleCoachProp();
+      return;
+    }
+    setInternalCoachOn((on) => {
+      saveCoachPref(!on);
+      return !on;
+    });
+  };
   const derived = useTableDerived(coachOn);
   const handSort = useHandSort(derived?.view.hand ?? []);
   // The round-start deal, on one clock: deck fly-out, your hand filling a card
@@ -281,12 +310,7 @@ export function Table({
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}
         coachOn={coachOn}
-        onToggleCoach={() =>
-          setCoachOn((on) => {
-            saveCoachPref(!on);
-            return !on;
-          })
-        }
+        onToggleCoach={toggleCoach}
         share={
           online && roomCode !== undefined ? <ShareButton code={roomCode} labeled /> : undefined
         }
@@ -328,6 +352,7 @@ export function Table({
         view={view}
         roster={roster}
         me={me}
+        online={online}
         rounds={derived.scoreboardRounds}
         onReady={() => onAction({ type: 'continue' })}
         onRematch={onRematch}
@@ -399,7 +424,11 @@ export function Table({
           // Hold-inactive: while a finished trick is held, taps queue your
           // lead instead of playing it under the hold. Auto-play-inactive:
           // the server is playing your turns (see useTableDerived).
+          // Replay-inactive: a replayed hand is history, not a live turn —
+          // scrubbing to a frame where the redacted view's `myTurn` happens
+          // to be true must never look tappable.
           active={
+            !replay &&
             myTurn &&
             view.phase === 'playing' &&
             derived.heldBanner === null &&
@@ -423,7 +452,7 @@ export function Table({
           online
           onEnableCoach={() => {
             saveCoachPref(true);
-            setCoachOn(true);
+            setInternalCoachOn(true);
           }}
         />
       )}

@@ -88,7 +88,29 @@ describe('levels', () => {
       false,
     );
     const level = moments.find((m) => m.kind === 'level');
-    expect(level?.kind === 'level' && level.reward?.id).toBe(REWARD_LEVEL.cosmeticId);
+    expect(level?.kind === 'level' && level.rewards.map((r) => r.id)).toContain(
+      REWARD_LEVEL.cosmeticId,
+    );
+  });
+
+  it('carries EVERY cosmetic a level hands out, as one moment', () => {
+    // Level 3 grants both the Noir skin and the Kitchen Arborite felt — the
+    // same atLevel(3) gate, two catalogs. That is still one thing that
+    // happened, not two: see LEVEL_TRACK's doc comment in progression.ts.
+    const moments = detectMoments(
+      { level: 3, awards: [], cosmetics: ['noir', 'arborite'] },
+      seen({ level: 2 }),
+      'en',
+      false,
+    );
+    expect(moments).toHaveLength(1);
+    const level = moments[0];
+    expect(level?.kind === 'level' && level.rewards.map((r) => r.id).sort()).toEqual([
+      'arborite',
+      'noir',
+    ]);
+    // Both claimed — neither shows up again as a bare 'cosmetic' moment.
+    expect(moments.filter((m) => m.kind === 'cosmetic')).toHaveLength(0);
   });
 
   it('does NOT also announce that cosmetic separately', () => {
@@ -119,12 +141,50 @@ describe('awards', () => {
     expect(award?.kind === 'award' && award.reward?.id).toBe(REWARD_AWARD.reward);
   });
 
-  it('ignores a foil grant, which is not an award', () => {
-    // Foils ride in on the same list but have no catalog entry — announcing
-    // "foil:noir" would be gibberish.
+  it('is not confused for a real award (no AWARDS catalog entry)', () => {
+    // Foils ride in on the same awards list but aren't in the AWARDS catalog
+    // — they get their own 'foil' moment below, not an 'award' one.
     const moments = detectMoments(
       { level: 1, awards: ['foil:noir'], cosmetics: [] },
       seen(),
+      'en',
+      false,
+    );
+    expect(moments.every((m) => m.kind !== 'award')).toBe(true);
+  });
+});
+
+describe('foils', () => {
+  it('announces a resolvable foil grant by the skin’s real name', () => {
+    const moments = detectMoments(
+      { level: 1, awards: ['foil:noir'], cosmetics: [] },
+      seen(),
+      'en',
+      false,
+    );
+    expect(moments).toHaveLength(1);
+    const foil = moments[0];
+    expect(foil?.kind).toBe('foil');
+    expect(foil?.kind === 'foil' && foil.skinId).toBe('noir');
+    expect(foil?.kind === 'foil' && foil.label).toBe('Noir');
+  });
+
+  it('skips an unresolvable foil rather than announcing gibberish', () => {
+    // A skin id the client's catalog doesn't know (removed since the grant,
+    // or malformed) has no name to announce.
+    const moments = detectMoments(
+      { level: 1, awards: ['foil:not-a-real-skin'], cosmetics: [] },
+      seen(),
+      'en',
+      false,
+    );
+    expect(moments).toEqual([]);
+  });
+
+  it('does not re-announce a foil already seen', () => {
+    const moments = detectMoments(
+      { level: 1, awards: ['foil:noir'], cosmetics: [] },
+      seen({ awards: ['foil:noir'] }),
       'en',
       false,
     );
@@ -159,10 +219,24 @@ describe('where a moment leads', () => {
         kind: 'level',
         key: 'k',
         level: 3,
-        reward: { id: 'noir', label: 'Noir' },
+        rewards: [{ id: 'noir', label: 'Noir' }],
       }),
     ).toBe('#collection/noir');
-    expect(momentHref({ kind: 'level', key: 'k', level: 14, reward: null })).toBe('#journey');
+    expect(momentHref({ kind: 'level', key: 'k', level: 14, rewards: [] })).toBe('#journey');
+  });
+
+  it('sends a level with two rewards to the FIRST one — one destination, one link', () => {
+    expect(
+      momentHref({
+        kind: 'level',
+        key: 'k',
+        level: 3,
+        rewards: [
+          { id: 'noir', label: 'Noir' },
+          { id: 'arborite', label: 'Kitchen Arborite' },
+        ],
+      }),
+    ).toBe('#collection/noir');
   });
 
   it('sends a bare award to the Awards shelf', () => {
@@ -176,5 +250,11 @@ describe('where a moment leads', () => {
         reward: null,
       }),
     ).toBe('#awards');
+  });
+
+  it('sends a foil to the skin it belongs to', () => {
+    expect(momentHref({ kind: 'foil', key: 'k', skinId: 'noir', label: 'Noir' })).toBe(
+      '#collection/noir',
+    );
   });
 });

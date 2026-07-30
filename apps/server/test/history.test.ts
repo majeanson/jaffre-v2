@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '@jaffre/engine';
-import type { Action, GameState } from '@jaffre/engine';
-import { gameRecordFrom } from '../src/history.js';
+import type { Action, GameState, RoundSummary } from '@jaffre/engine';
+import { gameRecordFrom, memorableFlags } from '../src/history.js';
 
 describe('gameRecordFrom', () => {
   it('assembles a full record from meta, final state and the ordered log', () => {
@@ -84,5 +84,135 @@ describe('gameRecordFrom', () => {
       { seat: 2, user_id: null, is_bot: 1, name: 'Bot 3' },
       { seat: 3, user_id: null, is_bot: 0, name: 'Player' },
     ]);
+  });
+});
+
+function summary(over: Partial<RoundSummary> & Pick<RoundSummary, 'contract' | 'contractMade'>) {
+  return {
+    roundIndex: 0,
+    trump: null,
+    trickPoints: [0, 0],
+    deltas: [0, 0],
+    scores: [0, 0],
+    ...over,
+  } satisfies RoundSummary;
+}
+
+describe('memorableFlags', () => {
+  it('flags a made 12 sans-atout as hailMary', () => {
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 0, value: 12, sansAtout: true, forced: false },
+          contractMade: true,
+        }),
+      ],
+      0,
+    );
+    expect(flags.hailMary).toBe(true);
+  });
+
+  it('does not flag a MISSED 12 sans-atout, or a made 12 WITH a trump', () => {
+    const missed = memorableFlags(
+      [
+        summary({
+          contract: { seat: 0, value: 12, sansAtout: true, forced: false },
+          contractMade: false,
+        }),
+      ],
+      0,
+    );
+    expect(missed.hailMary).toBe(false);
+    const withTrump = memorableFlags(
+      [
+        summary({
+          contract: { seat: 0, value: 12, sansAtout: false, forced: false },
+          contractMade: true,
+          trump: 'red',
+        }),
+      ],
+      0,
+    );
+    expect(withTrump.hailMary).toBe(false);
+  });
+
+  it('flags a round where one team took all 8 tricks as sweep', () => {
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 1, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          trickCounts: [0, 4, 0, 4],
+        }),
+      ],
+      1,
+    );
+    expect(flags.sweep).toBe(true);
+  });
+
+  it('does not guess a sweep from a legacy summary with no trickCounts', () => {
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+        }),
+      ],
+      0,
+    );
+    expect(flags.sweep).toBe(false);
+  });
+
+  it('flags a comeback: winner trailed by 10+ before the final round', () => {
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 1, value: 10, sansAtout: false, forced: false },
+          contractMade: true,
+          scores: [0, 15],
+        }),
+        summary({
+          contract: { seat: 0, value: 12, sansAtout: false, forced: false },
+          contractMade: true,
+          scores: [41, 15],
+        }),
+      ],
+      0,
+    );
+    expect(flags.comeback).toBe(true);
+  });
+
+  it('does not call a narrow final-round swing a comeback', () => {
+    // Team 0 wins, but was never behind by 10+ before the last round.
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 0, value: 9, sansAtout: false, forced: false },
+          contractMade: true,
+          scores: [9, 5],
+        }),
+        summary({
+          contract: { seat: 0, value: 8, sansAtout: false, forced: false },
+          contractMade: true,
+          scores: [17, 12],
+        }),
+      ],
+      0,
+    );
+    expect(flags.comeback).toBe(false);
+  });
+
+  it('never flags a comeback for an undecided game (winnerTeam null)', () => {
+    const flags = memorableFlags(
+      [
+        summary({
+          contract: { seat: 1, value: 10, sansAtout: false, forced: false },
+          contractMade: true,
+          scores: [0, 15],
+        }),
+      ],
+      null,
+    );
+    expect(flags.comeback).toBe(false);
   });
 });

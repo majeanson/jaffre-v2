@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { AvatarChip, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
 import {
+  HISTORY_PAGE_SIZE,
   fetchHistory,
+  fetchHistoryPage,
   fetchStats,
   type HistoryGame,
   type Stats as StatsData,
@@ -78,6 +80,8 @@ const T: Record<
     regularsHint: string;
     regularShare: (withGames: number, vsGames: number) => string;
     headToHead: (name: string) => string;
+    showMore: string;
+    spectated: (n: number) => string;
   }
 > = {
   en: {
@@ -127,6 +131,8 @@ const T: Record<
     regularsHint: "Everyone else you've shared 3 or more games with.",
     regularShare: (withGames, vsGames) => `${String(withGames)} with · ${String(vsGames)} against`,
     headToHead: (name) => `Head to head with ${name}`,
+    showMore: 'Show more',
+    spectated: (n) => `Games watched to the end: ${String(n)}`,
   },
   fr: {
     title: 'Ton record',
@@ -184,6 +190,8 @@ const T: Record<
     regularsHint: 'Les autres avec qui tu as joué 3 parties ou plus.',
     regularShare: (withGames, vsGames) => `${String(withGames)} avec · ${String(vsGames)} contre`,
     headToHead: (name) => `Face à face avec ${name}`,
+    showMore: 'Voir plus',
+    spectated: (n) => `Parties regardées jusqu’à la fin : ${String(n)}`,
   },
 };
 
@@ -521,6 +529,11 @@ export function Stats({
   const [games, setGames] = useState<readonly HistoryGame[] | null>(demoGames ?? null);
   const [error, setError] = useState(false);
   const [view, setView] = useState<'recent' | 'all'>(initialGamesView ?? 'recent');
+  // "Show more" (All view only): a full page suggests there might be another
+  // one — the server's the only one who actually knows, so this is a guess
+  // that self-corrects the moment a page comes back short.
+  const [hasMore, setHasMore] = useState((demoGames?.length ?? 0) >= HISTORY_PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (demoStats !== undefined || demoLoading) return;
@@ -531,12 +544,37 @@ export function Stats({
     // Recent games power the sparkline + scorepad; their absence never blocks
     // the core record, so a failure just leaves the ledger without a game list.
     fetchHistory()
-      .then((g) => live && setGames(g))
+      .then((g) => {
+        if (!live) return;
+        setGames(g);
+        setHasMore(g.length >= HISTORY_PAGE_SIZE);
+      })
       .catch(() => live && setGames([]));
     return () => {
       live = false;
     };
   }, [demoStats, demoLoading]);
+
+  /** Fetch the next page, older than the oldest game already loaded (the list
+   * is newest-first, so that's the last element), and append it. */
+  async function loadMore(): Promise<void> {
+    if (games === null || games.length === 0 || loadingMore) return;
+    const oldest = games[games.length - 1]?.finishedAt;
+    if (oldest === null || oldest === undefined) {
+      setHasMore(false); // no honest cursor to page from
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      const more = await fetchHistoryPage(oldest);
+      setGames((g) => [...(g ?? []), ...more]);
+      setHasMore(more.length >= HISTORY_PAGE_SIZE);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   // Oldest → newest, capped, for a left-to-right "recent form" reading.
   const recent =
@@ -623,6 +661,16 @@ export function Stats({
               />
               <StatPanel value={stats.streak.best} label={t.bestStreak} tone="ok" />
             </section>
+
+            {/* Games watched to the end, as a spectator — its own quiet fact,
+                not folded into the played-games grid above since it isn't a
+                played game. Shown only when it's > 0: "watched 0" would read
+                like an invitation, not a fact worth a line. */}
+            {(stats.spectated ?? 0) > 0 && (
+              <p className="text-center font-arcade-ui text-[0.75em] text-(--color-ap-muted)">
+                {t.spectated(stats.spectated ?? 0)}
+              </p>
+            )}
 
             {/* Bid accuracy — one headline % over a striped fill bar. */}
             <section className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[1em] shadow-(--shadow-ap)">
@@ -747,6 +795,16 @@ export function Stats({
                     {games.map((g) => (
                       <GameRow key={g.id} game={g} />
                     ))}
+                    {hasMore && (
+                      <button
+                        type="button"
+                        onClick={() => void loadMore()}
+                        disabled={loadingMore}
+                        className="mt-1 cursor-pointer self-center rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-4 py-1.5 font-arcade-display text-[0.75em] uppercase tracking-wide text-(--color-ap-text) shadow-(--shadow-ap-sm) transition-colors hover:bg-(--color-ap-panel-hover) disabled:cursor-default disabled:opacity-60"
+                      >
+                        {t.showMore}
+                      </button>
+                    )}
                   </div>
                 )}
               </section>

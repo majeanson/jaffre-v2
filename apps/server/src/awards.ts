@@ -2,11 +2,17 @@
  * Award catalog — the server-authoritative half. Kept pure (no DB, no env) so
  * the earn predicates are unit-testable exactly like history.ts / rating.ts.
  *
- * Two flavours of award:
- *  - `stat`  — earned from the player's aggregate stats. Auto-granted on read
- *              (GET /api/awards) so they are self-healing and can't be forged.
- *  - `event` — earned from a client-attested moment (finishing the tutorial).
- *              Granted via POST /api/awards/grant, gated by EVENT_AWARD_IDS.
+ * Three flavours of award:
+ *  - `stat`   — earned from the player's aggregate stats. Auto-granted on read
+ *               (GET /api/awards) so they are self-healing and can't be forged.
+ *  - `event`  — earned from a client-attested moment (finishing the tutorial).
+ *               Granted via POST /api/awards/grant, gated by EVENT_AWARD_IDS.
+ *  - `lazy`   — earned from a SERVER-computed fact with no client attestation
+ *               at all (the monthly ladder's champion). Granted opportunistically
+ *               wherever that fact is already being read (routes/leaderboard.ts,
+ *               on a monthly board request) rather than on a schedule, the same
+ *               "no cron, self-heals on the next relevant read" shape stat
+ *               awards use — it just isn't driven by /api/awards.
  *
  * The display copy (name/desc/icon) and the cosmetic-reward mapping live on the
  * CLIENT (apps/web/src/awards.ts); this module only owns ids + how they're
@@ -62,4 +68,29 @@ export const EVENT_AWARD_IDS: ReadonlySet<string> = new Set(['tutorial-complete'
 /** Ids of every stat award the given stats have earned. */
 export function earnedStatAwardIds(stats: AwardEvalStats): readonly string[] {
   return STAT_AWARDS.filter((a) => a.earned(stats)).map((a) => a.id);
+}
+
+/**
+ * Monthly champion — the "keyed row" trick foils use (see foils.ts), applied
+ * to an award instead of a cosmetic: one row per calendar month a player
+ * finished on top of the monthly ladder, so the same person winning two
+ * different months is two grants, not a re-roll of one.
+ *
+ * A SECOND, canonical (unkeyed) `MONTHLY_CHAMPION_AWARD_ID` row is granted
+ * alongside the keyed one (see routes/leaderboard.ts) purely so the existing
+ * catalog machinery — the Awards showcase, `grantedRewardIds`, the grant
+ * toast — can recognise it with the exact-id matching every OTHER catalog
+ * award already uses, without teaching any of those call sites a new
+ * "starts with" rule. The keyed row is what makes the grant idempotent PER
+ * MONTH; the canonical row is what makes it a shelf trophy.
+ */
+export const MONTHLY_CHAMPION_PREFIX = 'monthly-champion:';
+
+/** The catalog id — this is what apps/web/src/awards.ts lists and what
+ * grantedRewardIds()/the Awards screen match on. */
+export const MONTHLY_CHAMPION_AWARD_ID = 'monthly-champion';
+
+/** The award-row id for one month's crown. `monthKey` is 'YYYY-MM'. */
+export function monthlyChampionMonthAwardId(monthKey: string): string {
+  return `${MONTHLY_CHAMPION_PREFIX}${monthKey}`;
 }

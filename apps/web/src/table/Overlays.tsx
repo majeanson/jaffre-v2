@@ -15,6 +15,9 @@ export interface OverlaysProps {
   readonly roster: Roster;
   /** Your absolute seat, or null when spectating. */
   readonly me: number | null;
+  /** True in a room; false in practice — practice earns no XP, so the recap's
+   * XpStrip has nothing true to show there (see `showXp` below). */
+  readonly online: boolean;
   /** Finished rounds for the round summary's written scoresheet. */
   readonly rounds: readonly ScoreboardRound[];
   /** Declare readiness for the next round. */
@@ -37,6 +40,7 @@ export function Overlays({
   view,
   roster,
   me,
+  online,
   rounds,
   onReady,
   onRematch,
@@ -94,7 +98,10 @@ export function Overlays({
           )}
           myRating={roster.ratings?.find((r) => r.seat === me)}
           endReason={view.endReason}
-          showXp={me !== null}
+          // Practice earns no XP (the constants only ever read from a
+          // recorded /api/stats game) — showing the strip there would chase a
+          // bar that can never move.
+          showXp={online && me !== null}
           onRematch={onRematch}
           onSwapSeats={onSwapSeats}
           onTakeSeat={onTakeSeat}

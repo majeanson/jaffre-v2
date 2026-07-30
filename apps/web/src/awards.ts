@@ -161,6 +161,23 @@ export const AWARDS: readonly AwardDef[] = [
       need: 50,
     }),
   },
+  // ── Monthly champion. Server-computed and lazily granted (see
+  //    apps/server/src/awards.ts's MONTHLY_CHAMPION_AWARD_ID) whenever anyone
+  //    reads the monthly ladder and last month's crown hadn't been handed out
+  //    yet — no client attestation, so it can't be forged the way an `event`
+  //    award could. No `requirement`: "finish a month on top" isn't a stat
+  //    this client can compute a live progress bar for the way the others can.
+  {
+    id: 'monthly-champion',
+    icon: '👑',
+    name: (l) => t(l, 'Monthly Champion', 'Champion du mois'),
+    desc: (l) =>
+      t(
+        l,
+        'Finish a calendar month with the most wins on the ladder.',
+        'Termine un mois civil avec le plus de victoires au classement.',
+      ),
+  },
   {
     id: 'tutorial-complete',
     icon: '🎓',

@@ -10,6 +10,7 @@ const T: Record<
     level: (n: number) => string;
     award: string;
     unlocked: string;
+    foil: (label: string) => string;
     equip: string;
     see: string;
     more: (n: number) => string;
@@ -19,6 +20,7 @@ const T: Record<
     level: (n) => `Level ${String(n)}`,
     award: 'Award earned',
     unlocked: 'Unlocked',
+    foil: (label) => `Foil ${label}!`,
     equip: 'Equip',
     see: 'See',
     more: (n) => `+${String(n)} more`,
@@ -27,6 +29,7 @@ const T: Record<
     level: (n) => `Niveau ${String(n)}`,
     award: 'Récompense obtenue',
     unlocked: 'Débloqué',
+    foil: (label) => `${label} en foil !`,
     equip: 'Équiper',
     see: 'Voir',
     more: (n) => `+${String(n)} autre${n === 1 ? '' : 's'}`,
@@ -77,22 +80,42 @@ export function ProgressToast({ moments, onDone }: ProgressToastProps) {
   if (!visible || moment === undefined) return null;
 
   const remaining = moments.length - index - 1;
-  const icon = moment.kind === 'award' ? moment.icon : moment.kind === 'level' ? '⬆' : '🎁';
+  const icon =
+    moment.kind === 'award'
+      ? moment.icon
+      : moment.kind === 'level'
+        ? '⬆'
+        : moment.kind === 'foil'
+          ? '✨'
+          : '🎁';
   const heading =
     moment.kind === 'level'
       ? t.level(moment.level)
       : moment.kind === 'award'
         ? t.award
-        : t.unlocked;
+        : moment.kind === 'foil'
+          ? t.foil(moment.label)
+          : t.unlocked;
   const detail =
     moment.kind === 'level'
-      ? (moment.reward?.label ?? '')
+      ? moment.rewards.map((r) => r.label).join(' · ')
       : moment.kind === 'award'
         ? moment.name
-        : moment.label;
+        : moment.kind === 'foil'
+          ? '' // the label already rides in the "Foil <name>!" heading
+          : moment.label;
   // "Equip" only when the link lands on a specific cosmetic tile; a bare level
   // or award goes to the screen that explains it, which is a "See".
-  const action = moment.kind === 'cosmetic' || moment.reward !== null ? t.equip : t.see;
+  const action =
+    moment.kind === 'cosmetic' || moment.kind === 'foil'
+      ? t.equip
+      : moment.kind === 'level'
+        ? moment.rewards.length > 0
+          ? t.equip
+          : t.see
+        : moment.reward !== null
+          ? t.equip
+          : t.see;
 
   return (
     <div

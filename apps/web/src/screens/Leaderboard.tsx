@@ -32,7 +32,10 @@ const T: Record<
     thisMonth: string;
     monthEmpty: string;
     winCount: (n: number) => string;
-    ofGames: (n: number) => string;
+    /** "of N played · +M net" — replaces the old bare "of N played": a win
+     * count with no margin can't tell a squeaker from a rout. */
+    monthSub: (games: number, net: number) => string;
+    lastMonth: string;
     headToHead: (name: string) => string;
   }
 > = {
@@ -48,7 +51,9 @@ const T: Record<
     thisMonth: 'This month',
     monthEmpty: 'No games finished this month yet. Play one and you are on the board.',
     winCount: (n) => (n === 1 ? '1 win' : `${String(n)} wins`),
-    ofGames: (n) => `of ${String(n)} played`,
+    monthSub: (games, net) =>
+      `of ${String(games)} played · ${net >= 0 ? '+' : ''}${String(net)} net`,
+    lastMonth: 'Last month →',
     headToHead: (name) => `Head to head with ${name}`,
   },
   fr: {
@@ -63,20 +68,36 @@ const T: Record<
     thisMonth: 'Ce mois-ci',
     monthEmpty: 'Aucune partie terminée ce mois-ci. Joues-en une et tu es au tableau.',
     winCount: (n) => (n === 1 ? '1 victoire' : `${String(n)} victoires`),
-    ofGames: (n) => `sur ${String(n)} jouées`,
+    monthSub: (games, net) =>
+      `sur ${String(games)} jouées · ${net >= 0 ? '+' : ''}${String(net)} net`,
+    lastMonth: 'Le mois dernier →',
     headToHead: (name) => `Face à face avec ${name}`,
   },
 };
 
+/** 'YYYY-MM' for the UTC calendar month `monthsAgo` months before the one
+ * containing `nowMs` — pure so it needs no test of its own beyond what reads
+ * it (Date.UTC normalizes an out-of-range month, so December underflow from
+ * January just works). */
+function monthKeyOffset(nowMs: number, monthsAgo: number): string {
+  const d = new Date(nowMs);
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - monthsAgo, 1));
+  return `${String(target.getUTCFullYear())}-${String(target.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 /** The global skill ladder — top-rated players, with the caller's own row
  * pinned below when they rank outside the visible top. */
 export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
-  const t = T[useLang()];
+  const lang = useLang();
+  const t = T[lang];
   const [board, setBoard] = useState<LeaderboardData | null>(demo ?? null);
   const [error, setError] = useState(false);
   const [period, setPeriod] = useState<'all' | 'month'>(demoMonth !== undefined ? 'month' : 'all');
   const [month, setMonth] = useState<MonthlyLeaderboard | null>(demoMonth ?? null);
   const [monthError, setMonthError] = useState(false);
+  // undefined = the current month. Set by the "Last month →" link, which only
+  // ever flips ONE month back — see monthKeyOffset above.
+  const [monthKey, setMonthKey] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (demo !== undefined) return;
@@ -90,20 +111,48 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
   }, [demo]);
 
   // Fetched lazily: most visits only ever look at one of the two boards, and
-  // the monthly query is a GROUP BY over the month's games.
+  // the monthly query is a GROUP BY over the month's games. Re-fires whenever
+  // `monthKey` changes (the "Last month →" flip resets `month` to null below).
   useEffect(() => {
     if (demo !== undefined || period !== 'month' || month !== null) return;
     let live = true;
-    fetchMonthlyLeaderboard()
+    fetchMonthlyLeaderboard(monthKey)
       .then((m) => live && setMonth(m))
       .catch(() => live && setMonthError(true));
     return () => {
       live = false;
     };
-  }, [demo, period, month]);
+  }, [demo, period, month, monthKey]);
 
   const meId = board?.you?.id ?? null;
   const topHasYou = meId !== null && (board?.top.some((r) => r.id === meId) ?? false);
+
+  /** Which month is on screen, as a real name ("July" / "juillet") rather
+   * than the generic "This month" tab label — D6. UTC, same as the query
+   * itself (monthStart/monthEnd), so the name can't disagree with which
+   * games are actually on the board. */
+  const monthLabel = (() => {
+    const now = Date.now();
+    const [y, m] =
+      monthKey !== undefined
+        ? monthKey.split('-').map(Number)
+        : [new Date(now).getUTCFullYear(), new Date(now).getUTCMonth() + 1];
+    const of = new Date(Date.UTC(y as number, (m as number) - 1, 1));
+    return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+      month: 'long',
+      timeZone: 'UTC',
+    }).format(of);
+  })();
+
+  /** Flip to (or back from) the archived view — resets `month` to null so the
+   * fetch effect above re-fires for the new key. Not offered from inside a
+   * staged scene: a demo board is a frozen snapshot, and there is no server
+   * behind it to answer a second fetch. */
+  const setArchived = (key: string | undefined): void => {
+    setMonthKey(key);
+    setMonth(null);
+    setMonthError(false);
+  };
 
   return (
     <main className="min-h-full overflow-y-auto bg-(--color-ap-ground) p-6 pt-[min(11vh,7rem)] text-(--color-ap-text) max-sm:p-4">
@@ -123,7 +172,13 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
             <button
               key={p}
               type="button"
-              onClick={() => setPeriod(p)}
+              onClick={() => {
+                setPeriod(p);
+                // Re-selecting "This month" always lands back on the CURRENT
+                // month — the one way back from the archived view besides
+                // the link itself.
+                if (p === 'month' && monthKey !== undefined) setArchived(undefined);
+              }}
               aria-current={period === p}
               className={`rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-[0.7em] py-[0.25em] font-arcade-ui text-[0.78em] uppercase tracking-wide shadow-(--shadow-ap-sm) ${
                 period === p
@@ -143,23 +198,44 @@ export function Leaderboard({ onLeave, demo, demoMonth }: LeaderboardProps) {
             <ShellNote>
               <PixelWave label={t.loading} />
             </ShellNote>
-          ) : month.top.length === 0 ? (
-            <ShellNote>{t.monthEmpty}</ShellNote>
           ) : (
-            <ol className="flex flex-col gap-2">
-              {month.top.map((row) => (
-                <Row
-                  key={row.id}
-                  rank={row.rank}
-                  row={row}
-                  mine={month.you?.id === row.id}
-                  youLabel={t.you}
-                  metric={t.winCount(row.wins)}
-                  sub={t.ofGames(row.games)}
-                  headToHeadLabel={t.headToHead}
-                />
-              ))}
-            </ol>
+            <>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-muted)">
+                  {monthLabel}
+                </h2>
+                {/* Only offered from the CURRENT month, and never inside a
+                    staged scene (see setArchived's own comment) — one step
+                    back is all this link ever takes. */}
+                {monthKey === undefined && demoMonth === undefined && (
+                  <button
+                    type="button"
+                    onClick={() => setArchived(monthKeyOffset(Date.now(), 1))}
+                    className="shrink-0 font-arcade-ui text-[0.8em] text-(--color-ap-muted) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+                  >
+                    {t.lastMonth}
+                  </button>
+                )}
+              </div>
+              {month.top.length === 0 ? (
+                <ShellNote>{t.monthEmpty}</ShellNote>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {month.top.map((row) => (
+                    <Row
+                      key={row.id}
+                      rank={row.rank}
+                      row={row}
+                      mine={month.you?.id === row.id}
+                      youLabel={t.you}
+                      metric={t.winCount(row.wins)}
+                      sub={t.monthSub(row.games, row.net)}
+                      headToHeadLabel={t.headToHead}
+                    />
+                  ))}
+                </ol>
+              )}
+            </>
           )
         ) : error ? (
           <ShellNote>{t.error}</ShellNote>
@@ -227,7 +303,12 @@ function Row({
   headToHeadLabel,
 }: {
   readonly rank: number;
-  readonly row: { readonly id: string; readonly name: string; readonly color: string | null };
+  readonly row: {
+    readonly id: string;
+    readonly name: string;
+    readonly color: string | null;
+    readonly paint?: string | null | undefined;
+  };
   readonly mine: boolean;
   readonly youLabel: string;
   readonly metric: string;
@@ -239,7 +320,12 @@ function Row({
       <span className="w-[2ch] shrink-0 text-right font-arcade-display text-[1.1em] text-(--color-ap-gold)">
         {rank}
       </span>
-      <AvatarChip name={row.name} color={row.color ?? undefined} size="sm" />
+      <AvatarChip
+        name={row.name}
+        color={row.color ?? undefined}
+        paint={row.paint ?? null}
+        size="sm"
+      />
       <span className="min-w-0 flex-1 truncate font-arcade-ui text-(--color-ap-text)">
         {row.name}
         {mine && (

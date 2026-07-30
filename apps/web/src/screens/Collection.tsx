@@ -36,6 +36,7 @@ import { getProfile, saveProfile } from '../net/auth.js';
 import { fetchStats, type Stats } from '../net/history.js';
 import { fetchAwards } from '../net/awards.js';
 import { grantedRewardIds } from '../awards.js';
+import { ownedFoilSkins } from '../foils.js';
 import { feedback } from '../audio/clicks.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
@@ -73,6 +74,7 @@ const T: Record<
     blurb: string;
     paintFirst: string;
     equipped: (name: string) => string;
+    foilBadge: string;
   }
 > = {
   en: {
@@ -90,6 +92,7 @@ const T: Record<
       'Level up on the Journey for the track skins and themes; the rest are challenge unlocks. Equip any you own — it follows your account.',
     paintFirst: 'Paint your card first',
     equipped: (name) => `Equipped ${name}`,
+    foilBadge: 'Foil',
   },
   fr: {
     title: 'Collection',
@@ -107,6 +110,7 @@ const T: Record<
       'Les habillages et thèmes du Parcours arrivent avec les niveaux ; les autres sont des défis. Équipe ceux que tu possèdes — ils suivent ton compte.',
     paintFirst: 'Peins ta carte d’abord',
     equipped: (name) => `Équipé : ${name}`,
+    foilBadge: 'Foil',
   },
 };
 
@@ -145,8 +149,18 @@ function MiniDeck() {
 }
 
 /** Card-skin preview: scope the skin to this subtree (`data-card-skin` +
- * the matching renderers) so the tile shows that skin's real look. */
-function CardSkinPreview({ id }: { readonly id: string }) {
+ * the matching renderers) so the tile shows that skin's real look.
+ * `foilLabel` — set only when the player has earned THIS skin's foil (see
+ * foils.ts) — rides a small corner badge; the felt is where the sheen itself
+ * plays (tokens.css scopes it to `.table-felt`), so the badge is how a tile
+ * that will never itself shimmer still says "you have this in foil". */
+function CardSkinPreview({
+  id,
+  foilLabel,
+}: {
+  readonly id: string;
+  readonly foilLabel?: string | undefined;
+}) {
   // The default skin declares no token block — its cards are the THEME's
   // cards. Emitting nothing left this tile inheriting whatever skin was
   // equipped on <html>, so the "Arcade" tile showed Noir. Naming the current
@@ -155,10 +169,20 @@ function CardSkinPreview({ id }: { readonly id: string }) {
   const attrs =
     id === DEFAULT_CARD_SKIN ? { 'data-theme': currentTheme() } : { 'data-card-skin': id };
   return (
-    <div {...attrs}>
+    <div {...attrs} className="relative">
       <CardSkinProvider value={{ id, renderers: CARD_SKIN_RENDERERS[id] ?? {} }}>
         <MiniDeck />
       </CardSkinProvider>
+      {foilLabel !== undefined && (
+        // Left corner: the lock/equipped badges the picker itself draws (see
+        // CosmeticPicker.tsx) already own the right corner.
+        <span
+          data-testid={`foil-badge-${id}`}
+          className="absolute left-[0.3em] top-[0.3em] z-10 rounded-full border-2 border-(--color-ap-gold) bg-(--color-ap-panel) px-[0.45em] py-[0.05em] font-arcade-ui text-[0.55em] font-bold uppercase tracking-[0.1em] text-(--color-ap-gold) shadow-(--shadow-ap-sm)"
+        >
+          {foilLabel}
+        </span>
+      )}
     </div>
   );
 }
@@ -529,6 +553,11 @@ export function Collection({ onLeave, leaveLabel, demoStats, focus }: Collection
   const t = T[lang];
   const [stats, setStats] = useState<Stats | null>(demoStats ?? null);
   const [rewards, setRewards] = useState<ReadonlySet<string>>(new Set());
+  // Skin ids the player has an earned foil for — the corner badge on their
+  // tile below. Foils never come with a `reward` cosmetic of their own (a
+  // foil rides the skin you already have), so this reads the raw award ids
+  // directly rather than going through grantedRewardIds.
+  const [foilSkins, setFoilSkins] = useState<ReadonlySet<string>>(new Set());
   const [showAll, setShowAll] = useState(DEV_UNLOCK_ALL);
   const [cardSkin, setCardSkin] = useState(currentCardSkin());
   const [theme, setTheme] = useState(currentTheme());
@@ -562,11 +591,18 @@ export function Collection({ onLeave, leaveLabel, demoStats, focus }: Collection
         /* offline: everything stays free/locked, no progress bars */
       });
     // Award-granted cosmetics (e.g. the tutorial's OG bonhomme) are owned even
-    // without the matching stats — fold them into the owned set.
+    // without the matching stats — fold them into the owned set. Foil grants
+    // ride the SAME earned-awards read (they're `foil:<skinId>` rows in the
+    // same table — see foils.ts), so both are derived from one fetch.
     fetchAwards()
-      .then((a) => live && setRewards(grantedRewardIds(a.map((x) => x.id))))
+      .then((a) => {
+        if (!live) return;
+        const ids = a.map((x) => x.id);
+        setRewards(grantedRewardIds(ids));
+        setFoilSkins(ownedFoilSkins(ids));
+      })
       .catch(() => {
-        /* offline: no award-granted cosmetics shown */
+        /* offline: no award-granted cosmetics or foils shown */
       });
     return () => {
       live = false;
@@ -630,7 +666,7 @@ export function Collection({ onLeave, leaveLabel, demoStats, focus }: Collection
   };
 
   const cardTiles = buildTiles(CARD_SKINS, ownedCards, cardSkin, stats, lang, (id) => (
-    <CardSkinPreview id={id} />
+    <CardSkinPreview id={id} foilLabel={foilSkins.has(id) ? t.foilBadge : undefined} />
   ));
   // Felt tiles preview the SURFACE only — a bare oval swatch with no cards on
   // it, so the axis reads as "the table" rather than a second theme grid.

@@ -235,10 +235,15 @@ test.describe('animations actually run', () => {
     const probe = await page.evaluateHandle(() => {
       const wrap = document.createElement('div');
       wrap.dataset['foil'] = 'arcade';
+      // The sheen is scoped to the LIVE felt's cards (`.table-felt` ancestor)
+      // so Collection/Journey previews of other skins don't shimmer — the
+      // probe has to stand inside that scope to match the selector.
       wrap.innerHTML =
-        '<div class="card-face" style="position:relative;width:60px;height:90px"></div>';
+        '<div class="table-felt">' +
+        '<div class="card-face" style="position:relative;width:60px;height:90px"></div>' +
+        '</div>';
       document.body.append(wrap);
-      return wrap.firstElementChild as HTMLElement;
+      return wrap.querySelector('.card-face') as HTMLElement;
     });
     const sheen = await probe.evaluate((el) => {
       const cs = getComputedStyle(el, '::after');
