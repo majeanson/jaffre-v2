@@ -102,7 +102,9 @@ test('a created room is public by default, appears in #lobby live, and a second 
   await b.getByRole('button', { name: 'Sit here' }).first().click();
 
   // Who's-who: A sees Bruno arrive; the two browsers are distinct identities.
-  await expect(a.getByText('Bruno')).toBeVisible();
+  // Scoped to the seat ROW for the same reason as Alice's wait above: wave 4's
+  // "Bruno sat down." system entry also carries his name.
+  await expect(a.getByTestId('seat-row-1').getByText('Bruno')).toBeVisible();
   expect(await uidOf(a)).not.toBe(await uidOf(b));
 
   // A fills the empty seats with bots and starts. Both players land on the
