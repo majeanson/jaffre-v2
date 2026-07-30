@@ -230,11 +230,19 @@ warm it, not to block on it. Entry chunk **844 → 483 kB (261 → 150 kB gzip)*
 eager total 1633 → 1475 kB rendered (it falls less than the entry because Home
 and Lobby genuinely share some of the table's imports).
 
-The remaining lever is that 640 kB of react-aria/framer-motion, shared across
-Home, Lobby and the felt: component-level surgery, not chunking. Nobody should
-assume it is free to remove. Re-measure before believing any of this again —
-the throwaway used here read rollup's own module accounting from a
-`generateBundle` hook, no new dependency.
+Corrected 2026-07-30: the "640 kB react-aria/framer-motion shared chunk" is
+NOT a first-paint lever anymore — the lazy-table split above moved it off the
+path. The built entry is one 483 kB file whose only motion content is the
+`MotionConfig` sliver; react-aria's machinery lives entirely in the lazy Table
+chunk (~234 kB) and motion's core in TrickArea's (~129 kB), both idle-warmed
+after Home paints. The entire surface is five files — ONE react-aria import
+(`Hand.tsx`'s ListBox) and three motion imports (root `MotionConfig`,
+`TrickArea`'s fly-in/sweep, `Hand`'s layout-FLIP + pointer drag). Ripping them
+out would recover ~360 kB of LAZY bytes (warm-time transfer, not first paint),
+and the expensive part is rewriting Hand's drag gesture by hand — don't do it
+for perf; only touch it if the drag must change anyway. (`DealGroup`/`Dealt`
+were dead exports — deleted 2026-07-30; the CSS `.deal-in` keyframes are the
+deal animation.)
 
 Also considered and REJECTED, so nobody re-proposes them: post-20 XP/prestige
 (the constants are frozen by design; the monthly ladder is the real answer), a

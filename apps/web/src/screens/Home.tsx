@@ -222,7 +222,7 @@ export function Home({
               and the Journey's level chip. Full-width bar so it lines up under
               the play actions; icons stay centered. Solid panel so axe reads the
               contrast. Install + turn-alerts are one-time settings, not a door
-              you need every visit — they live at the bottom of the Help sheet
+              you need every visit — they live in the Settings sheet (gear)
               instead. */}
           <div
             data-testid="chrome-bar"

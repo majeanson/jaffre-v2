@@ -19,4 +19,3 @@ export * from './components/VoiceBar';
 export * from './components/arcade';
 export * from './components/CosmeticPicker';
 export * from './motion/config';
-export * from './motion/DealGroup';

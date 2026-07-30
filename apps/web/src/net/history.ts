@@ -230,9 +230,9 @@ export async function fetchHeadToHead(pid: string): Promise<HeadToHead> {
 
 /** Drop the cached stats/history reads — call this after something that
  * changes them server-side (a finished game, a stat award grant) so the next
- * fetch sees fresh numbers instead of waiting out the TTL. Not currently
- * wired to a post-game trigger (that lives under table/, out of scope here);
- * the 30s TTL bounds staleness in the meantime. */
+ * fetch sees fresh numbers instead of waiting out the TTL. Wired to the
+ * game_over view (net/socket.ts) and the XP strip's re-read
+ * (table/XpStrip.tsx); the 30s TTL bounds staleness everywhere else. */
 export function bustStatsCache(): void {
   statsCache.bust();
   historyCache.bust();
