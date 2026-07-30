@@ -18,7 +18,11 @@ export interface LayerOptions {
   readonly trap?: boolean;
   /** Give focus back to whatever opened the layer (default true). */
   readonly restoreFocus?: boolean;
-  /** Element to focus on open; default = first focusable in the container. */
+  /**
+   * Element to focus on open; default = first focusable in the container.
+   * Returning null means "focus nothing" — what a panel that opens beside
+   * live play wants, so it never yanks the keyboard off the felt.
+   */
   readonly initialFocus?: () => HTMLElement | null;
   /** For always-mounted components that open and close: layer exists only while true (default true). */
   readonly enabled?: boolean;
@@ -94,7 +98,12 @@ function onKeydown(e: KeyboardEvent): void {
 export function pushLayer(init: LayerInit): () => void {
   const layer: Layer = {
     init,
-    opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    // <body> is where focus sits when nothing holds it — restoring to it is
+    // not a return trip, so don't record it as one.
+    opener:
+      document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+        ? document.activeElement
+        : null,
   };
   if (stack.length === 0) {
     document.addEventListener('keydown', onKeydown, true);
@@ -102,8 +111,14 @@ export function pushLayer(init: LayerInit): () => void {
   stack.push(layer);
 
   const container = init.container();
+  // An explicit initialFocus is taken at its word, null included — only its
+  // absence means "pick the first thing in here".
   const target =
-    init.initialFocus?.() ?? (container !== null ? collectFocusables(container)[0] : undefined);
+    init.initialFocus !== undefined
+      ? init.initialFocus()
+      : container !== null
+        ? (collectFocusables(container)[0] ?? null)
+        : null;
   target?.focus();
 
   return function pop(): void {

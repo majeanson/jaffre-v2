@@ -2,6 +2,7 @@ import { ARCADE, PlayingCard, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconHistory } from '../components/icons.js';
+import { useDismissLayer } from '../keys/layers.js';
 import type { LastTrickInfo } from './useTableDerived.js';
 
 const T: Record<Lang, { lastTrick: string }> = {
@@ -35,6 +36,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const empty = trick === null;
 
   // The trick clearing (new round/game) closes any peek left open. Only a
@@ -46,23 +48,25 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
     wasEmpty.current = empty;
   }, [empty]);
 
+  // Escape and the trip back to the trigger come from the app-wide stack now;
+  // the outside-click dismissal stays here, since that is this popover's own
+  // behaviour rather than anything the keyboard cares about.
+  useDismissLayer(
+    popRef,
+    () => {
+      setOpen(false);
+      buttonRef.current?.focus();
+    },
+    { enabled: open, initialFocus: () => null, restoreFocus: false },
+  );
+
   useEffect(() => {
     if (!open) return undefined;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
     const onPointerDown = (e: PointerEvent) => {
       if (rootRef.current !== null && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('pointerdown', onPointerDown);
-    };
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
 
   return (
@@ -82,6 +86,7 @@ export function LastTrickPeek({ trick, defaultOpen = false }: LastTrickPeekProps
       </button>
       {open && trick !== null && (
         <div
+          ref={popRef}
           className={`${ARCADE.popover} absolute right-0 bottom-full z-30 mb-2 flex flex-col gap-1.5 p-3`}
         >
           <div className="relative size-[clamp(9rem,22vmin,13rem)]">

@@ -1,8 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Cta, useLang, type Lang } from '@jaffre/ui';
 import { createPortal } from 'react-dom';
 import { IDENTITY_PALETTE } from '../paint/palette.js';
 import { useScrollLock } from '../components/useScrollLock.js';
+import { useDismissLayer } from '../keys/layers.js';
 import { NameField } from './NameField.js';
 
 const T: Record<
@@ -80,15 +81,12 @@ export function CustomizeSheet({
   const t = T[useLang()];
   useScrollLock();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  // Focus still lands on the ✕ rather than the first control, so the way out
+  // is the first thing announced; Escape, the Tab trap and the return trip to
+  // the trigger now come from the app-wide stack.
+  useDismissLayer(panel, onClose, { trap: true, initialFocus: () => closeRef.current });
 
   // Portaled to <body>: the home screen's animated chrome bar is a stacking
   // context, so an inline fixed overlay would slip under the hero fan.
@@ -98,6 +96,7 @@ export function CustomizeSheet({
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={t.customize}

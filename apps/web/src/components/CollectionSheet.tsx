@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useRef } from 'react';
 import { PixelWave, useLang, type Lang } from '@jaffre/ui';
 import { useScrollLock } from './useScrollLock.js';
+import { useDismissLayer } from '../keys/layers.js';
 
 /**
  * Loaded on open, not with the app. App.tsx lazies the `#collection` route, but
@@ -29,11 +30,11 @@ const T: Record<Lang, { close: string; collection: string }> = {
 export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
   const t = T[useLang()];
   useScrollLock();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const panel = useRef<HTMLDivElement>(null);
+  // Escape, the Tab trap and handing focus back to whatever opened this all
+  // come from the one app-wide stack now — so a sheet opened over another
+  // surface closes exactly one thing per press.
+  useDismissLayer(panel, onClose, { trap: true });
 
   return (
     // role/aria-modal are load-bearing, not decoration: the table stays mounted
@@ -41,6 +42,7 @@ export function CollectionSheet({ onClose }: { readonly onClose: () => void }) {
     // fire while a modal dialog is open (useTableKeys' typingElsewhere). Without
     // them, pressing 1–8 here would play a card you can't see.
     <div
+      ref={panel}
       role="dialog"
       aria-modal="true"
       aria-label={t.collection}

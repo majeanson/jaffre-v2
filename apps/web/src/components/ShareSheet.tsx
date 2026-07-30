@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { QrCode } from './QrCode.js';
 import { useScrollLock } from './useScrollLock.js';
+import { useDismissLayer } from '../keys/layers.js';
 
 const T: Record<
   Lang,
@@ -83,12 +84,19 @@ export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
     onCopy();
   }, [onCopy]);
 
+  // This sheet had no Escape at all: it was a modal you could only leave by
+  // aiming at the backdrop or the button. Joining the stack gives it the same
+  // Escape, Tab trap and focus-return as every other sheet.
+  const panel = useRef<HTMLDivElement>(null);
+  useDismissLayer(panel, onClose, { trap: true });
+
   return (
     <div
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={t.invite}

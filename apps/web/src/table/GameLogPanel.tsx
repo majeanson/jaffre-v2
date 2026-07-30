@@ -1,5 +1,6 @@
 import { ARCADE, useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef } from 'react';
+import { useDismissLayer } from '../keys/layers.js';
 
 const T: Record<Lang, { gameLog: string; close: string; emptyLog: string }> = {
   en: {
@@ -30,14 +31,11 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
   }, [lines.length, visible]);
-  useEffect(() => {
-    if (!visible) return undefined;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visible, onClose]);
+  // A panel, not a modal: no Tab trap, and it takes no focus on open — you
+  // press L mid-trick and the keyboard stays on your hand. Escape closes it
+  // through the same stack as every other surface.
+  const panel = useRef<HTMLDivElement>(null);
+  useDismissLayer(panel, onClose, { enabled: visible, initialFocus: () => null });
   const latest = lines[lines.length - 1] ?? '';
   return (
     <>
@@ -52,6 +50,7 @@ export function GameLogPanel({ lines, visible, onClose }: GameLogPanelProps) {
       )}
       {visible && (
         <div
+          ref={panel}
           className={`${ARCADE.popover} fixed bottom-[24vmin] left-1/2 z-40 w-[min(92vw,50rem)] -translate-x-1/2 overflow-hidden font-arcade-ui`}
         >
           <div className="flex items-center justify-between border-b-2 border-(--color-ap-ink) px-4 py-1.5">

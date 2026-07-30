@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { getProfile } from '../net/auth.js';
 import { send } from '../net/socket.js';
 import { useGameStore } from '../state/gameStore.js';
+import { useDismissLayer } from '../keys/layers.js';
 import { PlayerPeek } from './PlayerPeek.js';
 import { formatCountdown, useCountdown } from './useCountdown.js';
 import type { SeatChipInfo } from './useTableDerived.js';
@@ -157,14 +158,19 @@ export function SeatChip({
     };
   }, [open, placePeek]);
 
+  // Escape and the trip back to the chip come from the app-wide stack; the
+  // outside-tap dismissal below is this popover's own business.
+  useDismissLayer(
+    peekRef,
+    () => {
+      setOpen(false);
+      buttonRef.current?.focus();
+    },
+    { enabled: open, initialFocus: () => null, restoreFocus: false },
+  );
+
   useEffect(() => {
     if (!open) return undefined;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node;
       // The peek lives in a portal, so it is outside rootRef's subtree — test
@@ -174,12 +180,8 @@ export function SeatChip({
         (peekRef.current?.contains(target) ?? false);
       if (!inside) setOpen(false);
     };
-    document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('pointerdown', onPointerDown);
-    };
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
 
   if (info === null) return <span className="text-sm text-(--color-ap-muted)/60">{t.empty}</span>;

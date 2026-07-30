@@ -16,6 +16,7 @@ import {
 import { playerName, setPlayerName } from '../net/socket.js';
 import { GHOST_BTN } from './buttonStyles.js';
 import { useScrollLock } from './useScrollLock.js';
+import { useDismissLayer } from '../keys/layers.js';
 
 const T: Record<
   Lang,
@@ -162,6 +163,12 @@ function Hint({ children }: { readonly children: string }) {
 export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
   const t = T[useLang()];
   useScrollLock();
+  // This sheet had no Escape: the only ways out were the backdrop and the
+  // button. The stack gives it the same escape, trap and focus-return as the
+  // rest — the trigger's own refocus below still works, it just isn't the
+  // only thing holding the contract up any more.
+  const panel = useRef<HTMLDivElement>(null);
+  useDismissLayer(panel, onClose, { trap: true });
   const [methods, setMethods] = useState<{ email: boolean; google: boolean } | null>(null);
   // Email-code flow: entering the address, then entering the received digits.
   const [emailStage, setEmailStage] = useState<'email' | 'code'>('email');
@@ -269,6 +276,7 @@ export function LoginSheet({ onClose }: { readonly onClose: () => void }) {
       onClick={onClose}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={t.login}
