@@ -9,6 +9,7 @@ import { STARTING_HANDS_LABEL, StartingHandsRows } from './StartingHandsPanel.js
 import { XpStrip } from './XpStrip.js';
 import { DailyFirstWin } from './DailyFirstWin.js';
 import { recapTakeaway } from './recapTakeaway.js';
+import { showsCoach, useHelpLevel } from '../help/helpLevel.js';
 import { dailyDue } from '../dailyPlayed.js';
 import { TEAM_LABELS, teamLabelWithArticle } from '../teams.js';
 
@@ -467,6 +468,7 @@ export function GameRecap({
 }: GameRecapProps) {
   const lang = useLang();
   const t = T[lang];
+  const helpLevel = useHelpLevel();
   // Two-tap leave (online): first tap arms the confirm, which relaxes on its
   // own so a stray tap doesn't leave the button stuck asking.
   const [leaveArmed, setLeaveArmed] = useState(false);
@@ -502,8 +504,11 @@ export function GameRecap({
       : null;
   const label = (uc: string) =>
     `font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted) ${uc}`;
-  // Players only: a spectator has no record here to learn from.
-  const takeaway = showXp ? recapTakeaway(rounds, mySeat ?? null, lang) : null;
+  // Players only: a spectator has no record here to learn from. It is advice,
+  // so it answers to the help dial exactly as the Coach does — "leave me
+  // alone" has to mean the post-game verdict too, not just the in-play tips.
+  const takeaway =
+    showXp && showsCoach(helpLevel) ? recapTakeaway(rounds, mySeat ?? null, lang) : null;
   return (
     <div
       ref={ref}

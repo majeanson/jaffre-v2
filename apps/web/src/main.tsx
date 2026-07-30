@@ -27,6 +27,7 @@ import { initTheme } from './theme.js';
 import { initCardSkin } from './cosmetics.js';
 import { initFelt } from './felt.js';
 import { initLang } from './lang.js';
+import { resolveHelpLevel } from './help/helpLevel.js';
 import { initInstallCapture } from './pwa/install.js';
 import { initBadge } from './pwa/badge.js';
 
@@ -34,6 +35,10 @@ initTheme();
 initCardSkin();
 initFelt();
 initLang();
+// Places the help dial (and migrates the old Coach pref into it) before any
+// hint-bearing surface can read it — every one of them renders from the cache
+// this fills, so a late resolve would flash the wrong level.
+resolveHelpLevel();
 installTelemetry();
 // beforeinstallprompt can fire before React mounts — capture it now.
 initInstallCapture();

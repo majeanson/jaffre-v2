@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
+import { setHelpLevel } from '../help/helpLevel.js';
 import { resetTutorial } from '../table/tutorialPref.js';
 
 const T: Record<Lang, { ask: string; go: string; cancel: string }> = {
@@ -52,6 +53,10 @@ export function ReplayTutorialButton({ label, onConfirm }: ReplayTutorialButtonP
           type="button"
           onClick={() => {
             resetTutorial();
+            // Clearing the steps is not enough on its own: below Learning the
+            // marks are gated off entirely, so asking for the tutorial back
+            // has to put the dial back too or the fresh table stays silent.
+            setHelpLevel('learning');
             onConfirm?.();
             location.hash = '#practice';
           }}

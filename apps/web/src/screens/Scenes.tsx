@@ -21,6 +21,7 @@ import {
 import { applyCardSkin, currentCardSkin } from '../cosmetics.js';
 import { applyFelt, currentFelt } from '../felt.js';
 import { overrideLang } from '../lang.js';
+import { overrideHelpLevel } from '../help/helpLevel.js';
 import { GHOST_BTN_SM_DARK } from '../components/buttonStyles.js';
 import { ShareSheet } from '../components/ShareSheet.js';
 import { Awards } from './Awards.js';
@@ -122,6 +123,10 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
     // navigation out of a fr scene (shot sweep's page.goto, hard refresh)
     // skips this cleanup, and a persisted 'fr' left the whole app French.
     if (current?.lang !== undefined) overrideLang(current.lang);
+    // Same in-memory-only rule as the language above: persisting a scene's
+    // help level would leave the real player's hints wherever the sweep left
+    // them the next time they opened the app.
+    if (current?.helpLevel !== undefined) overrideHelpLevel(current.helpLevel);
     // Some scenes force a painted-card cosmetic so the personalised avatar +
     // own 0-cards render. It lives in the same 'jaffre-profile' localStorage
     // key net/auth.ts reads; save the raw value and restore it on exit so a
@@ -142,6 +147,7 @@ export function Scenes({ sceneId, onLeave }: ScenesProps) {
       if (current?.cardSkin !== undefined) applyCardSkin(prevSkin);
       if (current?.felt !== undefined) applyFelt(prevFelt);
       if (current?.lang !== undefined) overrideLang(null);
+      if (current?.helpLevel !== undefined) overrideHelpLevel(null);
       if (current?.paint !== undefined) {
         if (prevProfile === null) localStorage.removeItem(PROFILE_KEY);
         else localStorage.setItem(PROFILE_KEY, prevProfile);

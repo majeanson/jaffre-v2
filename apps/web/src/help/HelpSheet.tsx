@@ -6,6 +6,8 @@ import { useDismissLayer } from '../keys/layers.js';
 import { ReplayTutorialButton } from '../components/ReplayTutorialButton.js';
 import { loadTutorialSeen } from '../table/tutorialPref.js';
 import { MARK_ORDER, MARKS } from '../table/tutorialSteps.js';
+import { HELP_T, HelpLevelPicker } from './HelpLevelPicker.js';
+import { useHelpLevel } from './helpLevel.js';
 import { CONCEPTS, GLOSSARY_GROUPS, type ConceptId } from './concepts.js';
 import { G, GlossOpenCtx, Rule, Tip, TipSection, termColor } from './helpPrimitives.js';
 import { RULES, TIP_SECTIONS } from './helpContent.js';
@@ -234,6 +236,8 @@ function LearningChecklist({
   readonly onReplay: () => void;
 }) {
   const t = T[lang];
+  const h = HELP_T[lang];
+  const level = useHelpLevel();
   const [seen, setSeen] = useState<Set<string>>(() => loadTutorialSeen());
   const total = MARK_ORDER.length;
   const done = MARK_ORDER.filter((s) => seen.has(s)).length;
@@ -253,6 +257,15 @@ function LearningChecklist({
       </div>
       <p className="mt-1 text-(length:--text-fluid-xs) leading-snug text-(--color-ap-muted)">
         {t.learningHint}
+      </p>
+      {/* The dial, where somebody confused enough to open the rules will
+          actually find it — and, read the other way, the one place that says
+          out loud that all this can be turned down. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <HelpLevelPicker label={h.help} />
+      </div>
+      <p className="mt-1.5 text-(length:--text-fluid-xs) leading-snug text-(--color-ap-muted)">
+        {h.levelHint[level]}
       </p>
       <ul role="list" className="mt-2.5 space-y-1.5">
         {MARK_ORDER.map((id) => {

@@ -5,7 +5,7 @@ import { formatGameDate } from '../components/GameRow.js';
 import { buildFrames, type ReplayFrame } from '../replay/buildFrames.js';
 import { fetchReplay, type ReplayData } from '../net/history.js';
 import { useGameStore } from '../state/gameStore.js';
-import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { setHelpLevel, showsCoach, useHelpLevel } from '../help/helpLevel.js';
 import { paced } from '../table/pacePref.js';
 import { Table } from './Table.js';
 import { shareHand } from '../replay/position.js';
@@ -152,10 +152,12 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
   const [playing, setPlaying] = useState(false);
   const [shared, setShared] = useState(false);
   const [speed, setSpeed] = useState<1 | 2>(1);
-  // The felt's Coach toggle, surfaced here instead of buried in Options — see
-  // Table.tsx's `coachOn`/`onToggleCoach` doc comments. Same persisted pref
-  // (table/coachPref.ts) as every other table, defaulting on like practice.
-  const [coachOn, setCoachOn] = useState(() => loadCoachPref(true));
+  // The Coach, surfaced here instead of buried in Options. It reads the one
+  // help dial every table reads, so the felt below and this bar cannot
+  // disagree — the table needs no prop from us. Two states, not three:
+  // a replay has no coach-marks, so Learning and Coach look identical here.
+  const level = useHelpLevel();
+  const coachOn = showsCoach(level);
 
   useEffect(() => {
     if (demo !== undefined || gameId === null) return;
@@ -227,13 +229,11 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [last]);
 
-  // Shared by the felt's own Coach toggle (via Table's controlled coachOn
-  // prop) and the replay bar's copy of it below — one state, one writer.
+  // Switching the Coach off here means `off` — silence. Switching it back on
+  // returns to `coach`, never to `learning`: nobody asks a replay bar for the
+  // tutorial, and re-arming the marks from here would surprise them later.
   function toggleCoach(): void {
-    setCoachOn((on) => {
-      saveCoachPref(!on);
-      return !on;
-    });
+    setHelpLevel(coachOn ? 'off' : 'coach');
   }
 
   function jumpRound(dir: 1 | -1): void {
@@ -286,16 +286,14 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
         bottomInset
         noDealIntro
         replay
-        coachOn={coachOn}
-        onToggleCoach={toggleCoach}
       />
+      <div
+        data-testid="replay-controls"
         // ← → step frames here (the effect above), which is what an arrow
         // should mean on a replay — so this screen keeps the arrows and the
         // app-wide focus d-pad stands down while it is mounted. Both listen on
         // window, where bubble order alone couldn't settle it.
         data-nav-suspend=""
-      <div
-        data-testid="replay-controls"
         className="fixed bottom-2 left-1/2 z-[60] flex w-[min(94vw,40rem)] -translate-x-1/2 flex-col gap-1 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-ui text-white shadow-(--shadow-ap) max-sm:px-3"
       >
         {/* Compact info row: which game this is, and what just happened —

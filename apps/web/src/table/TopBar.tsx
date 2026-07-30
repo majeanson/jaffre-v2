@@ -8,17 +8,11 @@ import {
 } from '@jaffre/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 import { HelpButton } from '../help/HelpButton.js';
+import { HelpLevelPicker } from '../help/HelpLevelPicker.js';
 import { SoundToggle } from '../audio/SoundToggle.js';
 import { TEAMS } from '../teams.js';
 import { IconButton, ICON_BTN_LABELED } from '../components/IconButton.js';
-import {
-  IconGear,
-  IconList,
-  IconPalette,
-  IconQuestion,
-  IconSignOut,
-  IconSparkle,
-} from '../components/icons.js';
+import { IconGear, IconList, IconPalette, IconQuestion, IconSignOut } from '../components/icons.js';
 import { CollectionSheet } from '../components/CollectionSheet.js';
 import { SettingsSheet } from '../components/SettingsSheet.js';
 import { StartingHandsInset } from './StartingHandsPanel.js';
@@ -33,8 +27,7 @@ const T: Record<
     settings: string;
     howToPlay: string;
     help: string;
-    coach: string;
-    coachTitle: string;
+    hints: string;
     gameLog: string;
     log: string;
     leaveTable: string;
@@ -51,8 +44,7 @@ const T: Record<
     settings: 'Settings',
     howToPlay: 'How to play',
     help: 'Help',
-    coach: 'Coach — suggest a move on your turn',
-    coachTitle: 'Coach',
+    hints: 'Hints',
     gameLog: 'Game log',
     log: 'Log',
     leaveTable: 'Leave table for good — your seat is freed',
@@ -66,8 +58,7 @@ const T: Record<
     settings: 'Réglages',
     howToPlay: 'Comment jouer',
     help: 'Aide',
-    coach: 'Coach — suggère un coup à ton tour',
-    coachTitle: 'Coach',
+    hints: 'Conseils',
     gameLog: 'Journal de partie',
     log: 'Journal',
     leaveTable: 'Quitter la table pour de bon — ton siège se libère',
@@ -94,8 +85,6 @@ export interface TopBarProps {
   readonly onLeaveTable?: (() => void) | undefined;
   readonly logOpen: boolean;
   readonly onToggleLog: () => void;
-  readonly coachOn: boolean;
-  readonly onToggleCoach: () => void;
   /** Share-this-table button (online rooms) — lives inside the Options drawer. */
   readonly share?: ReactNode;
   /** Dev console trigger (practice + dev builds) — sits next to Options. */
@@ -107,7 +96,7 @@ export interface TopBarProps {
 /**
  * Owns the top bar. Collapsed it is just the score strip; expanding it
  * reveals the scorepad plus two icon controls — Leave and Options — with
- * everything else (skin, sound, help, coach, log, voice) inside Options.
+ * everything else (skin, sound, help, hints, log, voice) inside Options.
  */
 export function TopBar({
   view,
@@ -122,8 +111,6 @@ export function TopBar({
   onLeaveTable,
   logOpen,
   onToggleLog,
-  coachOn,
-  onToggleCoach,
   share,
   devConsole,
   defaultDetailsOpen = false,
@@ -156,7 +143,6 @@ export function TopBar({
       {skinsOpen && <CollectionSheet onClose={() => setSkinsOpen(false)} />}
       {settingsOpen && (
         <SettingsSheet
-          coach={{ on: coachOn, onToggle: onToggleCoach }}
           onOpenCollection={() => setSkinsOpen(true)}
           onClose={() => setSettingsOpen(false)}
         />
@@ -210,15 +196,10 @@ export function TopBar({
                 <HelpButton label={t.howToPlay} text={t.help} className={ICON_BTN_LABELED}>
                   <IconQuestion />
                 </HelpButton>
-                <IconButton
-                  label={t.coach}
-                  text={t.coachTitle}
-                  aria-pressed={coachOn}
-                  active={coachOn}
-                  onClick={onToggleCoach}
-                >
-                  <IconSparkle />
-                </IconButton>
+                {/* The help dial itself, not a Coach on/off: three states
+                    can't be a pressed icon, and burying it in Settings would
+                    put two taps between a player and "stop explaining". */}
+                <HelpLevelPicker label={t.hints} />
                 <IconButton
                   label={t.gameLog}
                   text={t.log}

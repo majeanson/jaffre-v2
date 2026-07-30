@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { useLang, type Lang } from '@jaffre/ui';
 import { applyLang, LANGS } from '../lang.js';
 import { playClick, setSoundEnabled, soundEnabled } from '../audio/clicks.js';
-import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
+import { HELP_T, HelpLevelPicker } from '../help/HelpLevelPicker.js';
+import { useHelpLevel } from '../help/helpLevel.js';
 import { setSnappyPace, snappyPace } from '../table/pacePref.js';
 import { ReplayTutorialButton } from './ReplayTutorialButton.js';
 import { InstallButton } from '../pwa/InstallButton.js';
@@ -20,8 +21,6 @@ const T: Record<
     language: string;
     sound: string;
     soundHint: string;
-    coach: string;
-    coachHint: string;
     pace: string;
     paceHint: string;
     app: string;
@@ -45,8 +44,6 @@ const T: Record<
     language: 'Language',
     sound: 'Sound',
     soundHint: 'Card sounds & haptics.',
-    coach: 'Coach',
-    coachHint: 'Suggests a bid or card on your turn. On by default in practice.',
     pace: 'Snappy animations',
     paceHint: 'Shorter deal, trick hold and bot pauses.',
     app: 'App',
@@ -77,8 +74,6 @@ const T: Record<
     language: 'Langue',
     sound: 'Sons',
     soundHint: 'Sons de cartes et vibrations.',
-    coach: 'Coach',
-    coachHint: 'Suggère une mise ou une carte à ton tour. Activé par défaut à l’entraînement.',
     pace: 'Animations rapides',
     paceHint: 'Distribution, levées et pauses des bots plus courtes.',
     app: 'App',
@@ -152,9 +147,6 @@ function Switch({
 
 export interface SettingsSheetProps {
   readonly onClose: () => void;
-  /** Live coach state when opened at the table, so the sheet and the drawer
-   * toggle stay in sync; omitted elsewhere (the persisted pref is edited). */
-  readonly coach?: { readonly on: boolean; readonly onToggle: () => void };
   /** How to reach the gallery from here. At the table this opens the
    * CollectionSheet modal — navigating to '#collection' would tear the room
    * route down mid-game. Elsewhere it's omitted and the route is used. */
@@ -162,19 +154,23 @@ export interface SettingsSheetProps {
 }
 
 /**
- * THE settings surface. Language, sound, coach, install + turn alerts, theme
+ * THE settings surface. Language, sound, help, install + turn alerts, theme
  * shortcut, tutorial replay and account status in one sheet — previously
  * scattered over the chrome bar, the table's Options drawer, the Help sheet's
  * footer and the lobby. Same overlay idiom as Customize/Login (portal,
  * backdrop + Escape + ✕ close).
  */
-export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsSheetProps) {
+export function SettingsSheet({ onClose, onOpenCollection }: SettingsSheetProps) {
   const lang = useLang();
   const t = T[lang];
+  const h = HELP_T[lang];
   useScrollLock();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [sound, setSound] = useState(soundEnabled);
-  const [coachOn, setCoachOn] = useState(() => coach?.on ?? loadCoachPref(false));
+  // No local mirror of the help dial: this sheet opens OVER a live table whose
+  // drawer carries the same picker, and the old `coach` prop existed only to
+  // stop the two disagreeing. Both read the one reactive level now.
+  const level = useHelpLevel();
   const [snappy, setSnappy] = useState(snappyPace);
 
   // Escape, the Tab trap and the return trip to the gear all come from the
@@ -243,16 +239,10 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
           />
         </Row>
 
-        <Row title={t.coach} hint={t.coachHint}>
-          <Switch
-            label={t.coach}
-            checked={coachOn}
-            onChange={(next) => {
-              setCoachOn(next);
-              if (coach !== undefined) coach.onToggle();
-              else saveCoachPref(next);
-            }}
-          />
+        {/* The hint is the CHOSEN level's own line, so the dial explains
+            itself as you move it rather than describing all three at once. */}
+        <Row title={h.help} hint={h.levelHint[level]}>
+          <HelpLevelPicker />
         </Row>
 
         <Row title={t.pace} hint={t.paceHint}>

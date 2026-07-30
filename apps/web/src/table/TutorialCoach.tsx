@@ -2,6 +2,8 @@ import { useLang, type Lang } from '@jaffre/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpSheet, type ConceptId } from '../help/HelpSheet.js';
+import { HELP_T } from '../help/HelpLevelPicker.js';
+import { setHelpLevel } from '../help/helpLevel.js';
 import { setLocalPaused } from '../local/localGame.js';
 import { useDismissLayer } from '../keys/layers.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -36,19 +38,22 @@ const INTRO: Record<Lang, { title: string; body: string; start: string; skip: st
   },
 };
 
-/** The lite first-online-game card: three facts, no frozen bots, no sequence. */
+/** The lite first-online-game card: two facts, no frozen bots, no sequence.
+ * It no longer offers to turn the Coach on — if this card is showing, the help
+ * dial is already at Learning and the Coach is already advising. Its secondary
+ * is the way OUT instead, which is the one thing it couldn't do before. */
 const ONLINE_INTRO: Record<Lang, { title: string; body: string; start: string; skip: string }> = {
   en: {
     title: 'First time at a table?',
-    body: 'Bids are points, not tricks — 10 in play each round. Trump is whatever suit the declarer leads first. The Coach can suggest bids and cards while you learn.',
-    start: 'Turn Coach on',
-    skip: 'Got it',
+    body: 'Bids are points, not tricks — 10 in play each round. Trump is whatever suit the declarer leads first.',
+    start: 'Got it',
+    skip: 'I know the rules',
   },
   fr: {
     title: 'Première fois à une table?',
-    body: 'Les mises sont des points, pas des levées — 10 en jeu par ronde. L’atout, c’est la couleur que le preneur joue en premier. Le Coach peut te suggérer des mises et des cartes pendant que tu apprends.',
-    start: 'Activer le Coach',
-    skip: 'Compris',
+    body: 'Les mises sont des points, pas des levées — 10 en jeu par ronde. L’atout, c’est la couleur que le preneur joue en premier.',
+    start: 'Compris',
+    skip: 'Je connais les règles',
   },
 };
 
@@ -69,6 +74,11 @@ const UI: Record<Lang, { learn: string; close: string; learning: string; complet
 
 /** Coach-marks linger, then fade so they never pile up if the player looks away. */
 const MARK_TTL_MS = 9000;
+
+/** How long the finished pip stays up. Longer than the old 2.6 s flash because
+ * it is no longer only an announcement — it now carries the "tips off" offer,
+ * and an offer nobody has time to read is just a flash. */
+const COMPLETE_DWELL_MS = 6000;
 
 /**
  * The tutorial is off under automation so the e2e suite (which hits #practice
@@ -92,12 +102,9 @@ function tutorialEnabled(): boolean {
  */
 export function TutorialCoach({
   online = false,
-  onEnableCoach,
 }: {
   /** Lite mode for a real room: one card + three marks, nothing frozen. */
   readonly online?: boolean;
-  /** Online intro's "Turn Coach on" — flips the table's coach toggle. */
-  readonly onEnableCoach?: () => void;
 }) {
   const lang = useLang();
   const view = useGameStore((s) => s.view);
@@ -137,11 +144,16 @@ export function TutorialCoach({
     setIntroUp(false);
   }, [online]);
 
+  // "Skip tutorial" / "I know the rules" — the whole teaching tier off, not
+  // just these marks. Latching the steps alone used to leave the bid panel's
+  // beginner strip preaching for good, which is what made "skip" feel ignored.
+  // Coach, not Off: they said they know the rules, not that they want silence.
   const skipAll = useCallback(() => {
     skipTutorial();
     seenRef.current = new Set(TUTORIAL_STEPS);
     setQueue([]);
     setIntroUp(false);
+    setHelpLevel('coach');
   }, []);
 
   // Detect which coach-marks should fire from the current game state. Each is
@@ -207,11 +219,11 @@ export function TutorialCoach({
   const progress = seenCount();
   const total = MARK_ORDER.length;
 
-  // At 7/7 the pip flashes "Complete!" once it's actually on screen (i.e. no
+  // At 7/7 the pip shows "Complete!" once it's actually on screen (i.e. no
   // mark is covering it), then retires for good.
   useEffect(() => {
     if (pipDone || progress < total || current !== null) return undefined;
-    const t = setTimeout(() => setPipDone(true), 2600);
+    const t = setTimeout(() => setPipDone(true), COMPLETE_DWELL_MS);
     return () => clearTimeout(t);
   }, [pipDone, progress, total, current]);
 
@@ -243,15 +255,18 @@ export function TutorialCoach({
         createPortal(
           <IntroOverlay
             copy={(online ? ONLINE_INTRO : INTRO)[lang]}
-            onStart={
+            onStart={dismissIntro}
+            // Online's secondary is "I know the rules": latch the card AND
+            // drop the dial, so the three room marks and the bid strip don't
+            // arrive one auction later contradicting what they just said.
+            onSkip={
               online
                 ? () => {
-                    onEnableCoach?.();
                     dismissIntro();
+                    setHelpLevel('coach');
                   }
-                : dismissIntro
+                : skipAll
             }
-            onSkip={online ? dismissIntro : skipAll}
             onDismiss={dismissIntro}
           />,
           document.body,
@@ -282,7 +297,19 @@ export function TutorialCoach({
         })()}
       {showPip &&
         createPortal(
-          <ProgressPip lang={lang} seen={progress} total={total} done={progress >= total} />,
+          <ProgressPip
+            lang={lang}
+            seen={progress}
+            total={total}
+            done={progress >= total}
+            // Graduation is OFFERED, never taken: finishing the tutorial does
+            // not silently change what the game shows you. Tap and the
+            // teaching tier retires; ignore it and the pip just goes away.
+            onGraduate={() => {
+              setHelpLevel('coach');
+              setPipDone(true);
+            }}
+          />,
           document.body,
         )}
       {helpJump !== null && <HelpSheet jumpTo={helpJump} onClose={() => setHelpJump(null)} />}
@@ -293,26 +320,33 @@ export function TutorialCoach({
 /**
  * A compact "Learning · 3/7" chip that fills as the coach-marks fire, tucked
  * top-left under the status bar and clear of the felt action. Click-through
- * (it owns no controls); flips to "Complete!" for a beat at 7/7.
+ * while it counts (it owns no controls then); at 7/7 it says "Complete!" and
+ * offers the one control it ever has — retiring the tips it just finished.
  */
 function ProgressPip({
   lang,
   seen,
   total,
   done,
+  onGraduate,
 }: {
   readonly lang: Lang;
   readonly seen: number;
   readonly total: number;
   readonly done: boolean;
+  /** Taken only from the finished state — see the caller's comment. */
+  readonly onGraduate: () => void;
 }) {
   const u = UI[lang];
+  const h = HELP_T[lang];
   const pct = total === 0 ? 0 : Math.round((seen / total) * 100);
   return (
     <div
       role="status"
       aria-label={done ? u.complete : `${u.learning} ${seen}/${total}`}
-      className="pointer-events-none fixed right-2 top-[4.75rem] z-30 max-sm:right-1.5 max-sm:top-[4.25rem]"
+      className={`fixed right-2 top-[4.75rem] z-30 max-sm:right-1.5 max-sm:top-[4.25rem] ${
+        done ? '' : 'pointer-events-none'
+      }`}
     >
       <div className="pop-in flex items-center gap-2 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) py-1.5 pl-2.5 pr-3 shadow-(--shadow-ap)">
         <span aria-hidden className="text-(--color-ap-gold)">
@@ -333,6 +367,15 @@ function ProgressPip({
               {seen}/{total}
             </span>
           </>
+        )}
+        {done && (
+          <button
+            type="button"
+            onClick={onGraduate}
+            className="cursor-pointer font-arcade-ui text-(length:--text-fluid-xs) text-(--color-ap-gold)/90 underline decoration-dotted underline-offset-2 hover:text-(--color-ap-gold)"
+          >
+            {h.tipsOff} →
+          </button>
         )}
       </div>
     </div>

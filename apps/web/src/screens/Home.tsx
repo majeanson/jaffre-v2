@@ -7,6 +7,7 @@ import { SettingsSheet } from '../components/SettingsSheet.js';
 import { LoginButton } from '../components/LoginSheet.js';
 import { SkinLink } from '../components/SkinLink.js';
 import { HelpButton } from '../help/HelpButton.js';
+import { showsTeaching, useHelpLevel } from '../help/helpLevel.js';
 import { AttractMode } from '../home/AttractMode.js';
 import { CustomizeSheet } from '../home/CustomizeSheet.js';
 import { HeroBanner } from '../home/HeroBanner.js';
@@ -87,6 +88,9 @@ export function Home({
   // Home owns the nudge's visibility (not the component) because two rows
   // compete for the one "start here" slot — see the render below.
   const [nudgeDue, setNudgeDue] = useState(practiceNudgeDue);
+  // The nudge sells the coached practice game, so it is teaching: a player who
+  // has turned the tips down must not be pitched them again on the way in.
+  const teaching = showsTeaching(useHelpLevel());
   const customizeTriggerRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -165,7 +169,7 @@ export function Home({
               knows the way in — skip the tutorial hint. Hidden while the PLAY
               door is open: it points at that door, and floating above the
               opened sheet it read as unrelated chrome. */}
-          {!staged && !playDoorOpen && tables.length === 0 && nudgeDue ? (
+          {!staged && !playDoorOpen && tables.length === 0 && nudgeDue && teaching ? (
             <PracticeNudge
               onRetire={() => setNudgeDue(false)}
               onPractice={() => {

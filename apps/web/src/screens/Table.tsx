@@ -3,7 +3,6 @@ import type { ClientAction } from '@jaffre/protocol';
 import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { SceneUi } from '../dev/sceneManifest.js';
-import { NoticeToast } from '../components/NoticeToast.js';
 import { ShareButton } from '../components/ShareButton.js';
 import { quickPlay } from '../net/rooms.js';
 import { reportFunnel } from '../net/telemetry.js';
@@ -28,15 +27,16 @@ import {
   scoreTarget,
   useHandSort,
   useHeldDisplay,
+  useOptimisticAutoPlay,
   useQueuedPlay,
   useTableDerived,
   useTableKeys,
   useTrickHold,
   viewportCentreRect,
 } from '../table/index.js';
-import { loadCoachPref, saveCoachPref } from '../table/coachPref.js';
 import { useDealRun } from '../table/dealPace.js';
 import { HelpButton } from '../help/HelpButton.js';
+import { showsCoach, showsTeaching, useHelpLevel } from '../help/helpLevel.js';
 import { IconButton, ICON_BTN_CELL_NEUTRAL } from '../components/IconButton.js';
 import { IconQuestion, IconSeat } from '../components/icons.js';
 import { TrumpCallout } from '../table/TrumpCallout.js';
@@ -76,14 +76,8 @@ export interface TableProps {
   readonly dev?: boolean;
   /** Replay: forces PlayerHand inactive (see the `active` prop below) so a
    * replayed hand never looks live — taps must not queue a play mid-scrub.
-   * Coach keeps working: it reads `coachOn`, not `active`. */
+   * Coach keeps working: it reads the help dial, not `active`. */
   readonly replay?: boolean;
-  /** Replay: controls the felt's Coach toggle from the replay control bar
-   * (Replay.tsx) instead of the default TopBar-Options one, so both read and
-   * write the SAME persisted pref (table/coachPref.ts) rather than drifting.
-   * Omitted everywhere else — Table manages coachOn itself, as before. */
-  readonly coachOn?: boolean;
-  readonly onToggleCoach?: () => void;
   /** Practice only: run the one-time first-practice tutorial over the felt. */
   readonly tutorial?: boolean;
   /** Practice only: the seed in play, so a curated teaching deal can show
@@ -131,8 +125,6 @@ export function Table({
   noDealIntro = false,
   dev = false,
   replay = false,
-  coachOn: coachOnProp,
-  onToggleCoach: onToggleCoachProp,
   tutorial = false,
   practiceSeed = null,
   onTakeSeat,
@@ -144,25 +136,13 @@ export function Table({
   const log = useGameStore((s) => s.log);
   const setQueued = useGameStore((s) => s.setQueued);
   const [logOpen, setLogOpen] = useState(initialUi?.logOpen ?? false);
-  // Coach defaults on in practice (the learning table) until explicitly set.
-  // Uncontrolled by default (own state, as before); a caller that passes
-  // `coachOn`/`onToggleCoach` (Replay.tsx) takes over both reads and writes —
-  // see the props' doc comments. Both still persist through the same
-  // loadCoachPref/saveCoachPref, so the two toggles can never disagree.
-  const [internalCoachOn, setInternalCoachOn] = useState(() => loadCoachPref(!online));
-  const controlled = coachOnProp !== undefined;
-  const coachOn = controlled ? coachOnProp : internalCoachOn;
-  const toggleCoach = (): void => {
-    if (onToggleCoachProp !== undefined) {
-      onToggleCoachProp();
-      return;
-    }
-    setInternalCoachOn((on) => {
-      saveCoachPref(!on);
-      return !on;
-    });
-  };
-  const derived = useTableDerived(coachOn);
+  // ONE help dial for practice, rooms and replay alike (help/helpLevel.ts).
+  // This used to be a controlled/uncontrolled fork over `loadCoachPref(!online)`
+  // that existed purely to keep three copies of one boolean in step — the
+  // reactive level does that by construction, so every toggle that moves it
+  // moves all of them.
+  const level = useHelpLevel();
+  const derived = useTableDerived(showsCoach(level));
   const handSort = useHandSort(derived?.view.hand ?? []);
   // The round-start deal, on one clock: deck fly-out, your hand filling a card
   // at a time, and the auction waiting until the cards have landed. A round
@@ -214,9 +194,14 @@ export function Table({
       const viewerSeat = derived?.me ?? null;
       const position = viewerSeat === null ? seat : (seat - viewerSeat + 4) % 4;
       const source = document.querySelector(`[data-deal-target="${String(position)}"]`);
+      // A zero-size rect means the anchor exists but renders nothing (e.g. a
+      // spectator's empty "you" slot) — same check as DealIntro's own
+      // measureTargets, same fallback.
+      const sourceRect = source?.getBoundingClientRect();
       const contract = liveView.contract;
       launchFlight({
-        from: source ?? viewportCentreRect(),
+        from:
+          sourceRect === undefined || sourceRect.width === 0 ? viewportCentreRect() : sourceRect,
         to: 'contract',
         key: 'contract',
         payload: (
@@ -280,8 +265,20 @@ export function Table({
     ],
   );
 
+  // G7: the auto-play toggle flips the instant you tap it, ahead of the
+  // roster round-trip — called unconditionally (before the `derived === null`
+  // return below) like every other hook here; `derived?.seatInfo(0)` reads
+  // safely through the not-yet-ready case.
+  const autoPlayOptimistic = useOptimisticAutoPlay(derived?.seatInfo(0)?.autoPlay ?? false);
+
   if (derived === null) return <WaitingScreen />;
   const { view, roster, me, myTurn, seatInfo } = derived;
+  // G7: your own chip (badge included) shows the optimistic value too, so the
+  // utility bar's toggle and the nameplate's "bot playing" badge never
+  // disagree during the brief window before the roster echo lands.
+  const rawYouInfo = seatInfo(0);
+  const youInfo =
+    rawYouInfo !== null ? { ...rawYouInfo, autoPlay: autoPlayOptimistic.on } : rawYouInfo;
 
   return (
     <main
@@ -295,7 +292,6 @@ export function Table({
           no-op that lands instantly (see flight.ts) — this mount IS the
           entire scenes/replay story, nothing else has to know about it. */}
       {dev && <FlightLayer />}
-      <NoticeToast />
       <TopBar
         view={heldDisplay.view ?? view}
         contract={heldDisplay.contract}
@@ -309,8 +305,6 @@ export function Table({
         onLeaveTable={onLeaveTable}
         logOpen={logOpen}
         onToggleLog={() => setLogOpen((o) => !o)}
-        coachOn={coachOn}
-        onToggleCoach={toggleCoach}
         share={
           online && roomCode !== undefined ? <ShareButton code={roomCode} labeled /> : undefined
         }
@@ -379,7 +373,7 @@ export function Table({
           : {})}
       />
       <UtilityRow
-        you={seatInfo(0)}
+        you={youInfo}
         lastTrick={derived.lastTrick}
         defaultLastTrickOpen={initialUi?.lastTrickOpen ?? false}
         comms={
@@ -395,8 +389,8 @@ export function Table({
         autoPlay={
           online && onToggleAutoPlay !== undefined && me !== null
             ? {
-                on: seatInfo(0)?.autoPlay ?? false,
-                onToggle: () => onToggleAutoPlay(!(seatInfo(0)?.autoPlay ?? false)),
+                on: autoPlayOptimistic.on,
+                onToggle: () => autoPlayOptimistic.toggle(onToggleAutoPlay),
               }
             : undefined
         }
@@ -444,18 +438,12 @@ export function Table({
           }
         />
       )}
-      {tutorial && <TutorialCoach />}
+      {/* Both tutorial mounts are teaching, so both answer to the dial: at
+          Coach or Off the marks, the intro cards and the pip stay away. */}
+      {tutorial && showsTeaching(level) && <TutorialCoach />}
       {/* Real rooms (dev = App-mounted, never scenes/replay): the lite
           first-online-game card + the three make-or-break coach-marks. */}
-      {!tutorial && online && dev && (
-        <TutorialCoach
-          online
-          onEnableCoach={() => {
-            saveCoachPref(true);
-            setInternalCoachOn(true);
-          }}
-        />
-      )}
+      {!tutorial && online && dev && showsTeaching(level) && <TutorialCoach online />}
       {/* Real rooms only, and only with a seat — a spectator has no turn to
           be pinged about. One-shot; defers to TutorialCoach's intro card on a
           first online game (see the component). */}

@@ -19,6 +19,7 @@ const T: Record<
     pointsHint: string;
     explainToggle: string;
     explainLines: readonly [string, string, string];
+    hideTips: string;
   }
 > = {
   en: {
@@ -40,6 +41,7 @@ const T: Record<
       'Make your bid and your team scores it; miss and you lose it (doubled sans atout).',
       'Defenders always keep the points they capture.',
     ],
+    hideTips: 'Hide tips',
   },
   fr: {
     pass: 'Passe',
@@ -61,6 +63,7 @@ const T: Record<
       'Mise réussie : ton équipe la marque; ratée : elle la perd (doublée sans atout).',
       'Les défenseurs gardent toujours les points qu’ils prennent.',
     ],
+    hideTips: 'Cacher les conseils',
   },
 };
 
@@ -96,6 +99,18 @@ export interface BetCardsProps {
   readonly coaching?: boolean;
   /** True when the "Hail-Mary 12 sans atout" house rule is on for this game. */
   readonly hailMary12?: boolean;
+  /**
+   * Whether the beginner strip ("Bids are points, not tricks…" + the numbers
+   * explainer) is shown. The app passes the help dial's `showsTeaching`; it
+   * defaults to true so every other caller — scenes, the panel on its own — is
+   * unchanged. This package must not reach into the app, so the level arrives
+   * as a prop, the same way `coaching` does.
+   */
+  readonly teaching?: boolean;
+  /** One-tap escape from the strip above: "I know this, stop telling me." The
+   * app lowers the dial to Coach, so it goes quiet everywhere at once, not
+   * just here and not just for this auction. Omitted = no ✕ offered. */
+  readonly onHideTips?: () => void;
 }
 
 /**
@@ -177,6 +192,8 @@ export function BetCards({
   recommended = null,
   coaching = false,
   hailMary12 = false,
+  teaching = true,
+  onHideTips,
 }: BetCardsProps) {
   const tt = T[useLang()];
   const [sansAtout, setSansAtout] = useState(false);
@@ -209,20 +226,41 @@ export function BetCards({
         </button>
       </div>
 
-      {/* The one line a first-timer needs before the numbers make sense —
-          always visible, with the full why behind a single tap. */}
-      <p className="w-full text-center text-(length:--text-fluid-xs) text-(--color-ap-muted)">
-        {tt.pointsHint}{' '}
-        <button
-          type="button"
-          aria-expanded={explaining}
-          onClick={() => setExplaining((v) => !v)}
-          className="cursor-pointer whitespace-nowrap text-(--color-ap-violet-soft) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+      {/* The one line a first-timer needs before the numbers make sense, with
+          the full why behind a single tap. It used to be unconditional, which
+          meant a player who had bid a thousand times still read "bids are
+          points, not tricks" under every auction and had no way to stop it —
+          it is the loudest thing the help dial turns off. */}
+      {teaching && (
+        <p
+          data-testid="points-hint"
+          className="flex w-full items-baseline justify-center gap-1.5 text-center text-(length:--text-fluid-xs) text-(--color-ap-muted)"
         >
-          {tt.explainToggle}
-        </button>
-      </p>
-      {explaining && (
+          <span>
+            {tt.pointsHint}{' '}
+            <button
+              type="button"
+              aria-expanded={explaining}
+              onClick={() => setExplaining((v) => !v)}
+              className="cursor-pointer whitespace-nowrap text-(--color-ap-violet-soft) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+            >
+              {tt.explainToggle}
+            </button>
+          </span>
+          {onHideTips !== undefined && (
+            <button
+              type="button"
+              aria-label={tt.hideTips}
+              title={tt.hideTips}
+              onClick={onHideTips}
+              className="grid size-5 shrink-0 cursor-pointer place-items-center self-center rounded-(--radius-ap-control) text-(--color-ap-muted) hover:bg-(--color-ap-panel-hover) hover:text-(--color-ap-text)"
+            >
+              ✕
+            </button>
+          )}
+        </p>
+      )}
+      {teaching && explaining && (
         <ul className="w-full space-y-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel-hover) px-3 py-2 text-left text-(length:--text-fluid-xs) text-(--color-ap-text)">
           {tt.explainLines.map((line, i) => (
             <li key={i}>{line}</li>

@@ -2,6 +2,7 @@ import type { BidChoice } from '@jaffre/engine';
 import type { ClientAction } from '@jaffre/protocol';
 import { BetCards, type AuctionTurn, type BidOption } from '@jaffre/ui';
 import { feedback } from '../audio/clicks.js';
+import { setHelpLevel, showsTeaching, useHelpLevel } from '../help/helpLevel.js';
 import { reportFunnel } from '../net/telemetry.js';
 import { CoachTipPill } from './CoachHint.js';
 
@@ -31,6 +32,7 @@ export function BidOverlay({
   hailMary12 = false,
   waiting = false,
 }: BidOverlayProps) {
+  const teaching = showsTeaching(useHelpLevel());
   const coaching = recommended !== null;
   const recommendedOption: BidOption | null =
     recommended !== null && recommended.kind === 'bid'
@@ -57,6 +59,10 @@ export function BidOverlay({
           recommended={recommendedOption}
           hailMary12={hailMary12}
           waiting={waiting}
+          teaching={teaching}
+          // Dropping to Coach, not Off: "I don't need the primer" is not "stop
+          // suggesting moves". The ring and the tip survive this tap.
+          onHideTips={() => setHelpLevel('coach')}
           onPass={() => {
             feedback('play');
             reportFunnel('bid', 'pass');

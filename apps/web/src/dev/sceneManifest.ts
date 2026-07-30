@@ -4,6 +4,8 @@
  * the store here would drag the whole app into the test runner.
  */
 
+import type { HelpLevel } from '../help/helpLevel.js';
+
 export type SceneScreen =
   | 'table'
   | 'home'
@@ -55,6 +57,9 @@ export interface SceneMeta {
   /** Force a language for this scene (default: the stored one, i.e. EN);
    * applied on mount and restored on exit — for FR width/wrap coverage. */
   readonly lang?: 'fr';
+  /** Force the help dial for this scene (default: whatever boot resolved).
+   * Rides an in-memory override, never storage — same reasoning as `lang`. */
+  readonly helpLevel?: HelpLevel;
   /** Force a card skin for this scene (default: the stored one, i.e. arcade). */
   readonly cardSkin?: string;
   /** Force a felt for this scene (default: the stored one, i.e. house). The
@@ -174,6 +179,17 @@ export const SCENE_METAS = [
     // enabled one may exist.
     probe: 'role=button[name="Pass"][disabled=true]',
     absent: 'role=button[name="Pass"][disabled=false]',
+  },
+  {
+    id: 'auction-expert',
+    label: 'Auction — help off (no beginner strip)',
+    screen: 'table',
+    // The same auction as `auction-you`, with the help dial off. That scene
+    // resolves to Learning on fresh storage, so the pair is what proves the
+    // beginner strip is a choice: present there, gone here, panel intact.
+    helpLevel: 'off',
+    probe: 'role=button[name="Pass"]',
+    absent: '[data-testid="points-hint"]',
   },
   {
     id: 'your-lead',
