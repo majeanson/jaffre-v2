@@ -171,6 +171,10 @@ export class GameRoom implements DurableObject {
       if (uid === null || uid === '') return new Response('Missing identity', { status: 400 });
       const left = await unseatUser(this, uid);
       await this.syncLobby(); // a freed seat may re-open the table for matchmaking
+      // This path can run with zero sockets attached (that's its point), and
+      // scheduleNextWake won't arm without a connected human — so make sure the
+      // self-destruct clock is ticking. No-op if anyone is still connected.
+      await armReaper(this);
       return Response.json({ left });
     }
     if (request.headers.get('Upgrade') !== 'websocket') {

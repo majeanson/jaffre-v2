@@ -222,6 +222,42 @@ describe('room storage self-destruct', () => {
     },
   );
 
+  it('the socket-less /leave path puts an unstamped room on the clock', async () => {
+    const room = 'reap-leave';
+    const stub = roomStub(room);
+    const ws = await connect(room);
+    ws.send(JSON.stringify({ t: 'join' }));
+    ws.send(JSON.stringify({ t: 'sit', seat: 0 }));
+    await sleep(100);
+    ws.close(1000, 'tab closed');
+    await waitForEmptyStamp(stub);
+
+    // Forge the pre-reaper world: a room whose last socket closed before the
+    // stamp shipped carries neither emptySince nor an armed alarm. Memory AND
+    // storage — `loaded` short-circuits load(), so storage alone isn't enough.
+    await runInDurableObject(stub, async (instance, state) => {
+      const cached = (instance as unknown as { meta: StoredMeta }).meta;
+      delete cached.emptySince;
+      await state.storage.put('meta', cached);
+      await state.storage.deleteAlarm();
+    });
+
+    // Quitting from the home "Your tables" row is the one write such a room
+    // can still receive without a socket — it must arm the self-destruct, not
+    // refresh the storage for free.
+    const resp = await SELF.fetch(`https://example.com/api/room/${room}/leave?u=alice`, {
+      method: 'POST',
+    });
+    expect(resp.status).toBe(200);
+    expect(await resp.json()).toEqual({ left: true });
+
+    const since = (await readMeta(stub))?.emptySince;
+    if (typeof since !== 'number') throw new Error('leave did not stamp the room empty');
+    expect(await armedAlarm(stub)).toBe(since + EMPTY_REAP_MS);
+
+    await endQuiet(stub);
+  });
+
   it('arms without pushing out a nearer game wake (pre-game vacate wins the slot)', async () => {
     const room = 'reap-arbitration';
     const stub = roomStub(room);
