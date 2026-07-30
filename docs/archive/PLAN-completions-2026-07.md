@@ -172,6 +172,7 @@ connected spectators' votes count toward `skipThreshold`. Remove dead
 ## WAVE 5 — Table style (the host-customization option)
 
 **I1 — "Table style: host's" room rule.** User-approved design:
+
 - Rules (protocol `set_rules` payload + room meta) gain
   `tableStyle?: 'own' | 'host'`, default `'own'`. Host-only toggle in the
   Lobby rules row: "Table style — everyone sees the host's felt & sweep."
@@ -192,6 +193,7 @@ connected spectators' votes count toward `skipThreshold`. Remove dead
 - Keep it to felt + sweep. Card skins/themes stay personal (readability).
 
 **Verified mechanics (read before implementing — these are the traps):**
+
 - `applyFelt(id)` (`apps/web/src/felt.ts`) **persists to localStorage** and
   sets `<html data-felt>`. A table-style override must NEVER call it — that
   would overwrite the player's own equip. Add a separate non-persisting
