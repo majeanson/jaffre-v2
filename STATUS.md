@@ -79,8 +79,14 @@ Last checkpoint: **2026-07-30** (the completions pass — see below).
   the fold — the social tiles' regulars strip — is never in a shot at any
   width. That surface is gated by the per-width overflow assertions in
   `e2e/scenes.spec.ts` instead.
-- `main` auto-deploys to jaffre.marcportal.com behind CI's e2e gate +
-  live-bundle verify. No PR gate — land on main.
+- `main` auto-deploys to jaffre.marcportal.com. The deploy gates on the FAST
+  ci job only (format · lint · typecheck · contrast · unit · build) plus the
+  live-bundle verify; the Playwright suite deliberately runs BESIDE the
+  deploy, not before it — once after every green main push and again nightly
+  (e2e.yml, where this trade is written down). So a browser-only regression
+  CAN reach prod and is caught minutes later, not blocked: on 2026-07-30 a
+  red e2e coexisted with a completed deploy, as designed. No PR gate — land
+  on main.
 
 ## The completions pass (2026-07-30)
 
@@ -142,11 +148,11 @@ changed, and the rules that came out of it:
   after the click; `check()` asserts the new state instantly and fails.
 
 Deliberately NOT done, and why: scheduled re-engagement pushes stay
-rejected (see the list below). Three items are parked because their mount
-points were held by a parallel session — an install nudge on Home, a
-backup-code row in Settings, and the `win` sting's call site in GameRecap
-(the sting exists in `audio/clicks.ts`, uncalled, with a comment naming
-where it belongs).
+rejected (see the list below). The three items parked behind the parallel
+keys session's mount points all landed 2026-07-30 (`e8a4213`): the `win`
+sting fires from GameRecap, the one-shot InstallNudge earns its single
+appearance on Home (post-first-finish, via `funnelReached`), and Settings
+shows the 3-word recovery code to unlinked identities.
 
 ## How we work here
 
@@ -221,8 +227,14 @@ button, and skipping it is safe.
   time — so a re-arm can never restart the clock. `test/reaper.test.ts` (7)
   pins all of it. Note: `room.test.ts`'s empty-room pause test now asserts
   what the pause means (the game doesn't advance), not an empty alarm slot.
-  Residual gap: rooms whose last socket closed BEFORE this shipped have no
-  stamp and are only reaped if someone connects to them again.
+  Residual gap CLOSED 2026-07-30: pre-ship rooms (no stamp, only reaped on a
+  future connect) were swept by hand — every distinct `games.room_code` with
+  a finish before the ship date (15 rooms) got one authed
+  `POST /api/room/:code/leave`, whose existing `armReaper` call stamps a
+  socket-empty room and arms its alarm. No server change needed. Pre-ship
+  rooms that never finished a game are unenumerable (no D1 row, and DO
+  namespaces don't list) — accepted: they hold only a meta write, and any
+  future connect stamps them.
 - **Head-to-head view** — SHIPPED. `#h2h/<pid>`
   (`screens/HeadToHead.tsx`) off both Stats social tiles: record with, record
   across, and every shared game (rows via the extracted
