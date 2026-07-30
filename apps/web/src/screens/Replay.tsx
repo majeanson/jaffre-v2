@@ -289,6 +289,11 @@ export function Replay({ gameId, demo, onLeave }: ReplayProps) {
         coachOn={coachOn}
         onToggleCoach={toggleCoach}
       />
+        // ← → step frames here (the effect above), which is what an arrow
+        // should mean on a replay — so this screen keeps the arrows and the
+        // app-wide focus d-pad stands down while it is mounted. Both listen on
+        // window, where bubble order alone couldn't settle it.
+        data-nav-suspend=""
       <div
         data-testid="replay-controls"
         className="fixed bottom-2 left-1/2 z-[60] flex w-[min(94vw,40rem)] -translate-x-1/2 flex-col gap-1 rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-ink) px-4 py-2 font-arcade-ui text-white shadow-(--shadow-ap) max-sm:px-3"
