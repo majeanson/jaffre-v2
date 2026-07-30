@@ -1,4 +1,6 @@
-import type { ClientMessage, ServerMessage } from '@jaffre/protocol';
+import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
+import type { Lang } from '@jaffre/ui';
+import { currentLang } from '../lang.js';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
@@ -11,6 +13,48 @@ import { reportError } from './telemetry.js';
  * toast but not worth a telemetry beacon (e.g. a stale click racing a turn
  * change). Anything else is an unexpected rejection worth knowing about. */
 const SILENT_ERROR_CODES = new Set(['NOT_YOUR_TURN', 'BAD_MESSAGE']);
+
+/** H2 — the felt moment a bot takes over (or gives back) a disconnected
+ * human's seat, as a NoticeToast. Same code+name→sentence split as the
+ * server's system chat entries (H1), but this is a pure client-side roster
+ * diff: nothing new rides the wire for it. */
+const BOT_TAKEOVER_T: Record<
+  Lang,
+  { readonly takeover: (name: string) => string; readonly back: (name: string) => string }
+> = {
+  en: {
+    takeover: (name) => `A bot is playing ${name}'s hand.`,
+    back: (name) => `${name} is back.`,
+  },
+  fr: {
+    takeover: (name) => `Un bot joue la main de ${name}.`,
+    back: (name) => `${name} est de retour.`,
+  },
+};
+
+/**
+ * Diff two rosters for a seat's `botPlaying` flag flipping — the moment a
+ * disconnected human's turns start (or stop) being covered by a bot — and
+ * toast the one that changed. `prev` is the store's roster from BEFORE this
+ * message, so a fresh connect (welcome sets the initial roster outside this
+ * function) never runs through here: reconnecting into an already-covered
+ * seat is the starting state, not a transition, and must not toast.
+ */
+function announceBotTakeover(prev: Roster | null, next: Roster): void {
+  if (prev === null) return;
+  const t = BOT_TAKEOVER_T[currentLang()];
+  for (let seat = 0; seat < 4; seat++) {
+    const before = prev.seats[seat];
+    const after = next.seats[seat];
+    if (before === undefined || before === null) continue;
+    if (after === undefined || after === null || after.isBot) continue;
+    if (after.botPlaying === true && before.botPlaying !== true) {
+      useGameStore.getState().setNotice(t.takeover(after.name));
+    } else if (before.botPlaying === true && after.botPlaying !== true) {
+      useGameStore.getState().setNotice(t.back(after.name));
+    }
+  }
+}
 
 /**
  * Online transport: one WebSocket to the room's Durable Object. Feeds the
@@ -193,6 +237,7 @@ function handle(msg: ServerMessage): void {
       store.setView(msg.view, msg.seq);
       break;
     case 'roster':
+      announceBotTakeover(store.roster, msg.roster);
       store.setRoster(msg.roster);
       if (room !== null) rememberTable(room, msg.roster);
       break;

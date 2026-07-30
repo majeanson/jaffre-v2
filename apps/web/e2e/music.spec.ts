@@ -71,15 +71,15 @@ async function stubbedPage(context: BrowserContext, name: string): Promise<Page>
   return page;
 }
 
-/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
- * fill-bots shortcut is gone — house style is one control per seat). */
+/** Fill every empty seat with one tap — the "Fill with bots" lobby action
+ * (H4) sends add_bot per still-empty seat, same as clicking each seat's own
+ * "Add bot" button in turn. Falls back to no-op if the room is already full
+ * (no Fill button then — nothing to fill). */
 async function fillWithBots(page: Page): Promise<void> {
-  const addBot = page.getByRole('button', { name: 'Add bot' });
-  while ((await addBot.count()) > 0) {
-    const before = await addBot.count();
-    await addBot.first().click();
-    await expect.poll(() => addBot.count()).toBeLessThan(before);
-  }
+  const fillButton = page.getByRole('button', { name: 'Fill with bots' });
+  if ((await fillButton.count()) === 0) return; // already full
+  await fillButton.click();
+  await expect(page.getByRole('button', { name: 'Add bot' })).toHaveCount(0);
 }
 
 /** The stub's players, read back for assertions. */

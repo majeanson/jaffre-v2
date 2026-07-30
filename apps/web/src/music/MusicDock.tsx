@@ -15,6 +15,9 @@ const T: Record<
     minimize: string;
     expand: string;
     volume: string;
+    upNext: (title: string) => string;
+    skip: (votes: number, needed: number) => string;
+    skipVoted: string;
   }
 > = {
   en: {
@@ -25,6 +28,9 @@ const T: Record<
     minimize: 'Hide the video (music keeps playing)',
     expand: 'Show the video',
     volume: 'Your volume',
+    upNext: (title) => `Up next: ${title}`,
+    skip: (votes, needed) => `Skip (${String(votes)}/${String(needed)})`,
+    skipVoted: 'Skip vote cast',
   },
   fr: {
     nowPlaying: 'Musique en cours à cette table',
@@ -34,6 +40,9 @@ const T: Record<
     minimize: 'Cacher la vidéo (la musique continue)',
     expand: 'Montrer la vidéo',
     volume: 'Ton volume',
+    upNext: (title) => `À suivre : ${title}`,
+    skip: (votes, needed) => `Passer (${String(votes)}/${String(needed)})`,
+    skipVoted: 'Vote pour passer envoyé',
   },
 };
 
@@ -61,6 +70,10 @@ export function MusicDock() {
   const t = T[useLang()];
   const { state, listening, volume, setListening, setVolume } = useMusicStore();
   const current = state?.current ?? null;
+  // First queued track, if any — the dock's "up next" line. The queue itself
+  // stays MusicQueuePanel's job (add/remove/reorder-by-play); this is a quiet
+  // preview so the dock doesn't need a second surface open to know what's coming.
+  const upNext = state?.queue[0] ?? null;
   const [minimized, setMinimized] = useState(false);
   const holderRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -201,6 +214,23 @@ export function MusicDock() {
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-(--color-ap-text)">
           {current?.title ?? t.emptyQueue}
         </span>
+        {/* Reuses the same skip-vote action as the queue panel's button — this
+            is just a second, more-discoverable entry point over the identical
+            server state, not a separate vote. Ungated by seat: the server
+            decides whether the vote counts (spectators only steer it when the
+            table has nobody seated to steer it for them). */}
+        {current !== null && (
+          <button
+            type="button"
+            data-testid="music-dock-skip"
+            disabled={state?.youVotedSkip === true}
+            title={state?.youVotedSkip === true ? t.skipVoted : undefined}
+            onClick={() => send({ t: 'music_skip_vote' })}
+            className="shrink-0 cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-1 text-[10px] font-bold uppercase text-(--color-ap-text) shadow-(--shadow-ap-sm) hover:bg-(--color-ap-panel-hover) disabled:cursor-default disabled:opacity-50"
+          >
+            {t.skip(state?.skipVotes ?? 0, state?.skipNeeded ?? 1)}
+          </button>
+        )}
         <button
           type="button"
           data-testid={minimized ? 'music-expand' : 'music-minimize'}
@@ -220,6 +250,14 @@ export function MusicDock() {
           {t.stop}
         </button>
       </div>
+      {!minimized && upNext !== null && (
+        <p
+          data-testid="music-dock-upnext"
+          className="truncate px-0.5 text-[11px] text-(--color-ap-muted)"
+        >
+          {t.upNext(upNext.title)}
+        </p>
+      )}
       {/* Volume sits with the player it controls — it used to live in the
           queue panel, two surfaces away from the sound. */}
       {!minimized && (

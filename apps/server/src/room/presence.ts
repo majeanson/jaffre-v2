@@ -49,6 +49,31 @@ export function disconnectDeadline(room: GameRoom, userId: string): number {
   return since + (room.meta.botSwapMs ?? BOT_SWAP_MS);
 }
 
+/** Stamp a seated human's mid-game disconnect clock and drop a "so-and-so
+ * dropped" chat line — called from GameRoom's webSocketClose the moment
+ * their LAST socket closes with a live game running. Distinct from the
+ * pre-game vacate clock (vacateAbsentPreGame): only a live seat losing its
+ * player is table news worth a line in the log. The chat write is
+ * fire-and-forget (webSocketClose still persists meta itself right after) —
+ * same waitUntil pattern as notifyTurnIfAbsent below. */
+export function markDropped(room: GameRoom, userId: string): void {
+  room.meta.disconnectedSince = { ...room.meta.disconnectedSince, [userId]: Date.now() };
+  const name = displayName(room.meta.names[userId], userId);
+  room.ctx.waitUntil(room.pushSystemChat({ code: 'dropped', name }));
+}
+
+/** Clear a returning human's bot-takeover flag and, only if a bot had
+ * ACTUALLY been covering their seat (botPlayingAnnounced — set by
+ * broadcastRoster's takeover edge below), drop the matching "so-and-so is
+ * back" chat line. A reconnect that beat the swap deadline never announced a
+ * takeover, so it earns no return line either — called from onJoin, which
+ * already owns "rejoining stops the clock". */
+export function markBack(room: GameRoom, userId: string): void {
+  if (!room.botPlayingAnnounced.delete(userId)) return;
+  const name = displayName(room.meta.names[userId], userId);
+  room.ctx.waitUntil(room.pushSystemChat({ code: 'back', name }));
+}
+
 /** Whether this user has voluntary auto-play on (server plays their turns). */
 export function autoPlayOn(room: GameRoom, userId: string): boolean {
   return room.meta.autoPlay?.[userId] === true;
@@ -261,9 +286,26 @@ export function broadcastRoster(
   room: GameRoom,
   opts: { skip?: WebSocket; exclude?: WebSocket },
 ): void {
+  const built = roster(room, opts.exclude);
+  // A disconnected human's swap deadline passing isn't a message — it's just
+  // time passing — so the false→true flip of `botPlaying` is discovered HERE,
+  // the next time a roster gets (re)built, rather than at a discrete event.
+  // Announce it once per takeover (botPlayingAnnounced dedupes; markBack
+  // clears it on reconnect, clearUserState on a permanent leave) so a seat
+  // that stays bot-covered for many turns doesn't repeat the line on every
+  // broadcast this function sends.
+  for (const seat of SEATS) {
+    const owner = room.meta.seats[seat];
+    if (typeof owner !== 'string' || room.botPlayingAnnounced.has(owner)) continue;
+    if (built.seats[seat]?.botPlaying === true) {
+      room.botPlayingAnnounced.add(owner);
+      const name = displayName(room.meta.names[owner], owner);
+      room.ctx.waitUntil(room.pushSystemChat({ code: 'botPlaying', name }));
+    }
+  }
   // One payload for every recipient — stringify once, send the shared string
   // (same pattern as Lobby's broadcast).
-  const wire = JSON.stringify({ t: 'roster', roster: roster(room, opts.exclude) });
+  const wire = JSON.stringify({ t: 'roster', roster: built });
   for (const socket of room.ctx.getWebSockets()) {
     if (socket === opts.skip || socket === opts.exclude) continue;
     if (!room.attachment(socket).joined) continue;
@@ -395,6 +437,9 @@ export function clearUserState(room: GameRoom, userId: string): void {
       Object.entries(room.meta.paints).filter(([id]) => id !== userId),
     );
   }
+  // A permanent leave ends the takeover episode outright — no "back" line is
+  // owed for someone who isn't coming back to this seat.
+  room.botPlayingAnnounced.delete(userId);
 }
 
 /**

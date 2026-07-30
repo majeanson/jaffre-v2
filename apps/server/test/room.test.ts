@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
-import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
+import type { ChatEntry, ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
 import {
   ABANDONED_REAP_MS,
   BOT_SWAP_MS,
@@ -218,6 +218,22 @@ async function welcomeViewer(client: Client, viewer: number | 'spectator'): Prom
     const w = await client.next('welcome');
     if (w.viewer === viewer) return;
     if (Date.now() > deadline) throw new Error(`no welcome with viewer ${String(viewer)}`);
+  }
+}
+
+/** Wait for a system chat entry carrying this exact code, draining (and
+ * discarding) any `chat` messages that don't match — a table with more than
+ * one sitter/leaver in flight can interleave several system codes, and human
+ * messages besides. */
+async function nextSystemChat(
+  client: Client,
+  code: 'sat' | 'left' | 'dropped' | 'botPlaying' | 'back' | 'started',
+): Promise<NonNullable<ChatEntry['system']>> {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    const msg = await client.next('chat');
+    if (msg.entry.system?.code === code) return msg.entry.system;
+    if (Date.now() > deadline) throw new Error(`no system chat entry with code ${code}`);
   }
 }
 
@@ -2350,6 +2366,111 @@ describe('GameRoom', () => {
 
     await endQuiet(room, bob);
   });
+
+  /* ── System chat entries (Wave 4a, H1) ───────────────────────────────── */
+
+  it('drops a "sat" system chat entry when someone takes a seat', async () => {
+    const room = 'room-chat-sat';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    const sat = await nextSystemChat(alice, 'sat');
+    expect(sat.name).toBe('Alice');
+
+    await endQuiet(room, alice);
+  });
+
+  it('drops a "left" system chat entry when a seated player gives up their seat', async () => {
+    const room = 'room-chat-left';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await nextSystemChat(alice, 'sat'); // drain the sit's own line first
+
+    alice.send({ t: 'leave' });
+    const left = await nextSystemChat(alice, 'left');
+    expect(left.name).toBe('Alice');
+
+    await endQuiet(room, alice);
+  });
+
+  it('drops a nameless "started" system chat entry when the game starts', async () => {
+    const room = 'room-chat-started';
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    await setupStartedGame(alice); // seat 0 human + 3 bots, sends 'start'
+    const started = await nextSystemChat(alice, 'started');
+    expect(started.name).toBeUndefined();
+
+    await endQuiet(room, alice);
+  });
+
+  it(
+    'system chat narrates a mid-game drop, the bot takeover, and the return',
+    { timeout: 45_000 },
+    async () => {
+      interface StoredMeta {
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-chat-takeover';
+      const alice = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(alice);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      // A spectator stays connected to watch the chat log — alice's own
+      // socket is about to close, so she can't observe her own lines arrive.
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+
+      await driveToQuiescentHumanTurn(stub, alice);
+      alice.ws.close(1000, 'bye');
+      const dropped = await nextSystemChat(carol, 'dropped');
+      expect(dropped.name).toBe('Alice');
+
+      // Rewind past the swap deadline and let the alarm cover her turn — same
+      // rewind this file's roster-level botPlaying test uses, but here
+      // watching for the chat line the takeover drops exactly once.
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        "alice's disconnect clock",
+      );
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+      const botPlaying = await nextSystemChat(carol, 'botPlaying');
+      expect(botPlaying.name).toBe('Alice');
+
+      // Reset the clock to "now" before she reconnects — mirrors the existing
+      // botSwapAt test's teardown-safety comment: an already-expired clock at
+      // reconnect could re-arm a self-perpetuating bot chain that races
+      // teardown. botPlayingAnnounced (what actually gates the "back" line)
+      // is untouched by this reset.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() };
+        await state.storage.put('meta', meta);
+      });
+
+      const again = await Client.connect(room, 'alice', 'Alice');
+      again.send({ t: 'join' });
+      await again.next('welcome');
+      const back = await nextSystemChat(carol, 'back');
+      expect(back.name).toBe('Alice');
+
+      await endQuiet(room, carol, again);
+    },
+  );
 });
 
 /* ── Shared music queue ──────────────────────────────────────────────────── */
@@ -2589,6 +2710,69 @@ describe('music queue', () => {
     expect(advanced.youVotedSkip).toBeUndefined();
 
     await endQuiet(room, alice, bob, carol, dave);
+  });
+
+  it('advances on majority skip vote of connected SPECTATORS when no seat is human-occupied', async () => {
+    const room = 'room-music-spectator-skip';
+    // Nobody sits — an all-bot table, or one where every human stepped away,
+    // has no seated human left to ever cast the ordinary skip vote. Without
+    // the empty-table fallback these three watchers would be stuck on VID_A
+    // forever.
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob');
+    const carol = await joined(room, 'carol', 'Carol');
+
+    mockOEmbedOk(VID_A, 'Stuck');
+    mockOEmbedOk(VID_B, 'Relief');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    await alice.next('music');
+    await bob.next('music');
+    await carol.next('music');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_B}` });
+    await alice.next('music');
+    await bob.next('music');
+    await carol.next('music');
+
+    // 3 connected spectators, 0 seated → majority is 2. First vote: count
+    // moves, no advance yet.
+    alice.send({ t: 'music_skip_vote' });
+    const oneVote = (await alice.next('music')).state;
+    expect(oneVote.current?.videoId).toBe(VID_A);
+    expect(oneVote).toMatchObject({ skipVotes: 1, skipNeeded: 2, youVotedSkip: true });
+    // Drain the same broadcast from Bob's buffer (everyone joined gets it, not
+    // just Alice) — otherwise Bob's next 'music' read below would return this
+    // STALE one-vote state instead of the fresh post-advance one.
+    const bobSeesOneVote = (await bob.next('music')).state;
+    expect(bobSeesOneVote.youVotedSkip).toBeUndefined();
+
+    // Second vote reaches the spectator majority → the room isn't stuck.
+    bob.send({ t: 'music_skip_vote' });
+    const advanced = (await bob.next('music')).state;
+    expect(advanced.current?.videoId).toBe(VID_B);
+    expect(advanced.queue).toHaveLength(0);
+    expect(advanced.skipVotes).toBe(0);
+
+    await endQuiet(room, alice, bob, carol);
+  });
+
+  it('a connected seated human still gates the vote — the empty-table fallback never leaks into a live one', async () => {
+    const room = 'room-music-spectator-gated';
+    const alice = await joined(room, 'alice', 'Alice');
+    const bob = await joined(room, 'bob', 'Bob'); // stays a spectator
+    alice.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(alice, 0);
+
+    mockOEmbedOk(VID_A, 'Guarded');
+    alice.send({ t: 'music_add', url: `https://youtu.be/${VID_A}` });
+    await alice.next('music');
+    await bob.next('music');
+
+    // Alice (seated) is connected, so Bob's spectator vote is refused exactly
+    // like the ordinary case.
+    bob.send({ t: 'music_skip_vote' });
+    expect((await bob.next('error')).code).toBe('NOT_SEATED');
+
+    await endQuiet(room, alice, bob);
   });
 
   it('music_ended advances exactly once, ignoring duplicates and stale ids', async () => {

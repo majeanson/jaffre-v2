@@ -2,14 +2,58 @@ import { ARCADE, useLang, type Lang } from '@jaffre/ui';
 import type { ReactNode } from 'react';
 import { IconButton } from '../components/IconButton.js';
 import { IconRobot } from '../components/icons.js';
+import { useGameStore } from '../state/gameStore.js';
 import { LastTrickPeek } from './LastTrickPeek.js';
 import { SeatChip } from './SeatChip.js';
 import type { LastTrickInfo, SeatChipInfo } from './useTableDerived.js';
 
-const T: Record<Lang, { autoPlay: string }> = {
-  en: { autoPlay: 'Auto-play — let a hard bot take your turns while you step away' },
-  fr: { autoPlay: 'Jeu auto — un bot fort joue tes tours pendant que tu t’absentes' },
+const T: Record<Lang, { autoPlay: string; watching: (n: number) => string }> = {
+  en: {
+    autoPlay: 'Auto-play — let a hard bot take your turns while you step away',
+    watching: (n) => `${String(n)} watching`,
+  },
+  fr: {
+    autoPlay: 'Jeu auto — un bot fort joue tes tours pendant que tu t’absentes',
+    watching: (n) => `${String(n)} spectateur·rices`,
+  },
 };
+
+/** A small eye glyph — spectators aren't seated, but the felt shouldn't
+ * pretend nobody's watching. */
+function EyeGlyph() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="size-[1em]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+/** Eye+count chip — read straight off the roster (no prop plumbing needed
+ * from whatever screen mounts UtilityRow, so it stays true regardless of what
+ * that caller threads through). `n` is already known > 0 by the caller. */
+function SpectatorsCell({ n }: { readonly n: number }) {
+  const t = T[useLang()];
+  return (
+    <span
+      data-testid="spectator-chip"
+      title={t.watching(n)}
+      className="inline-flex h-[clamp(2.5rem,4.8vmin,2.6rem)] shrink-0 items-center gap-1 px-[0.6em] text-(length:--text-fluid-base) text-(--color-ap-muted)"
+    >
+      <EyeGlyph />
+      <span className="font-arcade-ui text-[0.6em]">{n}</span>
+    </span>
+  );
+}
 
 /** Voluntary auto-play toggle, as a cell of the utility bar — it belongs next
  * to the hand you're handing over, not buried in the Options drawer. */
@@ -64,6 +108,10 @@ export function UtilityRow({
   const hasSort = sort !== undefined && sort !== null && sort !== false;
   const hasHelp = help !== undefined && help !== null && help !== false;
   const hasTakeSeat = takeSeat !== undefined && takeSeat !== null && takeSeat !== false;
+  // Nobody's watching is the common case — a chip that's usually a silent
+  // "0" would just be noise, so it's absent entirely rather than disabled.
+  const spectators = useGameStore((s) => s.roster?.spectators ?? 0);
+  const hasSpectators = spectators > 0;
   return (
     <div className="relative z-30 flex w-full max-w-[min(96vw,100rem)] items-center justify-end gap-2 py-1 sm:grid sm:grid-cols-[1fr_auto_1fr]">
       <span aria-hidden className="max-sm:hidden" />
@@ -80,6 +128,8 @@ export function UtilityRow({
           their cells and must escape the bar's box. */}
       <span className="flex shrink-0 items-stretch gap-[2px] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[2px] shadow-(--shadow-ap-sm) sm:justify-self-end">
         <LastTrickPeek trick={lastTrick} defaultOpen={defaultLastTrickOpen} />
+        {hasSpectators && <Divider />}
+        {hasSpectators && <SpectatorsCell n={spectators} />}
         {hasComms && <Divider />}
         {comms}
         {autoPlay && <Divider />}

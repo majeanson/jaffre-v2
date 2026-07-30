@@ -15,6 +15,19 @@ const T: Record<
     slowDown: string;
     quickLabel: string;
     quick: readonly string[];
+    watching: string;
+    /** System-entry lines — code + name in, sentence out. Kept invariant
+     * under fr gender (no "assis(e)"/"déconnecté(e)" agreement): the server
+     * has no idea who's masculine or feminine, so every verb here is phrased
+     * so it never needs to know either. */
+    system: {
+      sat: (name: string) => string;
+      left: (name: string) => string;
+      dropped: (name: string) => string;
+      botPlaying: (name: string) => string;
+      back: (name: string) => string;
+      started: string;
+    };
   }
 > = {
   en: {
@@ -39,6 +52,15 @@ const T: Record<
       'One sec',
       'Sorry',
     ],
+    watching: 'watching',
+    system: {
+      sat: (name) => `${name} sat down.`,
+      left: (name) => `${name} left.`,
+      dropped: (name) => `${name} dropped.`,
+      botPlaying: (name) => `A bot is playing ${name}'s hand.`,
+      back: (name) => `${name} is back.`,
+      started: 'Game on.',
+    },
   },
   fr: {
     chat: 'Clavardage',
@@ -62,6 +84,15 @@ const T: Record<
       'Une minute',
       'Désolé',
     ],
+    watching: 'regarde',
+    system: {
+      sat: (name) => `${name} prend place à la table.`,
+      left: (name) => `${name} quitte la table.`,
+      dropped: (name) => `${name} a perdu la connexion.`,
+      botPlaying: (name) => `Un bot joue la main de ${name}.`,
+      back: (name) => `${name} est de retour.`,
+      started: 'La partie commence !',
+    },
   },
 };
 
@@ -72,6 +103,13 @@ export interface ChatMessage {
   /** Sender's seat (0-3), so the name can be coloured like the felt does.
    * Absent for spectators and for entries persisted before this field existed. */
   readonly seat?: number;
+  /** A table-moment notice (sat/left/dropped/botPlaying/back/started) rather
+   * than a human message — rendered as a muted, centered line instead of a
+   * bubble. See @jaffre/protocol's ChatEntry.system for the wire contract. */
+  readonly system?: {
+    readonly code: 'sat' | 'left' | 'dropped' | 'botPlaying' | 'back' | 'started';
+    readonly name?: string;
+  };
 }
 
 export interface ChatPanelProps {
@@ -102,6 +140,26 @@ function hhmm(at: number, lang: Lang): string {
   });
 }
 
+/** Localize a system entry's code (+ name) into the sentence ChatPanel shows
+ * — the server never ships prose, only this. */
+function systemLine(t: (typeof T)['en'], system: NonNullable<ChatMessage['system']>): string {
+  const name = system.name ?? '';
+  switch (system.code) {
+    case 'sat':
+      return t.system.sat(name);
+    case 'left':
+      return t.system.left(name);
+    case 'dropped':
+      return t.system.dropped(name);
+    case 'botPlaying':
+      return t.system.botPlaying(name);
+    case 'back':
+      return t.system.back(name);
+    case 'started':
+      return t.system.started;
+  }
+}
+
 /** Room text chat: message list + input. Compact — shares space with the log. */
 export function ChatPanel({
   entries,
@@ -121,9 +179,12 @@ export function ChatPanel({
   const toggleRef = useRef<HTMLButtonElement>(null);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // System lines (sat/left/dropped/…) are table narration, not a message
+  // from a person — they must never trip the unread badge.
+  const humanEntries = entries.filter((e) => e.system === undefined).length;
   // While the panel is open every entry counts as read.
-  if (open) seenRef.current = entries.length;
-  const unread = open ? 0 : entries.length - seenRef.current;
+  if (open) seenRef.current = humanEntries;
+  const unread = open ? 0 : humanEntries - seenRef.current;
 
   useEffect(() => {
     if (open) listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -200,22 +261,35 @@ export function ChatPanel({
         className="h-32 overflow-y-auto px-1 text-xs leading-5 text-(--color-ap-text)"
       >
         {entries.length === 0 && <p className="text-(--color-ap-muted)">{t.empty}</p>}
-        {entries.map((e, i) => (
-          <p key={i} className="break-words">
-            <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at, lang)}</span>{' '}
-            <span
-              className="font-bold text-(--color-ap-violet-soft)"
-              style={
-                typeof e.seat === 'number'
-                  ? { color: e.seat % 2 === 0 ? 'var(--color-team-a)' : 'var(--color-team-b)' }
-                  : undefined
-              }
-            >
-              {e.from}
-            </span>{' '}
-            <span>{e.text}</span>
-          </p>
-        ))}
+        {entries.map((e, i) =>
+          e.system !== undefined ? (
+            // Table narration, not a person talking — muted, centered, no
+            // name/timestamp bubble, so it reads as the room's own voice.
+            <p key={i} className="my-1 text-center text-[11px] text-(--color-ap-muted)">
+              {systemLine(t, e.system)}
+            </p>
+          ) : (
+            <p key={i} className="break-words">
+              <span className="tabular-nums text-(--color-ap-muted)">{hhmm(e.at, lang)}</span>{' '}
+              <span
+                className="font-bold text-(--color-ap-violet-soft)"
+                style={
+                  typeof e.seat === 'number'
+                    ? { color: e.seat % 2 === 0 ? 'var(--color-team-a)' : 'var(--color-team-b)' }
+                    : undefined
+                }
+              >
+                {e.from}
+              </span>
+              {/* A seatless entry is a spectator's — the only other kind of
+                  seatless line is a system one, handled in the branch above. */}
+              {e.seat === undefined && (
+                <span className="text-[10px] text-(--color-ap-muted)"> ({t.watching})</span>
+              )}{' '}
+              <span>{e.text}</span>
+            </p>
+          ),
+        )}
       </div>
       {/* One tap to say the usual things: free-text-only chat is a wall on a
           phone mid-trick, and canned phrases keep the room civil. */}

@@ -58,9 +58,12 @@ test('two clients share a room, play starts, and a disconnect is shown', async (
   await a.getByTestId('seat-row-2').getByRole('button', { name: 'Add bot' }).click();
   await a.getByTestId('seat-row-3').getByRole('button', { name: 'Add bot' }).click();
 
-  // B joins the same room and sits seat 1 (same socket-open guard).
+  // B joins the same room and sits seat 1 (same socket-open guard). B arrives
+  // AFTER A sat, so the header greets them by the host's name instead of
+  // telling them to share the link they just followed — same open-socket
+  // signal, the copy that fits an invitee.
   await b.goto(`/#room/${room}`);
-  await expect(b.getByText('Share this code with your table.')).toBeVisible();
+  await expect(b.getByText(/is waiting for you/)).toBeVisible();
   await b.getByTestId('seat-row-1').getByRole('button', { name: 'Sit here' }).click();
 
   // A starts; both clients land on the table.

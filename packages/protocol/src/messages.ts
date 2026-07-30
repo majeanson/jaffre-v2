@@ -216,6 +216,19 @@ export interface ChatEntry {
   /** Sender's seat (0-3), so the UI can colour the name like the felt does.
    * Absent for spectators and for entries persisted before this field existed. */
   readonly seat?: number;
+  /**
+   * A table-moment notice (someone sat/left/dropped, a bot took over or gave
+   * a seat back, the game started) rather than a human message. Code + name
+   * only — NEVER prose: the client localizes it (see ChatPanel). `from`/
+   * `text` above still carry a plain-language EN fallback so an older client
+   * without system-entry support renders something sane instead of an empty
+   * bubble. Absent for ordinary chat and for entries persisted before this
+   * field existed — same convention `seat` established above.
+   */
+  readonly system?: {
+    readonly code: 'sat' | 'left' | 'dropped' | 'botPlaying' | 'back' | 'started';
+    readonly name?: string;
+  };
 }
 
 export interface MusicTrack {

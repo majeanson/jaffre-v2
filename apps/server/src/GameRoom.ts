@@ -33,6 +33,7 @@ import {
 import { persistHistory } from './room/persistence.js';
 import {
   broadcastRoster,
+  markDropped,
   notifyTurnIfAbsent,
   onImHere,
   onReady,
@@ -85,6 +86,32 @@ const CHAT_CAP = 100;
 const CHAT_RATE_LIMIT = 5;
 const CHAT_RATE_WINDOW_MS = 10_000;
 
+/** Plain-language EN fallback for a system chat entry's `from`/`text` — read
+ * only by a client too old to understand `system`, so it renders something
+ * sane instead of an empty bubble. The code+name pair is the real payload;
+ * see ChatEntry.system and ChatPanel's localization for what ships today. */
+function systemChatFallback(system: NonNullable<ChatEntry['system']>): {
+  from: string;
+  text: string;
+} {
+  const who = system.name ?? 'Someone';
+  const from = 'Table';
+  switch (system.code) {
+    case 'sat':
+      return { from, text: `${who} sat down.` };
+    case 'left':
+      return { from, text: `${who} left.` };
+    case 'dropped':
+      return { from, text: `${who} dropped.` };
+    case 'botPlaying':
+      return { from, text: `A bot is playing ${who}'s hand.` };
+    case 'back':
+      return { from, text: `${who} is back.` };
+    case 'started':
+      return { from, text: 'Game on.' };
+  }
+}
+
 export class GameRoom implements DurableObject {
   meta: Meta = emptyMeta();
   game: GameState | null = null;
@@ -110,6 +137,15 @@ export class GameRoom implements DurableObject {
   readonly errorReporters = new Set<string>();
   /** uid → recent music_add timestamps, same sliding window as chat's. */
   readonly musicAddTimestamps = new Map<string, number[]>();
+  /** uids currently announced (system chat "A bot is playing…") as bot-
+   * covered — the dedupe for presence.ts's broadcastRoster takeover edge
+   * detection: `botPlaying` is DERIVED (a deadline vs Date.now()) and
+   * recomputed on every roster build, so without this a seat that stays
+   * bot-covered for many turns would repeat the line on every broadcast.
+   * Cleared by markBack (reconnect) and clearUserState (permanent leave).
+   * IN-MEMORY like chatTimestamps above: a rare isolate eviction re-firing
+   * the line once is the same cheap tradeoff already accepted there. */
+  readonly botPlayingAnnounced = new Set<string>();
 
   constructor(
     readonly ctx: DurableObjectState,
@@ -296,10 +332,10 @@ export class GameRoom implements DurableObject {
         return a.joined && a.userId === att.userId;
       });
       if (!stillConnected) {
-        this.meta.disconnectedSince = {
-          ...this.meta.disconnectedSince,
-          [att.userId]: Date.now(),
-        };
+        // Stamps the clock AND drops a "so-and-so dropped" chat line — see
+        // presence.ts's header comment for why this whole invariant set lives
+        // there rather than inline here.
+        markDropped(this, att.userId);
         await this.ctx.storage.put('meta', this.meta);
         // Exclude the socket closing now: if it was the last human, this leaves
         // the table paused instead of arming a doomed bot-swap alarm.
@@ -447,6 +483,26 @@ export class GameRoom implements DurableObject {
       at: Date.now(),
       ...(seat !== null ? { seat } : {}),
     };
+    this.chat.push(entry);
+    if (this.chat.length > CHAT_CAP) this.chat = this.chat.slice(-CHAT_CAP);
+    await this.ctx.storage.put('chat', this.chat);
+    for (const socket of this.ctx.getWebSockets()) {
+      if (this.attachment(socket).joined) this.send(socket, { t: 'chat', entry });
+    }
+  }
+
+  /**
+   * Append a table-moment notice (sat/left/dropped/botPlaying/back/started) —
+   * code + name only; ChatPanel localizes it. Reuses onChat's exact append/
+   * cap/persist/broadcast path (CHAT_CAP truncation included) so a burst of
+   * system lines can't grow the chat log past what human messages already
+   * respect, and no rate limit — these are server-authored, not player input.
+   * Callers in room/seats.ts and room/presence.ts own WHEN each code fires;
+   * this is only the plumbing.
+   */
+  async pushSystemChat(system: NonNullable<ChatEntry['system']>): Promise<void> {
+    const { from, text } = systemChatFallback(system);
+    const entry: ChatEntry = { from, text, at: Date.now(), system };
     this.chat.push(entry);
     if (this.chat.length > CHAT_CAP) this.chat = this.chat.slice(-CHAT_CAP);
     await this.ctx.storage.put('chat', this.chat);

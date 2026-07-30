@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import type { MusicState } from '@jaffre/protocol';
 
-export type MusicPlayerStatus = 'idle' | 'loading' | 'ready' | 'error';
-
 const VOLUME_KEY = 'jaffre-music-volume';
 
 /** Opting in with a saved volume below this floor bumps it up — pressing
@@ -23,12 +21,10 @@ interface MusicStore {
   listening: boolean;
   /** Local volume 0–100, persisted per device. */
   volume: number;
-  playerStatus: MusicPlayerStatus;
 
   setState: (state: MusicState) => void;
   setListening: (on: boolean) => void;
   setVolume: (volume: number) => void;
-  setPlayerStatus: (playerStatus: MusicPlayerStatus) => void;
   /** Room teardown: drop room state but keep the device volume preference. */
   reset: () => void;
 }
@@ -37,7 +33,6 @@ export const useMusicStore = create<MusicStore>((set) => ({
   state: null,
   listening: false,
   volume: storedVolume(),
-  playerStatus: 'idle',
 
   setState: (state) => set({ state }),
   setListening: (listening) =>
@@ -52,6 +47,5 @@ export const useMusicStore = create<MusicStore>((set) => ({
     localStorage.setItem(VOLUME_KEY, String(volume));
     set({ volume });
   },
-  setPlayerStatus: (playerStatus) => set({ playerStatus }),
-  reset: () => set({ state: null, listening: false, playerStatus: 'idle' }),
+  reset: () => set({ state: null, listening: false }),
 }));

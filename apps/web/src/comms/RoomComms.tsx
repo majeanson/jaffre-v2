@@ -56,9 +56,12 @@ export function RoomComms({
   const seenRef = useRef(0);
   const toggleRef = useRef<HTMLButtonElement>(null);
 
+  // System lines (sat/left/dropped/botPlaying/back/started) are table
+  // narration, not a person messaging you — they must never trip the badge.
+  const humanChat = chat.filter((e) => e.system === undefined).length;
   // While the surface is open, every chat entry counts as read.
-  if (open) seenRef.current = chat.length;
-  const unread = open ? 0 : chat.length - seenRef.current;
+  if (open) seenRef.current = humanChat;
+  const unread = open ? 0 : humanChat - seenRef.current;
   const nowPlaying = musicState?.current != null;
 
   // Same seenRef idea for the Music tab: while it's the active tab, the

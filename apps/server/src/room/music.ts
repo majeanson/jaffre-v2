@@ -2,7 +2,9 @@
  * The shared room "listen together" music queue: YouTube URL parsing, oEmbed
  * metadata lookup, add/remove/skip-vote/ended/error handling, the
  * per-recipient wire view (strips userIds, marks mine/youVotedSkip), and the
- * connected-seated-humans skip-majority threshold. Owns MUSIC_QUEUE_CAP /
+ * connected-seated-humans skip-majority threshold (falling back to a
+ * connected-spectator majority when no seat is human-occupied, so an empty
+ * table's watchers can still unstick a track). Owns MUSIC_QUEUE_CAP /
  * MUSIC_USER_PENDING_CAP / the add rate limit / MUSIC_STALE_MS.
  */
 import type { MusicState, MusicTrack } from '@jaffre/protocol';
@@ -194,7 +196,20 @@ export async function onMusicSkipVote(
   ws: WebSocket,
   att: Attachment,
 ): Promise<void> {
-  if (!att.joined || typeof att.viewer !== 'number') {
+  if (!att.joined) {
+    room.send(ws, {
+      t: 'error',
+      code: 'NOT_SEATED',
+      message: 'Only seated players can vote to skip',
+    });
+    return;
+  }
+  // Normally a spectator can't end the track for the people actually playing
+  // it. But an empty-seats table — every human stepped away, or the room is
+  // all bots — has nobody seated left to ever cast that vote; the connected
+  // spectators are the only humans left who CAN unstick it, so they're let
+  // through exactly when no seated human is around to outrank them.
+  if (typeof att.viewer !== 'number' && connectedSeatedUids(room).size > 0) {
     room.send(ws, {
       t: 'error',
       code: 'NOT_SEATED',
@@ -234,17 +249,43 @@ export async function onMusicError(room: GameRoom, att: Attachment, id: string):
   }
 }
 
-/** Majority of CONNECTED seated humans (floor(n/2)+1, min 1). Connected —
- * a player who closed their tab must not raise the bar for those present.
- * `exclude` skips a socket that is closing right now. */
-export function skipThreshold(room: GameRoom, exclude?: WebSocket): number {
+/** Connected seated-human userIds right now (excludes bots — bots have no
+ * socket — and spectators). Shared by skipThreshold and the skip-vote gate,
+ * both of which need to know whether anyone seated is even around. */
+function connectedSeatedUids(room: GameRoom, exclude?: WebSocket): Set<string> {
   const uids = new Set<string>();
   for (const s of room.ctx.getWebSockets()) {
     if (s === exclude) continue;
     const a = room.attachment(s);
     if (a.joined && typeof a.viewer === 'number') uids.add(a.userId);
   }
-  return Math.floor(uids.size / 2) + 1;
+  return uids;
+}
+
+/** Connected spectator userIds right now (joined, not seated). */
+function connectedSpectatorUids(room: GameRoom, exclude?: WebSocket): Set<string> {
+  const uids = new Set<string>();
+  for (const s of room.ctx.getWebSockets()) {
+    if (s === exclude) continue;
+    const a = room.attachment(s);
+    if (a.joined && typeof a.viewer !== 'number') uids.add(a.userId);
+  }
+  return uids;
+}
+
+/** Majority of CONNECTED seated humans (floor(n/2)+1, min 1). Connected —
+ * a player who closed their tab must not raise the bar for those present.
+ * `exclude` skips a socket that is closing right now.
+ *
+ * When NOBODY seated is connected (every human stepped away, or the table is
+ * all bots) there is no seated majority to ever reach — the track would be
+ * stuck forever for anyone still watching. Fall back to a majority of
+ * connected SPECTATORS in that case; onMusicSkipVote only lets spectator
+ * votes through under the same condition, so the two stay in lockstep. */
+export function skipThreshold(room: GameRoom, exclude?: WebSocket): number {
+  const seated = connectedSeatedUids(room, exclude);
+  const pool = seated.size > 0 ? seated.size : connectedSpectatorUids(room, exclude).size;
+  return Math.floor(pool / 2) + 1;
 }
 
 export async function maybeAdvanceBySkip(room: GameRoom, exclude?: WebSocket): Promise<void> {

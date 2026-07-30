@@ -8,12 +8,14 @@ import { createGame, serialize, viewFor } from '@jaffre/engine';
 import type { Seat, Viewer } from '@jaffre/engine';
 import type { BotDifficulty } from '@jaffre/bots';
 import type { GameRoom } from '../GameRoom.js';
+import { displayName } from '../publicId.js';
 import { isBotOwner, SEATS, type Attachment, type SeatOwner } from './types.js';
 import { advanceTrack, MUSIC_STALE_MS } from './music.js';
 import {
   broadcastRoster,
   clearUserState,
   isConnected,
+  markBack,
   notifyHostOfJoin,
   scheduleNextWake,
   unseatUser,
@@ -60,6 +62,10 @@ export async function onJoin(
       Object.entries(room.meta.disconnectedSince).filter(([id]) => id !== att.userId),
     );
     metaDirty = true;
+    // Only drops a "back" chat line if a bot had actually taken this seat
+    // over (botPlayingAnnounced) — a reconnect that beat the swap deadline
+    // never announced a takeover in the first place.
+    markBack(room, att.userId);
   }
   if (metaDirty) await room.ctx.storage.put('meta', room.meta);
   // A room that slept mid-track wakes with an ancient `current` — advance
@@ -202,6 +208,16 @@ export async function onSit(
     }
   }
   broadcastRoster(room, {});
+  // A "sat down" chat line, but only for someone who WASN'T already seated —
+  // the idempotent same-seat re-sit returns before here, and a seated
+  // player's pre-game/between-games seat swap (oldSeat !== null) isn't a
+  // "sitting down" moment for anyone at the table.
+  if (oldSeat === null) {
+    await room.pushSystemChat({
+      code: 'sat',
+      name: displayName(room.meta.names[att.userId], att.userId),
+    });
+  }
   // Table-filled push: bring an absent host back when a stranger joins their
   // not-yet-started table. Deliberately NOT gated on meta.public — the
   // private share-a-link host is the one who put the phone down, and needs
@@ -357,7 +373,11 @@ export async function onLeave(room: GameRoom, ws: WebSocket, att: Attachment): P
     room.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
     return;
   }
-  await unseatUser(room, att.userId);
+  // Captured before unseatUser runs — it doesn't touch meta.names, but the
+  // name a departing player is known by belongs in the chat line either way.
+  const name = displayName(room.meta.names[att.userId], att.userId);
+  const left = await unseatUser(room, att.userId);
+  if (left) await room.pushSystemChat({ code: 'left', name });
 }
 
 /** Add a bot to a vacant (or bot-owned, to change difficulty) seat — pre-game,
@@ -501,5 +521,6 @@ export async function onStart(room: GameRoom, ws: WebSocket, att: Attachment): P
     room.send(socket, { t: 'view', seq: room.seq, view: viewFor(game, a.viewer) });
   }
   broadcastRoster(room, {});
+  await room.pushSystemChat({ code: 'started' });
   await scheduleNextWake(room);
 }

@@ -30,9 +30,12 @@ const T: Record<
   {
     room: (code: string) => string;
     share: string;
+    hostWaiting: (name: string) => string;
+    watching: (n: number) => string;
     connecting: string;
     start: string;
     waitingHelper: (n: number) => string;
+    fillBots: string;
     back: string;
     howToPlay: string;
     hailMary: string;
@@ -52,6 +55,12 @@ const T: Record<
   en: {
     room: (code) => `Room ${code}`,
     share: 'Share this code with your table.',
+    // The host-centric "share this code" line makes no sense addressed to a
+    // guest who just followed a link — they can't invite anyone to a seat
+    // they don't have yet. Once someone's sat down, tell the newcomer WHO
+    // they're joining instead.
+    hostWaiting: (name) => `${name} is waiting for you.`,
+    watching: (n) => `${String(n)} watching`,
     connecting: 'Connecting…',
     start: 'Start the game',
     // Bots are the liquidity engine, not a consolation prize: a public table
@@ -59,6 +68,7 @@ const T: Record<
     // The old line ("add bots or share the code") read as "give up on people".
     waitingHelper: (n) =>
       `${String(n)} seat${n === 1 ? '' : 's'} left — start with bots, people can drop in`,
+    fillBots: 'Fill with bots',
     // "Home" — the one exit word across the app (MetaHeader, Visitor, here).
     back: '← Home',
     howToPlay: 'How to play',
@@ -78,10 +88,13 @@ const T: Record<
   fr: {
     room: (code) => `Salon ${code}`,
     share: 'Partage ce code avec ta table.',
+    hostWaiting: (name) => `${name} t'attend.`,
+    watching: (n) => `${String(n)} spectateur·rices`,
     connecting: 'Connexion…',
     start: 'Commencer la partie',
     waitingHelper: (n) =>
       `${String(n)} siège${n === 1 ? '' : 's'} à remplir — pars avec des bots, le monde peut embarquer`,
+    fillBots: 'Remplis avec des bots',
     // "Accueil" (the meta screens' home label), not "Retour à l'accueil": the
     // long form wrapped the footer pair into a stack and pushed "Comment
     // jouer" below the 900px fold.
@@ -118,6 +131,22 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
   const full = roster !== null && roster.seats.every((s) => s !== null);
   const emptySeats = roster === null ? 4 : roster.seats.filter((s) => s === null).length;
   const seated = typeof viewer === 'number';
+  // Whoever's sat in hostSeat, if anyone has — drives the unseated arrival's
+  // header line below (H4: a guest sees who they're joining, not host-facing
+  // "share this code" copy that doesn't apply to them).
+  const hostSeatInfo =
+    roster !== null && roster.hostSeat !== undefined
+      ? (roster.seats[roster.hostSeat] ?? null)
+      : null;
+  const showHostWaiting = !seated && hostSeatInfo !== null;
+  // Sends add_bot for every still-empty seat — the one-tap version of what
+  // waitingHelper below already promises ("start with bots").
+  const fillWithBots = () => {
+    if (roster === null) return;
+    roster.seats.forEach((s, i) => {
+      if (s === null) send({ t: 'add_bot', seat: i as 0 | 1 | 2 | 3, difficulty: 'normal' });
+    });
+  };
   // House rule ships ON — new rooms start with Hail-Mary enabled (server
   // default matches; unchecking is the deliberate act).
   const hailMary = roster?.rules?.hailMary12 ?? true;
@@ -152,7 +181,10 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
             <h1 className="font-arcade-display text-3xl uppercase text-(--color-ap-gold)">
               {t.room(code)}
             </h1>
-            <ShareButton code={code} />
+            {/* Labeled: this whole screen's job is inviting people in — the
+                icon-only form (right for a hover-bar cell elsewhere) would
+                bury the one action a fresh room most needs. */}
+            <ShareButton code={code} labeled />
             <span
               data-testid="visibility-pill"
               className="rounded-full border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2.5 py-0.5 font-arcade-ui text-[0.65em] uppercase tracking-wide text-(--color-ap-muted)"
@@ -161,8 +193,15 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
             </span>
           </div>
           <p className="mt-1 text-sm text-(--color-ap-muted)">
-            {connection === 'connecting' ? t.connecting : t.share}
+            {connection === 'connecting'
+              ? t.connecting
+              : showHostWaiting && hostSeatInfo !== null
+                ? t.hostWaiting(hostSeatInfo.name)
+                : t.share}
           </p>
+          {roster !== null && roster.spectators > 0 && (
+            <p className="mt-1 text-xs text-(--color-ap-muted)">{t.watching(roster.spectators)}</p>
+          )}
         </header>
 
         {/* In-flow (its own row): the table's fixed variant lands on the seat
@@ -291,9 +330,21 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
           {t.start}
         </Cta>
         {!full && (
-          <p className="-mt-4 text-center font-arcade-ui text-xs text-(--color-ap-muted)">
-            {t.waitingHelper(emptySeats)}
-          </p>
+          <>
+            <p className="-mt-4 text-center font-arcade-ui text-xs text-(--color-ap-muted)">
+              {t.waitingHelper(emptySeats)}
+            </p>
+            {/* The button behind the promise above — add_bot per empty seat,
+                same message the per-seat "Add bot" already sends. */}
+            <Cta
+              variant="secondary"
+              data-testid="fill-bots"
+              onClick={fillWithBots}
+              className="w-full"
+            >
+              {t.fillBots}
+            </Cta>
+          </>
         )}
 
         {/* One comms surface for the whole room life: chat (voice in its send

@@ -42,15 +42,15 @@ async function createRoomAndSit(page: Page): Promise<string> {
   return code;
 }
 
-/** Fill every empty seat via the per-seat "Add bot" buttons (the one-tap
- * fill-bots shortcut is gone — house style is one control per seat). */
+/** Fill every empty seat with one tap — the "Fill with bots" lobby action
+ * (H4) sends add_bot per still-empty seat, same as clicking each seat's own
+ * "Add bot" button in turn. Falls back to the per-seat buttons if the room is
+ * already full (no Fill button then — nothing to fill). */
 async function fillWithBots(page: Page): Promise<void> {
-  const addBot = page.getByRole('button', { name: 'Add bot' });
-  while ((await addBot.count()) > 0) {
-    const before = await addBot.count();
-    await addBot.first().click();
-    await expect.poll(() => addBot.count()).toBeLessThan(before);
-  }
+  const fillButton = page.getByRole('button', { name: 'Fill with bots' });
+  if ((await fillButton.count()) === 0) return; // already full
+  await fillButton.click();
+  await expect(page.getByRole('button', { name: 'Add bot' })).toHaveCount(0);
 }
 
 test('a created room is public by default, appears in #lobby live, and a second player joins as themselves', async ({
@@ -95,8 +95,10 @@ test('a created room is public by default, appears in #lobby live, and a second 
   // Wait for the roster before sitting: until it lands, every seat renders a
   // "Sit here" and the first one is ALICE's — a fast click gets SEAT_TAKEN on
   // slow CI. Alice's nameplate proves the roster arrived and .first() now
-  // targets a genuinely empty seat.
-  await expect(b.getByText('Alice')).toBeVisible();
+  // targets a genuinely empty seat. Scoped to the seat ROW: her name also
+  // reaches the host-waiting line and the "Alice sat down." system entry, and
+  // neither of those says the roster's seats have landed.
+  await expect(b.getByTestId('seat-row-0').getByText('Alice')).toBeVisible();
   await b.getByRole('button', { name: 'Sit here' }).first().click();
 
   // Who's-who: A sees Bruno arrive; the two browsers are distinct identities.

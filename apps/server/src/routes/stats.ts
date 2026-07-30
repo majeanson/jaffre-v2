@@ -334,7 +334,8 @@ async function computeStats(env: Env, userId: string): Promise<StatsPayload> {
   ];
   const paintMap = await paintByUid(db, paintUids);
   const NO_PAINT = { color: null, paint: null };
-  const paintOf = (uid: string | null) => (uid === null ? NO_PAINT : (paintMap.get(uid) ?? NO_PAINT));
+  const paintOf = (uid: string | null) =>
+    uid === null ? NO_PAINT : (paintMap.get(uid) ?? NO_PAINT);
 
   return {
     games: games.length,

@@ -44,3 +44,34 @@ test('chat flows both ways and survives a reload', async ({ browser }) => {
   await contextA.close();
   await contextB.close();
 });
+
+/**
+ * H1 (Wave 4a): the server narrates table moments (sat/left/dropped/bot
+ * takeover/back/started) as system chat entries; the client localizes the
+ * code+name into a sentence and renders it as a muted line, not a bubble.
+ */
+test('sitting down drops a muted system chat line for everyone at the table', async ({
+  browser,
+}) => {
+  const room = `e2e-chat-sat-${Math.random().toString(36).slice(2, 10)}`;
+
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  await contextA.addInitScript(() => localStorage.setItem('jaffre-name', 'Alice'));
+  await contextB.addInitScript(() => localStorage.setItem('jaffre-name', 'Bruno'));
+  const a = await contextA.newPage();
+  const b = await contextB.newPage();
+
+  await a.goto(`/#room/${room}`);
+  await b.goto(`/#room/${room}`);
+
+  await a.getByTestId('seat-row-0').getByRole('button', { name: 'Sit here' }).click();
+
+  // Table narration, not a message from a person: both the sitter and the
+  // still-spectating second client see the same line, unprompted.
+  await expect(a.getByTestId('chat-messages')).toContainText('Alice sat down.');
+  await expect(b.getByTestId('chat-messages')).toContainText('Alice sat down.');
+
+  await contextA.close();
+  await contextB.close();
+});
