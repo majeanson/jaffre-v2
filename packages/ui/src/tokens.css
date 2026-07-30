@@ -1285,31 +1285,33 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
-
-  /* The d-pad cursor. Arrow-key navigation sets data-kb-nav on <html> (and the
-   * next mouse press clears it), so this louder ring only ever shows for
-   * someone actually driving with the keyboard — a mouse user never meets it,
-   * and neither does a touch device, where the engine doesn't run at all.
-   * Same violet glow the seat-turn highlight uses, so the app has one idea of
-   * "this is the live thing" rather than two. */
-  [data-kb-nav] :focus-visible {
-    outline-width: 3px;
-    outline-offset: 3px;
-    box-shadow:
-      0 0 0 1px var(--color-ap-ink),
-      0 0 0.7em 0.05em rgb(122 111 240 / 0.55);
-  }
 }
 
-/* The cursor lands: a halo contracts onto whatever the arrows just reached.
- * One shot per move, not a loop — a ring that pulses forever under the thing
- * you are reading is a distraction, and this only has to answer "where am I
- * now". No fill-mode, so it settles back onto the static ring above. */
+/* The d-pad cursor. Arrow-key navigation sets data-kb-nav on <html> and the
+ * next mouse press clears it, so this louder ring only ever shows for someone
+ * actually driving with the keyboard — a mouse user keeps the quiet 2px ring,
+ * and a touch device, where the engine never runs, never sees it.
+ *
+ * Deliberately UNLAYERED: box-shadow was the obvious way to hang a glow on
+ * this, and it silently lost to Tailwind's shadow-* utilities on every arcade
+ * button — which is to say on almost everything you navigate. The glow is a
+ * filter instead, which composes with whatever shadow a component already
+ * owns rather than replacing it, and being outside @layer means the ring
+ * itself outranks utility classes too. */
+[data-kb-nav] :focus-visible {
+  outline-width: 3px;
+  outline-offset: 3px;
+  filter: drop-shadow(0 0 3px rgb(122 111 240 / 0.9));
+}
+
+/* The cursor lands: the ring contracts onto whatever the arrows just reached.
+ * One shot per move, not a loop — a ring pulsing forever under the thing you
+ * are reading is a distraction, and this only has to answer "where am I now".
+ * outline-offset animates on its own, so nothing here can fight a component's
+ * shadow the way the first attempt did. */
 @keyframes jaffre-kb-cursor {
   from {
-    box-shadow:
-      0 0 0 1px var(--color-ap-ink),
-      0 0 0 0.4em rgb(122 111 240 / 0.45);
+    outline-offset: 10px;
   }
 }
 

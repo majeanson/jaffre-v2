@@ -124,6 +124,11 @@ export function handleKey(e: KeyboardEvent, deps: NavDeps = DOM_DEPS): boolean {
  * Mount once, in App. Also flags the document while the keyboard is driving,
  * so the focus cursor can be loud for keyboard users without ever appearing
  * for a mouse.
+ *
+ * The flag goes up only for moves the engine itself made. That is what keeps
+ * the loud cursor off the felt: roving the hand is react-aria's arrow, not
+ * ours, and a card already says it is focused by lifting out of the fan — a
+ * violet halo there would only compete with the Coach's own violet ring.
  */
 export function useSpatialNav(): void {
   useEffect(() => {
