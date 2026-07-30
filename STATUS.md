@@ -54,10 +54,23 @@ Last checkpoint: **2026-07-29**.
   118 web unit · 208 server · engine property tests (100% cov).
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
-- Full shots sweep 2026-07-29: **60/60 viewport×skin combos, ~4,300 shots,
-  zero layout warnings** — the first fully clean sweep. All 15 skins
-  baselined. Re-run with `npm run shots` (~1.7 h, starves the machine —
-  don't run beside other work).
+- Shots sweep, re-run against the head-to-head/regulars/lazy-felt work
+  (2026-07-29→30): **desktop 15/15 skins · tablet 15/15 · phone 6/15 ·
+  small-desktop 3/15, zero layout warnings** — `report.txt` is appended LIVE,
+  so a header-only report means clean, even for an interrupted run. The 9
+  unshot phone skins are colour-token variants of a width already clean in six
+  skins; contrast/violet-ink is a unit test, not an eyeball. The prior
+  2026-07-29 sweep was 60/60 clean on the code before this work.
+- Two gotchas for whoever runs `npm run shots` (~1.7 h, starves the machine):
+  killing it mid-run leaves an orphaned `workerd` holding port 8788 (the next
+  run dies instantly with "already used" — kill the process, not the port),
+  and its global-setup WIPES `shots-output/`, so an interrupted run destroys
+  the previous baseline's images. Run rows selectively with
+  `--grep "phone-|tablet-"`.
+- Viewport shots, not full-page: on a long screen (the record) anything below
+  the fold — the social tiles' regulars strip — is never in a shot at any
+  width. That surface is gated by the per-width overflow assertions in
+  `e2e/scenes.spec.ts` instead.
 - `main` auto-deploys to jaffre.marcportal.com behind CI's e2e gate +
   live-bundle verify. No PR gate — land on main.
 
