@@ -86,8 +86,13 @@ test('staged head-to-head shows both records, the edge, and the shared games', a
   await expect(page.getByText('1/3')).toBeVisible();
   // The edge reads only the games you played AGAINST each other: 1 win, 2 losses.
   await expect(page.getByTestId('h2h-edge')).toHaveText('Ginette has the edge.');
-  // Every shared game is listed, each a link into its replay.
+  // Every shared game is listed, each a link into its replay — split by which
+  // side of the table she was on, so no row has to repeat her name to say it.
   await expect(page.locator('a[href^="#replay/h2h-"]')).toHaveCount(9);
+  await expect(page.getByText('Partnered')).toBeVisible();
+  await expect(page.getByText('Across the table')).toBeVisible();
+  await expect(page.locator('a[href^="#replay/h2h-with-"]')).toHaveCount(6);
+  await expect(page.locator('a[href^="#replay/h2h-vs-"]')).toHaveCount(3);
 });
 
 /**

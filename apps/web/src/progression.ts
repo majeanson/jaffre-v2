@@ -135,6 +135,48 @@ export function trackLevelOf(cosmeticId: string): number | undefined {
   return LEVEL_TRACK.find((r) => r.cosmeticId === cosmeticId)?.level;
 }
 
+/**
+ * What the recap's XP strip should do with a freshly-read total.
+ *
+ * Pure so the ONE thing that can go wrong here is testable: the server writes a
+ * finished game's history row inside the same game_over action that sends the
+ * recap, with no "persisted" signal on the wire, so this read can arrive before
+ * the row exists. Every recorded game is worth at least XP_PER_GAME, so a total
+ * that has not moved by that much means the row hasn't landed — not that the
+ * game was worth nothing.
+ *
+ * `'reread'` asks the caller to fetch once more. `advanceBaseline` is false
+ * whenever the total is not above the baseline: storing a total that predates
+ * this game would make it the floor the NEXT game's "+N XP" is measured from,
+ * so the gain would appear a game late, on a hand that didn't earn it.
+ */
+export type XpMoment =
+  | { readonly kind: 'hide' }
+  | { readonly kind: 'reread' }
+  | {
+      readonly kind: 'show';
+      readonly level: number;
+      readonly pct: number;
+      readonly gained: number;
+      readonly levelUp: boolean;
+      readonly advanceBaseline: boolean;
+    };
+
+export function xpMoment(xp: number, seen: number | null, rereading: boolean): XpMoment {
+  if (xp <= 0) return { kind: 'hide' }; // nothing recorded yet
+  const gained = seen === null ? 0 : Math.max(0, xp - seen);
+  if (seen !== null && gained < XP_PER_GAME && !rereading) return { kind: 'reread' };
+  const p = levelProgress(xp);
+  return {
+    kind: 'show',
+    level: p.level,
+    pct: p.span === 0 ? 100 : (p.into / p.span) * 100,
+    gained,
+    levelUp: seen !== null && p.level > levelFromXp(seen),
+    advanceBaseline: seen === null || xp > seen,
+  };
+}
+
 const t = (lang: Lang, en: string, fr: string): string => (lang === 'fr' ? fr : en);
 
 /** Requirement line for a level-gated cosmetic (Collection locked tiles):

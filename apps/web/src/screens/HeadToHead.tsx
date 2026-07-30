@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AvatarChip, PixelWave, StatPanel, useLang, type Lang } from '@jaffre/ui';
-import { fetchHeadToHead, type HeadToHead as H2H } from '../net/history.js';
+import { fetchHeadToHead, type HeadToHead as H2H, type SharedGame } from '../net/history.js';
 import { GameRow } from '../components/GameRow.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { ShellNote } from '../components/ShellNote.js';
@@ -42,7 +42,8 @@ const T: Record<
     together: string;
     against: string;
     record: (wins: number, games: number) => string;
-    sharedGames: string;
+    partnered: string;
+    across: string;
     sharedCount: (n: number) => string;
     edge: (name: string) => string;
     evenEdge: string;
@@ -59,7 +60,8 @@ const T: Record<
     together: 'together',
     against: 'across',
     record: (wins, games) => `${String(wins)} won of ${String(games)}`,
-    sharedGames: 'Your games together',
+    partnered: 'Partnered',
+    across: 'Across the table',
     sharedCount: (n) => `${String(n)} game${n === 1 ? '' : 's'} shared`,
     edge: (name) => `${name} has the edge.`,
     evenEdge: 'Dead even.',
@@ -75,7 +77,8 @@ const T: Record<
     together: 'avec',
     against: 'contre',
     record: (wins, games) => `${String(wins)} gagnée${wins === 1 ? '' : 's'} sur ${String(games)}`,
-    sharedGames: 'Vos parties ensemble',
+    partnered: 'En équipe',
+    across: 'En face',
     sharedCount: (n) => `${String(n)} partie${n === 1 ? '' : 's'} en commun`,
     edge: (name) => `${name} a le dessus.`,
     evenEdge: 'Égalité parfaite.',
@@ -96,6 +99,32 @@ function edgeLine(data: H2H, t: Strings): string | null {
   const theirs = games - wins;
   if (wins === theirs) return t.evenEdge;
   return wins > theirs ? t.yourEdge : t.edge(data.name);
+}
+
+/** One side's games, or nothing at all when you have never sat that way. */
+function GameList({
+  heading,
+  record,
+  games,
+}: {
+  readonly heading: string;
+  readonly record: string;
+  readonly games: readonly SharedGame[];
+}) {
+  if (games.length === 0) return null;
+  return (
+    <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px]">
+      <div className="flex items-center justify-between gap-3 border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
+        <span>{heading}</span>
+        <span className="tabular-nums normal-case tracking-normal">{record}</span>
+      </div>
+      <div className="flex flex-col gap-2 p-3">
+        {games.map((g) => (
+          <GameRow key={g.id} game={g} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHeadProps) {
@@ -183,21 +212,22 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
               </p>
             )}
 
-            {/* Every shared game, newest first — each row into its replay, the
-                same row the record's own games list uses. */}
-            {data.games.length > 0 && (
-              <section className="overflow-hidden rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) shadow-(--shadow-ap) [&_:focus-visible]:outline-offset-[-2px]">
-                <div className="flex items-center justify-between gap-3 border-b-2 border-(--color-ap-ink) px-[0.9em] py-[0.7em] font-arcade-ui text-[0.72em] font-semibold uppercase tracking-[0.14em] text-(--color-ap-muted)">
-                  <span>{t.sharedGames}</span>
-                  <span className="tabular-nums">{data.games.length}</span>
-                </div>
-                <div className="flex flex-col gap-2 p-3">
-                  {data.games.map((g) => (
-                    <GameRow key={g.id} game={g} />
-                  ))}
-                </div>
-              </section>
-            )}
+            {/* Every shared game, newest first, split by which side of the
+                table they were on. Two lists rather than one: each row's own
+                subtitle already names the whole roster, so on a screen about
+                ONE person a single list repeated "with Ginette" on every row
+                while never stating the thing that actually differs. The header
+                says the side once, and the rows stay the record's own rows. */}
+            <GameList
+              heading={t.partnered}
+              record={t.record(data.together.wins, data.together.games)}
+              games={data.games.filter((g) => g.side === 'with')}
+            />
+            <GameList
+              heading={t.across}
+              record={t.record(data.against.wins, data.against.games)}
+              games={data.games.filter((g) => g.side === 'vs')}
+            />
           </div>
         )}
       </div>

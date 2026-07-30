@@ -12,6 +12,7 @@ import {
   trackLevelOf,
   trackRewardAt,
   xpFromStats,
+  xpMoment,
   xpToReach,
 } from '../src/progression.js';
 import { CARD_SKINS, owned } from '../src/cosmetics.js';
@@ -141,5 +142,70 @@ describe('level track', () => {
   it('level from stats matches the curve', () => {
     expect(levelFromStats(stats())).toBe(1);
     expect(levelFromStats(stats({ games: 1, wins: 1, bids: { attempted: 1, made: 1 } }))).toBe(2);
+  });
+});
+
+/**
+ * The recap's XP beat, and the one race it has to survive: the server writes a
+ * finished game's history row inside the same game_over action that sends the
+ * recap, so the strip's read can arrive before the row exists. Believing that
+ * read is what made "+N XP" land a game late.
+ */
+describe('xpMoment', () => {
+  it('shows a real gain and moves the baseline', () => {
+    const m = xpMoment(300, 275, false);
+    expect(m.kind).toBe('show');
+    if (m.kind !== 'show') return;
+    expect(m.gained).toBe(25);
+    expect(m.advanceBaseline).toBe(true);
+  });
+
+  it('asks for a re-read when the total has not moved by a whole game', () => {
+    // A recorded game is worth at least XP_PER_GAME, so anything less than that
+    // means the history row has not landed — not that the game earned nothing.
+    expect(xpMoment(275, 275, false).kind).toBe('reread');
+    expect(xpMoment(275 + XP_PER_GAME - 1, 275, false).kind).toBe('reread');
+    expect(xpMoment(275 + XP_PER_GAME, 275, false).kind).toBe('show');
+  });
+
+  it('gives up after ONE re-read, and refuses to move the baseline backwards', () => {
+    // Still nothing on the second read (a history write that genuinely failed):
+    // show the bar, claim no gain, and leave the baseline alone — writing this
+    // total would make it the floor the next game's gain is measured from.
+    const m = xpMoment(275, 275, true);
+    expect(m.kind).toBe('show');
+    if (m.kind !== 'show') return;
+    expect(m.gained).toBe(0);
+    expect(m.advanceBaseline).toBe(false);
+  });
+
+  it('never re-reads for a first-ever record, and never reports a negative gain', () => {
+    // No baseline yet (first game on this device): nothing to compare against,
+    // so there is nothing to wait for either.
+    const first = xpMoment(35, null, false);
+    expect(first.kind).toBe('show');
+    if (first.kind !== 'show') return;
+    expect(first.gained).toBe(0);
+    expect(first.advanceBaseline).toBe(true);
+    // A baseline ahead of the server (a device that saw more than D1 reports)
+    // reads as no gain, not as a negative one.
+    const behind = xpMoment(100, 500, true);
+    if (behind.kind !== 'show') throw new Error('expected show');
+    expect(behind.gained).toBe(0);
+    expect(behind.advanceBaseline).toBe(false);
+  });
+
+  it('hides itself when nothing is recorded at all', () => {
+    expect(xpMoment(0, null, false).kind).toBe('hide');
+  });
+
+  it('flashes the level-up only when the level actually crossed', () => {
+    // 250 XP is level 6, 350 is level 7 (XP_THRESHOLDS).
+    const up = xpMoment(350, 250, false);
+    if (up.kind !== 'show') throw new Error('expected show');
+    expect(up.levelUp).toBe(true);
+    const flat = xpMoment(300, 250, false);
+    if (flat.kind !== 'show') throw new Error('expected show');
+    expect(flat.levelUp).toBe(false);
   });
 });

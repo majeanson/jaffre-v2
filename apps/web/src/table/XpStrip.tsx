@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
-import { levelFromXp, levelProgress, xpFromStats } from '../progression.js';
-import { fetchStats } from '../net/history.js';
+import { xpFromStats, xpMoment } from '../progression.js';
+import { bustStatsCache, fetchStats } from '../net/history.js';
 
 const SEEN_XP_KEY = 'jaffre-xp-seen';
+/**
+ * How long to wait before reading the aggregate a second time.
+ *
+ * The server writes this game's history row INSIDE the same game_over action
+ * that sent us the recap, and there is no "persisted" signal on the wire to
+ * wait on — so this read can genuinely arrive first. Every recorded game is
+ * worth at least XP_PER_GAME, so a total that hasn't moved means the row hasn't
+ * landed, not that the game was worth nothing.
+ */
+const REREAD_MS = 1200;
 
 const T: Record<
   Lang,
@@ -42,28 +52,36 @@ export function XpStrip() {
 
   useEffect(() => {
     let live = true;
-    fetchStats()
-      .then((s) => {
-        if (!live) return;
-        const xp = xpFromStats(s);
-        if (xp <= 0) return; // nothing recorded yet — no strip
-        const seenRaw = localStorage.getItem(SEEN_XP_KEY);
-        const seen = seenRaw === null ? null : Number(seenRaw);
-        localStorage.setItem(SEEN_XP_KEY, String(xp));
-        const p = levelProgress(xp);
-        const gained = seen === null || !Number.isFinite(seen) ? 0 : Math.max(0, xp - seen);
-        setMoment({
-          level: p.level,
-          pct: p.span === 0 ? 100 : (p.into / p.span) * 100,
-          gained,
-          levelUp: seen !== null && Number.isFinite(seen) && p.level > levelFromXp(seen),
+    let timer: number | undefined;
+    const seenRaw = localStorage.getItem(SEEN_XP_KEY);
+    const seen = seenRaw === null || !Number.isFinite(Number(seenRaw)) ? null : Number(seenRaw);
+
+    const read = (rereading: boolean): void => {
+      fetchStats()
+        .then((s) => {
+          if (!live) return;
+          const xp = xpFromStats(s);
+          const m = xpMoment(xp, seen, rereading);
+          if (m.kind === 'hide') return;
+          if (m.kind === 'reread') {
+            // Bust the 30s read cache first, or the second fetch hands back the
+            // very same promise and learns nothing.
+            bustStatsCache();
+            timer = window.setTimeout(() => read(true), REREAD_MS);
+            return;
+          }
+          if (m.advanceBaseline) localStorage.setItem(SEEN_XP_KEY, String(xp));
+          setMoment({ level: m.level, pct: m.pct, gained: m.gained, levelUp: m.levelUp });
+        })
+        .catch(() => {
+          /* offline: no strip */
         });
-      })
-      .catch(() => {
-        /* offline: no strip */
-      });
+    };
+    read(false);
+
     return () => {
       live = false;
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, []);
 

@@ -321,6 +321,15 @@ function leaveTableFor(code: string): () => void {
   };
 }
 
+/**
+ * The hash we were on before the current one, for the ONE screen whose exit
+ * depends on where you came from: a replay opened from a head-to-head should go
+ * back to that head-to-head, not to the record (every other shared-game list
+ * lives on the record, so that stays the default). Module-level and deliberately
+ * not state — nothing renders from it, and a reload legitimately forgets it.
+ */
+let previousHash = '';
+
 function AppRoutes() {
   const [route, setRoute] = useState<Route>(parseHash());
   const started = useGameStore((s) => s.roster?.started ?? false);
@@ -331,7 +340,8 @@ function AppRoutes() {
   const [navSeq, setNavSeq] = useState(0);
 
   useEffect(() => {
-    const onHash = () => {
+    const onHash = (e: HashChangeEvent) => {
+      previousHash = new URL(e.oldURL).hash;
       setRoute(parseHash());
       setNavSeq((n) => n + 1);
     };
@@ -428,7 +438,10 @@ function AppRoutes() {
     // there, and the tile you tapped is what you want to return to.
     content = <HeadToHead pid={route.pid} onLeave={() => (location.hash = '#stats')} />;
   } else if (route.kind === 'replay') {
-    content = <Replay gameId={route.gameId} onLeave={() => (location.hash = '#stats')} />;
+    // Back to wherever the game was listed: the record, or the head-to-head
+    // whose shared-games list you tapped it from.
+    const back = /^#h2h\/[0-9a-f]{16}$/.test(previousHash) ? previousHash : '#stats';
+    content = <Replay gameId={route.gameId} onLeave={() => (location.hash = back)} />;
   } else if (route.kind === 'dealboard') {
     content = <DealBoard onLeave={() => (location.hash = '')} />;
   } else if (route.kind === 'hand') {
