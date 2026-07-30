@@ -2339,15 +2339,15 @@ describe('GameRoom', () => {
    * I1 — table-style house rule. The roster's `tableStyle` pair is absent
    * while the rule is 'own' (not null — a client that never reads the field
    * must never mistake "missing key" for "override with nothing"), echoes
-   * the CURRENT host's felt+sweep once flipped to 'host', and — because
+   * the CURRENT host's felt+sweep(+skin) once flipped to 'host', and — because
    * `Meta.styles` is keyed per-user and read out by whichever uid is
    * CURRENTLY `hostId` rather than stamped once — follows a host handoff to
    * the new host's own pair with no extra bookkeeping on the leave path.
    */
-  it('echoes the host’s felt+sweep on the roster only while table-style is "host", and follows a host handoff', async () => {
+  it('echoes the host’s felt+sweep+skin on the roster only while table-style is "host", and follows a host handoff', async () => {
     const room = 'room-table-style';
     const alice = await Client.connect(room, 'alice', 'Alice');
-    alice.send({ t: 'join', felt: 'tavern', sweep: 'riffle' });
+    alice.send({ t: 'join', felt: 'tavern', sweep: 'riffle', skin: 'og' });
     await alice.next('welcome');
     alice.send({ t: 'sit', seat: 0 });
     const aliceSeated = await nextRosterMatching(alice, (r) => r.hostSeat === 0);
@@ -2364,16 +2364,20 @@ describe('GameRoom', () => {
     // Alice (the host) turns the rule on.
     alice.send({ t: 'set_rules', hailMary12: true, turnTimer: false, tableStyle: 'host' });
     const withRule = await nextRosterMatching(alice, (r) => r.rules?.tableStyle === 'host');
-    // The HOST's pair (Alice's) — never Bob's, even though he's seated too.
-    expect(withRule.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle' });
+    // The HOST's set (Alice's) — never Bob's, even though he's seated too.
+    expect(withRule.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle', skin: 'og' });
 
-    // Bob's own copy of the same broadcast carries the identical pair.
+    // Bob's own copy of the same broadcast carries the identical set.
     const bobSees = await nextRosterMatching(bob, (r) => r.rules?.tableStyle === 'host');
-    expect(bobSees.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle' });
+    expect(bobSees.tableStyle).toEqual({ felt: 'tavern', sweep: 'riffle', skin: 'og' });
 
     // Alice leaves — the host role passes to Bob (the only other seated
     // human). The very next matching roster shows BOB's pair, not a stale
-    // copy of Alice's.
+    // copy of Alice's — and Bob joined WITHOUT a skin (a legacy client):
+    // the skinless pair still drives the rule, with no skin key at all, so
+    // every viewer keeps their own cards. Don't "fix" syncStyle to require
+    // all three ids — that would silently disable the rule for every
+    // pre-skin client.
     alice.send({ t: 'leave' });
     const afterHandoff = await nextRosterMatching(bob, (r) => r.hostSeat === 1);
     expect(afterHandoff.tableStyle).toEqual({ felt: 'slate', sweep: 'fold' });

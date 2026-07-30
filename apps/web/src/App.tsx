@@ -22,7 +22,8 @@ import {
   BONHOMME_SKIN_EVENT,
   CARD_SKIN_EVENT,
   currentBonhommeSkin,
-  currentCardSkin,
+  overrideCardSkin,
+  shownCardSkin,
 } from './cosmetics.js';
 import { SWEEP_EVENT, currentSweep } from './sweeps.js';
 import { overrideFelt } from './felt.js';
@@ -211,11 +212,13 @@ export function App() {
   // Mounted once, here, because it reads the live DOM rather than a registry:
   // no screen and no button has to know it exists. Desktop only.
   useSpatialNav();
-  // The active card skin, kept in sync with applyCardSkin() so a swap re-renders
+  // The SHOWN card skin — the viewer's equip, or the table-style override
+  // while one is active (shownCardSkin resolves that; both applyCardSkin and
+  // overrideCardSkin fire the same event). Kept in sync so a swap re-renders
   // the cards in place (the provider sits above every animated card).
-  const [cardSkin, setCardSkin] = useState(currentCardSkin());
+  const [cardSkin, setCardSkin] = useState(shownCardSkin());
   useEffect(() => {
-    const onChange = () => setCardSkin(currentCardSkin());
+    const onChange = () => setCardSkin(shownCardSkin());
     window.addEventListener(CARD_SKIN_EVENT, onChange);
     // Re-sync once now: a descendant's mount effect (e.g. the scene viewer
     // forcing a card skin) can fire CARD_SKIN_EVENT before this listener is
@@ -248,25 +251,31 @@ export function App() {
     return () => window.removeEventListener(SWEEP_EVENT, onChange);
   }, []);
   // I1 — table-style house rule: while the room we're in has it 'host',
-  // every seat (including spectators) sees the HOST's felt+sweep instead of
-  // their own — Roster.tableStyle carries the pair (messages.ts). Narrow
-  // selector on purpose: it resolves to the SAME `null` reference on every
-  // roster broadcast whenever the rule is 'own' (the common case), so a
-  // table running with the rule off never re-renders App over this.
-  // The felt side is a VIEW OVERRIDE ONLY (felt.ts's overrideFelt, never
-  // applyFelt, which persists — see its own comment for why that would be
-  // wrong here). The sweep side needed no such care: it was already a pure
-  // prop feeding TrickSweepProvider below, so "prefer the table's" is just
-  // picking a different id. Both fall back to "mine" the instant the rule or
-  // the roster goes away — leaving a room resets the store to `roster: null`
-  // — which is the whole point: nobody's own cosmetic choice is ever touched
-  // by someone else's table.
+  // every seat (including spectators) sees the HOST's felt+sweep — and card
+  // skin, when their client sent one — instead of their own; Roster.tableStyle
+  // carries the set (messages.ts). Narrow selector on purpose: it resolves to
+  // the SAME `null` reference on every roster broadcast whenever the rule is
+  // 'own' (the common case), so a table running with the rule off never
+  // re-renders App over this.
+  // The felt and skin sides are VIEW OVERRIDES ONLY (overrideFelt /
+  // overrideCardSkin, never the apply* twins, which persist — see their own
+  // comments for why that would be wrong here). The sweep side needed no such
+  // care: it was already a pure prop feeding TrickSweepProvider below, so
+  // "prefer the table's" is just picking a different id. All fall back to
+  // "mine" the instant the rule or the roster goes away — leaving a room
+  // resets the store to `roster: null` — which is the whole point: nobody's
+  // own cosmetic choice is ever touched by someone else's table.
   const tableStyle = useGameStore((s) =>
     s.roster?.rules?.tableStyle === 'host' ? (s.roster.tableStyle ?? null) : null,
   );
   useEffect(() => {
     overrideFelt(tableStyle?.felt ?? null);
   }, [tableStyle?.felt]);
+  useEffect(() => {
+    // A host on a pre-skin build sends felt+sweep with no skin: the ?? null
+    // keeps the viewer's own cards in that case, same rule as 'own'.
+    overrideCardSkin(tableStyle?.skin ?? null);
+  }, [tableStyle?.skin]);
   const sweep = useMemo(
     () => trickSweepById(tableStyle?.sweep ?? sweepId),
     [tableStyle?.sweep, sweepId],

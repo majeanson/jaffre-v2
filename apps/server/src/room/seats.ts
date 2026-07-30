@@ -36,13 +36,23 @@ function syncStyle(
   userId: string,
   felt: string | undefined,
   sweep: string | undefined,
+  skin: string | undefined,
 ): boolean {
-  const next = felt !== undefined && sweep !== undefined ? { felt, sweep } : undefined;
+  // Validity is still keyed on the ORIGINAL felt+sweep pair: `skin` arrived a
+  // build later, so requiring all three would silently turn the rule off for
+  // every client that predates it. It rides along when present.
+  const next =
+    felt !== undefined && sweep !== undefined
+      ? { felt, sweep, ...(skin !== undefined ? { skin } : {}) }
+      : undefined;
   const prev = room.meta.styles?.[userId];
   const same =
     next === undefined
       ? prev === undefined
-      : prev !== undefined && prev.felt === next.felt && prev.sweep === next.sweep;
+      : prev !== undefined &&
+        prev.felt === next.felt &&
+        prev.sweep === next.sweep &&
+        prev.skin === next.skin;
   if (same) return false;
   const others = Object.fromEntries(
     Object.entries(room.meta.styles ?? {}).filter(([id]) => id !== userId),
@@ -58,6 +68,7 @@ export async function onJoin(
   paint?: string,
   felt?: string,
   sweep?: string,
+  skin?: string,
 ): Promise<void> {
   const seat = room.seatOf(att.userId);
   att.viewer = seat ?? 'spectator';
@@ -70,6 +81,8 @@ export async function onJoin(
   else att.felt = felt;
   if (sweep === undefined) delete att.sweep;
   else att.sweep = sweep;
+  if (skin === undefined) delete att.skin;
+  else att.skin = skin;
   ws.serializeAttachment(att);
   let metaDirty = false;
   // Only SEATED users are kept in meta. Every reader of names/paints — the
@@ -91,7 +104,7 @@ export async function onJoin(
       room.meta.paints = paint === undefined ? others : { ...others, [att.userId]: paint };
       metaDirty = true;
     }
-    if (syncStyle(room, att.userId, felt, sweep)) metaDirty = true;
+    if (syncStyle(room, att.userId, felt, sweep, skin)) metaDirty = true;
   }
   // Rejoining stops the disconnect clock — the human resumes control.
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
@@ -218,9 +231,9 @@ export async function onSit(
     );
     room.meta.paints = att.paint === undefined ? others : { ...others, [att.userId]: att.paint };
   }
-  // Same promotion for the felt+sweep pair — meaningless while they were a
-  // spectator, and now possibly the pair a 'host' table-style rule echoes.
-  syncStyle(room, att.userId, att.felt, att.sweep);
+  // Same promotion for the felt+sweep+skin set — meaningless while they were
+  // a spectator, and now possibly the set a 'host' table-style rule echoes.
+  syncStyle(room, att.userId, att.felt, att.sweep, att.skin);
   if (room.meta.disconnectedSince?.[att.userId] !== undefined) {
     room.meta.disconnectedSince = Object.fromEntries(
       Object.entries(room.meta.disconnectedSince).filter(([id]) => id !== att.userId),

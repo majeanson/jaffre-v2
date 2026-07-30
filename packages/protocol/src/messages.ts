@@ -55,13 +55,16 @@ export const clientMessageSchema = z.union([
     // Pixel-SVG data URLs only, size-capped — legacy freehand PNG paintings
     // (up to ~512 KB) must never ride every roster broadcast.
     paint: z.string().startsWith('data:image/svg+xml,').max(16384).optional(),
-    // The joiner's EQUIPPED felt/sweep cosmetic ids — short catalog ids, not
-    // assets — alongside paint, on the same pipeline (see onJoin/onSit). Only
-    // matter if the sender is (or becomes) this table's host: the
-    // `tableStyle` house rule (below) echoes the CURRENT host's pair, so a
-    // non-host's ids are simply stored and never surfaced.
+    // The joiner's EQUIPPED felt/sweep/card-skin cosmetic ids — short catalog
+    // ids, not assets — alongside paint, on the same pipeline (see
+    // onJoin/onSit). Only matter if the sender is (or becomes) this table's
+    // host: the `tableStyle` house rule (below) echoes the CURRENT host's
+    // set, so a non-host's ids are simply stored and never surfaced. `skin`
+    // arrived after the pair, so it is optional WITHIN a valid pair too — a
+    // legacy client's felt+sweep still drives the rule without it.
     felt: z.string().min(1).max(64).optional(),
     sweep: z.string().min(1).max(64).optional(),
+    skin: z.string().min(1).max(64).optional(),
   }),
   z.object({ t: z.literal('sit'), seat: seatSchema }),
   z.object({
@@ -225,17 +228,24 @@ export interface Roster {
     readonly rating: number;
     readonly delta: number;
   }[];
-  /** The table's CURRENT host's equipped felt+sweep pair — present only while
-   * `rules.tableStyle` is 'host' (absent, not just null, while it's 'own': a
-   * client that never reads this field must never accidentally treat
-   * "missing key" as "override with nothing"). `null` while the rule is on
-   * but the host hasn't sent a pair yet on this sitting (a legacy client, or
-   * a host who has never joined this room build) — every OTHER seat's view
-   * override falls back to its own felt/sweep in that case, same as 'own'.
-   * Lives here, NOT inside RosterSeat: it names one seat's cosmetics but is
-   * consumed by every OTHER seat, so it isn't "about" any one seat the way
-   * paint/ready/turnTimerAt are. */
-  readonly tableStyle?: { readonly felt: string; readonly sweep: string } | null;
+  /** The table's CURRENT host's equipped felt+sweep pair (and card skin,
+   * when their client sent one) — present only while `rules.tableStyle` is
+   * 'host' (absent, not just null, while it's 'own': a client that never
+   * reads this field must never accidentally treat "missing key" as
+   * "override with nothing"). `null` while the rule is on but the host
+   * hasn't sent a pair yet on this sitting (a legacy client, or a host who
+   * has never joined this room build) — every OTHER seat's view override
+   * falls back to its own felt/sweep in that case, same as 'own'. `skin`
+   * optional within a present pair for the same legacy reason: a host on a
+   * pre-skin build still drives felt+sweep, and viewers keep their own
+   * cards. Lives here, NOT inside RosterSeat: it names one seat's cosmetics
+   * but is consumed by every OTHER seat, so it isn't "about" any one seat
+   * the way paint/ready/turnTimerAt are. */
+  readonly tableStyle?: {
+    readonly felt: string;
+    readonly sweep: string;
+    readonly skin?: string;
+  } | null;
 }
 
 export interface ChatEntry {

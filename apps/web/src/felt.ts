@@ -67,13 +67,24 @@ export function currentFelt(): FeltId {
   return FELTS.some((f) => f.id === stored) ? (stored as FeltId) : DEFAULT_FELT;
 }
 
+/** I1 — table-style view override (see overrideFelt). Never persisted. */
+let feltOverride: FeltId | null = null;
+
+function syncFeltAttribute(): void {
+  const shown = feltOverride ?? currentFelt();
+  if (shown === DEFAULT_FELT) delete document.documentElement.dataset['felt'];
+  else document.documentElement.dataset['felt'] = shown;
+}
+
 /** Apply a felt: persist locally, toggle the <html> attribute (the default =
  * no attribute, exactly like the `arcade` skin and the `dark` theme), and
- * notify React consumers. */
+ * notify React consumers. Under an active table-style override the equip
+ * still PERSISTS but the attribute keeps showing the override — equipping
+ * from the table's CollectionSheet mid-game must not punch through the
+ * host's look. */
 export function applyFelt(id: FeltId): void {
   localStorage.setItem(KEY, id);
-  if (id === DEFAULT_FELT) delete document.documentElement.dataset['felt'];
-  else document.documentElement.dataset['felt'] = id;
+  syncFeltAttribute();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(FELT_EVENT));
 }
 
@@ -94,11 +105,12 @@ export function initFelt(): void {
  * when the rule turns off and when the viewer leaves the room.
  */
 export function overrideFelt(id: FeltId | null): void {
-  const target = id ?? currentFelt();
   // `house` is STILL the absence of the attribute (see the module doc) even
   // under an override — otherwise "the host wears house" would render as
   // literally no felt chosen rather than as the specific house-green felt.
-  if (target === DEFAULT_FELT) delete document.documentElement.dataset['felt'];
-  else document.documentElement.dataset['felt'] = target;
+  // The override is REMEMBERED (not applied once) so an applyFelt equip made
+  // while it's active persists without punching through the display.
+  feltOverride = id;
+  syncFeltAttribute();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(FELT_EVENT));
 }

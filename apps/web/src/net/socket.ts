@@ -1,6 +1,7 @@
 import type { ClientMessage, Roster, ServerMessage } from '@jaffre/protocol';
 import type { Lang } from '@jaffre/ui';
 import { currentLang } from '../lang.js';
+import { currentCardSkin } from '../cosmetics.js';
 import { currentFelt } from '../felt.js';
 import { currentSweep } from '../sweeps.js';
 import { useGameStore } from '../state/gameStore.js';
@@ -153,15 +154,19 @@ async function open(): Promise<void> {
       paint !== null && paint.startsWith('data:image/svg+xml,') && paint.length <= 16_384
         ? paint
         : undefined;
-    // I1 — table style: also announce your EQUIPPED felt/sweep, alongside
-    // paint, on the same join. Meaningless unless you end up this table's
-    // host (see onJoin/onSit), but always sent — unlike paint there's no
-    // format/size gate, since these are short catalog ids, not assets.
+    // I1 — table style: also announce your EQUIPPED felt/sweep/card skin,
+    // alongside paint, on the same join. Meaningless unless you end up this
+    // table's host (see onJoin/onSit), but always sent — unlike paint there's
+    // no format/size gate, since these are short catalog ids, not assets.
+    // Your OWN equip, never the shown override: a guest at a host-styled
+    // table who becomes host must broadcast their equip, not echo the old
+    // host's back (currentCardSkin reads storage, which overrides never touch).
     send({
       t: 'join',
       ...(sharablePaint !== undefined ? { paint: sharablePaint } : {}),
       felt: currentFelt(),
       sweep: currentSweep(),
+      skin: currentCardSkin(),
     });
     // Replay anything the player did while we were still connecting.
     const queued = pending;

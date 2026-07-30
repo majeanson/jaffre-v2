@@ -83,7 +83,7 @@ const T: Record<
     // everyone at it.
     tableStyle: "Table style: host's",
     tableStyleHint:
-      "Everyone at the table sees the host's felt & trick sweep instead of their own.",
+      "Everyone at the table sees the host's felt, cards & trick sweep instead of their own.",
     publicTable: 'List on the public lobby',
     publicHint: 'Anyone can join from the public lobby. Untick for invite-only.',
     reclaimHint: 'One of these seats yours? Log in on the home screen to reclaim it.',
@@ -114,7 +114,7 @@ const T: Record<
     turnTimerHint: '60 secondes par tour; après, un bot joue à ta place.',
     tableStyle: "Style de table : celui de l'hôte",
     tableStyleHint:
-      "Tout le monde à la table voit le tapis et le ramassage des levées de l'hôte, au lieu des siens.",
+      "Tout le monde à la table voit le tapis, les cartes et le ramassage des levées de l'hôte, au lieu des siens.",
     publicTable: 'Afficher dans le salon public',
     publicHint:
       'Tout le monde peut joindre via le salon public. Décoche pour jouer sur invitation.',

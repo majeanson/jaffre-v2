@@ -321,16 +321,51 @@ const CARD_SKIN_KEY = 'jaffre-card-skin';
  * re-render the cards in place. */
 export const CARD_SKIN_EVENT = 'jaffre-cardskin';
 
+/** I1 — table-style view override (see overrideCardSkin). Never persisted. */
+let skinOverride: string | null = null;
+
 export function currentCardSkin(): string {
   return localStorage.getItem(CARD_SKIN_KEY) ?? DEFAULT_CARD_SKIN;
 }
 
+/** The skin the table should RENDER right now: the table-style override when
+ * one is active, the viewer's own equip otherwise. App's provider (and its
+ * foil/preload effects) read THIS, not currentCardSkin — the skin travels
+ * through React context as well as the <html> attribute, and both channels
+ * must show the same id. */
+export function shownCardSkin(): string {
+  return skinOverride ?? currentCardSkin();
+}
+
+function syncSkinAttribute(): void {
+  const shown = shownCardSkin();
+  if (shown === DEFAULT_CARD_SKIN) delete document.documentElement.dataset['cardSkin'];
+  else document.documentElement.dataset['cardSkin'] = shown;
+}
+
 /** Apply a card skin: persist locally, toggle the <html> attribute (the default
- * = no attribute, exactly like the `dark` theme), and notify React consumers. */
+ * = no attribute, exactly like the `dark` theme), and notify React consumers.
+ * Under an active table-style override the equip still PERSISTS but the
+ * attribute keeps showing the override — equipping from the table's
+ * CollectionSheet mid-game must not punch through the host's look. */
 export function applyCardSkin(id: string): void {
   localStorage.setItem(CARD_SKIN_KEY, id);
-  if (id === DEFAULT_CARD_SKIN) delete document.documentElement.dataset['cardSkin'];
-  else document.documentElement.dataset['cardSkin'] = id;
+  syncSkinAttribute();
+  window.dispatchEvent(new Event(CARD_SKIN_EVENT));
+}
+
+/**
+ * I1 — table-style house rule: a VIEW override, never a choice. Same contract
+ * as felt.ts's overrideFelt, with one extra duty: the card skin ALSO travels
+ * through App's CardSkinProvider (renderers), so this fires CARD_SKIN_EVENT
+ * and App re-reads `shownCardSkin()` — nothing here touches localStorage,
+ * and `null` restores the viewer's own equip. The host's foil never rides
+ * along: foils are per-viewer luck (refreshFoil only dresses skins the
+ * VIEWER owns), so a borrowed skin renders plain.
+ */
+export function overrideCardSkin(id: string | null): void {
+  skinOverride = id;
+  syncSkinAttribute();
   window.dispatchEvent(new Event(CARD_SKIN_EVENT));
 }
 

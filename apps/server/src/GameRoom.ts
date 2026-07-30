@@ -266,7 +266,7 @@ export class GameRoom implements DurableObject {
   private async dispatch(ws: WebSocket, att: Attachment, msg: ClientMessage): Promise<void> {
     switch (msg.t) {
       case 'join':
-        return onJoin(this, ws, att, msg.paint, msg.felt, msg.sweep);
+        return onJoin(this, ws, att, msg.paint, msg.felt, msg.sweep, msg.skin);
       case 'sit':
         return onSit(this, ws, att, msg.seat);
       case 'add_bot':

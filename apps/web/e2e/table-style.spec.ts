@@ -10,6 +10,14 @@ import type { BrowserContext, Page } from '@playwright/test';
  * (`<html data-felt>`), then loses it again the instant they leave the room.
  * The guest's OWN equipped felt (still the default) is never touched: this
  * is the whole point of felt.ts's `overrideFelt` never persisting.
+ *
+ * The host's CARD SKIN rides the same rule (`overrideCardSkin`, the same
+ * join → meta.styles → roster path) but is NOT asserted here: every
+ * non-default skin is play-earned and cosmeticsBoot degrades an unowned
+ * equip at boot, so a fresh e2e host can only ever wear `arcade` — whose
+ * override is the ABSENCE of `data-card-skin`, indistinguishable from no
+ * override. The felt assertion is the canary for the shared pipeline;
+ * room.test.ts's table-style test pins the skin field itself.
  */
 
 /** A page from a hand-made context: config `use.reducedMotion` doesn't reach

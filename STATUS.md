@@ -134,7 +134,9 @@ changed, and the rules that came out of it:
   System lines never trip the unread dot. `roster.spectators` was broadcast
   on every roster and rendered nowhere — the lobby and the table show it.
 - **Table style (new house rule).** `tableStyle: 'own' | 'host'` makes every
-  seat see the HOST's felt and sweep. The load-bearing detail: `applyFelt()`
+  seat see the HOST's felt, sweep — and, since 2026-07-30, card skin
+  (`overrideCardSkin`, same never-persist contract; a legacy host's skinless
+  felt+sweep pair still drives the rule, pinned server-side). The load-bearing detail: `applyFelt()`
   PERSISTS, so the override goes through `overrideFelt()`, which touches
   only the `<html data-felt>` attribute and never localStorage — a guest's
   own equip is never overwritten, and the default felt stays the ABSENCE of
