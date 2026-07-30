@@ -55,12 +55,20 @@ Last checkpoint: **2026-07-29**.
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Shots sweep, re-run against the head-to-head/regulars/lazy-felt work
-  (2026-07-29→30): **desktop 15/15 skins · tablet 15/15 · phone 6/15 ·
-  small-desktop 3/15, zero layout warnings** — `report.txt` is appended LIVE,
-  so a header-only report means clean, even for an interrupted run. The 9
-  unshot phone skins are colour-token variants of a width already clean in six
-  skins; contrast/violet-ink is a unit test, not an eyeball. The prior
-  2026-07-29 sweep was 60/60 clean on the code before this work.
+  (2026-07-29→30): **phone 15/15 skins · tablet 15/15 · desktop 15/15 ·
+  small-desktop 3/15, zero layout warnings** — every width that has ever caught
+  a layout bug is fully covered in every skin. `report.txt` is appended LIVE,
+  so a header-only report means clean even for an interrupted run.
+  `shots-output/index.html` holds the phone+tablet contact sheet (2,370 shots,
+  no missing cells); the desktop rows were verified clean but their images were
+  wiped by a later run's global-setup.
+- **The contact sheet was hiding half the sweep.** Its filename parser matched
+  only `desktop-` and `phone-`, so every `tablet-` and `small-desktop-` shot
+  the sweep took was dropped — the two widths where layout breaks first were
+  taken and never shown. Fixed: `VIEWPORT_ORDER`/`SKIN_ORDER` now live in
+  `shots-shared.ts` and both the sweep and the sheet read them (the old sort
+  key also only knew dark/light/juicy, so twelve skins tied and ordered
+  arbitrarily). Add a viewport or skin in one place and you must add it there.
 - Two gotchas for whoever runs `npm run shots` (~1.7 h, starves the machine):
   killing it mid-run leaves an orphaned `workerd` holding port 8788 (the next
   run dies instantly with "already used" — kill the process, not the port),

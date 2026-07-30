@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SHOTS_DIR, STATE_ORDER } from './shots-shared.js';
+import { SHOTS_DIR, SKIN_ORDER, STATE_ORDER, VIEWPORT_ORDER } from './shots-shared.js';
 
 /**
  * Build the contact sheet from whatever PNGs the run produced. Filenames are
@@ -16,17 +16,31 @@ export default function globalTeardown(): void {
     combo: string;
     state: string;
   }
+  // Every viewport, longest prefix first: 'small-desktop-dark-home.png' must
+  // not be read as viewport 'small'. The old pattern listed only desktop and
+  // phone, so every tablet and small-desktop shot was dropped on the floor —
+  // the sweep took them, the sheet never showed them.
+  const viewports = [...VIEWPORT_ORDER].sort((a, b) => b.length - a.length);
   const shots: Shot[] = [];
   for (const file of pngs) {
-    const m = /^(desktop|phone)-([a-z]+)-(.+)\.png$/.exec(file);
-    if (m === null) continue;
-    shots.push({ file, combo: `${m[1]}-${m[2]}`, state: m[3] as string });
+    const vp = viewports.find((v) => file.startsWith(`${v}-`));
+    if (vp === undefined) continue;
+    const rest = file.slice(vp.length + 1).replace(/\.png$/, '');
+    const skin = SKIN_ORDER.find((s) => rest.startsWith(`${s}-`));
+    if (skin === undefined) continue;
+    shots.push({ file, combo: `${vp}-${skin}`, state: rest.slice(skin.length + 1) });
   }
 
+  // Columns read viewport-major (widest first), skins in their declared order —
+  // numeric indices, zero-padded, so 10 sorts after 9 rather than before it.
   const combos = [...new Set(shots.map((s) => s.combo))].sort((a, b) => {
-    // Desktop columns first, then phone; skins in a fixed order inside each.
-    const key = (c: string) =>
-      `${c.startsWith('desktop') ? 0 : 1}-${['dark', 'light', 'juicy'].findIndex((s) => c.endsWith(s))}`;
+    const key = (c: string) => {
+      const vp = viewports.find((v) => c.startsWith(`${v}-`)) ?? '';
+      const skin = c.slice(vp.length + 1);
+      const vi = VIEWPORT_ORDER.indexOf(vp as (typeof VIEWPORT_ORDER)[number]);
+      const si = SKIN_ORDER.indexOf(skin as (typeof SKIN_ORDER)[number]);
+      return `${String(vi === -1 ? 99 : vi)}-${String(si === -1 ? 99 : si).padStart(2, '0')}`;
+    };
     return key(a).localeCompare(key(b));
   });
   const states = [...new Set(shots.map((s) => s.state))].sort((a, b) => {
