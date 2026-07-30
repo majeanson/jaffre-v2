@@ -4,7 +4,7 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at major checkpoints only. Details live in git history
 and `docs/archive/` (completed plans + the retired polishing backlog).
 
-Last checkpoint: **2026-07-29**.
+Last checkpoint: **2026-07-30** (the completions pass — see below).
 
 ## Shipped and settled
 
@@ -81,6 +81,72 @@ Last checkpoint: **2026-07-29**.
   `e2e/scenes.spec.ts` instead.
 - `main` auto-deploys to jaffre.marcportal.com behind CI's e2e gate +
   live-bundle verify. No PR gate — land on main.
+
+## The completions pass (2026-07-30)
+
+A five-agent audit read every feature area hunting cut corners — not bugs
+so much as things that stop one step short. Six waves landed from it
+(`c80d853`, `2246593`, `0bab285`, `4c80231`, `174b9fb`, + this one). The
+plan is archived in `docs/archive/PLAN-completions-2026-07.md`. What
+changed, and the rules that came out of it:
+
+- **Bugs that were quietly costing us.** The Collection shipped a
+  `Show all (dev)` checkbox with NO dev gate — a live progression bypass
+  anyone could tick, which persisted to their profile. The LoginSheet
+  promised "your card skins on any device" while nothing ever READ the
+  equips back out of the saved profile (`applyProfileCosmetics` now cashes
+  that promise at each identity-adoption point; `logOut` clears the
+  seen-baselines so a second account on one device still gets its
+  announcements). A spectator's recap offered a Rematch the server rejects
+  (`NOT_SEATED`) and hid the seat-claim that IS legal between games. A
+  standing table that lost a human could never rematch — `add_bot` was
+  refused once `started`, though `sit`/`start` already honored the
+  between-games window. Yesterday's Deal Board let you play a full hand
+  into a 409, and a network blip on submit destroyed the run AND the
+  streak (the log survives now; Retry re-sends the same hand).
+- **The only errors a player ever saw at the felt were the untranslated
+  ones.** `noticeCodes.ts` localized lobby/chat/music codes and none of the
+  five ENGINE codes, so a French player got raw English naming "seat 2" at
+  a table where everyone else has a name. All five speak both languages now.
+- **Celebrations fired at the wrong time.** The progress reconcile ran on
+  cold load only, so an unlock earned mid-game announced itself on the NEXT
+  visit. It re-runs on return-to-menu. Level-up names its payout. Foils
+  (server-granted 1-in-20) existed in the data and NOWHERE in the UI —
+  they announce, badge the Collection tile, and their sheen is scoped to
+  the live felt instead of shimmering over every preview of every skin.
+  `LEVEL_TRACK` now carries the felt and sweep levels it always granted, so
+  level 16 names Sugar Shack instead of claiming to be a breather.
+- **Identity travels.** Head-to-head shows the person (colour, paint, the
+  trophy they chose to show) plus last-played, recent form and biggest
+  margin; the record's tiles wear paint; and a painted 0 stays painted
+  when PLAYED, which the profile card had promised all along.
+- **The table speaks.** `ChatEntry.system` carries a CODE and a name, never
+  prose — the client localizes, an older client gets a plain-language
+  fallback. Sat / left / game on / dropped / bot-playing / back. The
+  takeover line is edge-detected and deduped because `botPlaying` is
+  derived from a deadline and would otherwise repeat on every roster.
+  System lines never trip the unread dot. `roster.spectators` was broadcast
+  on every roster and rendered nowhere — the lobby and the table show it.
+- **Table style (new house rule).** `tableStyle: 'own' | 'host'` makes every
+  seat see the HOST's felt and sweep. The load-bearing detail: `applyFelt()`
+  PERSISTS, so the override goes through `overrideFelt()`, which touches
+  only the `<html data-felt>` attribute and never localStorage — a guest's
+  own equip is never overwritten, and the default felt stays the ABSENCE of
+  the attribute. The roster resolves the pair by CURRENT host id, so a host
+  handoff carries the look for free. Ownership gates equipping, not seeing.
+- **`set_rules` REPLACES the rule set, it does not merge.** Every Lobby
+  switch must send the whole set; the older two were silently reverting the
+  new rule. Pinned by a server test — don't "simplify" it back.
+- **A controlled switch needs `click()`, not Playwright's `check()`.** Every
+  rule toggle is controlled by the roster echo, so it flips a round-trip
+  after the click; `check()` asserts the new state instantly and fails.
+
+Deliberately NOT done, and why: scheduled re-engagement pushes stay
+rejected (see the list below). Three items are parked because their mount
+points were held by a parallel session — an install nudge on Home, a
+backup-code row in Settings, and the `win` sting's call site in GameRecap
+(the sting exists in `audio/clicks.ts`, uncalled, with a comment naming
+where it belongs).
 
 ## How we work here
 

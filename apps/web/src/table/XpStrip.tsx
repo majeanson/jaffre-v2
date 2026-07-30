@@ -3,6 +3,7 @@ import { useLang, type Lang } from '@jaffre/ui';
 import { trackRewardAt, xpFromStats, xpMoment } from '../progression.js';
 import { trackRewardLabel } from '../trackReward.js';
 import { bustStatsCache, fetchStats } from '../net/history.js';
+import { playClick } from '../audio/clicks.js';
 
 const SEEN_XP_KEY = 'jaffre-xp-seen';
 /**
@@ -86,6 +87,10 @@ export function XpStrip() {
           }
           if (m.advanceBaseline) localStorage.setItem(SEEN_XP_KEY, String(xp));
           const reward = m.levelUp ? trackRewardAt(m.level) : undefined;
+          // J4 payout note: the gold flash gets its own brighter chime — a
+          // no-op unless sound is on AND the context is already unlocked
+          // (playClick's own gate), so this is silent for the common case.
+          if (m.levelUp) playClick('levelUp');
           setMoment({
             level: m.level,
             pct: m.pct,

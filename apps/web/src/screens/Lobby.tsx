@@ -212,7 +212,13 @@ export function Lobby({ code, onLeave, onLeaveTable }: LobbyProps) {
             </span>
           </div>
           <p className="mt-1 text-sm text-(--color-ap-muted)">
-            {connection === 'connecting'
+            {/* J1: "Share this code" only makes sense while the socket is
+                actually open — a reconnecting/closed player has no live room
+                to invite anyone into, and the ConnectionBanner just below
+                already says the connection is the problem. Falls back to the
+                same connecting copy for that stretch rather than adding a
+                third line that would just repeat the banner. */}
+            {connection === 'connecting' || connection === 'reconnecting' || connection === 'closed'
               ? t.connecting
               : showHostWaiting && hostSeatInfo !== null
                 ? t.hostWaiting(hostSeatInfo.name)

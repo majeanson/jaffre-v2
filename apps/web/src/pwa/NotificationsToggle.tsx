@@ -5,16 +5,18 @@ import { IconBell } from '../components/icons.js';
 import { Toast } from '../components/Toast.js';
 import { disablePush, enablePush, fetchVapidKey, pushPrefOn, pushSupported } from './pushClient.js';
 
-const T: Record<Lang, { on: string; off: string; denied: string }> = {
+const T: Record<Lang, { on: string; off: string; denied: string; failed: string }> = {
   en: {
     on: 'Turn alerts · on',
     off: 'Turn alerts · off',
     denied: 'Notifications are blocked for this site',
+    failed: "Couldn't turn alerts on — try again.",
   },
   fr: {
     on: 'Alertes de tour · activées',
     off: 'Alertes de tour · désactivées',
     denied: 'Les notifications sont bloquées pour ce site',
+    failed: 'Impossible d’activer les alertes — réessaie.',
   },
 };
 
@@ -28,6 +30,11 @@ export function NotificationsToggle() {
   const [vapidKey, setVapidKey] = useState<string | null>(null);
   const [on, setOn] = useState(() => pushPrefOn() && Notification.permission === 'granted');
   const [blocked, setBlocked] = useState(false);
+  // J6: a failure that ISN'T a permission denial (subscribe rejected, the
+  // server 404s, offline mid-request) used to fail silently — the bell just
+  // stayed off with no explanation. Distinct from `blocked`: that one names
+  // a browser setting the player can go fix; this one just says "try again".
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!pushSupported() || navigator.webdriver) return;
@@ -59,7 +66,10 @@ export function NotificationsToggle() {
           } else {
             void enablePush(vapidKey).then((ok) => {
               setOn(ok);
-              if (!ok && Notification.permission === 'denied') setBlocked(true);
+              if (!ok) {
+                if (Notification.permission === 'denied') setBlocked(true);
+                else setFailed(true);
+              }
             });
           }
         }}
@@ -67,6 +77,7 @@ export function NotificationsToggle() {
         <IconBell off={!on} />
       </button>
       {blocked && <Toast message={t.denied} onDone={() => setBlocked(false)} />}
+      {failed && <Toast message={t.failed} onDone={() => setFailed(false)} />}
     </>
   );
 }

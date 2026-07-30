@@ -20,7 +20,10 @@ export type ClickKind =
   | 'sweep'
   | 'sweep-fold'
   | 'sweep-drift'
-  | 'sweep-riffle';
+  | 'sweep-riffle'
+  // J4 — payout notes: the two melodic stings, below.
+  | 'win'
+  | 'levelUp';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -111,6 +114,25 @@ function thump(c: AudioContext, when: number, freq: number, peak: number, tail: 
 }
 
 /**
+ * A clean held sine note — the melodic voice behind the two payout stings
+ * below. `thump`'s pitch always falls (a card landing); these hold their
+ * note instead, so they need their own tiny attack/decay envelope rather
+ * than reusing thump's downward ramp.
+ */
+function tone(c: AudioContext, when: number, freq: number, peak: number, dur: number): void {
+  const osc = c.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, when);
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(peak, when + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  osc.connect(gain).connect(master as GainNode);
+  osc.start(when);
+  osc.stop(when + dur + 0.02);
+}
+
+/**
  * Play one card sound. No-op unless sound is enabled AND the context is
  * already running (unlocked by a prior gesture) — never creates or resumes
  * here, since plays can fire from timers where that would be blocked.
@@ -168,6 +190,23 @@ export function playClick(kind: ClickKind): void {
         paper(c, now + i * 0.035, { freq: 4200, q: 1.5, peak: 0.26, attack: 0.002, tail: 0.04 });
       }
       thump(c, now + 0.14, 130, 0.3, 0.1);
+      break;
+    // ── J4 payout notes: the two melodic stings, built from the same `tone`
+    //    envelope so they read as one voice at two different sizes.
+    case 'win':
+      // The recap's payout note — a short ascending arpeggio for the
+      // winning viewer. Defined here but deliberately unwired: GameRecap.tsx
+      // belongs to another session; it should fire this once per mount,
+      // sound-pref gated, for the winning viewer only.
+      tone(c, now, 523.25, 0.3, 0.16); // C5
+      tone(c, now + 0.09, 659.25, 0.32, 0.16); // E5
+      tone(c, now + 0.18, 783.99, 0.34, 0.22); // G5
+      break;
+    case 'levelUp':
+      // Brighter and shorter than 'win': a two-note chime, not a fanfare —
+      // levelling up happens far more often than winning a whole game.
+      tone(c, now, 783.99, 0.3, 0.09); // G5
+      tone(c, now + 0.07, 1046.5, 0.34, 0.16); // C6
       break;
   }
 }

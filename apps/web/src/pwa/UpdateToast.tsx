@@ -45,6 +45,7 @@ const RELOAD_GUARD_KEY = 'jaffre:sw-forced-reload';
 export function UpdateToast() {
   const t = T[useLang()];
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -52,10 +53,24 @@ export function UpdateToast() {
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
       regRef.current = registration;
-      setInterval(() => void registration.update(), UPDATE_POLL_MS);
+      // J6: this used to leak — the interval outlived the component with no
+      // way to stop it. UpdateToast is mounted once for the app's life
+      // (App.tsx never unmounts it) so in practice it never fired, but the
+      // scene viewer and any future conditional mount would have stacked a
+      // fresh poller on every remount.
+      pollRef.current = setInterval(() => void registration.update(), UPDATE_POLL_MS);
     },
   });
   const visible = useBottomSlot(SLOT_UPDATE, needRefresh);
+
+  // Stop polling the moment this unmounts — App.tsx never unmounts it in
+  // practice, but a leaked setInterval is a leaked setInterval regardless of
+  // whether today's call sites happen to avoid triggering it.
+  useEffect(() => {
+    return () => {
+      if (pollRef.current !== undefined) clearInterval(pollRef.current);
+    };
+  }, []);
 
   // A new deploy is waiting → apply it automatically (activate + reload). Guarded
   // so it fires exactly once even if the component re-renders in the meantime.

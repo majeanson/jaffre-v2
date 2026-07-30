@@ -13,6 +13,7 @@ import { CARD_SKINS, currentCardSkin } from '../cosmetics.js';
 import { THEMES, currentTheme } from '../theme.js';
 import { getProfile } from '../net/auth.js';
 import { playerName } from '../net/socket.js';
+import { fmtPercent } from '../format.js';
 
 export interface CornerProps {
   readonly onLeave: () => void;
@@ -31,6 +32,9 @@ const T: Record<
     home: string;
     dealing: string;
     error: string;
+    /** J1: same failure, but "try again shortly" is the wrong ask when the
+     * browser itself has no connection to retry over. */
+    offlineError: string;
     level: (n: number) => string;
     maxLevel: string;
     xp: (into: number, span: number) => string;
@@ -59,6 +63,7 @@ const T: Record<
     home: 'Home',
     dealing: 'Loading…',
     error: 'Your corner needs the online server. Try again shortly.',
+    offlineError: "You're offline. Your corner needs the online server.",
     level: (n) => `Level ${String(n)}`,
     maxLevel: 'Max level',
     xp: (into, span) => `${String(into)} / ${String(span)} XP to next level`,
@@ -85,6 +90,7 @@ const T: Record<
     home: 'Accueil',
     dealing: 'Chargement…',
     error: 'Ton coin a besoin du serveur en ligne. Réessaie bientôt.',
+    offlineError: 'T’es hors ligne. Ton coin a besoin du serveur en ligne.',
     level: (n) => `Niveau ${String(n)}`,
     maxLevel: 'Niveau max',
     xp: (into, span) => `${String(into)} / ${String(span)} XP vers le prochain niveau`,
@@ -174,7 +180,7 @@ export function Corner({ onLeave, demoStats, demoAwards, demoStanding }: CornerP
         <MetaNav current="corner" />
 
         {error ? (
-          <ShellNote>{t.error}</ShellNote>
+          <ShellNote>{navigator.onLine ? t.error : t.offlineError}</ShellNote>
         ) : stats === null ? (
           <ShellNote>
             <PixelWave label={t.dealing} />
@@ -260,7 +266,7 @@ function CornerTiles({
       ) : (
         <>
           <span className="font-arcade-display text-[1.6em] tabular-nums text-(--color-ap-gold)">
-            {Math.round(stats.winRate * 100)}%
+            {fmtPercent(lang, Math.round(stats.winRate * 100))}
           </span>
           <span className="font-arcade-ui text-[0.8em] text-(--color-ap-muted)">
             {t.wonOf(stats.wins, stats.games)}

@@ -23,6 +23,7 @@ import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ShellNote } from '../components/ShellNote.js';
+import { fmtPercent } from '../format.js';
 
 export interface StatsProps {
   readonly onLeave: () => void;
@@ -43,6 +44,10 @@ const T: Record<
     home: string;
     dealing: string;
     error: string;
+    /** J1: the same failure reads differently when the browser itself has no
+     * connection — "play a room game" is a non-sequitur if you can't reach
+     * the server to play one. */
+    offlineError: string;
     noGames: string;
     noGamesBody: string;
     practiceNote: string;
@@ -89,6 +94,7 @@ const T: Record<
     home: 'Home',
     dealing: 'Dealing…',
     error: 'Your record needs the online server. Play a room game and it will show up here.',
+    offlineError: "You're offline. Your record needs the online server — reconnect to see it.",
     noGames: 'No games yet',
     noGamesBody:
       'Play your first hand and the book starts filling in — win rate, streak, and the people you sit with.',
@@ -103,7 +109,7 @@ const T: Record<
     noContracts: 'Contracts: no contracts yet — name one and see how you do.',
     contract: (made, attempted, sa) =>
       `You make the contract ${String(made)} of ${String(attempted)} times you name it${
-        sa === null ? '' : ` · ${String(sa)}% at sans atout`
+        sa === null ? '' : ` · ${fmtPercent('en', sa)} at sans atout`
       }.`,
     mastery: 'Suit mastery',
     masteryLane: (made, attempted) =>
@@ -140,6 +146,7 @@ const T: Record<
     dealing: 'On brasse…',
     error:
       'Ton record a besoin du serveur en ligne. Joue une partie en salon et il apparaîtra ici.',
+    offlineError: 'T’es hors ligne. Ton record a besoin du serveur en ligne — reconnecte-toi.',
     noGames: 'Pas encore de parties',
     noGamesBody:
       'Joue ta première main et le carnet commence à se remplir — taux de victoires, séquence, et le monde avec qui tu joues.',
@@ -156,7 +163,7 @@ const T: Record<
     noContracts: 'Contrats : pas encore de contrat — prends-en un et vois ce que ça donne.',
     contract: (made, attempted, sa) =>
       `Tu fais le contrat ${String(made)} fois sur ${String(attempted)}${
-        sa === null ? '' : ` · ${String(sa)} % à sans atout`
+        sa === null ? '' : ` · ${fmtPercent('fr', sa)} à sans atout`
       }.`,
     mastery: 'Maîtrise des couleurs',
     // "misé", not "demandé": the glossary settled on miser/mise for bidding,
@@ -619,7 +626,7 @@ export function Stats({
         <MetaNav current="stats" />
 
         {error ? (
-          <ShellNote>{t.error}</ShellNote>
+          <ShellNote>{navigator.onLine ? t.error : t.offlineError}</ShellNote>
         ) : stats === null ? (
           <ShellNote>
             <PixelWave label={t.dealing} />
@@ -650,7 +657,7 @@ export function Stats({
                     {t.winRate}
                   </div>
                   <div className="mt-[0.15em] font-arcade-display text-[3.6em] leading-[0.9] tabular-nums text-(--color-ap-gold-deep)">
-                    {Math.round(stats.winRate * 100)}%
+                    {fmtPercent(lang, Math.round(stats.winRate * 100))}
                   </div>
                 </div>
                 <div className="flex items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ok) px-[0.6em] py-[0.35em] font-arcade-display text-[1em] tabular-nums text-(--color-ap-ink) shadow-(--shadow-ap-sm)">
@@ -693,7 +700,7 @@ export function Stats({
               <div className="mb-[0.6em] flex items-baseline justify-between gap-3">
                 <span className={MICRO_LABEL}>{t.bidAccuracy}</span>
                 <span className="font-arcade-display text-[1.3em] tabular-nums text-(--color-ap-gold)">
-                  {bidPct === null ? '—' : `${String(bidPct)}%`}
+                  {bidPct === null ? '—' : fmtPercent(lang, bidPct)}
                 </span>
               </div>
               {bidPct === null ? (

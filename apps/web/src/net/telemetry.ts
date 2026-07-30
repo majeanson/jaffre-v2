@@ -18,6 +18,10 @@ let funnelCount = 0;
 
 interface TelemetryReport {
   readonly kind: string;
+  /** J6: a short id stamped on every beacon (not just errors) so a report
+   * that DOES surface to a player — currently only ErrorBoundary's crash
+   * screen — can be matched back to this exact log line server-side. */
+  readonly id: string;
   readonly message: string;
   readonly stack?: string;
   readonly url: string;
@@ -34,20 +38,36 @@ function stackHead(stack: string | undefined): string | undefined {
   return truncate(head, STACK_CAP);
 }
 
-function send(kind: string, message: string, stack?: string): void {
+/** 6 hex chars — short enough to read aloud or type into a bug report, long
+ * enough (16.7M values) that two ids in the same session collide only by
+ * wild coincidence. Not a security token: it exists purely to let a human
+ * match a support message to a log line, so a short, guessable id is fine. */
+function makeReportId(): string {
+  return Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padStart(6, '0');
+}
+
+/** Returns the id stamped on this report — generated even when the beacon
+ * ends up not being sent (dev mode, session budget exhausted), so a caller
+ * that shows the id to the user always has ONE to show, even if it never
+ * reaches a server to match. */
+function send(kind: string, message: string, stack?: string): string {
+  const id = makeReportId();
   try {
-    if (import.meta.env.DEV) return; // never report from localhost/dev
+    if (import.meta.env.DEV) return id; // never report from localhost/dev
     const isFunnel = kind.startsWith('funnel:');
     if (isFunnel) {
-      if (funnelCount >= MAX_FUNNEL_PER_SESSION) return;
+      if (funnelCount >= MAX_FUNNEL_PER_SESSION) return id;
       funnelCount += 1;
     } else {
-      if (reportCount >= MAX_REPORTS_PER_SESSION) return;
+      if (reportCount >= MAX_REPORTS_PER_SESSION) return id;
       reportCount += 1;
     }
     const head = stackHead(stack);
     const report: TelemetryReport = {
       kind,
+      id,
       message: truncate(message, MESSAGE_CAP),
       ...(head !== undefined ? { stack: head } : {}),
       url: location.hash,
@@ -68,16 +88,18 @@ function send(kind: string, message: string, stack?: string): void {
   } catch {
     // Telemetry must never itself be a source of errors.
   }
+  return id;
 }
 
 /** Beacon a caught error — a React render error (from an ErrorBoundary) by
  * default, or another `kind` (e.g. 'ws-error', 'mint-failed',
  * 'ws-reconnect-loop') for net-layer failures. Same capped, fire-and-forget
- * path as the window listeners — never throws. */
-export function reportError(error: unknown, componentStack?: string, kind = 'react-error'): void {
+ * path as the window listeners — never throws. Returns the report id (see
+ * `makeReportId`) so a caller that shows a crash screen can print it. */
+export function reportError(error: unknown, componentStack?: string, kind = 'react-error'): string {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
-  send(kind, message, stack ?? componentStack);
+  return send(kind, message, stack ?? componentStack);
 }
 
 /**

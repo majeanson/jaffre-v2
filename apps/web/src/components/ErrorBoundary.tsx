@@ -15,28 +15,34 @@ interface Props {
 }
 interface State {
   readonly crashed: boolean;
+  /** J6: set by componentDidCatch right after the crash render, so a user
+   * report ("it crashed, here's the code") can be matched to the exact
+   * telemetry beacon — see reportError's return value in net/telemetry.ts.
+   * Null for the one render before componentDidCatch's setState lands. */
+  readonly errorId: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  override state: State = { crashed: false };
+  override state: State = { crashed: false, errorId: null };
 
-  static getDerivedStateFromError(): State {
+  static getDerivedStateFromError(): Partial<State> {
     return { crashed: true };
   }
 
   override componentDidCatch(error: unknown, info: ErrorInfo): void {
-    reportError(error, info.componentStack ?? undefined);
+    const errorId = reportError(error, info.componentStack ?? undefined);
+    this.setState({ errorId });
   }
 
   override render(): ReactNode {
-    if (this.state.crashed) return <CrashFallback />;
+    if (this.state.crashed) return <CrashFallback errorId={this.state.errorId} />;
     return this.props.children;
   }
 }
 
 /** The localized fallback surface — offers a reload (fresh boot) and a hard
  * escape back to the menu, since the crashed screen may be unreachable. */
-function CrashFallback() {
+function CrashFallback({ errorId }: { readonly errorId: string | null }) {
   const lang = useLang();
   const t = (en: string, fr: string) => (lang === 'fr' ? fr : en);
   return (
@@ -51,6 +57,11 @@ function CrashFallback() {
             "L'écran a rencontré une erreur inattendue. Un rechargement règle habituellement le problème.",
           )}
         </p>
+        {errorId !== null && (
+          <p className="font-arcade-ui text-[0.75em] text-(--color-ap-muted)">
+            {t(`Error id: ${errorId}`, `Code d'erreur : ${errorId}`)}
+          </p>
+        )}
         <div className="flex flex-wrap justify-center gap-[0.6em]">
           <Cta onClick={() => location.reload()}>{t('Reload', 'Recharger')}</Cta>
           <Cta

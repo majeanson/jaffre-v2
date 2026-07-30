@@ -30,6 +30,7 @@ import { refreshFoil } from './foils.js';
 import { parsePositionHash, type HandPosition } from './replay/position.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { OfflineBanner } from './components/OfflineBanner.js';
 import { DEV_TOOLS_ENABLED } from './dev/devMode.js';
 import { NoticeToast } from './components/NoticeToast.js';
 import { Toast } from './components/Toast.js';
@@ -366,6 +367,10 @@ export function App() {
     <LangProvider lang={lang}>
       <CardSkinProvider value={skin}>
         <TrickSweepProvider value={sweep}>
+          {/* J1: one online/offline listener for the whole app, above every
+            screen — offline is a state the app admits rather than one that
+            just silently breaks whatever network call was mid-flight. */}
+          <OfflineBanner />
           {/* Mounted first (renders/commits before AppRoutes) so it wins the
             NoticeToast module-level ownership claim over Table's/Lobby's own
             local mounts — see NoticeToast.tsx. This is the app-wide toast
