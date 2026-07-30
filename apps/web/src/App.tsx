@@ -496,6 +496,11 @@ function AppRoutes() {
           onAction={(action) => send({ t: 'action', action })}
           // Spectators: drop the /watch suffix to get the takeover gate back.
           onTakeSeat={() => (location.hash = `#room/${route.code}`)}
+          // Recap "Add a bot" on a vacated seat (Wave 1a client half; the
+          // server accepts add_bot between games from Wave 1b on). Seat is
+          // always one of the four table positions — the recap only ever
+          // calls this with an index from its own [0,1,2,3] seat map.
+          onAddBot={(seat) => send({ t: 'add_bot', seat: seat as 0 | 1 | 2 | 3 })}
           onLeave={() => (location.hash = '')}
           onLeaveTable={leaveTableFor(route.code)}
           onRematch={() => send({ t: 'start' })}

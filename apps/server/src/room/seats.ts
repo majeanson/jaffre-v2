@@ -203,12 +203,15 @@ export async function onSit(
   }
   broadcastRoster(room, {});
   // Table-filled push: bring an absent host back when a stranger joins their
-  // public, not-yet-started table. Mid-game the only seat change possible is
-  // a spectator taking over a bot seat (midGameTakeover, above) — that path
-  // never reaches here with `started` true and a real host mismatch, but the
-  // `!started` check is kept explicit to match the spec this mirrors.
+  // not-yet-started table. Deliberately NOT gated on meta.public — the
+  // private share-a-link host is the one who put the phone down, and needs
+  // the nudge at least as much as a public-listing host does; notifyHostOfJoin's
+  // own per-sitter throttle is what keeps this from spamming. Mid-game the
+  // only seat change possible is a spectator taking over a bot seat
+  // (midGameTakeover, above) — that path never reaches here with `started`
+  // true and a real host mismatch, but the `!started` check is kept explicit
+  // to match the spec this mirrors.
   if (
-    room.meta.public === true &&
     !room.meta.started &&
     att.userId !== room.meta.hostId &&
     room.meta.hostId !== undefined &&
@@ -218,7 +221,10 @@ export async function onSit(
   }
 }
 
-/** Empty a bot seat back to vacant (pre-game only). */
+/** Empty a bot seat back to vacant — pre-game, or between games (game_over,
+ * before a rematch): same betweenGames window onSit/onStart already open, so
+ * a standing table can shed a bot seat while re-forming. LIVE mid-game stays
+ * closed — a bot mid-hand is holding cards for a team that needs them. */
 export async function onRemoveBot(
   room: GameRoom,
   ws: WebSocket,
@@ -229,7 +235,8 @@ export async function onRemoveBot(
     room.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
     return;
   }
-  if (room.meta.started) {
+  const betweenGames = room.meta.started && room.game !== null && room.game.phase === 'game_over';
+  if (room.meta.started && !betweenGames) {
     room.send(ws, {
       t: 'error',
       code: 'ALREADY_STARTED',
@@ -353,6 +360,12 @@ export async function onLeave(room: GameRoom, ws: WebSocket, att: Attachment): P
   await unseatUser(room, att.userId);
 }
 
+/** Add a bot to a vacant (or bot-owned, to change difficulty) seat — pre-game,
+ * or between games (game_over, before a rematch): same betweenGames window
+ * onSit/onStart already open, so a standing table that lost a human to a
+ * permanent leave can still fill back up to four and rematch, instead of
+ * being stuck one seat short forever. LIVE mid-game stays closed (onSit's
+ * midGameTakeover is the only seat change allowed then). */
 export async function onAddBot(
   room: GameRoom,
   ws: WebSocket,
@@ -364,7 +377,8 @@ export async function onAddBot(
     room.send(ws, { t: 'error', code: 'BAD_MESSAGE', message: 'Join the room first' });
     return;
   }
-  if (room.meta.started) {
+  const betweenGames = room.meta.started && room.game !== null && room.game.phase === 'game_over';
+  if (room.meta.started && !betweenGames) {
     room.send(ws, {
       t: 'error',
       code: 'ALREADY_STARTED',

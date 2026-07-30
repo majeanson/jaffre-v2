@@ -82,6 +82,11 @@ export interface TableProps {
   /** Spectators (online): back to the seat-takeover gate. Without it a
    * watcher whose choice now persists in the URL would have no way in. */
   readonly onTakeSeat?: () => void;
+  /** Seated viewers at a standing table (online, between games): fill a
+   * vacated seat from the recap so the rematch can reach 4 filled seats
+   * again. A protocol message in its own right (`add_bot`), not a
+   * `ClientAction` — it doesn't go through `onAction`. */
+  readonly onAddBot?: (seat: number) => void;
 }
 
 const TAKE_SEAT_T: Record<Lang, string> = {
@@ -118,6 +123,7 @@ export function Table({
   tutorial = false,
   practiceSeed = null,
   onTakeSeat,
+  onAddBot,
   roomCode,
   frozenHold = false,
   initialUi,
@@ -326,6 +332,8 @@ export function Table({
         onReady={() => onAction({ type: 'continue' })}
         onRematch={onRematch}
         onSwapSeats={onSwapSeats}
+        onTakeSeat={onTakeSeat}
+        onAddBot={onAddBot}
         onLeave={onLeaveTable ?? onLeave}
         confirmLeave={onLeaveTable !== undefined}
         // Practice only (an online table has onLeaveTable). The moment right

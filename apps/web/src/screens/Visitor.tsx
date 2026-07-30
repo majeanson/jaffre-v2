@@ -3,8 +3,9 @@ import type { RosterSeat } from '@jaffre/protocol';
 import { useGameStore } from '../state/gameStore.js';
 import { getProfile } from '../net/auth.js';
 import { botAvatar } from '../paint/botAvatars.js';
-import { playerName } from '../net/socket.js';
+import { connect, playerName } from '../net/socket.js';
 import { RoomComms } from '../comms/RoomComms.js';
+import { NamePrompt } from '../components/NamePrompt.js';
 import { TEAM_LABELS } from '../teams.js';
 
 export interface VisitorProps {
@@ -20,7 +21,10 @@ const T: Record<
   Lang,
   {
     wantsYou: (host: string) => string;
-    oneSeatOpen: string;
+    /** The line under `wantsYou`, honest about how many seats you could
+     * actually take — 0 seats means no sit affordance renders below, so the
+     * copy must not promise one. */
+    seatsLine: (n: number) => string;
     room: (code: string) => string;
     openSeat: string;
     open: string;
@@ -40,7 +44,12 @@ const T: Record<
 > = {
   en: {
     wantsYou: (host) => `${host} wants you`,
-    oneSeatOpen: 'at the table — one seat open.',
+    seatsLine: (n) =>
+      n === 0
+        ? 'the table is full — watch the game.'
+        : n === 1
+          ? 'at the table — one seat open.'
+          : `at the table — ${String(n)} seats open.`,
     room: (code) => `Room ${code}`,
     openSeat: 'Open seat',
     open: 'Open',
@@ -61,7 +70,12 @@ const T: Record<
   },
   fr: {
     wantsYou: (host) => `${host} t'attend`,
-    oneSeatOpen: 'à la table — un siège libre.',
+    seatsLine: (n) =>
+      n === 0
+        ? 'la table est pleine — regarde la partie.'
+        : n === 1
+          ? 'à la table — un siège libre.'
+          : `à la table — ${String(n)} sièges libres.`,
     room: (code) => `Salon ${code}`,
     openSeat: 'Siège libre',
     open: 'Libre',
@@ -190,7 +204,7 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
                   {t.wantsYou(host.name)}
                 </h1>
                 <div className="font-arcade-ui text-[0.9em] text-(--color-ap-muted)">
-                  {t.oneSeatOpen}
+                  {t.seatsLine(takeableSeats.length)}
                 </div>
               </div>
             </div>
@@ -254,6 +268,17 @@ export function Visitor({ code, onSit, onWatch, onLeave }: VisitorProps) {
             {t.awayHint}
           </p>
         )}
+
+        {/* One-shot: a visitor still named "Player" gets the same card the
+            lobby shows before they sit, so a mid-game seat takeover doesn't
+            become their online identity by accident. Reconnect only on a
+            real rename — names travel at connect, and the welcome snapshot
+            re-seats them. */}
+        <NamePrompt
+          onDone={(renamed) => {
+            if (renamed) connect(code);
+          }}
+        />
 
         <div className="flex flex-col gap-3">
           {takeableSeats.map((seat) => {

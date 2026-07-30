@@ -45,6 +45,31 @@ const NOTICE_CODES: Record<string, Record<Lang, string>> = {
     en: 'The game already started.',
     fr: 'La partie a déjà commencé.',
   },
+  // The engine's own reject codes (packages/engine/src/types.ts) — surfaced
+  // when a queued/stale/out-of-band action reaches the server after the game
+  // state has moved on. Static copy, no params: the led suit, whose turn it
+  // is, and the offending card are all already visible on the table, so
+  // naming them again here would just repeat what the felt already shows.
+  WRONG_PHASE: {
+    en: "That can't be done right now.",
+    fr: "C'est pas le moment de faire ça.",
+  },
+  NOT_YOUR_TURN: {
+    en: 'Not your turn yet.',
+    fr: "C'est pas ton tour.",
+  },
+  ILLEGAL_BID: {
+    en: "That bid isn't allowed.",
+    fr: 'Cette mise est pas permise.',
+  },
+  CARD_NOT_IN_HAND: {
+    en: "That card isn't in your hand.",
+    fr: "T'as pas cette carte en main.",
+  },
+  MUST_FOLLOW_SUIT: {
+    en: 'You have to follow the led suit.',
+    fr: 'Tu dois fournir la couleur demandée.',
+  },
 };
 
 /** Map a server error `code` to localized copy for the current language;

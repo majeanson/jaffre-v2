@@ -40,6 +40,7 @@ import { feedback } from '../audio/clicks.js';
 import { MetaHeader } from '../components/MetaHeader.js';
 import { MetaNav } from '../components/MetaNav.js';
 import { Toast } from '../components/Toast.js';
+import { DEV_TOOLS_ENABLED } from '../dev/devMode.js';
 
 export interface CollectionProps {
   readonly onLeave: () => void;
@@ -659,15 +660,20 @@ export function Collection({ onLeave, leaveLabel, demoStats, focus }: Collection
 
         <div className="flex items-center justify-between gap-4">
           <p className="font-arcade-ui text-[0.85em] text-(--color-ap-muted)">{t.blurb}</p>
-          <label className="flex shrink-0 cursor-pointer items-center gap-[0.5em] font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
-            <input
-              type="checkbox"
-              checked={showAll}
-              onChange={(e) => setShowAll(e.target.checked)}
-              className="size-[1.1em] accent-(--color-ap-violet)"
-            />
-            {t.showAll}
-          </label>
+          {/* Dev-only escape hatch to preview locked cosmetics — gated like every
+              other dev affordance (DEV_TOOLS_ENABLED: local `vite dev` or an
+              automated run). A real prod player never sees this checkbox. */}
+          {DEV_TOOLS_ENABLED && (
+            <label className="flex shrink-0 cursor-pointer items-center gap-[0.5em] font-arcade-ui text-[0.72em] uppercase tracking-wide text-(--color-ap-muted)">
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(e) => setShowAll(e.target.checked)}
+                className="size-[1.1em] accent-(--color-ap-violet)"
+              />
+              {t.showAll}
+            </label>
+          )}
         </div>
 
         <Panel as="section" className="flex flex-col gap-[0.9em] p-[1.1em]">

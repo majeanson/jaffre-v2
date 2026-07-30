@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { PixelWave, useLang, type Lang } from '@jaffre/ui';
-import { dailyChallenge, weeklyChallenge, type ChallengeDeal } from '@jaffre/engine';
+import {
+  challengeIsOpen,
+  dailyChallenge,
+  weeklyChallenge,
+  type Action,
+  type ChallengeDeal,
+} from '@jaffre/engine';
 import {
   challengeLog,
   startChallenge,
@@ -44,6 +50,12 @@ const T: Record<
     shared: string;
     yesterday: string;
     rankOf: (rank: number, of: number) => string;
+    /** Shown instead of Play once a deal has rolled past its own period —
+     * viewing yesterday's board must not offer a button that can't submit. */
+    closed: string;
+    /** Offline/network submit failures only — the run is still alive, so this
+     * offers a second try at the SAME log rather than losing it. */
+    retry: string;
   }
 > = {
   en: {
@@ -72,6 +84,8 @@ const T: Record<
     shared: 'Copied!',
     yesterday: 'See yesterday’s board →',
     rankOf: (rank, of) => `#${String(rank)} of ${String(of)}`,
+    closed: 'This deal is closed — today’s is waiting.',
+    retry: 'Retry',
   },
   fr: {
     title: 'Tableau des donnes',
@@ -99,6 +113,8 @@ const T: Record<
     shared: 'Copié!',
     yesterday: 'Voir le tableau d’hier →',
     rankOf: (rank, of) => `#${String(rank)} sur ${String(of)}`,
+    closed: 'Cette donne est fermée — celle d’aujourd’hui t’attend.',
+    retry: 'Réessayer',
   },
 };
 
@@ -152,6 +168,10 @@ export function DealBoard({
   );
   const [copied, setCopied] = useState(false);
   const gamePhase = useGameStore((s) => s.view?.phase);
+  // Held only after a RETRYABLE submit failure (offline/network) — the local
+  // game is deliberately left running (see trySubmit below), so this is the
+  // same action log Retry re-sends. Null the rest of the time.
+  const [retryActions, setRetryActions] = useState<readonly Action[] | null>(null);
 
   /**
    * The share line. Carries the CHALLENGE URL, so a recipient lands on the
@@ -214,17 +234,29 @@ export function DealBoard({
     if (demoBoard === undefined) reportFunnel('daily');
   }, [demoBoard]);
 
-  // The run ends when the ROUND ends: a challenge is one deal, not a game.
-  useEffect(() => {
-    if (phase !== 'playing') return;
-    if (gamePhase !== 'round_over' && gamePhase !== 'game_over') return;
-    const actions = challengeLog();
-    if (actions === null) return;
+  /**
+   * Post the run. Shared by the round-end effect below and the Retry button —
+   * both submit the identical action log. On a definitive answer (posted, or
+   * rejected by the server for cause) the local game tears down as before. On
+   * a retryable failure (offline/network — nothing about the run itself was
+   * wrong) it stays alive: the felt already tore itself down when the last
+   * trick landed, but the actions and the challenge server's judgement of
+   * them are two different things, and only the second one failed.
+   */
+  const trySubmit = (actions: readonly Action[]): void => {
     setPhase('submitting');
     void submitRun(deal.id, actions).then((result) => {
+      if (!result.ok && result.reason === 'offline') {
+        setRetryActions(actions);
+        setOutcome(t.offline);
+        setRun(null);
+        setPhase('result');
+        return;
+      }
       stopLocalGame();
+      setRetryActions(null);
       if (!result.ok) {
-        setOutcome(result.reason === 'offline' ? t.offline : t.rejected);
+        setOutcome(t.rejected);
         setRun(null);
       } else {
         setOutcome(
@@ -244,11 +276,21 @@ export function DealBoard({
       // Re-read the board so the player sees where their score landed.
       void fetchBoard(deal.id).then((b) => b !== null && setBoard(b));
     });
+  };
+
+  // The run ends when the ROUND ends: a challenge is one deal, not a game.
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (gamePhase !== 'round_over' && gamePhase !== 'game_over') return;
+    const actions = challengeLog();
+    if (actions === null) return;
+    trySubmit(actions);
   }, [phase, gamePhase, deal.id, t]);
 
   if (phase === 'playing') return <Table onAction={sendLocalAction} onLeave={onLeave} />;
 
   const alreadyPlayed = board?.you != null;
+  const open = challengeIsOpen(deal, now);
   const weekly = weeklyChallenge(now);
   const start = (): void => {
     startChallenge(deal);
@@ -276,12 +318,27 @@ export function DealBoard({
             {deal.cadence === 'daily' ? t.dailyName : t.weeklyName}
           </h1>
           {run === null ? (
-            <p
-              data-testid="deal-outcome"
-              className="font-arcade-ui text-[0.9em] text-(--color-ap-ink)"
-            >
-              {outcome}
-            </p>
+            <>
+              <p
+                data-testid="deal-outcome"
+                className="font-arcade-ui text-[0.9em] text-(--color-ap-ink)"
+              >
+                {outcome}
+              </p>
+              {/* Only reachable after a RETRYABLE failure (offline/network) —
+                  the local game and its action log are still alive, so this
+                  re-sends the identical run rather than making the player
+                  replay a hand that was never the problem. */}
+              {retryActions !== null && (
+                <button
+                  type="button"
+                  onClick={() => trySubmit(retryActions)}
+                  className="mt-[0.2em] rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-violet) px-[1em] py-[0.5em] font-arcade-display text-[0.9em] uppercase tracking-wide text-(--color-ap-ink) shadow-(--shadow-ap)"
+                >
+                  {t.retry}
+                </button>
+              )}
+            </>
           ) : (
             <>
               <span className="font-arcade-display text-[3em] leading-none tabular-nums text-(--color-ap-gold-deep)">
@@ -387,6 +444,17 @@ export function DealBoard({
 
         {phase === 'submitting' ? (
           <PixelWave label={t.submitting} />
+        ) : !open ? (
+          // A closed challenge (yesterday's board, most often) can't take a
+          // submission — the server's own open rule (challengeById + the
+          // period-key compare) would reject it, so the button never belonged
+          // here in the first place. Same line style as the outcome banner.
+          <p
+            data-testid="deal-closed"
+            className="rounded-(--radius-ap-panel) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) p-[0.8em] font-arcade-ui text-[0.85em] text-(--color-ap-muted) shadow-(--shadow-ap-sm)"
+          >
+            {t.closed}
+          </p>
         ) : (
           <button
             type="button"

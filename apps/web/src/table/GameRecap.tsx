@@ -60,6 +60,12 @@ const T: Record<
     takeaway: string;
     seeRecord: string;
     daily: string;
+    /** Spectator hero CTA — replaces Rematch, which the server would reject
+     * (NOT_SEATED) for a viewer with no seat. */
+    takeSeat: string;
+    /** Small per-seat action on a vacated/"Left" chip, between games at a
+     * standing table — the only way that table can reach 4 filled seats again. */
+    addBot: string;
   }
 > = {
   en: {
@@ -106,6 +112,8 @@ const T: Record<
     takeaway: 'One thing to work on',
     seeRecord: 'Replay it from Your record →',
     daily: 'Today’s Hand of the Day is waiting →',
+    takeSeat: 'Take a seat',
+    addBot: 'Add a bot',
   },
   fr: {
     gameOver: 'Partie terminée',
@@ -152,6 +160,8 @@ const T: Record<
     takeaway: 'Une affaire à travailler',
     seeRecord: 'Rejoue-la depuis Ton record →',
     daily: 'La main du jour t’attend →',
+    takeSeat: 'Prendre un siège',
+    addBot: 'Ajoute un bot',
   },
 };
 
@@ -180,6 +190,12 @@ export interface GameRecapProps {
   readonly onRematch?: (() => void) | undefined;
   /** Re-pair the table before the rematch (online rooms only). */
   readonly onSwapSeats?: (() => void) | undefined;
+  /** Spectators only: back to the seat-takeover gate — `onSit` is explicitly
+   * legal between games server-side, so this is a real path, not a dead end. */
+  readonly onTakeSeat?: (() => void) | undefined;
+  /** Seated viewers at a standing table only: fill a vacated seat so a table
+   * that lost a human can reach 4 filled seats again for the rematch. */
+  readonly onAddBot?: ((seat: number) => void) | undefined;
   readonly onLeave: () => void;
   /** PRACTICE recaps only: quick-play into a table with real people.
    * Somebody who just finished (and enjoyed) their first game had no way to
@@ -440,6 +456,8 @@ export function GameRecap({
   avatars,
   onRematch,
   onSwapSeats,
+  onTakeSeat,
+  onAddBot,
   onPlayPeople,
   onLeave,
   confirmLeave = false,
@@ -496,7 +514,10 @@ export function GameRecap({
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 outline-none"
     >
       <div className="pop-in relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-(--radius-ap-hero) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) text-center font-arcade-ui text-(--color-ap-text) shadow-(--shadow-ap-hero)">
-        <Confetti />
+        {/* A spectator has no side to celebrate for (neutral), and a losing
+            player shouldn't get the winner's fanfare — only the winning team's
+            own seats see it. */}
+        {(mySeat === null || mySeat % 2 === winner) && <Confetti />}
         {/* Scrollable body: on a short viewport (≈900px desktop) the recap is
             taller than the screen, so the middle scrolls while the action footer
             below stays pinned — the hero Rematch is never pushed off-screen. */}
@@ -723,6 +744,24 @@ export function GameRecap({
                       >
                         {status.word}
                       </span>
+                      {/* A vacated seat between games at a STANDING table (onRematch
+                          present) blocks the rematch — it needs 4 filled seats.
+                          Seated viewers only: a spectator has no stake in fixing
+                          someone else's table. The server doesn't accept add_bot
+                          between games yet (that's Wave 1b) — this button ships
+                          ahead of it and starts working the moment 1b lands. */}
+                      {s === null &&
+                        mySeat !== null &&
+                        onRematch !== undefined &&
+                        onAddBot !== undefined && (
+                          <button
+                            type="button"
+                            onClick={() => onAddBot(i)}
+                            className="font-arcade-ui text-[0.68em] text-(--color-ap-muted) underline decoration-dotted underline-offset-2 hover:text-(--color-ap-text)"
+                          >
+                            {t.addBot}
+                          </button>
+                        )}
                     </li>
                   );
                 })}
@@ -842,22 +881,36 @@ export function GameRecap({
         />
         {/* Pinned action footer — stays visible when the body scrolls. */}
         <div className="flex flex-col items-center gap-2 border-t-2 border-(--color-ap-ink)/35 p-4">
-          {onRematch !== undefined && (
-            <Cta
-              type="button"
-              onClick={onRematch}
-              className="w-full text-[1.2em] px-[1.5em] py-[0.85em]"
-            >
-              {t.rematch}
-            </Cta>
-          )}
+          {/* A spectator has no seat for the server's `start` message to seat
+              them into — Rematch there is a dead button (NOT_SEATED). Swap the
+              hero for the one action that IS legal: taking a seat, which the
+              server allows between games (seats.ts). */}
+          {mySeat === null
+            ? onTakeSeat !== undefined && (
+                <Cta
+                  type="button"
+                  onClick={onTakeSeat}
+                  className="w-full text-[1.2em] px-[1.5em] py-[0.85em]"
+                >
+                  {t.takeSeat}
+                </Cta>
+              )
+            : onRematch !== undefined && (
+                <Cta
+                  type="button"
+                  onClick={onRematch}
+                  className="w-full text-[1.2em] px-[1.5em] py-[0.85em]"
+                >
+                  {t.rematch}
+                </Cta>
+              )}
           <div className="flex w-full items-center justify-center gap-2">
             {onPlayPeople !== undefined && (
               <Cta type="button" variant="secondary" onClick={onPlayPeople} className="flex-1">
                 {t.playPeople}
               </Cta>
             )}
-            {onSwapSeats !== undefined && (
+            {mySeat !== null && onSwapSeats !== undefined && (
               <Cta type="button" variant="secondary" onClick={onSwapSeats} className="flex-1">
                 {t.swapSeats}
               </Cta>

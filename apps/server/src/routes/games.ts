@@ -115,7 +115,16 @@ export async function handleHistory(request: Request, env: Env, url: URL): Promi
   });
 }
 
-/** GET /api/replay/:gameId → {seed, actions, players}. */
+/**
+ * GET /api/replay/:gameId → {seed, actions, players}. Deliberately
+ * unauthenticated — this is the one place the redaction story ends. A
+ * finished game is over: no hand is secret from anyone anymore once the last
+ * card's played, so a replay link is a shareable public record, same idea as
+ * a chess.com game link. The gameId is the only credential and it's
+ * unguessable-enough (server-minted, not a room code), which is the same bar
+ * `handleHistory` accepts for its own game ids. If that ever needs tightening,
+ * it's a product decision (do we want replays to be private?), not a gap.
+ */
 export async function handleReplay(env: Env, gameId: string): Promise<Response> {
   if (env.DB === undefined) return noDb();
   const row = await env.DB.prepare('SELECT seed, action_log FROM games WHERE id = ?1')

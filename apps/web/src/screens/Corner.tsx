@@ -151,8 +151,16 @@ export function Corner({ onLeave, demoStats, demoAwards, demoStanding }: CornerP
     };
   }, [demoStats]);
 
+  // Earned rows include ids the catalog doesn't carry — foil:<skin> grants
+  // are real rows in user_awards but have no AWARDS entry (they're cosmetic
+  // announcements, not the award shelf). Filter to catalog ids BEFORE picking
+  // the newest, or a foil row could win the reduce and then miss the
+  // `AWARDS.find` below, falling back to the cold "no awards yet" copy.
+  const catalogued = earned.filter((e) => AWARDS.some((a) => a.id === e.id));
   const latest =
-    earned.length === 0 ? null : earned.reduce((a, b) => (b.grantedAt > a.grantedAt ? b : a));
+    catalogued.length === 0
+      ? null
+      : catalogued.reduce((a, b) => (b.grantedAt > a.grantedAt ? b : a));
   const latestAward = latest === null ? null : (AWARDS.find((a) => a.id === latest.id) ?? null);
 
   const skinLabel = CARD_SKINS.find((c) => c.id === currentCardSkin())?.label ?? currentCardSkin();
@@ -180,7 +188,9 @@ export function Corner({ onLeave, demoStats, demoAwards, demoStanding }: CornerP
             skinLabel={skinLabel}
             themeLabel={themeLabel}
             standing={standing}
-            lockedCount={Math.max(0, AWARDS.length - earned.length)}
+            // Same catalog-only counting as `latest` above — a foil row must
+            // not count as "one fewer award left to earn".
+            lockedCount={Math.max(0, AWARDS.length - catalogued.length)}
           />
         )}
       </div>

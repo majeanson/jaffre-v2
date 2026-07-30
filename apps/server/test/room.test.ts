@@ -896,6 +896,50 @@ describe('GameRoom', () => {
     },
   );
 
+  it(
+    'between games, add_bot fills a leaver’s seat and start deals the rematch',
+    { timeout: 120_000 },
+    async () => {
+      const room = 'room-between-addbot';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      let view = await setupStartedGame(client);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+      view = await playToGameOver(client, stub, 5678, view);
+      expect(view.phase).toBe('game_over');
+
+      // A newcomer claims a bot seat between games (same path the sit test
+      // above exercises), then leaves for good — the standing table is now
+      // one seat short, exactly the "lost a human" case B2 is for.
+      const bob = await Client.connect(room, 'bob', 'Bob');
+      bob.send({ t: 'join' });
+      await bob.next('welcome');
+      bob.send({ t: 'sit', seat: 1 });
+      await welcomeViewer(bob, 1);
+      bob.send({ t: 'leave' });
+      await pollUntil(async () => {
+        const r = client.latestRoster();
+        return r !== null && r.seats[1] === null ? true : undefined;
+      }, "bob's freed seat");
+
+      // Before this fix, add_bot rejected ALREADY_STARTED for any started
+      // room regardless of phase — onSit/onStart's betweenGames predicate
+      // (game_over, before a rematch) now applies to add_bot/remove_bot too.
+      client.send({ t: 'add_bot', seat: 1 });
+      const rosterAfterAdd = await pollUntil(async () => {
+        const r = client.latestRoster();
+        return r !== null && r.seats[1]?.isBot === true ? r : undefined;
+      }, "the re-added bot's roster");
+      expect(rosterAfterAdd.seats[1]).toMatchObject({ isBot: true, difficulty: 'normal' });
+
+      // All four seats filled again — the rematch can start.
+      client.send({ t: 'start' });
+      const rematch = await client.next('view');
+      expect(rematch.view.phase).not.toBe('game_over');
+
+      await endQuiet(room, client, bob);
+    },
+  );
+
   it('a manual action takes control back from auto-play', { timeout: 30_000 }, async () => {
     const room = 'room-autoplay-manual';
     const client = await Client.connect(room, 'alice', 'Alice');
@@ -2259,6 +2303,52 @@ describe('GameRoom', () => {
     expect(meta?.paints?.bob).toBe(paint);
 
     await endQuiet(room, alice, bob);
+  });
+
+  it('reaches the absent-host join push for a PRIVATE room too (no meta.public gate)', async () => {
+    const room = 'room-private-host-push';
+    const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+    const alice = await Client.connect(room, 'alice', 'Alice');
+    alice.send({ t: 'join' });
+    await alice.next('welcome');
+    alice.send({ t: 'sit', seat: 0 });
+    await welcomeViewer(alice, 0);
+
+    // Alice never calls set_public — this table stays private (share-a-link),
+    // and its host is the one who put the phone down: her only socket closes.
+    alice.ws.close(1000, 'tab closed');
+    await pollUntil(
+      () =>
+        runInDurableObject(stub, async (_instance, state) => {
+          const meta = await state.storage.get<{ disconnectedSince?: Record<string, number> }>(
+            'meta',
+          );
+          return meta?.disconnectedSince?.['alice'];
+        }),
+      "alice's pre-game disconnect clock",
+    );
+
+    const bob = await Client.connect(room, 'bob', 'Bob');
+    bob.send({ t: 'join' });
+    await bob.next('welcome');
+    bob.send({ t: 'sit', seat: 1 });
+    await welcomeViewer(bob, 1);
+
+    // notifyHostOfJoin stamps its per-sitter throttle map the moment it's
+    // reached, before it even checks push subscriptions — a private table,
+    // an absent host, and no meta.public gate left to stop it getting there.
+    const reached = await pollUntil(
+      () =>
+        runInDurableObject(stub, (instance) => {
+          const timestamps = (instance as unknown as { joinPushTimestamps: Map<string, number> })
+            .joinPushTimestamps;
+          return timestamps.has('bob') ? true : undefined;
+        }),
+      "bob's join-push throttle stamp",
+    );
+    expect(reached).toBe(true);
+
+    await endQuiet(room, bob);
   });
 });
 

@@ -21,6 +21,15 @@ import { DEFAULT_FELT, FELTS, applyFelt, currentFelt } from './felt.js';
 import { DEFAULT_SWEEP, SWEEPS, applySweep, currentSweep } from './sweeps.js';
 import { applyFoil, ownedFoilSkins } from './foils.js';
 
+// applyProfileCosmetics lives in its own sibling module (applyProfileCosmetics.ts),
+// NOT here, even though it's conceptually part of cosmetics boot: net/auth.ts
+// calls it at login/recovery, and THIS file pulls in fetchStats/fetchAwards —
+// which reach net/socket.ts's module graph (the music store touches
+// localStorage at import time). Importing anything from this module — even
+// one unrelated named export — evaluates that whole graph, so auth.ts must
+// import the sibling directly, never re-exported through here. The sibling
+// stays a leaf: only the five applyX() calls, nothing net-shaped.
+
 const SEEN_KEY = 'jaffre-cosmetics-seen';
 const PROGRESS_KEY = 'jaffre-progress-seen';
 

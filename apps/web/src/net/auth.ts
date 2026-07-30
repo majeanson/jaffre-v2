@@ -4,6 +4,7 @@
  * uses the legacy plain ?u=&n= mode.
  */
 
+import { applyProfileCosmetics } from '../applyProfileCosmetics.js';
 import { reportError } from './telemetry.js';
 
 interface StoredToken {
@@ -211,8 +212,11 @@ export async function recoverIdentity(code: string, name?: string): Promise<Stor
       token: string;
     } & ProfileFields;
     const stored = storeToken(data);
-    // A recovered identity carries its cosmetics to the new device.
-    storeProfile(profileFrom(data));
+    // Recovering an identity adopts ITS look on this device — applyProfileCosmetics
+    // is what actually cashes that promise; storeProfile alone only cached the
+    // data for later screens to read.
+    const profile = storeProfile(profileFrom(data));
+    applyProfileCosmetics(profile);
     return stored;
   } catch {
     return null;
@@ -325,7 +329,10 @@ type LoginResponse = { userId: string; name: string; token: string } & ProfileFi
 
 function storeLogin(data: LoginResponse): StoredToken {
   const stored = storeToken(data);
-  storeProfile(profileFrom(data));
+  // Logging in adopts that account's identity — and its look. A device's
+  // local choice only wins during ordinary sessions; the moment you sign
+  // into an account, its saved equips take over here.
+  applyProfileCosmetics(storeProfile(profileFrom(data)));
   if (data.links !== undefined) storeLinks(data.links);
   return stored;
 }
@@ -387,7 +394,10 @@ export async function consumeLoginFragment(): Promise<StoredToken | null> {
     const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       const data = (await res.json()) as ProfileFields & { links?: AccountLinks };
-      storeProfile(profileFrom(data));
+      // The Google callback is a login success too — same identity-adoption
+      // moment as storeLogin's email-code path, just with /me instead of the
+      // verify response carrying the profile.
+      applyProfileCosmetics(storeProfile(profileFrom(data)));
       if (data.links !== undefined) storeLinks(data.links);
     }
     return stored;
@@ -413,6 +423,13 @@ export function logOut(): void {
     'jaffre-name',
     'jaffre-last-room',
     'jaffre-tables',
+    // The "what has this browser already announced" baselines belong to the
+    // ACCOUNT that earned them, not the device — left behind, a second
+    // account signing in on the same browser would have its own real level
+    // ups/unlocks/awards silently swallowed as "already seen".
+    'jaffre-xp-seen',
+    'jaffre-cosmetics-seen',
+    'jaffre-progress-seen',
   ])
     localStorage.removeItem(k);
 }

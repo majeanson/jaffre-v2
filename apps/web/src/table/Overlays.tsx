@@ -21,6 +21,10 @@ export interface OverlaysProps {
   readonly onReady: () => void;
   readonly onRematch?: (() => void) | undefined;
   readonly onSwapSeats?: (() => void) | undefined;
+  /** Spectators only: back to the seat-takeover gate. */
+  readonly onTakeSeat?: (() => void) | undefined;
+  /** Seated viewers at a standing table only: fill a vacated seat. */
+  readonly onAddBot?: ((seat: number) => void) | undefined;
   /** Practice only: hop from a finished practice game into a real table. */
   readonly onPlayPeople?: (() => void) | undefined;
   readonly onLeave: () => void;
@@ -37,6 +41,8 @@ export function Overlays({
   onReady,
   onRematch,
   onSwapSeats,
+  onTakeSeat,
+  onAddBot,
   onPlayPeople,
   onLeave,
   confirmLeave = false,
@@ -91,6 +97,8 @@ export function Overlays({
           showXp={me !== null}
           onRematch={onRematch}
           onSwapSeats={onSwapSeats}
+          onTakeSeat={onTakeSeat}
+          onAddBot={onAddBot}
           onLeave={onLeave}
           confirmLeave={confirmLeave}
           onPlayPeople={onPlayPeople}
