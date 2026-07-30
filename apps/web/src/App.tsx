@@ -48,10 +48,24 @@ import { leaveVoice } from './voice/rtc.js';
 // visitor downloads.
 import { Home } from './screens/Home.js';
 import { Lobby } from './screens/Lobby.js';
-import { Table } from './screens/Table.js';
 import { useGameStore } from './state/gameStore.js';
 import { useMusicStore } from './state/musicStore.js';
 import { MusicDock } from './music/MusicDock.js';
+
+/**
+ * The felt is lazy but WARMED, not eager.
+ *
+ * It used to be a static import, on the reasoning that the table is the screen
+ * every join/create flow lands on. But it is never the FIRST screen — Home is —
+ * and measured, the table's chunk (the help tree, the recap, the coach, the
+ * login/settings sheets, react-aria's listbox and framer-motion's drag) was a
+ * fifth of everything a first-time visitor downloaded before seeing the title.
+ * `warmTable()` below pulls it in on idle right after Home paints, so the Play
+ * click still finds it in the module cache — the same trick this file already
+ * uses for card art.
+ */
+const Table = lazy(() => import('./screens/Table.js').then((m) => ({ default: m.Table })));
+const warmTable = () => void import('./screens/Table.js');
 
 const Awards = lazy(() => import('./screens/Awards.js').then((m) => ({ default: m.Awards })));
 const Leaderboard = lazy(() =>
@@ -217,6 +231,18 @@ export function App() {
   useEffect(() => {
     preloadCardArt(cardSkin, bonhommes);
   }, [cardSkin, bonhommes]);
+
+  // Pull the felt's chunk in once the app is idle, so it is already in the
+  // module cache by the time anyone presses Play (see `warmTable`). Idle, not
+  // eager: this must never compete with the first paint it exists to protect.
+  useEffect(() => {
+    const hasRic = typeof window.requestIdleCallback === 'function';
+    const handle = hasRic ? window.requestIdleCallback(warmTable) : window.setTimeout(warmTable, 1);
+    return () => {
+      if (hasRic) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, []);
 
   // Once per load: reconcile cosmetics with real stats — degrade a now-locked
   // choice and surface freshly play-unlocked skins/themes as a toast. Skipped in

@@ -372,7 +372,15 @@ test.describe('the scoreboard-delivery flights', () => {
 
     // Exactly one side's tally is the one this trick moved — the other team's
     // never budges (only the winning team's points/trick-count are held).
-    const first = samples[0] as { label0: string | null; label1: string | null };
+    //
+    // The baseline is the first sample that HAS a scoreboard, not sample 0:
+    // sampling starts at page load and the felt now arrives one chunk-fetch
+    // later (App warms it on idle), so the opening frames legitimately have no
+    // score strip to read. Those nulls are the loading screen, not a tally.
+    const first = (samples.find((s) => s.label0 !== null || s.label1 !== null) ?? samples[0]) as {
+      label0: string | null;
+      label1: string | null;
+    };
     const last = samples[samples.length - 1] as { label0: string | null; label1: string | null };
     const movedTeam: 'label0' | 'label1' = first.label0 !== last.label0 ? 'label0' : 'label1';
     expect(first[movedTeam], 'the tally never changed at all').not.toBe(last[movedTeam]);
