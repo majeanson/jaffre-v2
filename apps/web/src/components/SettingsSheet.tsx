@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLang, type Lang } from '@jaffre/ui';
 import { applyLang, LANGS } from '../lang.js';
@@ -11,6 +11,7 @@ import { NotificationsToggle } from '../pwa/NotificationsToggle.js';
 import { LoginButton } from './LoginSheet.js';
 import { useScrollLock } from './useScrollLock.js';
 
+import { useDismissLayer } from '../keys/layers.js';
 const T: Record<
   Lang,
   {
@@ -58,8 +59,11 @@ const T: Record<
     tutorialGo: '♺ Replay tutorial',
     account: 'Account',
     accountHint: 'Log in so your games follow you.',
+      ['↑ ↓ ← →', 'move around'],
+      ['Enter', 'choose what you landed on'],
+      ['Esc', 'close, or step back'],
     keys: 'Keyboard',
-    keysHint: 'At the table.',
+    keysHint: 'Anywhere in the app, and at the table.',
     keysList: [
       ['1–8', 'play that card (or queue it)'],
       ['1–6', 'bid 7–12 during the auction'],
@@ -85,10 +89,13 @@ const T: Record<
     tutorial: 'Tutoriel',
     tutorialHint: 'Rejoue la première partie d’entraînement guidée.',
     tutorialGo: '♺ Rejouer le tutoriel',
+      ['↑ ↓ ← →', 'te déplacer'],
+      ['Entrée', 'choisir ce que tu as atteint'],
+      ['Échap', 'fermer, ou revenir'],
     account: 'Compte',
     accountHint: 'Connecte-toi pour que tes parties te suivent.',
     keys: 'Clavier',
-    keysHint: 'À la table.',
+    keysHint: 'Partout dans l’app, et à la table.',
     keysList: [
       ['1–8', 'joue cette carte (ou la met en attente)'],
       ['1–6', 'mise 7–12 pendant les mises'],
@@ -170,17 +177,15 @@ export function SettingsSheet({ onClose, coach, onOpenCollection }: SettingsShee
   const [coachOn, setCoachOn] = useState(() => coach?.on ?? loadCoachPref(false));
   const [snappy, setSnappy] = useState(snappyPace);
 
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  // Escape, the Tab trap and the return trip to the gear all come from the
+  // app-wide stack; focus still lands on the ✕ so the way out is announced
+  // first.
+  const panel = useRef<HTMLDivElement>(null);
+  useDismissLayer(panel, onClose, { trap: true, initialFocus: () => closeRef.current });
 
   return createPortal(
     <div
+        ref={panel}
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-3 sm:items-center sm:p-4"
       onClick={onClose}
     >

@@ -108,11 +108,11 @@ test('an open sheet gets the Escape, and the screen stays put', async ({ page })
 });
 
 test('a sheet keeps Tab inside it and hands focus back on the way out', async ({ page }) => {
-  // Customize, because it is on the shared layer stack. The sheets still
-  // carrying their own Escape handler have no trap yet — that is what makes
-  // this worth pinning as they migrate across.
+  // Settings: every sheet is on the shared stack now, and this one reaches the
+  // most other surfaces (login, install, the tutorial replay), so it is the
+  // one most likely to leak Tab onto the page behind it.
   await page.goto('/');
-  const trigger = page.getByRole('button', { name: 'Customize' });
+  const trigger = page.getByRole('button', { name: 'Settings' });
   await trigger.click();
   await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -160,6 +160,28 @@ test('every control on Home can be reached with nothing but arrows', async ({ pa
   // this is the only kind of test that would notice.
   await page.goto('/');
   await expect(page.getByTestId('chrome-bar')).toBeVisible();
+
+  // Let the page stop moving first. The level chip arrives from /api/stats and
+  // widens the chrome bar when it does, so a graph built while that is still
+  // in flight mixes edges measured against two different layouts — which read
+  // as "Customize is unreachable" about one run in six.
+  await page.waitForLoadState('networkidle');
+  await expect
+    .poll(
+      async () => {
+        const sample = (): Promise<string> =>
+          page.evaluate(() => {
+            const bar = document.querySelector('[data-testid="chrome-bar"]');
+            const r = bar?.getBoundingClientRect();
+            return `${String(document.querySelectorAll('a[href], button:not(:disabled)').length)}@${String(Math.round(r?.width ?? 0))}x${String(Math.round(r?.y ?? 0))}`;
+          });
+        const before = await sample();
+        await page.waitForTimeout(250);
+        return (await sample()) === before ? 'settled' : 'moving';
+      },
+      { timeout: 10_000 },
+    )
+    .toBe('settled');
 
   const ids = await page.evaluate(() => {
     const SEL = 'a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]';
@@ -210,8 +232,19 @@ test('every control on Home can be reached with nothing but arrows', async ({ pa
     for (const next of edges[id] ?? []) if (!seen.has(next)) queue.push(next);
   }
 
-  const stranded = ids.filter((id) => !seen.has(id));
-  expect(stranded, `unreachable by keyboard: ${stranded.join(', ')}`).toEqual([]);
+  // Only judge controls that are STILL on the page. Home carries transients —
+  // the practice nudge, a toast — and one that left partway through the walk
+  // was never a dead zone, it just stopped existing. Counting those made this
+  // fail about one run in three, naming nothing useful.
+  const stranded = await page.evaluate(
+    (unreached) =>
+      unreached
+        .map((id) => document.querySelector<HTMLElement>(`[data-reach="${id}"]`))
+        .filter((el): el is HTMLElement => el !== null && el.getClientRects().length > 0)
+        .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim()),
+    ids.filter((id) => !seen.has(id)),
+  );
+  expect(stranded, `unreachable by keyboard: ${stranded.join(' | ')}`).toEqual([]);
 });
 
 test('the hand keeps its own arrows on the felt', async ({ page }) => {

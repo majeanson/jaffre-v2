@@ -2,6 +2,7 @@ import { useLang, type Lang } from '@jaffre/ui';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '../components/useScrollLock.js';
+import { useDismissLayer } from '../keys/layers.js';
 import { ReplayTutorialButton } from '../components/ReplayTutorialButton.js';
 import { loadTutorialSeen } from '../table/tutorialPref.js';
 import { MARK_ORDER, MARKS } from '../table/tutorialSteps.js';
@@ -18,9 +19,6 @@ export interface HelpSheetProps {
   /** Open with the glossary expanded and this concept scrolled into view. */
   readonly jumpTo?: ConceptId;
 }
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 const T: Record<
   Lang,
@@ -321,8 +319,6 @@ export function HelpSheet({ onClose, jumpTo }: HelpSheetProps) {
 
   // Mini glossary popup, anchored where the term was clicked (region coords).
   const [pop, setPop] = useState<PopState | null>(null);
-  const popOpenRef = useRef(false);
-  popOpenRef.current = pop !== null;
 
   const openTerm = (id: ConceptId, el: HTMLElement): void => {
     setPop((prev) => {
@@ -356,37 +352,20 @@ export function HelpSheet({ onClose, jumpTo }: HelpSheetProps) {
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [pop]);
 
-  // Focus moves into the dialog on open; Escape closes; Tab stays inside.
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        // First Escape only dismisses the glossary popup; the sheet stays.
-        if (popOpenRef.current) {
-          setPop(null);
-          return;
-        }
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab' || panelRef.current === null) return;
-      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (first === undefined || last === undefined) return;
-      const active = document.activeElement;
-      if (e.shiftKey && (active === first || !panelRef.current.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  // The sheet: focus lands on the ✕, Tab stays inside, Escape closes.
+  useDismissLayer(panelRef, onClose, { trap: true, initialFocus: () => closeRef.current });
+
+  // The glossary popup as a layer of its own, ABOVE the sheet's — which is
+  // what makes the first Escape dismiss only the popup and the second close
+  // the sheet. That used to be a flag read inside one handler; now it falls
+  // out of the stack being a stack. Declared after the sheet so it pushes on
+  // top of it. It takes no focus (the term stays where you were reading) and
+  // returns none, so the reader is not thrown back to the top of the page.
+  useDismissLayer(popRef, () => setPop(null), {
+    enabled: pop !== null,
+    initialFocus: () => null,
+    restoreFocus: false,
+  });
 
   // Deep-link from a tutorial "Learn more": once painted, open the glossary
   // at the requested concept so the reader lands right on its entry.
