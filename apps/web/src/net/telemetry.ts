@@ -126,7 +126,9 @@ export type FunnelStep =
   | 'tutorial' // finished the practice tutorial
   | 'daily' // first time the Deal Board was opened
   | 'daily-score' // first score actually posted to a board
-  | 'people'; // took the practice recap's "Play people" door to a real room
+  | 'people' // took the practice recap's "Play people" door to a real room
+  | 'help-coach' // help dial first lowered to coach (advice, no teaching)
+  | 'help-off'; // help dial first turned all the way down
 
 const FUNNEL_KEY = 'jaffre:funnel';
 

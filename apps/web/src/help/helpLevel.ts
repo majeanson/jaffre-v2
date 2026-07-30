@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { reportFunnel } from '../net/telemetry.js';
 import { hasSeenTutorial } from '../table/tutorialPref.js';
 
 /**
@@ -87,6 +88,13 @@ export function setHelpLevel(next: HelpLevel): void {
   } catch {
     // Storage unavailable — the dial holds for this visit only.
   }
+  // First-reach funnel marks for the two quieter tiers (anonymous, once per
+  // browser, never under automation — reportFunnel's own rules). Whether
+  // players ever FIND "coach" and "off" is the check on whether the dial's
+  // tiers landed right; the boot migration bypasses this on purpose (it
+  // writes storage directly), so these mean a deliberate movement.
+  if (next === 'coach') reportFunnel('help-coach');
+  if (next === 'off') reportFunnel('help-off');
   for (const notify of listeners) notify();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(HELP_LEVEL_EVENT));
 }
