@@ -281,7 +281,12 @@ export function HeadToHead({ pid, onLeave, demo, demoLoading = false }: HeadToHe
               {trophy !== undefined && (
                 <div
                   data-testid="h2h-trophy"
-                  className="flex shrink-0 items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-gold-deep)/60 bg-(--color-ap-gold)/15 px-[0.6em] py-[0.35em] font-arcade-ui text-[0.78em] text-(--color-ap-gold-deep)"
+                  // Gold carries the chip's identity through its border and
+                  // tint, never its TEXT: gold-deep on a gold wash fails AA
+                  // (axe caught it on the head-to-head scene). Same law as
+                  // violet-pairs-with-ink — the label takes the theme's own
+                  // text colour so it reads in both skins.
+                  className="flex shrink-0 items-center gap-[0.4em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-gold-deep)/60 bg-(--color-ap-gold)/15 px-[0.6em] py-[0.35em] font-arcade-ui text-[0.78em] text-(--color-ap-text)"
                 >
                   <span aria-hidden>{trophy.icon}</span>
                   <span className="max-w-[8em] truncate">{trophy.name(lang)}</span>

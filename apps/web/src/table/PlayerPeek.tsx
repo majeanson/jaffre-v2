@@ -438,9 +438,15 @@ function PlayerSection({ info }: { info: SeatChipInfo }) {
         </div>
       )}
 
-      {/* This seat's own declaration this round, right off the table. */}
-      {info.bidText !== null && <StatRow label={t.bidThisRound} value={info.bidText} />}
-      <StatRow label={t.cardsLeft} value={String(info.cards)} />
+      {/* This seat's own declaration this round, right off the table, and how
+          much hand they have left. StatRow renders a dt/dd pair, so both rows
+          MUST sit inside a <dl> — axe's `dlitem` is serious, and the scene
+          catalog caught exactly this when "Cards left" (which, unlike the bid
+          row, always renders) first appeared here bare. */}
+      <dl className="flex flex-col gap-1">
+        {info.bidText !== null && <StatRow label={t.bidThisRound} value={info.bidText} />}
+        <StatRow label={t.cardsLeft} value={String(info.cards)} />
+      </dl>
 
       {info.isBot ? (
         <div className="flex items-center justify-between gap-2">
