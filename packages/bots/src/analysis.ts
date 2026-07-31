@@ -246,3 +246,42 @@ export function certainWinner(play: TrickPlay, view: SeatView): boolean {
   }
   return true;
 }
+
+/**
+ * The red-0 ruff — the one line of play that wins a trick WITH the +5 in it
+ * without asking anyone for help.
+ *
+ * When red is trump the red 0 is the weakest trump in the deck: it can never
+ * win by rank, so its +5 normally has to be handed to a partner who has already
+ * won, or it falls under an opponent's red winner. A void changes that. Off the
+ * led suit the red 0 is still a trump, so it beats every plain card on the
+ * table and takes its own +5 with it — 1 + 5 = 6 points, from the cheapest card
+ * we hold. It is also strictly better than ruffing the same trick with a bigger
+ * trump: same trick won, the bonus collected, and the bigger trump stays home.
+ *
+ * The catch is the same fact read backwards: being the LOWEST trump, any other
+ * trump over-ruffs it and takes those 6 points instead. So the certainty test
+ * here is deliberately STRICTER than `certainWinner`, which optimistically
+ * assumes a foe who has not shown a void will follow suit: a wrong guess costs
+ * an ordinary trick there, but hands over 6 points here. Every opponent still
+ * to play must be provably out of trump — in practice that means playing last,
+ * trumps already exhausted, or both foes seen discarding on red.
+ *
+ * Returns the red 0 when that ruff is legal and safe, else null.
+ */
+export function certainRedZeroRuff(view: SeatView, legal: readonly Card[]): Card | null {
+  if (view.trump !== 'red' || view.currentTrick.length === 0) return null;
+  const red0 = legal.find(isRedZero);
+  if (red0 === undefined) return null;
+  // Following red is not ruffing: the 0 is the lowest red and always loses.
+  if ((view.currentTrick[0] as TrickPlay).card.suit === 'red') return null;
+  if (!wouldWin(red0, view)) return null;
+
+  // A partner over-ruffing keeps the 6 on our side, so only FOES matter.
+  const played = new Set(view.currentTrick.map((p) => p.seat));
+  const foesToCome = opponents(viewerSeat(view)).filter((s) => !played.has(s));
+  if (foesToCome.length === 0) return red0;
+  if (!outstanding(view).some((c) => c.suit === 'red')) return red0;
+  const voids = inferredVoids(view);
+  return foesToCome.every((s) => voids.has(voidKey(s, 'red'))) ? red0 : null;
+}

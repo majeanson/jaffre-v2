@@ -37,10 +37,10 @@ export const CONCEPTS: Record<ConceptId, Concept> = {
     color: RED,
     term: { en: 'The red 0 (joffre)', fr: 'Le 0 rouge (joffre)' },
     def: {
-      en: 'The +5 bonhomme: whoever wins the trick it lands in scores 5 extra points — that trick is worth 6 in total, the biggest prize of the round.',
-      fr: "Le bonhomme à +5 : l'équipe qui gagne la levée où il tombe marque 5 points de plus — cette levée-là vaut 6 au total, le plus gros lot de la ronde.",
+      en: 'The +5 bonhomme: whoever wins the trick it lands in scores 5 extra points — that trick is worth 6 in total, the biggest prize of the round. It is also the lowest red card, so it never wins by rank: cash it on a trick your partner has already won, or — when red is trump — ruff a suit you are void in with it and it wins its own +5.',
+      fr: "Le bonhomme à +5 : l'équipe qui gagne la levée où il tombe marque 5 points de plus — cette levée-là vaut 6 au total, le plus gros lot de la ronde. C'est aussi la plus petite carte rouge, alors il ne gagne jamais à la force : encaisse-le sur une levée que ton partenaire a déjà gagnée, ou — quand le rouge est atout — coupe avec dans une couleur où t'as une chute et il gagne son propre +5.",
     },
-    see: ['brown0', 'levee', 'maitre'],
+    see: ['brown0', 'levee', 'maitre', 'coupe'],
   },
   brown0: {
     color: BROWN,

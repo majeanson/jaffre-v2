@@ -1,6 +1,7 @@
 import type { Action, BidChoice, Card, SeatView, Suit } from '@jaffre/engine';
 import { SUITS, legalCards, teamOf } from '@jaffre/engine';
 import {
+  certainRedZeroRuff,
   cheapestWinner,
   isBoss,
   isBrownZero,
@@ -100,6 +101,12 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
   const fr = lang === 'fr';
   const hasRed0 = view.hand.some(isRedZero);
   const hasBrown0 = view.hand.some(isBrownZero);
+  // A dealt void is worth naming the moment it can cash the +5: red trump plus
+  // no cards in some suit means the red 0 ruffs that suit and wins its own
+  // trick. Nothing else in a thin hand is worth 6 points.
+  const voidSuit = SUITS.find((s) => !view.hand.some((c) => c.suit === s)) ?? null;
+  const voidName =
+    voidSuit === null ? '' : fr ? SUIT_NAME.fr[voidSuit] : SUIT_NAME.en[voidSuit].toLowerCase();
 
   // The +5 / −3 zeros, tucked onto the plan as a single short tail.
   const assetTail = hasRed0
@@ -115,9 +122,13 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
   if (bid.kind === 'pass') {
     const longest = Math.max(...SUITS.map((s) => view.hand.filter((c) => c.suit === s).length));
     const passTail = hasRed0
-      ? fr
-        ? ', mais garde le 0 rouge pour son +5'
-        : ', but keep the red 0 safe for its +5'
+      ? voidSuit !== null
+        ? fr
+          ? `, mais garde le 0 rouge : si le rouge devient atout, ta chute en ${voidName} le fait couper pour +5`
+          : `, but hold the red 0: if red comes up trump, your ${voidName} void lets it ruff for +5`
+        : fr
+          ? ', mais garde le 0 rouge pour son +5'
+          : ', but keep the red 0 safe for its +5'
       : hasBrown0
         ? fr
           ? ', et cherche à te débarrasser du 0 brun'
@@ -136,6 +147,15 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
 
   // Trump bid: describe how strong the chosen suit actually is.
   const suit = bestTrump(view.hand).suit;
+  // Naming red yourself is the strongest form of holding the +5: you pick the
+  // trump that makes your own red 0 — otherwise the worst card in the deck —
+  // win the first trick led in the suit you're void in.
+  const assetTailForTrump =
+    hasRed0 && suit === 'red' && voidSuit !== null
+      ? fr
+        ? `, et le rouge comme atout fait de ton 0 rouge une coupe gagnante en ${voidName} : +5`
+        : `, and red trump turns your red 0 into a winning ${voidName} ruff for +5`
+      : assetTail;
   const shape = suitShape(view.hand, suit);
   const suitName = fr ? SUIT_NAME.fr[suit] : SUIT_NAME.en[suit].toLowerCase();
   const plural = shape.count === 1 ? '' : 's';
@@ -160,8 +180,8 @@ function bidTip(view: SeatView, bid: BidChoice, lang: CoachLang): string {
   }
 
   return fr
-    ? `Tu as ${shape.count} ${suitName}${plural}${topNote}. Prends le ${suitName} comme atout; une mise de ${bid.value} passe bien ici${assetTail}.`
-    : `You hold ${shape.count} ${suitName}${plural}${topNote}. Lean ${suitName} trump; a bid of ${bid.value} is safe here${assetTail}.`;
+    ? `Tu as ${shape.count} ${suitName}${plural}${topNote}. Prends le ${suitName} comme atout; une mise de ${bid.value} passe bien ici${assetTailForTrump}.`
+    : `You hold ${shape.count} ${suitName}${plural}${topNote}. Lean ${suitName} trump; a bid of ${bid.value} is safe here${assetTailForTrump}.`;
 }
 
 /** One suit's shape in hand: how many held, whether the 7 is there, and the length of the run down from the 7 (7-6-5…). */
@@ -181,6 +201,19 @@ function playTip(view: SeatView, card: Card, lang: CoachLang): string {
   const declaring = view.contract !== null && teamOf(view.contract.seat) === teamOf(seat);
   const fr = lang === 'fr';
   const n = name(card, lang);
+
+  // The red-0 ruff. Checked first because it reads as a blunder to a learner —
+  // the +5 thrown on a trick nobody has won yet — and it is the strongest card
+  // on the table: the lowest trump in the deck beats every plain card, so the
+  // bonus wins its own trick. The bot only picks it when no over-ruff is left
+  // (certainRedZeroRuff), and the tip has to say so, or a player will copy it
+  // into a trick where the 6 points get taken off them.
+  if (isRedZero(card) && ctx.ledSuit !== null && certainRedZeroRuff(view, [card]) !== null) {
+    const led = fr ? SUIT_NAME.fr[ctx.ledSuit] : SUIT_NAME.en[ctx.ledSuit].toLowerCase();
+    return fr
+      ? `Coupe avec le ${n} — même ton plus petit atout prend la levée en ${led}, et il encaisse son propre +5 : 6 points, sans surcoupe possible.`
+      : `Ruff with the ${n} — even your weakest trump takes a ${led} trick, and it banks its own +5: 6 points, with no over-ruff left behind you.`;
+  }
 
   // Opening lead as declarer — this card names trump.
   if (

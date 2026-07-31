@@ -105,6 +105,15 @@ const EX_BROWN0_INSTEAD_OF_RUFF: ExampleCards = {
   ],
   you: { suit: 'brown', value: 0 },
 };
+/** The red-0 ruff: red is trump, green is led, you hold no green. */
+const EX_RED0_RUFF: ExampleCards = {
+  trick: [
+    { suit: 'green', value: 7 },
+    { suit: 'green', value: 4 },
+    { suit: 'green', value: 2 },
+  ],
+  you: { suit: 'red', value: 0 },
+};
 const EX_VOID_EARLY: ExampleCards = {
   trick: [
     { suit: 'green', value: 7 },
@@ -410,6 +419,8 @@ export const TIP_SECTIONS: readonly TipSectionDef[] = [
               A <Strong>void plus three trumps</Strong> is worth about an extra trick — you ruff
               instead of following. And <Strong>7-6 together</Strong> in one long suit takes more
               tricks than two lonely 7s scattered around: concentrated strength keeps you on lead.
+              Holding the <Strong>red 0 with a void somewhere</Strong> is worth more than it looks:
+              name red trump and the +5 ruffs that suit for 6 points on its own.
             </>
           ),
           fr: (
@@ -417,6 +428,9 @@ export const TIP_SECTIONS: readonly TipSectionDef[] = [
               Une <Strong>chute avec trois atouts</Strong> vaut à peu près une levée de plus — tu
               coupes au lieu de fournir. Et <Strong>7-6 ensemble</Strong> dans une longue couleur
               prend plus de levées que deux 7 éparpillés : la force concentrée te garde en main.
+              Avoir le <Strong>0 rouge avec une chute quelque part</Strong> vaut plus que ça en a
+              l'air : nomme le rouge comme atout et le +5 coupe cette couleur-là pour 6 points tout
+              seul.
             </>
           ),
         },
@@ -530,6 +544,49 @@ export const TIP_SECTIONS: readonly TipSectionDef[] = [
                 trick={EX_RED0_FALLS.trick}
                 you={EX_RED0_FALLS.you}
                 caption="Tu entames le 7 rouge — le 0 rouge doit fournir et tombe sous ta gagnante : +5."
+              />
+            </>
+          ),
+        },
+      },
+      {
+        label: {
+          en: 'Red trump + a void = the red 0 wins its own trick.',
+          fr: 'Rouge atout + une chute = le 0 rouge gagne sa propre levée.',
+        },
+        body: {
+          en: (
+            <>
+              The red 0 is the <Strong>lowest red card</Strong> — it never wins by rank. But when
+              red is trump it is still an <G id="atout">atout</G>, and you don&rsquo;t follow a suit
+              you have none of. <G id="coupe">Ruff</G> with it: the weakest trump in the deck beats
+              their whole trick and <Strong>carries its own +5</Strong> — 6 points, and you never
+              had to ask your partner for a thing. Only when nobody behind you can over-ruff, though
+              — <Strong>last to play is perfect</Strong> — because any other trump beats a 0 and
+              takes those 6 instead. Worth remembering at the auction too: red 0 plus a{' '}
+              <G id="chute">void</G> is a reason to <Strong>name red trump yourself</Strong>.
+              <TipExample
+                trick={EX_RED0_RUFF.trick}
+                you={EX_RED0_RUFF.you}
+                caption="Red is trump and you hold no green — the red 0 ruffs last, wins, and banks its own +5: 6 points."
+              />
+            </>
+          ),
+          fr: (
+            <>
+              Le 0 rouge, c'est la <Strong>plus petite carte rouge</Strong> — il ne gagne jamais à
+              la force. Mais quand le rouge est atout, ça reste un <G id="atout">atout</G>, et tu ne
+              fournis pas une couleur que tu n'as pas. <G id="coupe">Coupe</G> avec : le plus faible
+              atout du paquet bat toute leur levée et <Strong>transporte son propre +5</Strong> — 6
+              points, sans rien demander à ton partenaire. Juste quand personne derrière toi ne peut
+              surcouper — <Strong>jouer en dernier, c'est parfait</Strong> — parce que n'importe
+              quel autre atout bat un 0 et ramasse les 6 à ta place. Bon à retenir aux mises aussi :
+              0 rouge plus une <G id="chute">chute</G>, c'est une raison de{' '}
+              <Strong>nommer le rouge comme atout toi-même</Strong>.
+              <TipExample
+                trick={EX_RED0_RUFF.trick}
+                you={EX_RED0_RUFF.you}
+                caption="Le rouge est atout et t'as pas de vert — le 0 rouge coupe en dernier, gagne, pis encaisse son propre +5 : 6 points."
               />
             </>
           ),

@@ -44,7 +44,20 @@ function valuesBySuit(hand: readonly Card[]): Map<Suit, number[]> {
 function redZeroProb(hand: readonly Card[], trump: Suit | null, tricks: number): number {
   const hasRed0 = hand.some(isRedZero);
   const hasRed7 = hand.some((c) => c.suit === 'red' && c.value === 7);
-  if (hasRed0) return trump === 'red' || tricks >= 4 ? 0.75 : 0.55;
+  if (hasRed0) {
+    // Red trump PLUS a void is the red-0 ruff (see analysis.certainRedZeroRuff):
+    // the weakest trump in the deck wins its own +5 the first time that suit is
+    // led, needing neither a red winner nor a partner. Same 3-trump gate as
+    // W.ruffVoid — a void is only a ruff if there are trumps left to ruff with.
+    // Cross-play vs 5e243ee: neutral (normal n=1500, hard n=300) — this is a
+    // calibration of an existing probability, not a new gamble, so it stays.
+    const ruffable =
+      trump === 'red' &&
+      hand.filter((c) => c.suit === 'red').length >= 3 &&
+      SUITS.some((s) => s !== 'red' && !hand.some((c) => c.suit === s));
+    if (ruffable) return 0.9;
+    return trump === 'red' || tricks >= 4 ? 0.75 : 0.55;
+  }
   if (hasRed7) return 0.6;
   return 0.3;
 }

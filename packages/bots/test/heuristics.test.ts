@@ -70,6 +70,34 @@ describe('play heuristics', () => {
     expect(cardOf(v, 'normal')).toEqual(c('red', 0));
   });
 
+  it('ruffs with the red 0 rather than a bigger trump — the +5 wins its own trick', () => {
+    // Red trump, green led, seat 0 void in green and last to play. The old
+    // policy ruffed with the red 5 (cheapest winner that isn't the precious +5)
+    // and left the 0 stranded; the 0 takes the same trick AND banks 5 more.
+    const v = view({
+      trump: 'red',
+      trickLeader: 1,
+      hand: [c('red', 0), c('red', 5), c('blue', 3)],
+      currentTrick: [play(1, c('green', 7)), play(2, c('green', 4)), play(3, c('green', 2))],
+    });
+    for (const level of ['normal', 'hard'] as const) {
+      expect(cardOf(v, level)).toEqual(c('red', 0));
+    }
+  });
+
+  it('will not ruff with the red 0 while a foe behind it could still trump', () => {
+    // Same shape, second to play: any red card over-ruffs a 0, so gambling the
+    // +5 here gifts 6 points away. The 0 stays home (and the ordinary policy
+    // holds the red 5 too — a cheap trick isn't worth a trump this early).
+    const v = view({
+      trump: 'red',
+      trickLeader: 3,
+      hand: [c('red', 0), c('red', 5), c('blue', 3)],
+      currentTrick: [play(3, c('green', 7))],
+    });
+    expect(cardOf(v, 'normal')).toEqual(c('blue', 3));
+  });
+
   it('dumps the brown 0 onto a trick the opponents have won', () => {
     // Seat 0 last, void in led red, no trump — cannot win, sheds the −3.
     const v = view({

@@ -67,6 +67,41 @@ describe('coach', () => {
     expect(advice.tip.toLowerCase()).toContain('red 0');
   });
 
+  it('explains the red-0 ruff, over-ruff warning included', () => {
+    const v = view({
+      trump: 'red',
+      trickLeader: 1,
+      hand: [c('red', 0), c('red', 5), c('blue', 3)],
+      currentTrick: [play(1, c('green', 7)), play(2, c('green', 4)), play(3, c('green', 2))],
+    });
+    const advice = suggest(v);
+    expect(advice.card).toEqual(c('red', 0));
+    expect(advice.tip).toContain('Ruff with the Red 0');
+    expect(advice.tip).toContain('over-ruff');
+    expect(suggest(v, 'fr').tip).toContain('surcoupe');
+  });
+
+  it('names the void that will cash the +5 when it tells you to pass', () => {
+    // The thin defending hand that started this: the red 0, no green at all.
+    const v = view({
+      phase: 'bidding',
+      hand: [
+        c('red', 0),
+        c('red', 4),
+        c('brown', 0),
+        c('brown', 3),
+        c('brown', 4),
+        c('blue', 0),
+        c('blue', 3),
+        c('blue', 4),
+      ],
+    });
+    const advice = suggest(v);
+    expect(advice.bid?.kind).toBe('pass');
+    expect(advice.tip).toContain('green void');
+    expect(suggest(v, 'fr').tip).toContain('chute en vert');
+  });
+
   it('advises dumping the brown 0 on the opponents', () => {
     const v = view({
       trump: 'green',

@@ -12,6 +12,13 @@
  *
  * POINTS (per round, 10 total): each trick is worth 1, +5 if it contains the
  * red 0 (the prize), −3 if it contains the brown 0 (the trap). 8 + 5 − 3 = 10.
+ * Both bonhommes are ZEROS — the lowest card of their suit — so neither ever
+ * wins a trick by rank. The red 0 pays only when your side takes the trick it
+ * falls in, so its holder cashes it either by dropping it on a trick a partner
+ * has already won, or — when RED IS TRUMP — by ruffing with it: off the led
+ * suit the weakest trump in the deck still beats every plain card and wins its
+ * own +5 (see bots/analysis.ts certainRedZeroRuff; the same fact makes it
+ * over-ruffable by any other trump, so it needs a certain trick).
  * The round total is NOT one team's ceiling: taking 7 tricks WITH the red 0
  * while the brown 0 falls to the opponents scores 7 + 5 = 12, which is why the
  * bid ladder runs to 12 even though a clean sweep of all eight is only 10.

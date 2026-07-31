@@ -2,6 +2,7 @@ import type { Card, Rng, Seat, SeatView, Suit } from '@jaffre/engine';
 import { legalCards, teamOf } from '@jaffre/engine';
 import {
   type TrickCtx,
+  certainRedZeroRuff,
   certainWinner,
   cheapestWinner,
   isBoss,
@@ -33,6 +34,19 @@ export function heuristicCard(view: SeatView, rng: Rng, level: Level): Card {
     }
     return leadCard(view, legal, level, rng);
   }
+
+  // A certain red-0 ruff outranks every other reading of the trick: it banks
+  // 1 + 5 with the cheapest card in hand and needs nothing from partner. Tested
+  // before the partner/opponent split because it is right either way — over a
+  // foe it steals the 6, and over a partner whose win is NOT certain it makes
+  // those same 6 safe (an unbeatable trump over a beatable plain winner).
+  // Unlike the shedding ideas benched out in sheddingRank, this is a dominance
+  // argument rather than an intuition: the same trick is won either way, with a
+  // cheaper card, plus 5. Cross-play vs 5e243ee shows no regression (normal
+  // n=1500, hard n=300, both inside the CI) — it fires too rarely for a win
+  // rate to see, so what the bench buys is proof nothing else got worse.
+  const ruff = certainRedZeroRuff(view, legal);
+  if (ruff !== null) return ruff;
 
   const ctx = trickCtx(view);
   if (ctx.partnerWinning) return supportPartner(view, legal, ctx);

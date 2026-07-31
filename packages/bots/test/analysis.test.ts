@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, SeatView, Suit, TrickPlay } from '@jaffre/engine';
-import { brownZeroLive, equivalenceRuns, lowestEquivalent, tricksPlayed } from '../src/analysis.js';
+import {
+  brownZeroLive,
+  certainRedZeroRuff,
+  equivalenceRuns,
+  lowestEquivalent,
+  tricksPlayed,
+} from '../src/analysis.js';
 
 const c = (suit: Suit, value: number): Card => ({ suit, value: value as Card['value'] });
 
@@ -97,5 +103,72 @@ describe('special-card liveness', () => {
         }),
       ),
     ).toBe(1);
+  });
+});
+
+describe('the red-0 ruff', () => {
+  const hand = [c('red', 0), c('red', 5), c('blue', 3)];
+  // Seat 1 discarded blue on a red lead: it can never trump again.
+  const seat1OutOfRed: SeatView['capturedTricks'][number] = {
+    winner: 0,
+    plays: [
+      play(0, c('red', 7)),
+      play(1, c('blue', 2)),
+      play(2, c('red', 3)),
+      play(3, c('red', 1)),
+    ],
+    cards: [c('red', 7), c('blue', 2), c('red', 3), c('red', 1)],
+    points: 1,
+  };
+
+  it('ruffs when every foe has already played — the +5 wins its own trick', () => {
+    const v = view({
+      trump: 'red',
+      trickLeader: 1,
+      hand,
+      currentTrick: [play(1, c('green', 7)), play(2, c('green', 4)), play(3, c('green', 2))],
+    });
+    expect(certainRedZeroRuff(v, hand)).toEqual(c('red', 0));
+  });
+
+  it('refuses while a foe could still hold ANY trump — the 0 is over-ruffed by all of them', () => {
+    const v = view({
+      trump: 'red',
+      trickLeader: 3,
+      hand,
+      currentTrick: [play(3, c('green', 7))],
+    });
+    expect(certainRedZeroRuff(v, hand)).toBeNull();
+  });
+
+  it('ruffs once the remaining foe is known void in trump', () => {
+    const v = view({
+      trump: 'red',
+      trickLeader: 3,
+      hand,
+      capturedTricks: [seat1OutOfRed],
+      currentTrick: [play(3, c('green', 7))],
+    });
+    expect(certainRedZeroRuff(v, hand)).toEqual(c('red', 0));
+  });
+
+  it('is not a ruff when red itself is led — the 0 is the lowest red and loses', () => {
+    const v = view({
+      trump: 'red',
+      trickLeader: 1,
+      hand,
+      currentTrick: [play(1, c('red', 2)), play(2, c('red', 4)), play(3, c('red', 6))],
+    });
+    expect(certainRedZeroRuff(v, hand)).toBeNull();
+  });
+
+  it('needs red to be trump at all — otherwise the 0 is just a discard', () => {
+    const v = view({
+      trump: 'green',
+      trickLeader: 1,
+      hand,
+      currentTrick: [play(1, c('blue', 7)), play(2, c('blue', 4)), play(3, c('blue', 2))],
+    });
+    expect(certainRedZeroRuff(v, hand)).toBeNull();
   });
 });
