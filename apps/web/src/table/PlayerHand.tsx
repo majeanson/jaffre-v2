@@ -195,9 +195,15 @@ export function PlayerHand({
   // `null` = show the whole hand, the state every moment outside a deal.
   const [dealt, setDealt] = useState<number | null>(null);
   const dealRunning = useRef(false);
+  // Sticky ON at the first animated deal, never off again — the Hand zeroes
+  // its deal-in stagger under it (each card pops the instant its flight
+  // lands), and flipping it back after a deal would retro-change the
+  // animation-delay of just-played entrances mid-animation (see HandProps).
+  const [everDealt, setEverDealt] = useState(false);
   useEffect(() => {
     if (dealKey === 0) return undefined;
     dealRunning.current = true;
+    setEverDealt(true);
     setDealt(0);
     // Each card appears the instant ITS flight lands (dealPace's one shared
     // schedule — the deck's fly-out reads the same numbers), not on a lead +
@@ -258,6 +264,7 @@ export function PlayerHand({
       <Hand
         active={active}
         paint={paint}
+        dealing={everDealt}
         onReorder={(keys) => {
           onReorder(keys);
           feedback('select', 4);

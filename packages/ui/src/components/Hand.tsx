@@ -42,6 +42,15 @@ export interface HandProps {
   /** The viewer's painted-card art (data URL), shown on their own red-0/brown-0.
    * These are the viewer's cards by definition, so passing it here is safe. */
   readonly paint?: string | null;
+  /** True once an animated deal has filled (or is filling) this hand: cards
+   * then mount one at a time on the deal's own schedule, so the `deal-in`
+   * stagger is zeroed — its extra `i * 90ms` on top of the flight timing left
+   * the last card popping in ~600ms after its flight had visibly landed.
+   * Sticky for the component's lifetime (see PlayerHand): flipping it back
+   * would retro-shift animation-delay on entrances that already played. The
+   * stagger still runs for whole-hand mounts (reload, replay), where all
+   * cards appear in one commit and the cascade is the whole point. */
+  readonly dealing?: boolean;
 }
 
 /** Drag a card up past this (px) to play it — the "throw it on the table" gesture. */
@@ -68,6 +77,7 @@ export function Hand({
   label,
   onReorder,
   paint = null,
+  dealing = false,
 }: HandProps) {
   const lang = useLang();
   const t = T[lang];
@@ -183,7 +193,7 @@ export function Hand({
             >
               <span
                 className="deal-in inline-block"
-                style={{ ['--deal-i' as string]: i }}
+                style={{ ['--deal-i' as string]: dealing ? 0 : i }}
                 title={!playable ? entry.disabledReason : undefined}
               >
                 <PlayingCard

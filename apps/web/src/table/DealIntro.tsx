@@ -119,15 +119,20 @@ export function DealIntro({ dealKey }: { readonly dealKey: number }) {
     };
   }, [dealKey]);
 
-  if (phase === 'idle') return null;
+  // The keyframes mount with the component, not with the deal: inserting a
+  // stylesheet forces a full style recalc, and doing that on the exact frame
+  // 32 animations start is a jank spike right where it shows the most.
+  if (phase === 'idle') return <style>{KEYFRAMES}</style>;
 
   const seats = [0, 1, 2, 3] as const;
+  // One read for the whole deck — paceScale hits localStorage on every call.
+  const scale = paceScale();
 
   return (
     <div
       aria-hidden
       data-testid="deal-intro"
-      className={`pointer-events-none absolute inset-0 z-10 transition-opacity duration-[350ms] ${
+      className={`deal-freeze pointer-events-none absolute inset-0 z-10 transition-opacity duration-[350ms] ${
         phase === 'fading' ? 'opacity-0' : 'opacity-100'
       }`}
     >
@@ -145,7 +150,6 @@ export function DealIntro({ dealKey }: { readonly dealKey: number }) {
             const [tx, ty] = targets[seat];
             // Stagger and flight time ride the same scale as the phase timers
             // above, so the animation still finishes inside its own window.
-            const scale = paceScale();
             const slot = flightSlot(seat, i);
             const delay = (flightDelayMs(seat, i) / 1000) * scale;
             // Slot 0 deals first, off the TOP: depth counts up from the
@@ -174,6 +178,12 @@ export function DealIntro({ dealKey }: { readonly dealKey: number }) {
                     // The fan's rotation ramp, plus a light per-seat lean —
                     // landed hands read as fanned cards, not a machined row.
                     '--dtr': `${String(fan * 5 + seat * 2)}deg`,
+                    // Promote every flight to its own layer BEFORE the first
+                    // frame: without the hint Safari rasterizes each card the
+                    // moment its own delay expires — 32 staggered layer
+                    // creations spread across the whole deal, each one a
+                    // main-thread hiccup mid-flight (visible on iPads).
+                    willChange: 'transform',
                     zIndex: DECK_SIZE - slot,
                     animation: `${seat === 0 ? 'deal-fly-merge' : 'deal-fly'} ${String(
                       (FLIGHT_MS / 1000) * scale,
