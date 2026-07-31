@@ -24,7 +24,8 @@ test('the lobby share button copies the room link and shows the toast', async ({
   await expect(page.getByRole('status')).toHaveText('Link copied');
 
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copied).toBe(`${new URL(page.url()).origin}/#room/${room}`);
+  // The /join path form — the one the Worker can unfurl (routes/join.ts).
+  expect(copied).toBe(`${new URL(page.url()).origin}/join/${room}`);
 
   await context.close();
 });

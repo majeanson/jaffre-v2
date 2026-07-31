@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Cta, WordPlate, useLang, type Lang } from '@jaffre/ui';
 import { QrCode } from './QrCode.js';
+import { shareUrl } from './ShareButton.js';
 import { useScrollLock } from './useScrollLock.js';
 import { useDismissLayer } from '../keys/layers.js';
 
@@ -51,7 +52,7 @@ const T: Record<
 };
 
 export interface ShareSheetProps {
-  /** Room code — the invite link is `${origin}/#room/<code>`. */
+  /** Room code — the invite link is ShareButton's shareUrl(code). */
   readonly code: string;
   /** Copy the link again (re-triggers the "Link copied" toast). */
   readonly onCopy: () => void;
@@ -71,7 +72,7 @@ export interface ShareSheetProps {
 export function ShareSheet({ code, onCopy, onClose }: ShareSheetProps) {
   const t = T[useLang()];
   useScrollLock();
-  const url = `${location.origin}/#room/${code}`;
+  const url = shareUrl(code);
   const words = code.split('-');
 
   // Auto-copy on open — the sheet is opened by a tap, so the clipboard write is

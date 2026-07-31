@@ -6,10 +6,18 @@ import { ShareSheet } from './ShareSheet.js';
 import { Toast } from './Toast.js';
 
 export interface ShareButtonProps {
-  /** Room code — the invite link is `${origin}/#room/<code>`. */
+  /** Room code — the invite link is `${origin}/join/<code>` (see shareUrl). */
   readonly code: string;
   /** Show the title beside the icon where there's room (options drawer). */
   readonly labeled?: boolean;
+}
+
+/** The invite link. A real path, not the #room hash: hash fragments never
+ * reach a server, so only /join/<code> lets the Worker unfurl the table
+ * (live OG tags — routes/join.ts) in Messenger/Slack. The server bounces
+ * the browser straight to /#room/<code>; old hash links stay routable. */
+export function shareUrl(code: string): string {
+  return `${location.origin}/join/${code}`;
 }
 
 /**
@@ -38,7 +46,7 @@ export function ShareButton({ code, labeled = false }: ShareButtonProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const copyLink = () => {
-    const url = `${location.origin}/#room/${code}`;
+    const url = shareUrl(code);
     navigator.clipboard
       .writeText(url)
       .then(() => setCopied(true))
@@ -51,7 +59,7 @@ export function ShareButton({ code, labeled = false }: ShareButtonProps) {
   };
 
   const onShare = () => {
-    const url = `${location.origin}/#room/${code}`;
+    const url = shareUrl(code);
     if (typeof navigator.share === 'function') {
       navigator.share({ title: 'Jaffre', text: t.inviteText, url }).catch(() => {
         // User cancelled, or the OS share sheet failed — nothing to recover.
