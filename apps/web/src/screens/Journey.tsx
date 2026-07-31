@@ -21,6 +21,7 @@ import {
   trackRewardsAt,
   xpBreakdown,
   xpToReach,
+  type TrackReward,
 } from '../progression.js';
 import { trackRewardLabel } from '../trackReward.js';
 import { DEFAULT_CARD_SKIN } from '../cosmetics.js';
@@ -60,7 +61,6 @@ const T: Record<
     theme: string;
     felt: string;
     sweep: string;
-    unlocked: string;
     equipHint: string;
     breather: string;
     challengesTitle: string;
@@ -95,7 +95,6 @@ const T: Record<
     theme: 'Theme',
     felt: 'Felt',
     sweep: 'Trick sweep',
-    unlocked: 'Unlocked',
     equipHint: 'Unlocked — tap to equip',
     breather: 'Breather level',
     challengesTitle: 'Beyond the track',
@@ -127,7 +126,6 @@ const T: Record<
     theme: 'Thème',
     felt: 'Tapis',
     sweep: 'Ramassage',
-    unlocked: 'Débloqué',
     equipHint: 'Débloqué — touche pour équiper',
     breather: 'Pas de récompense',
     challengesTitle: 'Au-delà du parcours',
@@ -138,15 +136,19 @@ const T: Record<
 
 const labelOf = trackRewardLabel;
 
-/** A skin reward previews as its face-DOWN card — the back is the star here
- * (it's what the whole table sees of your deck all game long). Scaled into the
- * shared PREVIEW_SLOT footprint so a card-skin rung is the same height as a
- * theme rung (an sm card is ~1.5× the swatch otherwise). */
+/** Every reward row is the same shape whether it links or not — an unearned
+ * reward must not collapse to a narrower/taller box than an earned one, or a
+ * two-reward rung stops reading as one level with two prizes. */
+const REWARD_ROW = 'flex w-full min-w-0 items-center gap-[0.6em] rounded-(--radius-ap-inner)';
+
 /**
  * The reward half of a track rung. Once earned it becomes a link into the
  * Collection focused on that cosmetic — the Journey tells you what you got,
- * and this is how you go and wear it. Before that it is plain markup: a link
- * to something you cannot equip yet would be a dead end.
+ * and this is how you go and wear it. Before that it is an inert row: a link
+ * to something you cannot equip yet would be a dead end. It stays a ROW either
+ * way — returning a bare fragment let the preview and the name stack vertically
+ * inside the rung's reward column, which is what made unearned levels (and
+ * every double-reward level) tower.
  */
 function RewardSlot({
   cosmeticId,
@@ -159,18 +161,22 @@ function RewardSlot({
   readonly equipLabel: string;
   readonly children: ReactNode;
 }) {
-  if (!linked) return <>{children}</>;
+  if (!linked) return <div className={REWARD_ROW}>{children}</div>;
   return (
     <a
       href={`#collection/${cosmeticId}`}
       aria-label={equipLabel}
-      className="flex min-w-0 flex-1 items-center gap-3 rounded-(--radius-ap-inner) hover:bg-(--color-ap-panel-hover)"
+      className={`${REWARD_ROW} hover:bg-(--color-ap-panel-hover)`}
     >
       {children}
     </a>
   );
 }
 
+/** A skin reward previews as its face-DOWN card — the back is the star here
+ * (it's what the whole table sees of your deck all game long). Scaled into the
+ * shared preview-slot footprint so a card-skin rung is the same height as a
+ * theme rung (an sm card is ~1.5× the swatch otherwise). */
 function SkinBackPreview({ id }: { readonly id: string }) {
   // Same rule as the Collection tiles: the default skin's cards are the
   // THEME's cards, so name the theme rather than emitting nothing and
@@ -219,14 +225,41 @@ function FeltSwatch({ id }: { readonly id: string }) {
   );
 }
 
-/** A sweep reward previews as a name chip, not a motion preview — a rung is a
- * still list, and the Collection gallery is where a sweep gets its real
- * looping demonstration (SweepPreview). Naming it here is enough to say
- * "here's what you earned"; equipping it is one tap away regardless. */
-function SweepChip({ label }: { readonly label: string }) {
+/** A sweep reward previews as speed lines, not a motion preview — a rung is a
+ * still list, and the Collection gallery is where a sweep gets its real looping
+ * demonstration (SweepPreview). It used to print the sweep's NAME in this chip:
+ * long ones ("Dealer's Fold") spilled straight out of the fixed slot, and the
+ * row already names the reward an inch to the right. A mark that says "this one
+ * is an animation" is all the slot owes; equipping it is one tap away. */
+function SweepMark() {
   return (
-    <span className="grid h-[2.6em] w-[3.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) px-[0.3em] text-center font-arcade-ui text-[0.6em] uppercase leading-tight text-(--color-ap-text)">
-      {label}
+    <span className="flex h-[2.6em] w-[3.4em] shrink-0 items-center justify-center gap-[0.22em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground)">
+      {[0.35, 0.6, 1].map((opacity) => (
+        <span
+          key={opacity}
+          className="h-[1em] w-[0.28em] -skew-x-12 rounded-[1px] bg-(--color-ap-violet-soft)"
+          style={{ opacity }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Every reward kind drawn into ONE footprint, so a rung's height never depends
+ * on whether its prize is a card back, a swatch or a sweep — and so the hero's
+ * "next reward" line can show the very same picture the rung will. */
+function RewardPreview({ reward }: { readonly reward: TrackReward }) {
+  return (
+    <span className="flex h-[2.8em] w-[3.4em] shrink-0 items-center justify-center">
+      {reward.kind === 'skin' ? (
+        <SkinBackPreview id={reward.cosmeticId} />
+      ) : reward.kind === 'theme' ? (
+        <ThemeSwatch id={reward.cosmeticId} />
+      ) : reward.kind === 'felt' ? (
+        <FeltSwatch id={reward.cosmeticId} />
+      ) : (
+        <SweepMark />
+      )}
     </span>
   );
 }
@@ -302,10 +335,16 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
               <p className="font-arcade-ui text-[0.78em] tabular-nums text-(--color-ap-muted)">
                 {progress.level >= MAX_LEVEL ? t.maxLevel : t.xp(progress.into, progress.span)}
               </p>
+              {/* What you're playing towards, with the prize's own picture —
+                  the same preview the rung below will show, so the callout and
+                  the track can never describe the reward differently. */}
               {nextReward !== null ? (
-                <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)">
-                  ✨ {t.nextReward(labelOf(nextReward), nextReward.level)}
-                </p>
+                <div className="flex items-center gap-[0.6em] rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) bg-(--color-ap-ground) p-[0.5em]">
+                  <RewardPreview reward={nextReward} />
+                  <p className="min-w-0 font-arcade-ui text-[0.85em] text-(--color-ap-text)">
+                    {t.nextReward(labelOf(nextReward), nextReward.level)}
+                  </p>
+                </div>
               ) : (
                 <p className="font-arcade-ui text-[0.85em] text-(--color-ap-text)">
                   🏆 {t.trackDone}
@@ -352,29 +391,38 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                     <li
                       key={level}
                       data-testid={`journey-rung-${String(level)}`}
-                      className={`flex items-center gap-3 rounded-(--radius-ap-card) border-2 p-[0.6em] shadow-(--shadow-ap-sm) ${
-                        isNext
-                          ? 'border-(--color-ap-violet) bg-(--color-ap-panel)'
-                          : 'border-(--color-ap-ink) bg-(--color-ap-panel)'
+                      className={`flex items-center gap-[0.7em] rounded-(--radius-ap-card) border-2 bg-(--color-ap-panel) p-[0.6em] shadow-(--shadow-ap-sm) ${
+                        isNext ? 'border-(--color-ap-violet)' : 'border-(--color-ap-ink)'
                       } ${done || isNext ? '' : 'opacity-60'}`}
                     >
-                      <span
-                        // leading fits TWO lines: "Lv 12"/"Niv 12" wraps in
-                        // the square, and leading-none clipped the digits'
-                        // bottom row (2nd visual sweep, "LV" + digit slivers).
-                        className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-center font-arcade-display text-[0.78em] leading-[1.15] ${
-                          done
-                            ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
-                            : 'bg-(--color-ap-ground) text-(--color-ap-text)'
-                        }`}
-                      >
-                        {t.levelShort(level)}
-                      </span>
-                      <span className="w-[4.2em] shrink-0 font-arcade-ui text-[0.7em] tabular-nums text-(--color-ap-muted)">
-                        {t.xpShort(xpToReach(level))}
+                      {/* Milestone marker: the level and the XP it costs, one
+                          under the other. Stacked rather than two columns so a
+                          two-reward level reads as ONE rung with two prizes —
+                          side by side, the XP number floated in dead space
+                          beside the taller reward column. */}
+                      <span className="flex w-[3.2em] shrink-0 flex-col items-center gap-[0.3em]">
+                        <span
+                          // leading fits TWO lines: "Lv 12"/"Niv 12" wraps in
+                          // the square, and leading-none clipped the digits'
+                          // bottom row (2nd visual sweep, "LV" + digit slivers).
+                          // Violet fills the NEXT rung's chip — violet always
+                          // pairs with ink text (violetInk.test.ts).
+                          className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-center font-arcade-display text-[0.72em] leading-[1.15] ${
+                            done
+                              ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+                              : isNext
+                                ? 'bg-(--color-ap-violet) text-(--color-ap-ink)'
+                                : 'bg-(--color-ap-ground) text-(--color-ap-text)'
+                          }`}
+                        >
+                          {t.levelShort(level)}
+                        </span>
+                        <span className="whitespace-nowrap font-arcade-ui text-[0.6em] leading-none tabular-nums text-(--color-ap-muted)">
+                          {t.xpShort(xpToReach(level))}
+                        </span>
                       </span>
                       {rewards.length > 0 ? (
-                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <div className="flex min-w-0 flex-1 flex-col gap-[0.5em] [&>*+*]:border-t-2 [&>*+*]:border-(--color-ap-ink)/25 [&>*+*]:pt-[0.5em]">
                           {rewards.map((reward) => (
                             /* An EARNED reward is a door, not a picture:
                                tapping it opens the Collection on that exact
@@ -387,25 +435,17 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                               linked={done}
                               equipLabel={t.equipHint}
                             >
-                              {/* Fixed slot across every preview kind — rung
-                                  height stays uniform whether the reward is a
-                                  card back, a theme swatch, a felt colour or a
-                                  sweep's name chip. */}
-                              <span className="flex h-[3em] w-[3.4em] shrink-0 items-center justify-center">
-                                {reward.kind === 'skin' ? (
-                                  <SkinBackPreview id={reward.cosmeticId} />
-                                ) : reward.kind === 'theme' ? (
-                                  <ThemeSwatch id={reward.cosmeticId} />
-                                ) : reward.kind === 'felt' ? (
-                                  <FeltSwatch id={reward.cosmeticId} />
-                                ) : (
-                                  <SweepChip label={labelOf(reward)} />
-                                )}
-                              </span>
-                              <span className="flex min-w-0 flex-col">
+                              <RewardPreview reward={reward} />
+                              <span className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate font-arcade-display text-[0.85em] uppercase text-(--color-ap-text)">
                                   {labelOf(reward)}
                                 </span>
+                                {/* The kind ALONE — "Theme", "Felt". The equip
+                                    hint used to ride along here and wrapped to
+                                    two lines on a phone (French especially),
+                                    doubling every earned row's height to repeat
+                                    what the chevron and the link's aria-label
+                                    already say. */}
                                 <span className="font-arcade-ui text-[0.68em] uppercase tracking-wide text-(--color-ap-muted)">
                                   {reward.kind === 'skin'
                                     ? t.skin
@@ -414,27 +454,30 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                                       : reward.kind === 'felt'
                                         ? t.felt
                                         : t.sweep}
-                                  {done ? ` · ${t.equipHint}` : ''}
                                 </span>
                               </span>
+                              {done && (
+                                <span
+                                  aria-hidden
+                                  className="shrink-0 px-[0.2em] font-arcade-ui text-[1.15em] leading-none text-(--color-ap-violet-soft)"
+                                >
+                                  ›
+                                </span>
+                              )}
                             </RewardSlot>
                           ))}
                         </div>
                       ) : (
-                        <>
-                          {/* Empty preview slot keeps the text column aligned
-                              with the reward rungs. */}
-                          <span className="h-[3em] w-[3.4em] shrink-0" />
-                          <span className="font-arcade-ui text-[0.72em] text-(--color-ap-muted)">
-                            {t.breather}
-                          </span>
-                        </>
-                      )}
-                      {done && (
-                        <span aria-hidden className="ml-auto text-[1.1em] text-(--color-ap-ok)">
-                          ✓
+                        /* Breather: no preview slot to fill, so the line simply
+                           starts where a reward's picture would. */
+                        <span className="flex min-w-0 flex-1 items-center font-arcade-ui text-[0.72em] text-(--color-ap-muted)">
+                          {t.breather}
                         </span>
                       )}
+                      {/* No trailing ✓ on the rung: an earned level already
+                          reads as earned twice over — a GOLD level chip and
+                          full opacity — and a third mark landed right beside
+                          each reward's own chevron. */}
                     </li>
                   );
                 })}
