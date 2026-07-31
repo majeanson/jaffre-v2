@@ -55,7 +55,6 @@ const T: Record<
     perBid: string;
     perSa: string;
     trackTitle: string;
-    levelShort: (n: number) => string;
     xpShort: (n: number) => string;
     skin: string;
     theme: string;
@@ -89,7 +88,6 @@ const T: Record<
     perBid: 'per made bid',
     perSa: 'per made sans-atout',
     trackTitle: 'The track',
-    levelShort: (n) => `Lv ${String(n)}`,
     xpShort: (n) => `${String(n)} XP`,
     skin: 'Card skin',
     theme: 'Theme',
@@ -120,7 +118,6 @@ const T: Record<
     perBid: 'par mise réussie',
     perSa: 'par sans-atout réussi',
     trackTitle: 'Le parcours',
-    levelShort: (n) => `Niv ${String(n)}`,
     xpShort: (n) => `${String(n)} XP`,
     skin: 'Habillage',
     theme: 'Thème',
@@ -402,12 +399,13 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                           beside the taller reward column. */}
                       <span className="flex w-[3.2em] shrink-0 flex-col items-center gap-[0.3em]">
                         <span
-                          // leading fits TWO lines: "Lv 12"/"Niv 12" wraps in
-                          // the square, and leading-none clipped the digits'
-                          // bottom row (2nd visual sweep, "LV" + digit slivers).
+                          // The bare NUMBER, one size for 1 and 2 digits — the
+                          // "Lv"/"Niv" prefix wrapped into two squished lines
+                          // inside the square, so the word is sr-only now: a
+                          // numbered ladder headed "The track" says the rest.
                           // Violet fills the NEXT rung's chip — violet always
                           // pairs with ink text (violetInk.test.ts).
-                          className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-center font-arcade-display text-[0.72em] leading-[1.15] ${
+                          className={`grid size-[2.4em] shrink-0 place-items-center rounded-(--radius-ap-inner) border-2 border-(--color-ap-ink) text-center font-arcade-display text-[1em] leading-none ${
                             done
                               ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
                               : isNext
@@ -415,7 +413,8 @@ export function Journey({ onLeave, demoStats }: JourneyProps) {
                                 : 'bg-(--color-ap-ground) text-(--color-ap-text)'
                           }`}
                         >
-                          {t.levelShort(level)}
+                          <span className="sr-only">{t.level} </span>
+                          {level}
                         </span>
                         <span className="whitespace-nowrap font-arcade-ui text-[0.6em] leading-none tabular-nums text-(--color-ap-muted)">
                           {t.xpShort(xpToReach(level))}
