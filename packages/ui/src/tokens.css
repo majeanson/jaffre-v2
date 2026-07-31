@@ -1208,6 +1208,18 @@
     /* No pull-to-refresh or rubber-band scroll chaining — a swipe during play
      * must never reload the page out from under a live hand. */
     overscroll-behavior: none;
+    /* The page canvas, and the reason the installed app looks full-screen.
+     * #root is inset by the safe areas (below), and iOS also paints the
+     * status-bar / home-bar strips of a standalone app from the PAGE
+     * background — with neither set, both strips came out white: two bright
+     * bands framing a dark game. Ground is every screen's own backdrop and
+     * the outer stop of --table-backdrop, so the strips read as the same
+     * edge-to-edge surface on the felt too. Set on body as well: some iOS
+     * versions sample that one, not html. */
+    background: var(--color-ap-ground);
+    /* Matches .table-felt's swap so a theme change crosses the safe-area
+     * strips and the screen as one surface, not in two steps. */
+    transition: background 300ms ease;
   }
   /* The document never scrolls — #root is the app's one scroll container.
    * This is what actually stops the installed app from bouncing up and down:
@@ -1215,6 +1227,8 @@
   body {
     height: 100%;
     overflow: hidden;
+    background: var(--color-ap-ground);
+    transition: background 300ms ease;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
@@ -1539,6 +1553,19 @@
     .skin-prism {
       animation: skin-prism 8s linear infinite;
     }
+  }
+
+  /* Deal fly-out (DealIntro): 32 card backs animate across the felt at once,
+   * and a skin's decorative loop on each back — the foil sheen (an animated
+   * background + screen blend) or the prismatic hue-cycle (an animated
+   * filter) — multiplies into 32 concurrent per-frame repaints, which drops
+   * frames on tablet-class GPUs. The loops pause inside the fly-out only;
+   * each back keeps its skin's static look, same as reduced motion shows. */
+  .deal-freeze .ap-foil::after {
+    display: none;
+  }
+  .deal-freeze .skin-prism {
+    animation: none;
   }
 
   @keyframes skin-prism {

@@ -99,10 +99,27 @@ export function currentTheme(): ThemeId {
   return THEMES.some((t) => t.id === stored) ? (stored as ThemeId) : DEFAULT_THEME;
 }
 
+/** Point the system chrome at whatever the page canvas just became. Every
+ * theme block sets its own --color-ap-ground, so read it back rather than
+ * keeping a second copy of 19 colours here — a new theme is then one token
+ * block, same as today. Android's status bar and Safari's tab bar follow it;
+ * on installed iOS it also stops the light themes launching behind a dark
+ * frame. Bails if tokens aren't parsed yet — the meta's static default in
+ * index.html is the dark ground, which is the boot theme anyway. */
+function syncThemeColor(): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const ground = getComputedStyle(document.documentElement)
+    .getPropertyValue('--color-ap-ground')
+    .trim();
+  if (ground) meta.setAttribute('content', ground);
+}
+
 export function applyTheme(theme: ThemeId): void {
   localStorage.setItem(KEY, theme);
   if (theme === DEFAULT_THEME) delete document.documentElement.dataset['theme'];
   else document.documentElement.dataset['theme'] = theme;
+  syncThemeColor();
 }
 
 export function initTheme(): void {

@@ -129,7 +129,21 @@ export function Home({
   return (
     // `isolate relative` scopes the attract layer's -z-10 so the ghost trick
     // paints above the ground colour but below every real control.
-    <main className="isolate relative flex min-h-full flex-col items-center overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,4vmin,3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4 lg:justify-center">
+    //
+    // `justify-center-safe`, not plain `justify-center`: the title console sits
+    // centred in whatever height the device gives it (a tall phone no longer
+    // pools its slack in one dead band under the chrome bar), but when the
+    // stack IS taller than the viewport `safe` falls back to top-aligned so
+    // the brand fan can't be pushed off the top of #root's scroll box, out of
+    // reach. Browsers without the `safe` keyword drop the whole declaration
+    // and top-align — the behaviour this screen already had.
+    //
+    // The vertical rhythm here is `max(Nvmin, Nvh)`, not the app's usual plain
+    // `Nvmin`: on a tall narrow phone vmin IS the width, so every gap sat at
+    // its floor while ~40% of the screen went unused. `max` only ever ADDS the
+    // height term, so no viewport gets tighter than it is today — a landscape
+    // phone (vh < vmin) and the desktop (vh ≈ vmin) both compute unchanged.
+    <main className="isolate relative flex min-h-full flex-col items-center justify-center-safe overflow-x-clip bg-(--color-ap-ground) px-6 py-[clamp(1.5rem,max(4vmin,4vh),3rem)] font-arcade-ui text-(--color-ap-text) max-sm:px-4">
       {/* Idle long enough and ghost players deal a faint trick behind the UI. */}
       {!staged && <AttractMode />}
 
@@ -140,9 +154,9 @@ export function Home({
       {/* Single-column cap 30rem: on portrait tablet the old 44rem cap let the
           CREATE/JOIN/PLAY rows stretch ~700px edge-to-edge for one word — 30rem
           matches the per-rail width the lg two-column layout gives them. */}
-      <div className="grid w-full max-w-[min(92vw,30rem)] grid-cols-1 items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
+      <div className="grid w-full max-w-[min(92vw,30rem)] grid-cols-1 items-center gap-[clamp(0.85rem,max(2.4vmin,2.4vh),2.25rem)] lg:max-w-[min(94vw,64rem)] lg:grid-cols-2 lg:gap-[clamp(2rem,5vmin,4rem)]">
         {/* LEFT — brand fan + your painted identity card, nothing else */}
-        <div className="flex flex-col items-center gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
+        <div className="flex flex-col items-center gap-[clamp(0.85rem,max(2.4vmin,2.4vh),2.25rem)]">
           {/* Your card is dealt into the brand fan — the title screen mirrors you. */}
           <HeroBanner
             name={staged ? identityStage.name : name}
@@ -164,7 +178,7 @@ export function Home({
 
         {/* RIGHT — play actions, "Ton coin", then the quiet chrome, all one
             column width */}
-        <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,2.4vmin,1.5rem)]">
+        <div className="flex w-full flex-col items-stretch gap-[clamp(0.85rem,max(2.4vmin,2.4vh),2.25rem)]">
           {/* ONE "start here" row, never two. First-visit pointer to the
               coached practice game; standing tables mean the player already
               knows the way in — skip the tutorial hint. Hidden while the PLAY

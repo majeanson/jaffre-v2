@@ -86,8 +86,12 @@ export default defineConfig({
         // browsers without it fall down the spec chain to standalone.
         display: 'fullscreen',
         orientation: 'portrait',
-        background_color: '#0b1f18',
-        theme_color: '#0b1f18',
+        // The arcade shell's ground (--color-ap-ground, dark theme). These are
+        // what iOS/Android paint the launch screen and the system chrome with
+        // BEFORE our CSS loads — left on the pre-restyle felt green they
+        // flashed a dark green frame around a violet app on every cold start.
+        background_color: '#181225',
+        theme_color: '#181225',
         icons: [
           { src: '/icons/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/pwa-512.png', sizes: '512x512', type: 'image/png' },
