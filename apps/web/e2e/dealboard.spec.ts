@@ -69,7 +69,9 @@ test('plays the hand of the day, posts the score, and refuses a second run', asy
   // The hand ends on a result you get to READ — it used to tear the felt down
   // and drop you beside a greyed-out button before you saw anything.
   const result = page.getByTestId('deal-result');
-  await expect(result).toContainText('tricks taken');
+  // Singular too: the day's deal decides the count, and a 1-trick day is real
+  // (2026-07-31 was one — the plural-only pin turned the date into a flake).
+  await expect(result).toContainText(/\d+ tricks? taken/);
 
   // The score came back from the server, not from the client: the outcome line
   // only ever says a number the verifier produced.
