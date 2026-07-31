@@ -24,12 +24,20 @@ export interface TableEntry {
   readonly yourSeat?: number | null;
 }
 
-/** A room's current live state, from GET /api/room/:code/status. */
+/** A room's current live state, from GET /api/room/:code/status. The last
+ * three fields feed the server's /join/<code> unfurl (routes/join.ts) — the
+ * client doesn't read them yet, but the wire shape is documented here. */
 export interface TableStatus {
   readonly started: boolean;
   readonly phase: string | null;
   readonly turn: number | null;
   readonly seriesWins?: readonly [number, number];
+  /** Humans seated. */
+  readonly players?: number;
+  /** Seats filled (humans + bots). */
+  readonly filled?: number;
+  /** The host's PUBLIC-safe display name (publicId.ts's displayName rule). */
+  readonly hostName?: string;
 }
 
 const KEY = 'jaffre-tables';

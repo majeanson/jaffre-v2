@@ -14,6 +14,7 @@
  *   leaderboard the global Elo ladder
  *   tables      the Lobby DO: quickplay, open tables, the live feed
  *   socket      the GameRoom DO: play socket, status peek, seat surrender
+ *   join        the share link: SPA shell with live per-room OG tags
  *   telemetry · ice · push   client-capability endpoints, each with its own
  *                            documented degradation policy
  *
@@ -37,6 +38,7 @@ import { handleChallengeBoard, handleChallengeSubmit } from './routes/dealBoard.
 import { handleHistory, handleReplay } from './routes/games.js';
 import { handleHeadToHead } from './routes/head2head.js';
 import { handleIce } from './routes/ice.js';
+import { handleJoin } from './routes/join.js';
 import { handleLeaderboard } from './routes/leaderboard.js';
 import { handleProfile } from './routes/profile.js';
 import { handlePushSubscribe, handlePushUnsubscribe, handleVapidKey } from './routes/push.js';
@@ -49,6 +51,12 @@ export { GameRoom, Lobby };
 export type { Env };
 
 const REPLAY_RE = /^\/api\/replay\/([A-Za-z0-9-]{1,64})$/;
+/** Mixed case accepted then lowercased: a hand-retyped share link must not
+ * fall through to the SPA shell with generic tags (codes are minted
+ * lowercase). Anything NOT matching this shape falls through to assets —
+ * the SPA fallback plus the client-side net in apps/web/src/joinPath.ts
+ * turn it into the in-app bad-link notice. */
+const JOIN_RE = /^\/join\/([a-zA-Z0-9-]{1,32})$/;
 const ROOM_STATUS_RE = /^\/api\/room\/([A-Za-z0-9-]{1,32})\/status$/;
 const ROOM_LEAVE_RE = /^\/api\/room\/([A-Za-z0-9-]{1,32})\/leave$/;
 const ROOM_WS_RE = /^\/ws\/([A-Za-z0-9-]{1,32})$/;
@@ -133,6 +141,12 @@ export default {
     const wsMatch = ROOM_WS_RE.exec(pathname);
     if (wsMatch !== null) {
       return handleRoomSocket(request, env, url, wsMatch[1] as string);
+    }
+
+    // The share link (wrangler.toml routes /join/* worker-first for this).
+    const joinMatch = JOIN_RE.exec(pathname);
+    if (joinMatch !== null && (method === 'GET' || method === 'HEAD')) {
+      return handleJoin(request, env, (joinMatch[1] as string).toLowerCase());
     }
 
     return env.ASSETS.fetch(request);

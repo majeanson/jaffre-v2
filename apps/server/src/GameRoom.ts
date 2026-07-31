@@ -189,13 +189,20 @@ export class GameRoom implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     // Lightweight status peek (no socket) — powers the home "Your tables" row's
     // live turn/waiting badge without opening a full connection to every room.
+    // Also feeds the /join/<code> unfurl (routes/join.ts), which is why it
+    // carries the humans-seated count and the host's PUBLIC-safe name; a
+    // status on a virgin DO reads storage and writes nothing.
     if (new URL(request.url).pathname === '/status') {
       await this.load();
+      const hostId = this.meta.hostId;
       return Response.json({
         started: this.meta.started,
         phase: this.game?.phase ?? null,
         turn: this.game?.turn ?? null,
         seriesWins: this.meta.seriesWins,
+        players: this.meta.seats.filter((s) => typeof s === 'string').length,
+        filled: this.meta.seats.filter((s) => s !== null).length,
+        ...(hostId === undefined ? {} : { hostName: displayName(this.meta.names[hostId], hostId) }),
       });
     }
     // Permanent leave without a socket — the home "Your tables" row lets you

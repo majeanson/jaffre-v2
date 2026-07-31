@@ -31,7 +31,9 @@ not_found_handling = "single-page-application"
 # like /api/auth/google (the Google-link start URL) and /api/auth/google/callback,
 # so OAuth silently bounced back to the homepage. Force the Worker to run first
 # for API + WebSocket routes; everything else still hits static assets first.
-run_worker_first = ["/api/*", "/ws/*"]
+# /join/* is the share link (routes/join.ts): without worker-first the SPA
+# fallback serves the plain shell and a scraper sees generic tags.
+run_worker_first = ["/api/*", "/ws/*", "/join/*"]
 
 [durable_objects]
 bindings = [
