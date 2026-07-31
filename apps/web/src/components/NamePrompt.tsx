@@ -1,10 +1,20 @@
 import { useState } from 'react';
 import { useLang, type Lang } from '@jaffre/ui';
+import { setHelpLevel } from '../help/helpLevel.js';
 import { playerName, setPlayerName } from '../net/socket.js';
 
 const T: Record<
   Lang,
-  { title: string; hint: string; placeholder: string; save: string; later: string }
+  {
+    title: string;
+    hint: string;
+    placeholder: string;
+    save: string;
+    later: string;
+    know: string;
+    isNew: string;
+    played: string;
+  }
 > = {
   en: {
     title: 'What should we call you?',
@@ -12,6 +22,9 @@ const T: Record<
     placeholder: 'Player',
     save: 'Save',
     later: 'Maybe later',
+    know: 'Know the game?',
+    isNew: 'I’m new — guide me',
+    played: 'I’ve played before',
   },
   fr: {
     title: 'Comment on t’appelle?',
@@ -19,8 +32,21 @@ const T: Record<
     placeholder: 'Joueur',
     save: 'Enregistrer',
     later: 'Plus tard',
+    know: 'Tu connais le jeu?',
+    // « Je débute » on purpose — dodges the gendered nouveau/nouvelle.
+    isNew: 'Je débute — guide-moi',
+    played: 'J’ai déjà joué',
   },
 };
+
+/** The two chips' dial positions: "I'm new" keeps the full teaching ladder,
+ * "I've played before" turns advice off entirely (the picker's own copy for
+ * 'off' is "Nothing. You know the game." — the same claim). Coach stays one
+ * tap away in Settings/Options for a veteran who wants suggestions back. */
+const EXPERIENCE = [
+  { level: 'learning', key: 'isNew' },
+  { level: 'off', key: 'played' },
+] as const;
 
 const LATCH_KEY = 'jaffre:namePrompt';
 
@@ -93,6 +119,12 @@ export function NamePrompt({
   const t = T[useLang()];
   const [gone, setGone] = useState(() => !forceOpen && !namePromptDue());
   const [value, setValue] = useState('');
+  // The experience chips apply ON TAP (setHelpLevel is idempotent and cheap;
+  // tap the other to change your mind), so Save and "Maybe later" never need
+  // to touch the dial — skipping leaves whatever was last tapped, or nothing.
+  // No pre-selection: the boot level is an INFERENCE (helpLevel.ts's
+  // placement rule), and a pre-lit chip would read as "you already answered".
+  const [picked, setPicked] = useState<'learning' | 'off' | null>(null);
   if (gone) return null;
 
   const finish = (renamed: boolean): void => {
@@ -148,6 +180,34 @@ export function NamePrompt({
         </button>
       </div>
       <p className="text-xs text-(--color-ap-muted)">{t.hint}</p>
+      {/* "I'm new / I've played before" — the one moment the app ASKS instead
+          of inferring the help dial. It rides this card because both questions
+          arrive at the same time (your first brush with other people), and a
+          second one-shot card would fail the one-start-here-slot rule.
+          Gold-on-ink selected state, same as HelpLevelPicker's segments. */}
+      <div className="flex flex-wrap items-center gap-2 border-t-2 border-(--color-ap-ink)/20 pt-2">
+        <span className="font-arcade-display text-xs uppercase tracking-wide text-(--color-ap-muted)">
+          {t.know}
+        </span>
+        {EXPERIENCE.map(({ level, key }) => (
+          <button
+            key={level}
+            type="button"
+            aria-pressed={picked === level}
+            onClick={() => {
+              setHelpLevel(level);
+              setPicked(level);
+            }}
+            className={`cursor-pointer rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) px-2.5 py-1.5 text-xs shadow-(--shadow-ap-sm) ${
+              picked === level
+                ? 'bg-(--color-ap-gold) text-(--color-ap-ink)'
+                : 'bg-(--color-ap-panel-hover) text-(--color-ap-text) hover:brightness-110'
+            }`}
+          >
+            {t[key]}
+          </button>
+        ))}
+      </div>
     </form>
   );
 }

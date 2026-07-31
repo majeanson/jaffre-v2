@@ -158,6 +158,33 @@ test('"maybe later" still lets a nameless player play', async ({ browser }) => {
   await page.getByTestId('name-prompt').getByRole('button', { name: 'Maybe later' }).click();
 
   await expect(page.getByTestId('name-prompt')).toHaveCount(0);
+  // Skipping never touches the help dial: only a tapped chip writes it, and
+  // none was tapped (resolveHelpLevel's boot placement is 'learning' on a
+  // fresh browser — the inference must survive an unanswered card).
+  expect(await page.evaluate(() => localStorage.getItem('jaffre:help'))).toBe('learning');
+  await context.close();
+});
+
+test('the name card can place the help dial', async ({ browser }) => {
+  // The one moment the app ASKS "new or not" instead of inferring it. Chips
+  // apply on tap; the second tap wins; Save leaves the answer standing.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto('/?nameprompt=1#daily');
+  await page.getByRole('button', { name: 'Play the hand' }).click();
+  const card = page.getByTestId('name-prompt');
+
+  await card.getByRole('button', { name: 'I’m new — guide me' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('jaffre:help'))).toBe('learning');
+
+  // Changed their mind: the veteran chip wins, and the dial goes quiet.
+  await card.getByRole('button', { name: 'I’ve played before' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('jaffre:help'))).toBe('off');
+
+  await card.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByTestId('name-prompt')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('jaffre:help'))).toBe('off');
   await context.close();
 });
 
