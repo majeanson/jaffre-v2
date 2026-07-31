@@ -107,12 +107,20 @@ export default defineConfig({
         // App shell: code, styles, fonts and icons — enough for a fully
         // offline "Play vs Bots". The og-cards share images stay runtime-cached.
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        // social/og.png exists for link scrapers only — a client precaching
+        // a 1200×630 card it will never render is pure waste.
+        globIgnores: ['**/social/**'],
         // Push + notification-click handlers live outside the generated SW.
         importScripts: ['push-sw.js'],
         // Deep links (#room/... is a fragment so any path is really '/'), but
-        // never swallow the Worker's live endpoints.
+        // never swallow the Worker's live endpoints. /join/<code> is the
+        // share link the WORKER must answer (live OG tags + the boot script):
+        // served from the SW cache it would arrive with no hash and no
+        // script, silently losing the room code — and joining a live room
+        // needs the network anyway. (src/joinPath.ts is the belt to this
+        // suspender for SWs installed before this rule.)
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//, /^\/join\//],
         runtimeCaching: [
           {
             urlPattern: /\/og-cards\/.*\.jpg$/,

@@ -57,9 +57,11 @@ function joinCopy(status: JoinStatus | null): { title: string; description: stri
       description: 'Game in progress — come watch · Partie en cours — viens regarder',
     };
   }
+  // fr pluralizes from 2 up: « 0 siège », « 1 siège », « 2 sièges ».
+  const sieges = status.players < 2 ? 'siège' : 'sièges';
   return {
     title,
-    description: `${status.players} of 4 seats taken — pull up a chair · ${status.players} sièges sur 4 — tire-toi une bûche`,
+    description: `${status.players} of 4 seats taken — pull up a chair · ${status.players} ${sieges} sur 4 — tire-toi une bûche`,
   };
 }
 

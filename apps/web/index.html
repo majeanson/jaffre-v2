@@ -14,6 +14,24 @@
       name="description"
       content="Jaffre — a four-player trick-taking card game. Bid, take the tricks, first team to 41. Practice against bots or play online with friends."
     />
+    <!-- Link-preview (Open Graph) baseline. routes/join.ts rewrites the
+         content of title/description/og:title/og:description/og:url in place
+         for /join/<code> — rewrite, never inject, so the document always
+         holds exactly one of each. og:image/og:url are ABSOLUTE prod URLs by
+         design: relative URLs break every scraper, and a workers.dev preview
+         pointing its art at prod is harmless (nobody shares preview links). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Jaffre" />
+    <meta property="og:title" content="Jaffre" />
+    <meta
+      property="og:description"
+      content="A four-player trick-taking card game. Bid, take the tricks, first team to 41 · Un jeu de cartes à quatre — mise, prends les levées, premier à 41."
+    />
+    <meta property="og:url" content="https://jaffre.marcportal.com/" />
+    <meta property="og:image" content="https://jaffre.marcportal.com/social/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='2' width='20' height='27' rx='3' fill='%23f6efdf' stroke='%232a2320' stroke-width='1.5' transform='rotate(-8 13 15)'/%3E%3Crect x='9' y='3' width='20' height='27' rx='3' fill='%23f2c66d' stroke='%232a2320' stroke-width='1.5' transform='rotate(6 19 16)'/%3E%3Ccircle cx='19.5' cy='17' r='5' fill='%23d43a3a'/%3E%3C/svg%3E"

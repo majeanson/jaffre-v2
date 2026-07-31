@@ -169,9 +169,16 @@ function parseHash(): Route {
   if (practice !== null) return { kind: 'practice', seed: Number(practice[1]) };
   // '/watch' keeps a spectator's choice IN the URL, so a reload (or a shared
   // link) resumes watching instead of dropping back to the Visitor gate.
-  const room = /^#room\/([a-z0-9-]{1,32})(\/watch)?$/.exec(h);
+  // Mixed case tolerated then lowercased: codes are minted lowercase, but a
+  // hand-retyped or auto-capitalized invite must not dead-end on BadLinkNotice
+  // (the typed-code form already normalizes; a URL deserves the same).
+  const room = /^#room\/([a-zA-Z0-9-]{1,32})(\/watch)?$/.exec(h);
   if (room !== null) {
-    return { kind: 'room', code: room[1] as string, watching: room[2] !== undefined };
+    return {
+      kind: 'room',
+      code: (room[1] as string).toLowerCase(),
+      watching: room[2] !== undefined,
+    };
   }
   // '#scenes[/<id>]' — live-through every game phase instantly (design/dev
   // tool). Gated like the dev console: a real visitor typing the hash gets the

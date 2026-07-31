@@ -121,7 +121,7 @@ describe('/join/<code>', () => {
     // truthful zero-count line.
     expect(body).toContain('<title>Join my Jaffre table</title>');
     expect(body).toContain('0 of 4 seats taken');
-    expect(body).toContain('0 sièges sur 4');
+    expect(body).toContain('0 siège sur 4'); // fr pluralizes from 2 up
     // Rewritten in place — the document still holds exactly one of each tag.
     expect(count(body, 'property="og:title"')).toBe(1);
     expect(body).toMatch(/property="og:title" content="Join my Jaffre table"/);

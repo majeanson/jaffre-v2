@@ -612,6 +612,8 @@ export function notifyTurnIfAbsent(room: GameRoom, exclude?: WebSocket): void {
     notifyUser(room.env, owner, {
       title: 'Jaffre',
       body: "À ton tour · It's your turn",
+      // The hash form, NOT /join/<code>: a notification click is in-app
+      // navigation with no scraper in the loop — don't "harmonize" it.
       url: code === undefined ? '/' : `/#room/${code}`,
       ...(code !== undefined ? { tag: `turn-${code}` } : {}),
     }),
@@ -648,6 +650,7 @@ export function notifyHostOfJoin(room: GameRoom, sitterUid: string, sitterName: 
     notifyUser(room.env, hostId, {
       title,
       body,
+      // Hash form on purpose — same reasoning as notifyTurnIfAbsent above.
       url: code === undefined ? '/' : `/#room/${code}`,
       ...(code !== undefined ? { tag: `join-${code}` } : {}),
     }),

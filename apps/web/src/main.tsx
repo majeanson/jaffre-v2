@@ -28,9 +28,13 @@ import { initCardSkin } from './cosmetics.js';
 import { initFelt } from './felt.js';
 import { initLang } from './lang.js';
 import { resolveHelpLevel } from './help/helpLevel.js';
+import { consumeJoinPath } from './joinPath.js';
 import { initInstallCapture } from './pwa/install.js';
 import { initBadge } from './pwa/badge.js';
 
+// A /join/<code> share link entering through a stale service worker arrives
+// with no hash — turn the path into #room/<code> before anything routes.
+consumeJoinPath();
 initTheme();
 initCardSkin();
 initFelt();
