@@ -54,3 +54,39 @@ test('an ordinary visitor sees no back link and keeps their own name', async ({ 
 
   await context.close();
 });
+
+/**
+ * The table says hello as soon as it has a roster.
+ *
+ * `ready` is what an embedder waits for to know the frame is alive — dads
+ * shows "the table isn't answering in here" if it hears nothing at all. It was
+ * emitted only from the `roster` message, and `welcome` sets the first roster
+ * itself, so it never fired once in production: every dad saw that warning
+ * under a table that was working.
+ *
+ * A stand-in embedder on the same origin, because a local Jaffre trusts a
+ * local embedder and nothing else here can play the part of dads.
+ */
+test('the table says hello to its embedder as soon as it has a roster', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.route('**/embed-harness', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: `<!doctype html><title>harness</title>
+<script>window.seen=[];addEventListener('message',(e)=>window.seen.push(e.data));</script>
+<iframe src="/?name=Marc&from=dads#room/embed-ready" width="900" height="700"></iframe>`,
+    }),
+  );
+
+  await page.goto('/embed-harness');
+
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { seen: unknown[] }).seen), {
+      timeout: 30_000,
+    })
+    .toContainEqual({ v: 1, t: 'ready' });
+
+  await context.close();
+});

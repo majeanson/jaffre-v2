@@ -254,6 +254,11 @@ function handle(msg: ServerMessage): void {
   const store = useGameStore.getState();
   switch (msg.t) {
     case 'welcome':
+      // The embedder's proof of life. welcome sets the first roster itself, so
+      // the 'roster' case below never sees a null prev and never reached this
+      // — an embedder waiting for ANY event heard nothing at all and told its
+      // users the table was not answering, under a table that was working.
+      announceSeatChanges(null, msg.roster);
       store.welcome(msg.viewer, msg.view, msg.seq, msg.roster, msg.chatTail);
       if (room !== null)
         rememberTable(room, msg.roster, typeof msg.viewer === 'number' ? msg.viewer : null);
