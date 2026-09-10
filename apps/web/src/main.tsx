@@ -28,10 +28,16 @@ import { initCardSkin } from './cosmetics.js';
 import { initFelt } from './felt.js';
 import { initLang } from './lang.js';
 import { resolveHelpLevel } from './help/helpLevel.js';
+import { consumeEmbedParams } from './embed.js';
 import { consumeJoinPath } from './joinPath.js';
 import { initInstallCapture } from './pwa/install.js';
 import { initBadge } from './pwa/badge.js';
 
+// An embedder (dads) puts the player's name in the query string. Adopt it
+// BEFORE consumeJoinPath, which rewrites the URL and drops the search with it,
+// and before Home's mount mints a guest token — a token minted for 'Player'
+// would outlive the name arriving.
+consumeEmbedParams();
 // A /join/<code> share link entering through a stale service worker arrives
 // with no hash — turn the path into #room/<code> before anything routes.
 consumeJoinPath();

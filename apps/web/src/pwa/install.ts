@@ -52,6 +52,19 @@ export function isStandalone(): boolean {
   );
 }
 
+/**
+ * Install UI has nothing to offer inside someone else's page: Chrome does not
+ * fire beforeinstallprompt in a cross-origin frame, so the button would be
+ * inert, and "install this app" is the embedder's call to make, not ours.
+ */
+export function isEmbedded(): boolean {
+  try {
+    return window.top !== window.self;
+  } catch {
+    return true;
+  }
+}
+
 /** iOS never fires beforeinstallprompt — install goes through the share sheet. */
 export function isIOS(): boolean {
   return (

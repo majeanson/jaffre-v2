@@ -4,6 +4,7 @@ import { currentLang } from '../lang.js';
 import { currentCardSkin } from '../cosmetics.js';
 import { currentFelt } from '../felt.js';
 import { currentSweep } from '../sweeps.js';
+import { emitTableEvent, scoreSummary } from '../embed.js';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
@@ -60,6 +61,32 @@ function announceBotTakeover(prev: Roster | null, next: Roster): void {
 }
 
 /**
+ * Tell an embedder who sat down and who got up.
+ *
+ * Same prev/next discipline as announceBotTakeover above, and for the same
+ * reason: `prev === null` is a fresh connect, so everyone already at the
+ * table is the starting state rather than four people arriving at once.
+ */
+function announceSeatChanges(prev: Roster | null, next: Roster): void {
+  if (prev === null) {
+    emitTableEvent({ v: 1, t: 'ready' });
+    return;
+  }
+  for (let seat = 0; seat < 4; seat++) {
+    const before = prev.seats[seat] ?? null;
+    const after = next.seats[seat] ?? null;
+    if (before === null && after !== null && !after.isBot) {
+      emitTableEvent({ v: 1, t: 'seated', name: after.name });
+    } else if (before !== null && after === null && !before.isBot) {
+      emitTableEvent({ v: 1, t: 'left', name: before.name });
+    }
+  }
+  if (prev.started !== true && next.started === true) {
+    emitTableEvent({ v: 1, t: 'game-started' });
+  }
+}
+
+/**
  * Online transport: one WebSocket to the room's Durable Object. Feeds the
  * same store shape as practice mode. Reconnects with backoff and resumes via
  * the welcome snapshot.
@@ -102,13 +129,11 @@ function userId(): string {
   return uid;
 }
 
-export function playerName(): string {
-  return localStorage.getItem('jaffre-name') ?? 'Player';
-}
-
-export function setPlayerName(name: string): void {
-  localStorage.setItem('jaffre-name', name);
-}
+// Moved to a leaf module so boot-time code can seed a name without pulling
+// this file (and the store graph behind it) in. Re-exported so every existing
+// import of playerName/setPlayerName from here keeps working.
+export { playerName, setPlayerName } from './playerName.js';
+import { playerName } from './playerName.js';
 
 /** The most recent room this browser joined — lets Home offer a resume link. */
 export function lastRoom(): string | null {
@@ -249,11 +274,18 @@ function handle(msg: ServerMessage): void {
       // provably: there is no "history persisted" signal to wait on.)
       if (msg.view.phase === 'game_over' && store.view?.phase !== 'game_over') {
         bustStatsCache();
+        // Same edge, and the only moment a final score exists to report.
+        emitTableEvent({
+          v: 1,
+          t: 'game-over',
+          summary: scoreSummary(msg.view.scores, msg.view.winner ?? null),
+        });
       }
       store.setView(msg.view, msg.seq);
       break;
     case 'roster':
       announceBotTakeover(store.roster, msg.roster);
+      announceSeatChanges(store.roster, msg.roster);
       store.setRoster(msg.roster);
       if (room !== null) rememberTable(room, msg.roster);
       break;

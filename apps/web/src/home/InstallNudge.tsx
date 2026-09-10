@@ -4,6 +4,7 @@ import { funnelReached } from '../net/telemetry.js';
 import { InstallButton } from '../pwa/InstallButton.js';
 import {
   canPromptInstall,
+  isEmbedded,
   isIOS,
   isStandalone,
   onInstallAvailabilityChange,
@@ -65,7 +66,7 @@ export function InstallNudge() {
   // availability gates below when it does, same subscription as InstallButton.
   useEffect(() => onInstallAvailabilityChange(() => bump((n) => n + 1)), []);
 
-  if (!due || isStandalone()) return null;
+  if (!due || isStandalone() || isEmbedded()) return null;
   // No way to install from this browser (also true post-install, when the
   // used-up prompt leaves canPromptInstall false) — nothing to offer.
   if (!canPromptInstall() && !isIOS()) return null;

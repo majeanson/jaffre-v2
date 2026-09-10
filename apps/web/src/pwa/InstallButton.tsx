@@ -5,6 +5,7 @@ import { ICON_BTN_NEUTRAL } from '../components/IconButton.js';
 import { IconDownload } from '../components/icons.js';
 import {
   canPromptInstall,
+  isEmbedded,
   isIOS,
   isStandalone,
   onInstallAvailabilityChange,
@@ -40,7 +41,7 @@ export function InstallButton() {
   const cardVisible = useBottomSlot(SLOT_INSTALL, iosOpen);
   useEffect(() => onInstallAvailabilityChange(() => bump((n) => n + 1)), []);
 
-  if (isStandalone()) return null;
+  if (isStandalone() || isEmbedded()) return null;
   const native = canPromptInstall();
   if (!native && !isIOS()) return null;
 

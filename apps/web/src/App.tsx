@@ -30,6 +30,7 @@ import { overrideFelt } from './felt.js';
 import { refreshFoil } from './foils.js';
 import { parsePositionHash, type HandPosition } from './replay/position.js';
 import { reconcileCosmetics } from './cosmeticsBoot.js';
+import { BackToDads } from './components/BackToDads.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { OfflineBanner } from './components/OfflineBanner.js';
 import { DEV_TOOLS_ENABLED } from './dev/devMode.js';
@@ -387,6 +388,9 @@ export function App() {
             screen — offline is a state the app admits rather than one that
             just silently breaks whatever network call was mid-flight. */}
           <OfflineBanner />
+          {/* Only renders for a player who arrived from another of these apps
+            and is NOT inside its frame — see BackToDads. */}
+          <BackToDads />
           {/* Mounted first (renders/commits before AppRoutes) so it wins the
             NoticeToast module-level ownership claim over Table's/Lobby's own
             local mounts — see NoticeToast.tsx. This is the app-wide toast

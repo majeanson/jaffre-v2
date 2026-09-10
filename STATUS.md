@@ -347,3 +347,33 @@ These threads are closed for good:
 - **QR** — finished (`components/QrCode.tsx`: bundled encoder,
   dynamic-imported, crisp SVG path with a quiet zone).
 - **`index.ts` carve** — done; see Server above.
+
+## Embed bridge (dads)
+
+`dads.marcportal.com` frames Jaffre beside its chat so a group can talk and
+play at the same table. The whole contract is `apps/web/src/embed.ts` — one
+file, one-way in each direction, and nothing else in the app knows an embedder
+exists:
+
+- **in** — `?name=` seeds the player's name (adopted in `main.tsx` BEFORE
+  `consumeJoinPath()`, which rewrites the URL and would drop the search with
+  it, and before Home mints a guest token for `'Player'`); `?from=dads` shows
+  `BackToDads`, deliberately left in the URL so it survives a reload.
+- **out** — versioned `postMessage` table events (`seated`/`left`/
+  `game-started`/`game-over`) emitted from the one inbound dispatch in
+  `net/socket.ts`, addressed to an allowlisted origin taken from the
+  **referrer**, never from a parameter. A localhost embedder is trusted only
+  by a localhost Jaffre.
+- Install UI is suppressed when framed (`isEmbedded()` in `pwa/install.ts`,
+  OR'd into both gates — they cannot drift).
+- `playerName`/`setPlayerName` moved to the leaf `net/playerName.ts` and are
+  re-exported from `net/socket.ts`; boot-time code needed them without
+  dragging the store graph (and its module-load `localStorage` reads) along.
+
+Covered by `apps/web/test/embed.test.ts` (16, the refusal cases a browser
+cannot stage) and `apps/web/e2e/embed.spec.ts` (3, the visible half).
+
+Deliberately NOT done: no `frame-ancestors` allowlist. Jaffre has never sent
+one and anyone can frame it today; adding it is a separate decision, and the
+two places to touch would be `routes/join.ts`'s headers and the
+`env.ASSETS.fetch` fallthrough in `index.ts`.
