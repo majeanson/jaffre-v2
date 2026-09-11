@@ -30,7 +30,17 @@ export type TableEvent =
   | { v: 1; t: 'seated'; name: string }
   | { v: 1; t: 'left'; name: string }
   | { v: 1; t: 'game-started' }
-  | { v: 1; t: 'game-over'; summary: string };
+  | { v: 1; t: 'game-over'; summary: string }
+  // v1 additions (2026-09-11). Still v: 1: an embedder that does not know
+  // these drops them by kind, which is what unknown kinds always did.
+  /** A present player has let their turn sit; the bot plays in `seconds`. */
+  | { v: 1; t: 'turn'; name: string; seconds: number }
+  /** A seated human dropped; a bot takes the seat in `seconds` (0: already has). */
+  | { v: 1; t: 'away'; name: string; seconds: number }
+  /** …and came back. */
+  | { v: 1; t: 'back'; name: string }
+  /** Our own socket to the table, for an embedder to show beside the frame. */
+  | { v: 1; t: 'connection'; state: 'reconnecting' | 'ok' };
 
 function isLocal(origin: string): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);

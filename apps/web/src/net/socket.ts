@@ -56,6 +56,7 @@ function announceBotTakeover(prev: Roster | null, next: Roster): void {
       useGameStore.getState().setNotice(t.takeover(after.name));
     } else if (before.botPlaying === true && after.botPlaying !== true) {
       useGameStore.getState().setNotice(t.back(after.name));
+      emitTableEvent({ v: 1, t: 'back', name: after.name });
     }
   }
 }
@@ -83,6 +84,52 @@ function announceSeatChanges(prev: Roster | null, next: Roster): void {
   }
   if (prev.started !== true && next.started === true) {
     emitTableEvent({ v: 1, t: 'game-started' });
+  }
+}
+
+/** How long before the bot plays that a sitting player counts as idle — the
+ * same threshold SeatChip badges the seat at, so the embedder hears about it
+ * at the moment the table itself starts to say so. */
+const IDLE_WARN_MS = 20_000;
+let idleNudge: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Tell an embedder about a seat going quiet — dropped, covered by a bot, or
+ * simply not taking its turn — so it can say so beside the frame and nudge
+ * the one person it concerns. None of it changes how the game plays.
+ *
+ * The idle nudge is a timer rather than a diff: `turnTimerAt` appears the
+ * moment a turn starts, and a player thinking for five seconds is not idle.
+ * It is armed at the deadline minus the warning and cancelled by the next
+ * roster, so a card played in time never becomes a nudge.
+ */
+function announceQuietSeats(prev: Roster | null, next: Roster): void {
+  const skew = next.now === undefined ? 0 : next.now - Date.now();
+  const secondsLeft = (at: number) => Math.max(0, Math.ceil((at - (Date.now() + skew)) / 1000));
+
+  if (idleNudge !== null) clearTimeout(idleNudge);
+  idleNudge = null;
+  for (let seat = 0; seat < 4; seat++) {
+    const after = next.seats[seat] ?? null;
+    if (after === null || after.isBot || after.turnTimerAt === undefined) continue;
+    const fireIn = after.turnTimerAt - IDLE_WARN_MS - (Date.now() + skew);
+    const name = after.name;
+    idleNudge = setTimeout(
+      () => emitTableEvent({ v: 1, t: 'turn', name, seconds: IDLE_WARN_MS / 1000 }),
+      Math.max(0, fireIn),
+    );
+  }
+
+  if (prev === null) return;
+  for (let seat = 0; seat < 4; seat++) {
+    const before = prev.seats[seat] ?? null;
+    const after = next.seats[seat] ?? null;
+    if (before === null || after === null || after.isBot) continue;
+    if (after.botSwapAt !== undefined && before.botSwapAt === undefined) {
+      emitTableEvent({ v: 1, t: 'away', name: after.name, seconds: secondsLeft(after.botSwapAt) });
+    } else if (after.botPlaying === true && before.botPlaying !== true) {
+      emitTableEvent({ v: 1, t: 'away', name: after.name, seconds: 0 });
+    }
   }
 }
 
@@ -169,6 +216,7 @@ async function open(): Promise<void> {
   if (room === null) return; // disconnected while fetching the token
   ws = new WebSocket(`${proto}://${location.host}/ws/${room}?${identity}`);
   ws.onopen = () => {
+    if (attempts > 0) emitTableEvent({ v: 1, t: 'connection', state: 'ok' });
     attempts = 0;
     startPing();
     // Announce your pixel avatar so other players' tables show it. Pixel-SVG
@@ -220,6 +268,7 @@ async function open(): Promise<void> {
     if (attempts === 5)
       reportError(new Error('socket reconnect loop'), undefined, 'ws-reconnect-loop');
     useGameStore.getState().setConnection('reconnecting');
+    emitTableEvent({ v: 1, t: 'connection', state: 'reconnecting' });
     setTimeout(() => void open(), Math.min(8000, 400 * 2 ** attempts));
   };
 }
@@ -259,6 +308,7 @@ function handle(msg: ServerMessage): void {
       // — an embedder waiting for ANY event heard nothing at all and told its
       // users the table was not answering, under a table that was working.
       announceSeatChanges(null, msg.roster);
+      announceQuietSeats(null, msg.roster);
       store.welcome(msg.viewer, msg.view, msg.seq, msg.roster, msg.chatTail);
       if (room !== null)
         rememberTable(room, msg.roster, typeof msg.viewer === 'number' ? msg.viewer : null);
@@ -291,6 +341,7 @@ function handle(msg: ServerMessage): void {
     case 'roster':
       announceBotTakeover(store.roster, msg.roster);
       announceSeatChanges(store.roster, msg.roster);
+      announceQuietSeats(store.roster, msg.roster);
       store.setRoster(msg.roster);
       if (room !== null) rememberTable(room, msg.roster);
       break;

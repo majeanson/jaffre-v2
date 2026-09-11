@@ -144,6 +144,19 @@ describe('emitTableEvent', () => {
     emitTableEvent({ v: 1, t: 'game-started' });
     expect(stranger.postMessage).not.toHaveBeenCalled();
   });
+
+  it('carries the quiet-seat vocabulary, still as version 1', () => {
+    const parent = world({ referrer: `${DADS}/`, framed: true });
+    emitTableEvent({ v: 1, t: 'turn', name: 'Marc', seconds: 20 });
+    emitTableEvent({ v: 1, t: 'away', name: 'Sam', seconds: 45 });
+    emitTableEvent({ v: 1, t: 'back', name: 'Sam' });
+    emitTableEvent({ v: 1, t: 'connection', state: 'reconnecting' });
+    expect(parent.postMessage).toHaveBeenCalledTimes(4);
+    expect(parent.postMessage).toHaveBeenLastCalledWith(
+      { v: 1, t: 'connection', state: 'reconnecting' },
+      DADS,
+    );
+  });
 });
 
 describe('scoreSummary', () => {
