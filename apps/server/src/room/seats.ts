@@ -17,6 +17,7 @@ import {
   isConnected,
   markBack,
   notifyHostOfJoin,
+  reconcileDropped,
   scheduleNextWake,
   unseatUser,
 } from './presence.js';
@@ -128,6 +129,11 @@ export async function onJoin(
     await advanceTrack(room);
   }
   room.sendWelcome(ws, att);
+  // Somebody is looking at the table again, which is the moment to notice a
+  // seat that is away with no clock running. Before the roster and the wake,
+  // so both are built from the healed state: without this the table stays
+  // frozen on a phantom player and nothing ever arms an alarm to fix it.
+  if (reconcileDropped(room)) await room.ctx.storage.put('meta', room.meta);
   broadcastRoster(room, { skip: ws });
   // A human is present again — resume a table that paused when the room
   // emptied (bot turns, disconnect deadlines, round_over auto-continue).
@@ -563,11 +569,23 @@ export async function onStart(room: GameRoom, ws: WebSocket, att: Attachment): P
   // during the previous game of a rematch). Left alone, a stamp older than
   // BOT_SWAP_MS would bot-cover them from the very first turn — restart
   // every absent player's clock so a new game always grants the full grace.
-  if (room.meta.disconnectedSince !== undefined) {
-    room.meta.disconnectedSince = Object.fromEntries(
-      Object.keys(room.meta.disconnectedSince).map((uid) => [uid, startedAt]),
-    );
+  //
+  // A seat can also enter a game having NEVER been stamped: markDropped only
+  // fires with a live game running, so a player who dropped in the lobby
+  // inside the vacate grace is dealt in disconnected and unstamped — and for
+  // him both clocks read +Infinity, so no bot ever covers the seat and the
+  // table freezes on his turn for ever. Stamp every absent seat here, which
+  // is the moment the game starts caring.
+  const stamps: Record<string, number> = Object.fromEntries(
+    Object.keys(room.meta.disconnectedSince ?? {}).map((uid) => [uid, startedAt]),
+  );
+  for (const s of SEATS) {
+    const owner = room.meta.seats[s];
+    if (typeof owner === 'string' && !isBotOwner(owner) && !isConnected(room, owner)) {
+      stamps[owner] = startedAt;
+    }
   }
+  if (Object.keys(stamps).length > 0) room.meta.disconnectedSince = stamps;
   // Rematch: the previous game's rating movement no longer applies to the
   // recap that hasn't happened yet.
   delete room.meta.lastRatings;

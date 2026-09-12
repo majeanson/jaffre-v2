@@ -42,6 +42,41 @@ export const TURN_TIMER_MS = 60_000;
  * sitter uid per room within this window. */
 const JOIN_PUSH_THROTTLE_MS = 5 * 60_000;
 
+/**
+ * The invariant that keeps a table from freezing on a phantom player.
+ *
+ * Both clocks that can hand a seat to a bot read +Infinity for a seated human
+ * who is disconnected AND unstamped: `disconnectDeadline` has nothing to
+ * count from, and `turnTimerDeadline` bails on `!isConnected`. So such a seat
+ * is covered by nothing at all — the table sits on its turn for ever, which
+ * is exactly what it looks like from the felt: a player who is plainly not
+ * there and never gets replaced.
+ *
+ * It is reachable two ways, and neither is exotic. `markDropped` only fires
+ * with a live game running, so a player who drops in the LOBBY inside the
+ * vacate grace is dealt into a game already disconnected and never stamped.
+ * And a socket lost without its close handler running — an eviction, a
+ * deploy — leaves the same state behind.
+ *
+ * So rather than trusting the close event to have fired at the right moment,
+ * the stamp is reconciled wherever the room reliably wakes: a seat that is
+ * away and unstamped gets its clock started now, and the full grace with it.
+ * Returns whether anything changed, so the caller can persist.
+ */
+export function reconcileDropped(room: GameRoom): boolean {
+  if (!room.meta.started || room.game === null || room.game.phase === 'game_over') return false;
+  let changed = false;
+  for (const seat of SEATS) {
+    const owner = room.meta.seats[seat];
+    if (typeof owner !== 'string' || isBotOwner(owner)) continue;
+    if (isConnected(room, owner)) continue;
+    if (room.meta.disconnectedSince?.[owner] !== undefined) continue;
+    room.meta.disconnectedSince = { ...room.meta.disconnectedSince, [owner]: Date.now() };
+    changed = true;
+  }
+  return changed;
+}
+
 /** When `userId`'s bot-swap kicks in; +Infinity while they are connected. */
 export function disconnectDeadline(room: GameRoom, userId: string): number {
   const since = room.meta.disconnectedSince?.[userId];

@@ -1227,6 +1227,102 @@ describe('GameRoom', () => {
   );
 
   it(
+    'starts a clock for a seat that is away with no clock at all',
+    { timeout: 45_000 },
+    async () => {
+      /*
+       * The frozen table.
+       *
+       * Both clocks that can hand a seat to a bot read +Infinity for a seated
+       * human who is away AND unstamped: the disconnect deadline has nothing
+       * to count from, and the turn timer bails because they are not
+       * connected. Nothing covers the seat, so the table sits on its turn for
+       * ever — a player who is plainly not there and never gets replaced.
+       *
+       * It is reachable without doing anything strange: markDropped only
+       * fires with a live game running, so a man who drops in the LOBBY
+       * inside the vacate grace is dealt in already away and never stamped.
+       * A socket lost without its close handler running — an eviction, a
+       * deploy — leaves the same state.
+       *
+       * Somebody opening the table is the moment to notice and start the
+       * clock, which is what this asserts.
+       */
+      interface StoredMeta {
+        disconnectedSince?: Record<string, number>;
+      }
+      const room = 'room-phantom';
+      const client = await Client.connect(room, 'alice', 'Alice');
+      await setupStartedGame(client);
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
+
+      const carol = await Client.connect(room, 'carol', 'Carol');
+      carol.send({ t: 'join' });
+      await carol.next('welcome');
+
+      await driveToQuiescentHumanTurn(stub, client);
+      client.ws.close(1000, 'bye');
+      await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the disconnect clock',
+      );
+
+      // Now put the room into the bad state by hand: away, and no clock —
+      // exactly what a lobby drop or a lost close handler leaves behind.
+      // The LIVE instance as well as storage: unlike the alarm, a join reads
+      // the meta already in memory, so a storage-only edit would be invisible
+      // to the very path under test.
+      await runInDurableObject(stub, async (instance, state) => {
+        delete (instance as unknown as { meta: StoredMeta }).meta.disconnectedSince;
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        delete meta.disconnectedSince;
+        await state.storage.put('meta', meta);
+        await state.storage.deleteAlarm();
+      });
+      const frozen = await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        return meta?.disconnectedSince?.['alice'];
+      });
+      expect(frozen).toBeUndefined();
+
+      // Somebody opens the table. That is enough: the clock starts, and an
+      // alarm is armed to come back and hand the seat over.
+      const dave = await Client.connect(room, 'dave', 'Dave');
+      dave.send({ t: 'join' });
+      await dave.next('welcome');
+
+      const healed = await pollUntil(
+        () =>
+          runInDurableObject(stub, async (_instance, state) => {
+            const meta = await state.storage.get<StoredMeta>('meta');
+            return meta?.disconnectedSince?.['alice'];
+          }),
+        'the clock to be started by the join',
+      );
+      expect(healed).toBeTypeOf('number');
+
+      const armed = await runInDurableObject(stub, (_instance, state) => state.storage.getAlarm());
+      expect(armed).not.toBeNull();
+
+      // And it really does hand over once the grace runs out.
+      await runInDurableObject(stub, async (_instance, state) => {
+        const meta = await state.storage.get<StoredMeta>('meta');
+        if (meta === undefined) throw new Error('meta missing');
+        meta.disconnectedSince = { alice: Date.now() - BOT_SWAP_MS - 1000 };
+        await state.storage.put('meta', meta);
+      });
+      expect(await runDurableObjectAlarm(stub)).toBe(true);
+
+      await endQuiet(room, client, carol, dave);
+    },
+  );
+
+  it(
     'plays a connected but idle human turn after the turn-timer deadline (rule ON)',
     { timeout: 45_000 },
     async () => {
