@@ -197,7 +197,7 @@ for (const width of MEDIA_WIDTHS) {
     await page.addInitScript(() =>
       localStorage.setItem(
         'jaffre-links',
-        JSON.stringify({ email: 'marc.jeanson92@gmail.com', google: true }),
+        JSON.stringify({ email: 'player.with.a.long.name@example.com', google: true }),
       ),
     );
     await page.goto('/#scenes/home');
