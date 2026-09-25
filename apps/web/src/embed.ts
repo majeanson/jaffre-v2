@@ -14,6 +14,7 @@
  * needs to know an embedder exists.
  */
 
+import type { Roster } from '@jaffre/protocol';
 import { setPlayerName } from './net/playerName.js';
 
 /** Who is allowed to frame us and receive table events. */
@@ -30,7 +31,13 @@ export type TableEvent =
   | { v: 1; t: 'seated'; name: string }
   | { v: 1; t: 'left'; name: string }
   | { v: 1; t: 'game-started' }
-  | { v: 1; t: 'game-over'; summary: string }
+  /**
+   * `winners` (2026-09-24, still v: 1 — an embedder that does not know it
+   * reads the summary and ignores the rest) is the HUMAN names on the
+   * winning team, as seated. dads crowns them: their glasses go gold on
+   * every face of theirs until the next game ends. Bots win nothing.
+   */
+  | { v: 1; t: 'game-over'; summary: string; winners?: string[] }
   // v1 additions (2026-09-11). Still v: 1: an embedder that does not know
   // these drops them by kind, which is what unknown kinds always did.
   /** A present player has let their turn sit; the bot plays in `seconds`. */
@@ -119,6 +126,19 @@ export function emitTableEvent(event: TableEvent): void {
 
 /** Team 0 and team 1, in the order `scores` reports them. */
 const TEAM_NAMES = ['Sun', 'Moon'] as const;
+
+/**
+ * Who won, by name: the humans in the winning team's seats (team = seat % 2).
+ * Empty for no winner, and for a team of bots — a bot is nobody to crown.
+ * `winner` is engine's Team, compared against null for the same reason as
+ * scoreSummary's.
+ */
+export function winnerNames(roster: Roster | null, winner: 0 | 1 | null): string[] {
+  if (roster === null || winner === null) return [];
+  return roster.seats.flatMap((seat, i) =>
+    seat !== null && seat !== undefined && !seat.isBot && i % 2 === winner ? [seat.name] : [],
+  );
+}
 
 /**
  * Final score, as a line an embedder can print without knowing the rules.

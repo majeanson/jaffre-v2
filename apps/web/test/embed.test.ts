@@ -7,6 +7,7 @@ import {
   emitTableEvent,
   isEmbedded,
   scoreSummary,
+  winnerNames,
 } from '../src/embed.js';
 import { playerName } from '../src/net/playerName.js';
 
@@ -156,6 +157,28 @@ describe('emitTableEvent', () => {
       { v: 1, t: 'connection', state: 'reconnecting' },
       DADS,
     );
+  });
+});
+
+describe('winnerNames', () => {
+  const seat = (name: string, isBot = false) => ({ name, isBot, connected: true });
+  const roster = {
+    seats: [seat('Marc'), seat('Sam'), seat('Bot One', true), seat('Luc')],
+    spectators: 0,
+    started: true,
+  };
+
+  it('is the humans in the winning team’s seats — team is seat % 2', () => {
+    expect(winnerNames(roster, 1)).toEqual(['Sam', 'Luc']);
+  });
+
+  it('leaves a bot out: a bot is nobody to crown', () => {
+    expect(winnerNames(roster, 0)).toEqual(['Marc']);
+  });
+
+  it('is nobody when there is no winner, or no roster', () => {
+    expect(winnerNames(roster, null)).toEqual([]);
+    expect(winnerNames(null, 0)).toEqual([]);
   });
 });
 

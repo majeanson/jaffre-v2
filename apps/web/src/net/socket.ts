@@ -4,7 +4,7 @@ import { currentLang } from '../lang.js';
 import { currentCardSkin } from '../cosmetics.js';
 import { currentFelt } from '../felt.js';
 import { currentSweep } from '../sweeps.js';
-import { emitTableEvent, scoreSummary } from '../embed.js';
+import { emitTableEvent, scoreSummary, winnerNames } from '../embed.js';
 import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { getGuestToken, getProfile } from './auth.js';
@@ -334,6 +334,7 @@ function handle(msg: ServerMessage): void {
           v: 1,
           t: 'game-over',
           summary: scoreSummary(msg.view.scores, msg.view.winner ?? null),
+          winners: winnerNames(store.roster, msg.view.winner ?? null),
         });
       }
       store.setView(msg.view, msg.seq);
