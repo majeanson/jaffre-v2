@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isUsableSecret, mintToken, verifyToken } from '../src/auth/session.js';
+import {
+  isUsableSecret,
+  mintToken,
+  RENEWAL_GRACE_MS,
+  verifyToken,
+  verifyTokenForRenewal,
+} from '../src/auth/session.js';
 
 const SECRET = 's'.repeat(48);
 const OTHER_SECRET = 'x'.repeat(48);
@@ -67,5 +73,23 @@ describe('session tokens', () => {
     await expect(mintToken(payload(), 'short')).rejects.toThrow();
     const token = await mintToken(payload(), SECRET);
     expect(await verifyToken(token, 'short')).toBeNull();
+  });
+});
+
+describe('verifyTokenForRenewal', () => {
+  it('renews an expired token inside the grace window as the same uid', async () => {
+    const token = await mintToken(payload({ exp: Date.now() - 30 * 86_400_000 }), SECRET);
+    expect(await verifyToken(token, SECRET)).toBeNull();
+    expect(await verifyTokenForRenewal(token, SECRET)).toEqual({ uid: 'user-1', name: 'Alice' });
+  });
+
+  it('refuses a token past the grace window', async () => {
+    const token = await mintToken(payload({ exp: Date.now() - RENEWAL_GRACE_MS - 1000 }), SECRET);
+    expect(await verifyTokenForRenewal(token, SECRET)).toBeNull();
+  });
+
+  it('still refuses a forged signature', async () => {
+    const token = await mintToken(payload({ exp: Date.now() - 1000 }), OTHER_SECRET);
+    expect(await verifyTokenForRenewal(token, SECRET)).toBeNull();
   });
 });

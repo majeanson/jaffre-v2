@@ -135,8 +135,14 @@ let mintChain: Promise<StoredToken | null> = Promise.resolve(null);
 /** Valid for 7+ days and already carrying this name — reusable as-is.
  * (Deliberately NOT a type predicate: a false doesn't mean null, the name may
  * simply mismatch, and the mint below still wants that token as its Bearer.) */
+// Token `exp` is epoch MILLISECONDS — the server mints `Date.now() + TTL_MS`
+// and rejects `exp < Date.now()`. Compared here as seconds, every token looked
+// valid for decades: an expired one was reused for ever and its socket 401'd
+// into an endless "Reconnecting…" loop once it passed 90 days old.
+const DAY_MS = 86_400_000;
+
 function reusable(cached: StoredToken | null, name: string): boolean {
-  return cached !== null && cached.exp - Date.now() / 1000 > 7 * 86400 && cached.name === name;
+  return cached !== null && cached.exp - Date.now() > 7 * DAY_MS && cached.name === name;
 }
 
 export function getGuestToken(name: string): Promise<StoredToken | null> {
@@ -187,7 +193,7 @@ export function getGuestToken(name: string): Promise<StoredToken | null> {
 /** The current session token, if this browser holds a valid one. */
 export function getSessionToken(): string | null {
   const cached = read();
-  return cached !== null && cached.exp > Date.now() / 1000 ? cached.token : null;
+  return cached !== null && cached.exp > Date.now() ? cached.token : null;
 }
 
 /** The 3-word recovery code from this browser's first mint, if any — shown
@@ -440,7 +446,7 @@ function storeToken(data: { userId: string; name: string; token: string }): Stor
     token: data.token,
     userId: data.userId,
     name: data.name,
-    exp: payload.exp ?? Date.now() / 1000 + 89 * 86400,
+    exp: payload.exp ?? Date.now() + 89 * DAY_MS,
   };
   localStorage.setItem(KEY, JSON.stringify(stored));
   return stored;

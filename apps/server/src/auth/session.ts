@@ -81,7 +81,31 @@ export async function mintToken(payload: SessionPayload, secret: string): Promis
  * wrong shape) resolves to null, never throws — this runs on the Worker
  * dispatch path for every request that carries a token.
  */
-export async function verifyToken(token: string, secret: string): Promise<SessionIdentity | null> {
+export function verifyToken(token: string, secret: string): Promise<SessionIdentity | null> {
+  return verifyWithGrace(token, secret, 0);
+}
+
+/**
+ * How long past `exp` a token may still RENEW its own identity (never
+ * authorize anything else). A client that went quiet for a while must come
+ * back as the same uid — XP, stats, seats — not be forked into a stranger.
+ */
+export const RENEWAL_GRACE_MS = 180 * 24 * 60 * 60 * 1000;
+
+/** Signature-checked like `verifyToken`, but accepts a token up to
+ * `RENEWAL_GRACE_MS` past expiry. ONLY for the guest re-mint path. */
+export function verifyTokenForRenewal(
+  token: string,
+  secret: string,
+): Promise<SessionIdentity | null> {
+  return verifyWithGrace(token, secret, RENEWAL_GRACE_MS);
+}
+
+async function verifyWithGrace(
+  token: string,
+  secret: string,
+  graceMs: number,
+): Promise<SessionIdentity | null> {
   if (!isUsableSecret(secret)) return null;
   const dot = token.indexOf('.');
   if (dot < 0) return null;
@@ -94,7 +118,7 @@ export async function verifyToken(token: string, secret: string): Promise<Sessio
       Record<keyof SessionPayload, unknown>
     >;
     if (typeof payload.uid !== 'string' || typeof payload.name !== 'string') return null;
-    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null;
+    if (typeof payload.exp !== 'number' || payload.exp + graceMs < Date.now()) return null;
     return { uid: payload.uid, name: payload.name };
   } catch {
     return null;

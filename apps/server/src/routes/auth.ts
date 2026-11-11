@@ -23,7 +23,7 @@ import {
   signGoogleState,
   verifyGoogleState,
 } from '../auth/login.js';
-import { isUsableSecret, mintToken, verifyToken } from '../auth/session.js';
+import { isUsableSecret, mintToken, verifyToken, verifyTokenForRenewal } from '../auth/session.js';
 import type { Env } from '../env.js';
 // DEFAULT_NAME lives beside publicId because both answer "what do other people
 // see when nobody has said who they are?" — adoptLoginName below upgrades it,
@@ -62,7 +62,7 @@ export async function handleGuestAuth(request: Request, env: Env): Promise<Respo
 
   const existingToken = bearerToken(request);
   const identity =
-    existingToken !== null ? await verifyToken(existingToken, env.SESSION_SECRET) : null;
+    existingToken !== null ? await verifyTokenForRenewal(existingToken, env.SESSION_SECRET) : null;
   if (identity !== null) {
     // Rename-in-place: same uid, fresh token. Best-effort — the row may not
     // exist (e.g. D1 was down at first mint), and that must not block play.

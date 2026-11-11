@@ -2,6 +2,7 @@ import { env as testEnv } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import worker from '../src/index.js';
 import type { Env } from '../src/env.js';
+import { mintToken } from '../src/auth/session.js';
 
 // The shared test env (wrangler.test.toml) deliberately has no
 // SESSION_SECRET so the plain ?u=&n= tests keep working (see room.test.ts).
@@ -114,6 +115,17 @@ describe('POST /api/auth/guest', () => {
       .bind(first.userId)
       .first<{ name: string }>();
     expect(row?.name).toBe('Bobby');
+  });
+
+  it('an expired (but genuine) token still renews the SAME uid', async () => {
+    const first = (await (await guest('Dora')).json()) as GuestResponse;
+    const stale = await mintToken(
+      { uid: first.userId, name: 'Dora', exp: Date.now() - 10 * 86_400_000 },
+      SECRET,
+    );
+    const data = (await (await guest('Dora', stale)).json()) as GuestResponse;
+    expect(data.userId).toBe(first.userId);
+    expect(data.recoveryCode).toBeUndefined();
   });
 });
 
