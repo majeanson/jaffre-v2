@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+// One source of truth for the security policy: the Worker wraps its own
+// responses with it, this writes it for the asset-served ones. See the file's
+// header for why the front door needs this second delivery path.
+import { headersFileSource } from '../server/src/securityHeaders';
 
 /**
  * Stamp dist/version.json with the commit sha so scripts/verify-deploy.ts can
@@ -22,6 +26,25 @@ function versionStamp(): Plugin {
         resolve(import.meta.dirname, 'dist/version.json'),
         JSON.stringify({ sha, builtAt: new Date().toISOString() }),
       );
+    },
+  };
+}
+
+/**
+ * Write dist/_headers so Cloudflare's asset router attaches the security
+ * headers to the responses it serves WITHOUT invoking the Worker — `/`,
+ * `/assets/*`, and the SPA navigation fallback. These are exactly the
+ * responses `withSecurityHeaders` in the Worker can never reach, so this is
+ * the other half of the same guarantee (security audit H1). The file is parsed
+ * by Cloudflare and never served as an asset, so it needs no cache or glob
+ * handling of its own.
+ */
+function securityHeadersFile(): Plugin {
+  return {
+    name: 'security-headers-file',
+    apply: 'build',
+    closeBundle() {
+      writeFileSync(resolve(import.meta.dirname, 'dist/_headers'), headersFileSource());
     },
   };
 }
@@ -68,6 +91,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     versionStamp(),
+    securityHeadersFile(),
     fontPreload(),
     VitePWA({
       // 'prompt' keeps the update under app control — UpdateToast then applies
