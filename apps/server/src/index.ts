@@ -24,6 +24,7 @@
 import { GameRoom } from './GameRoom.js';
 import { Lobby } from './Lobby.js';
 import type { Env } from './env.js';
+import { withSecurityHeaders } from './securityHeaders.js';
 import {
   handleAuthMe,
   handleAuthMethods,
@@ -144,11 +145,20 @@ export default {
     }
 
     // The share link (wrangler.toml routes /join/* worker-first for this).
+    // It serves the SPA shell as HTML, so it is framable and needs the same
+    // frame-ancestors/CSP as the asset-served front door — and because it is
+    // run_worker_first, the dist/_headers file never reaches it. Wrap it here.
     const joinMatch = JOIN_RE.exec(pathname);
     if (joinMatch !== null && (method === 'GET' || method === 'HEAD')) {
-      return handleJoin(request, env, (joinMatch[1] as string).toLowerCase());
+      return withSecurityHeaders(
+        await handleJoin(request, env, (joinMatch[1] as string).toLowerCase()),
+      );
     }
 
-    return env.ASSETS.fetch(request);
+    // The asset-binding fallback (SPA shell / static file for a Worker-reached
+    // miss). `_headers` applies when the router serves an asset WITHOUT the
+    // Worker; a response fetched through the binding here is Worker-generated,
+    // so the file does not cover it — the wrapper does.
+    return withSecurityHeaders(await env.ASSETS.fetch(request));
   },
 } satisfies ExportedHandler<Env>;
