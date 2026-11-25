@@ -14,10 +14,10 @@
     "devkit:build": "ladle build"
   },
   "dependencies": {
-    "@fontsource-variable/fraunces": "^5.2.5",
-    "@fontsource-variable/instrument-sans": "^5.2.5",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/instrument-sans": "^5.3.0",
     "motion": "^12.10.5",
-    "react-aria-components": "^1.8.0"
+    "react-aria-components": "^1.22.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@ladle/react": "^5.0.1",
-    "@tailwindcss/vite": "^4.1.6",
-    "tailwindcss": "^4.1.6"
+    "@tailwindcss/vite": "^4.3.5",
+    "tailwindcss": "^4.3.5"
   }
 }

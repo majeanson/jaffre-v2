@@ -14,13 +14,6 @@ import { ABANDONED_REAP_MS, EMPTY_REAP_MS } from '../src/room/reaper.js';
  * come back after an unrelated wake WITHOUT restarting its clock.
  */
 
-declare module 'cloudflare:test' {
-  interface ProvidedEnv {
-    GAME_ROOM: DurableObjectNamespace;
-    LOBBY: DurableObjectNamespace;
-  }
-}
-
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 interface StoredMeta {

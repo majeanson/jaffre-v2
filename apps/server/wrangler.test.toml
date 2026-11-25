@@ -1,4 +1,4 @@
-# Test-only wrangler config for @cloudflare/vitest-pool-workers.
+# Test-only wrangler config for @cloudflare/vitest-plugin.
 # Identical to wrangler.toml minus the [assets] binding: the assets directory
 # (../web/dist) may not exist in CI and is irrelevant to room tests.
 name = "jaffre"

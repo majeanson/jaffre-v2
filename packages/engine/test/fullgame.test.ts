@@ -1,3 +1,6 @@
+/// <reference types="node" />
+// (setTimeout: the engine tsconfig has `types: []`, and vitest ≥4 no longer
+// pulls Node's globals in transitively the way vitest 3 did.)
 import { describe, expect, it } from 'vitest';
 import { replay } from '../src/replay.js';
 import { TARGET_SCORE } from '../src/rules.js';

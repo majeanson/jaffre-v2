@@ -1,5 +1,5 @@
-import { SELF, env, fetchMock, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { SELF, env, runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { chooseAction } from '@jaffre/bots';
 import { deserialize, mulberry32 } from '@jaffre/engine';
 import type { Action, GameEvent, GameState, SeatView } from '@jaffre/engine';
@@ -12,13 +12,6 @@ import {
   TURN_TIMER_MS,
   extractVideoId,
 } from '../src/GameRoom.js';
-
-declare module 'cloudflare:test' {
-  interface ProvidedEnv {
-    GAME_ROOM: DurableObjectNamespace;
-    LOBBY: DurableObjectNamespace;
-  }
-}
 
 /** Thin WebSocket test client: buffers server messages, records all events. */
 class Client {
@@ -1567,6 +1560,7 @@ describe('GameRoom', () => {
         seats?: unknown[];
         disconnectedSince?: Record<string, number>;
         lobbyListed?: boolean;
+        emptySince?: number;
       }
       interface StoredLobbyEntry {
         readonly code: string;
@@ -1606,11 +1600,16 @@ describe('GameRoom', () => {
       // Alice — the room's only human — vanishes past the pre-game grace,
       // same as the ghost-seat test above.
       alice.ws.close(1000, 'tab closed');
+      // Wait for the close handler to FINISH, not just start the clock: with
+      // alice the last socket, its trailing armReaper re-persists meta (after
+      // an awaited lobby fetch), which would clobber the backdate below.
       await pollUntil(
         () =>
           runInDurableObject(stub, async (_instance, state) => {
             const meta = await state.storage.get<StoredMeta>('meta');
-            return meta?.disconnectedSince?.['alice'];
+            return meta?.disconnectedSince?.['alice'] !== undefined && meta.emptySince !== undefined
+              ? true
+              : undefined;
           }),
         'the pre-game disconnect clock',
       );
@@ -2665,23 +2664,45 @@ describe('GameRoom', () => {
 const oembedPath = (videoId: string) =>
   `/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`;
 
+/** Registered oEmbed replies, URL → queue; each entry is used `times` times.
+ * Served by the `fetch` spy in the music-queue block (the plugin no longer
+ * ships an undici fetchMock); anything unregistered rejects like a locked-down
+ * network. */
+const oembedReplies = new Map<string, { status: number; body: unknown; times: number }[]>();
+
+function interceptOEmbed(videoId: string, status: number, body: unknown, times = 1): void {
+  const url = `https://www.youtube.com${oembedPath(videoId)}`;
+  const queue = oembedReplies.get(url) ?? [];
+  queue.push({ status, body, times });
+  oembedReplies.set(url, queue);
+}
+
+async function mockedFetch(input: RequestInfo | URL): Promise<Response> {
+  const url = input instanceof Request ? input.url : String(input);
+  const queue = oembedReplies.get(url);
+  const reply = queue?.[0];
+  if (!queue || !reply) throw new TypeError(`network disabled in tests: ${url}`);
+  if (--reply.times === 0) queue.shift();
+  return typeof reply.body === 'string'
+    ? new Response(reply.body, { status: reply.status })
+    : Response.json(reply.body, { status: reply.status });
+}
+
 function mockOEmbedOk(videoId: string, title = 'Test Song', times = 1): void {
-  fetchMock
-    .get('https://www.youtube.com')
-    .intercept({ path: oembedPath(videoId) })
-    .reply(200, {
+  interceptOEmbed(
+    videoId,
+    200,
+    {
       title,
       author_name: 'Test Artist',
       thumbnail_url: 'https://i.ytimg.com/vi/x/hqdefault.jpg',
-    })
-    .times(times);
+    },
+    times,
+  );
 }
 
 function mockOEmbedMissing(videoId: string): void {
-  fetchMock
-    .get('https://www.youtube.com')
-    .intercept({ path: oembedPath(videoId) })
-    .reply(404, 'Not Found');
+  interceptOEmbed(videoId, 404, 'Not Found');
 }
 
 /** Authoritative music state straight from DO storage. */
@@ -2716,13 +2737,13 @@ const VID_C = 'AAAAAAAAAAA';
 
 describe('music queue', () => {
   beforeAll(() => {
-    fetchMock.activate();
-    fetchMock.disableNetConnect();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mockedFetch);
   });
   afterAll(() => {
-    // singleWorker shares one runtime across files — let later suites reach
-    // the network again rather than dying on this block's lockdown.
-    fetchMock.enableNetConnect();
+    // The runtime may be shared across files — let later suites reach the
+    // network again rather than dying on this block's lockdown.
+    vi.restoreAllMocks();
+    oembedReplies.clear();
   });
 
   it('extracts video ids from the URL shapes people actually paste', () => {

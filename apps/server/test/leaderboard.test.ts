@@ -1,5 +1,5 @@
 import { SELF, env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { MONTHLY_CHAMPION_AWARD_ID, monthlyChampionMonthAwardId } from '../src/awards.js';
 import { publicId } from '../src/publicId.js';
 import { monthEnd, monthKeyOf, monthStart } from '../src/routes/leaderboard.js';
@@ -213,6 +213,17 @@ describe('GET /api/leaderboard?period=month&month=', () => {
  * (see grantMonthlyChampionIfDue in routes/leaderboard.ts).
  */
 describe('monthly champion lazy grant', () => {
+  // Storage is isolated per test FILE, not per test: the boards above seed
+  // last-month games (and crown their winner on read), so start each of these
+  // from empty games/awards or "who won last month" is theirs, not ours.
+  beforeEach(async () => {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM user_awards'),
+      env.DB.prepare('DELETE FROM game_players'),
+      env.DB.prepare('DELETE FROM games'),
+    ]);
+  });
+
   async function seedLastMonthGame(id: string, uid: string, won: boolean) {
     // One ms before this month's start is always inside the PREVIOUS month,
     // regardless of what day of the month the test runs on.

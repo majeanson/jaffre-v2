@@ -1,3 +1,6 @@
+/// <reference types="node" />
+// (structuredClone: the engine tsconfig has `types: []`, and vitest ≥4 no
+// longer pulls Node's globals in transitively the way vitest 3 did.)
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { applyAction, createGame } from '../src/reducer.js';
