@@ -50,12 +50,11 @@ jobs:
           # other than what shipped. Pin the triggering SHA; the fallback covers
           # schedule/dispatch, where there is no workflow_run payload.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
-      - uses: actions/setup-node@v5
+      # Shared DevHub kit step: Node + npm cache + npm ci + Playwright Chromium.
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          node-version: '22'
+          playwright: 'true'
       # Runs BOTH Playwright projects: `chromium` (reduced motion, the
       # deterministic bulk) and `chromium-motion` (motion.spec.ts only, with
       # animations switched on). The motion project is the only place the app
