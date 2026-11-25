@@ -1,4 +1,4 @@
-# Weekly dependency nudge (same file as Viens jouer, Dads and Babillard; DevHub kit/).
+# Weekly dependency nudge (DevHub kit/: edit there, sync from the Kit tab).
 # Minor + patch bumps are grouped into one PR a week; majors come one at a time.
 # At most 5 open at once. CI is the gate: a red Dependabot PR is not merged.
 version: 2
