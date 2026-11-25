@@ -730,10 +730,14 @@ export function ScoreStrip({
       <button
         type="button"
         aria-expanded={open}
-        aria-label={t.scoreDetails}
         onClick={() => setOpen((o) => !o)}
         className="relative z-40 grid w-full cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-3.5 py-1.5 max-sm:gap-x-2 max-sm:px-2 max-sm:py-1"
       >
+        {/* Name comes from CONTENT, led by a screen-reader-only "Score
+            details": an aria-label would hide the visible scores from the
+            name, which axe flags (label-content-name-mismatch, WCAG 2.5.3).
+            Absolutely positioned, so it takes no grid cell. */}
+        <span className="sr-only">{t.scoreDetails}</span>
         <span className="flex justify-start">
           <TeamSide
             name={shortName(teamNames[0])}

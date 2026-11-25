@@ -42,7 +42,10 @@ const T: Record<
     options: 'Options',
     skins: 'Skins',
     settings: 'Settings',
-    howToPlay: 'How to play',
+    // The accessible name must contain the visible `help` title (axe
+    // label-content-name-mismatch, WCAG 2.5.3) — hence "Help — …", not just
+    // "How to play".
+    howToPlay: 'Help — how to play',
     help: 'Help',
     hints: 'Hints',
     gameLog: 'Game log',
@@ -56,7 +59,7 @@ const T: Record<
     options: 'Options',
     skins: 'Habillages',
     settings: 'Réglages',
-    howToPlay: 'Comment jouer',
+    howToPlay: 'Aide — comment jouer',
     help: 'Aide',
     hints: 'Conseils',
     gameLog: 'Journal de partie',

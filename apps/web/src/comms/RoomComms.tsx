@@ -7,9 +7,9 @@ import { useGameStore } from '../state/gameStore.js';
 import { useMusicStore } from '../state/musicStore.js';
 import { VoiceControls } from '../voice/VoiceControls.js';
 
-const T: Record<Lang, { comms: string; chat: string; music: string }> = {
-  en: { comms: 'Chat & music', chat: 'Chat', music: 'Music' },
-  fr: { comms: 'Clavardage et musique', chat: 'Clavardage', music: 'Musique' },
+const T: Record<Lang, { comms: string; chat: string; music: string; unread: string }> = {
+  en: { comms: 'Chat & music', chat: 'Chat', music: 'Music', unread: 'unread' },
+  fr: { comms: 'Clavardage et musique', chat: 'Clavardage', music: 'Musique', unread: 'non lus' },
 };
 
 type Tab = 'chat' | 'music';
@@ -150,6 +150,7 @@ export function RoomComms({
 
   if (variant === 'panel') return surface;
 
+  const unreadShown = unread > 99 ? '99+' : String(unread);
   return (
     <div className="relative">
       <button
@@ -157,7 +158,9 @@ export function RoomComms({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label={t.comms}
+        // The visible unread badge must appear in the accessible name (axe
+        // label-content-name-mismatch, WCAG 2.5.3): "Chat & music · 1 unread".
+        aria-label={unread > 0 ? `${t.comms} · ${unreadShown} ${t.unread}` : t.comms}
         title={t.comms}
         data-testid="chat-toggle"
         className={`relative cursor-pointer ${ARCADE.iconBtnCell} ${
@@ -183,7 +186,7 @@ export function RoomComms({
             data-testid="chat-unread"
             className="absolute -top-2 -right-2 grid min-w-4.5 place-items-center rounded-full bg-(--color-ap-gold) px-1 text-[10px] font-bold text-(--color-ap-ink)"
           >
-            {unread > 99 ? '99+' : unread}
+            {unreadShown}
           </span>
         )}
         {/* No "music is playing" badge here: the MusicDock pill in the corner

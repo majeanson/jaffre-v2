@@ -242,7 +242,8 @@ export const SCENE_METAS = [
     label: 'Score details expanded',
     screen: 'table',
     ui: { scoreDetailsOpen: true },
-    probe: 'role=button[name="Score details"][expanded=true]',
+    // Prefix regex: the strip's name is "Score details" + its visible scores.
+    probe: 'role=button[name=/^Score details/][expanded=true]',
   },
   {
     id: 'comms-open',
