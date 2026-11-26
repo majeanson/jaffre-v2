@@ -30,14 +30,14 @@
     "@cloudflare/vitest-plugin": "^1.9.2",
     "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
-    "@vitest/coverage-v8": "^5.1.1",
-    "eslint": "^9.26.0",
+    "@vitest/coverage-v8": "^5.1.2",
+    "eslint": "^10.15.0",
     "fast-check": "^4.11.0",
     "prettier": "^3.10.1",
     "tsx": "^4.23.15",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.73.0",
-    "vitest": "^5.1.1",
-    "wrangler": "^4.124.0"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2",
+    "wrangler": "^4.168.0"
   }
 }
