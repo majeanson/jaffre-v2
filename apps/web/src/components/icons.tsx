@@ -224,6 +224,27 @@ export function IconHistory() {
   );
 }
 
+/** Log in: a person (head + shoulders); `linked` swaps a shoulder for a check
+ * so the linked state still reads on the icon-only phone form. */
+export function IconUser({ linked = false }: { linked?: boolean }) {
+  return (
+    <Svg>
+      {linked ? (
+        <>
+          <circle cx="10" cy="8" r="3.5" />
+          <path d="M3.5 20a6.5 6.5 0 0 1 10.5-5.1" />
+          <path d="M15 18l2 2 4-4.5" />
+        </>
+      ) : (
+        <>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20a7 7 0 0 1 14 0" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
 /** Voice / microphone: a capsule on a stand. */
 export function IconMic() {
   return (

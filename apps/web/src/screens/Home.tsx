@@ -251,10 +251,13 @@ export function Home({
               contrast. Install + turn-alerts are one-time settings, not a door
               you need every visit — they live in the Settings sheet (gear)
               instead; the one exception is the one-shot InstallNudge below,
-              which earns its single appearance (see the component). */}
+              which earns its single appearance (see the component).
+              Every child is a fixed ≥40px square (tap target), so nothing
+              flexes: below `sm` the gap/padding tighten so seven of them
+              (incl. the LV chip) fit a 360px phone — measured, not guessed. */}
           <div
             data-testid="chrome-bar"
-            className="rise-in flex items-center justify-center gap-2 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-3 py-2 shadow-(--shadow-ap-sm)"
+            className="rise-in flex items-center justify-center gap-1 rounded-(--radius-ap-control) border-2 border-(--color-ap-ink) bg-(--color-ap-panel) px-2 py-2 shadow-(--shadow-ap-sm) sm:gap-2 sm:px-3"
             style={{ '--rise-delay': '280ms' } as CSSProperties}
           >
             <HelpButton defaultOpen={helpOpen} className={ICON_BTN_NEUTRAL}>

@@ -202,6 +202,10 @@ for (const width of MEDIA_WIDTHS) {
     );
     await page.goto('/#scenes/home');
     await expect(page.getByRole('heading', { name: 'Jaffre' })).toBeVisible();
+    // The LV chip arrives with the stats fetch — wait for it, or the check
+    // races it and measures a bar one chip lighter than real (360px fails
+    // only with it present).
+    await expect(page.getByTestId('level-badge')).toBeVisible();
 
     // Every chrome-bar control stays inside the bar, and the bar in the
     // viewport — the bar is where a new chip overflows first on phones.
@@ -256,6 +260,51 @@ for (const width of MEDIA_WIDTHS) {
       width,
     );
   });
+
+  for (const lang of ['en', 'fr'] as const) {
+    test(`chrome-bar labels are never ellipsized at ${String(width)}px (${lang})`, async ({
+      page,
+    }) => {
+      // Regression: the bounding-box check above passed while flex squeezed
+      // the login chip to "C…" (fr "Connexion") on a 390px phone — the chip
+      // fit the bar, its label just didn't fit the chip. Assert every visible
+      // text-bearing element in the bar shows its whole text, in both
+      // languages and both login states (logged out, then linked).
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript((l) => localStorage.setItem('jaffre-lang', l), lang);
+      const clipped = async () =>
+        page.getByTestId('chrome-bar').evaluate((bar) => {
+          const out: string[] = [];
+          for (const el of [bar, ...bar.querySelectorAll('*')]) {
+            if (!(el instanceof HTMLElement) || el.getClientRects().length === 0) continue;
+            const text = [...el.childNodes]
+              .filter((n) => n.nodeType === Node.TEXT_NODE)
+              .map((n) => n.textContent ?? '')
+              .join('')
+              .trim();
+            if (text === '') continue;
+            if (el.scrollWidth > el.clientWidth) {
+              out.push(`"${text}" ${String(el.scrollWidth)}>${String(el.clientWidth)}`);
+            }
+          }
+          return out;
+        });
+
+      await page.goto('/#scenes/home');
+      await expect(page.getByTestId('level-badge')).toBeVisible();
+      expect(await clipped(), `logged out @${String(width)}px ${lang}`).toEqual([]);
+
+      await page.evaluate(() =>
+        localStorage.setItem(
+          'jaffre-links',
+          JSON.stringify({ email: 'player.with.a.long.name@example.com', google: true }),
+        ),
+      );
+      await page.reload();
+      await expect(page.getByTestId('level-badge')).toBeVisible();
+      expect(await clipped(), `linked @${String(width)}px ${lang}`).toEqual([]);
+    });
+  }
 
   test(`your-tables card controls stay inside their card at ${String(width)}px`, async ({
     page,

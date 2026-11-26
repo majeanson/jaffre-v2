@@ -14,7 +14,8 @@ import {
   verifyEmailLogin,
 } from '../net/auth.js';
 import { playerName, setPlayerName } from '../net/socket.js';
-import { GHOST_BTN } from './buttonStyles.js';
+import { ICON_BTN_LABELED } from './IconButton.js';
+import { IconUser } from './icons.js';
 import { useScrollLock } from './useScrollLock.js';
 import { useDismissLayer } from '../keys/layers.js';
 
@@ -475,22 +476,33 @@ export function LoginButton({ defaultOpen = false }: { readonly defaultOpen?: bo
   const [open, setOpen] = useState(defaultOpen);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const links = getLinks();
+  const linked = isLinked();
+  const label = linked ? `✓ ${t.linked}` : t.login;
   return (
     <>
       {/* Linked state keeps the chip SHORT — "✓ Linked" only. The full
           email lives inside the sheet; printing it here blew the phone
           chrome bar 35px past both edges. Truncate is the backstop for
-          any future long label. */}
+          any future long label.
+          Below `sm` the chip is icon-only (same square as its chrome-bar
+          neighbours): six icons + a text chip left flex squeezing the label
+          to "C…" at 390px. aria-label pins the accessible name to the label
+          at every width (e2e clicks 'Log in'), and the linked state stays
+          visible on the icon as the ok colour + a check. */}
       <button
         ref={triggerRef}
         type="button"
-        title={isLinked() ? t.linkedTo(links.email ?? 'Google') : t.login}
+        aria-label={label}
+        title={linked ? t.linkedTo(links.email ?? 'Google') : t.login}
         onClick={() => setOpen(true)}
-        className={`max-w-[9rem] truncate px-3 py-1.5 font-arcade-display text-(length:--text-fluid-xs) uppercase tracking-wide ${
-          isLinked() ? 'text-(--color-ap-ok)' : 'text-(--color-ap-text)'
-        } ${GHOST_BTN}`}
+        className={`${ICON_BTN_LABELED} max-w-[9rem] bg-(--color-ap-panel) hover:bg-(--color-ap-panel-hover) ${
+          linked ? 'text-(--color-ap-ok)' : 'text-(--color-ap-text)'
+        }`}
       >
-        {isLinked() ? `✓ ${t.linked}` : t.login}
+        <IconUser linked={linked} />
+        <span className="hidden min-w-0 truncate font-arcade-display text-[0.65em] uppercase tracking-wide sm:inline">
+          {label}
+        </span>
       </button>
       {open && (
         <LoginSheet
