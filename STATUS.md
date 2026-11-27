@@ -4,7 +4,8 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at major checkpoints only. Details live in git history
 and `docs/archive/` (completed plans + the retired polishing backlog).
 
-Last checkpoint: **2026-07-30** (the completions pass — see below).
+Last checkpoint: **2026-11-27** (security headers + toolchain — see below;
+previous: 2026-07-30, the completions pass).
 
 ## Shipped and settled
 
@@ -48,10 +49,12 @@ Last checkpoint: **2026-07-30** (the completions pass — see below).
 
 ## The gates (all green at checkpoint)
 
-- 197 e2e (`npm run e2e`; chromium = reduced motion, chromium-motion = the
-  only project that watches pixels move) · 69-scene catalog, each axe-gated
-  (`npm run e2e:scenes`, 110 tests — fast, and the first thing to run) ·
-  118 web unit · 208 server · engine property tests (100% cov).
+- 244 Playwright tests in 36 files (`npm run e2e -- --list`, both projects,
+  scenes included; chromium = reduced motion, chromium-motion = the only
+  project that watches pixels move) · scene catalog, each axe-gated
+  (`npm run e2e:scenes`, 127 tests — fast, and the first thing to run; scene
+  count not re-counted) · 200 web unit · 267 server · engine property tests
+  (100% cov, not re-run). Counts as of 2026-11-27.
 - `apps/web/test/violetInk.test.ts` enforces the visual law: **violet pairs
   with ink, never white** (it caught a 4th live instance on its first run).
 - Shots sweep, re-run against the head-to-head/regulars/lazy-felt work
@@ -87,6 +90,47 @@ Last checkpoint: **2026-07-30** (the completions pass — see below).
   CAN reach prod and is caught minutes later, not blocked: on 2026-07-30 a
   red e2e coexisted with a completed deploy, as designed. No PR gate — land
   on main.
+
+## Security headers and toolchain (2026-11-27)
+
+- **Security headers — one list, two emitters.** `ENFORCED` in
+  `apps/server/src/securityHeaders.ts` (HSTS, nosniff, Referrer-Policy,
+  Permissions-Policy, CSP) is the only source (`1a6c088`, audit finding H1).
+  `withSecurityHeaders` wraps the responses the Worker generates (the `/join/*`
+  shell, the `env.ASSETS.fetch` fallthrough — never the 101 upgrade);
+  `apps/web/vite.config.ts` writes `headersFileSource()` into `dist/_headers`
+  for what the asset router serves WITHOUT the Worker (`/`, `/assets/*`, the
+  SPA fallback). Neither path alone covers the front door.
+- **The CSP admits exactly two third-party surfaces.** YouTube for the music
+  dock (`script-src` www.youtube.com + s.ytimg.com, `frame-src`
+  www.youtube.com, `img-src` i.ytimg.com for queue thumbnails — `4323b2c`,
+  blank until then) and, for framing, `frame-ancestors 'self'
+https://marcportal.com https://*.marcportal.com` (the dads embed).
+  Everything else is self-hosted. `microphone=(self)` stays in
+  Permissions-Policy or push-to-talk dies. **A new third-party origin must be
+  added to `ENFORCED` or the browser silently blocks it** — the thumbnail bug
+  is the precedent.
+- **Toolchain.** TypeScript 6 (not 7 — typescript-eslint doesn't support it
+  yet), ESLint 10, Vite 8 (`@vitejs/plugin-react` 6), vitest 5, Playwright
+  1.65. The e2e job is pinned to `ubuntu-24.04` (`f776951`: ubuntu-latest
+  moved to 26.04, where the older Playwright couldn't install Chromium).
+- **Server tests run on `@cloudflare/vitest-plugin`** (`cloudflareTest` in
+  `apps/server/vitest.config.ts`; pool-workers is gone). `maxWorkers: 1` —
+  parallel workerd runtimes fight over miniflare storage on Windows (EBUSY).
+  There is no `fetchMock`: a test stubs `fetch` itself and anything
+  unregistered rejects (see the music-queue block in `room.test.ts`). Storage
+  is isolated per FILE, not per test — a test that needs empty tables clears
+  them in `beforeEach` (`leaderboard.test.ts`).
+- **CI kit.** Every job uses the shared `.github/actions/setup` action (DevHub
+  kit — edit it there and sync, not here), with Node pinned to 22 in
+  `ci.yml`/`e2e.yml`. `scheduled-red.yml` turns a red SCHEDULED e2e into one
+  issue per workflow (a later red comments, the next green closes it).
+  Dependabot: npm weekly (minor+patch grouped, majors one at a time),
+  GitHub Actions monthly; CI is the gate, a red bump is not merged.
+
+Also landed since 2026-07-30: the dads embed bridge (below), the expired-token
+"Reconnecting…" loop fix (`92c19b0`) and the away-seat-with-no-clock freeze fix
+(`625e122`).
 
 ## The completions pass (2026-07-30)
 
@@ -373,7 +417,10 @@ exists:
 Covered by `apps/web/test/embed.test.ts` (16, the refusal cases a browser
 cannot stage) and `apps/web/e2e/embed.spec.ts` (3, the visible half).
 
-Deliberately NOT done: no `frame-ancestors` allowlist. Jaffre has never sent
-one and anyone can frame it today; adding it is a separate decision, and the
-two places to touch would be `routes/join.ts`'s headers and the
-`env.ASSETS.fetch` fallthrough in `index.ts`.
+`frame-ancestors` allowlist: SHIPPED 2026-11 (was deliberately not done at
+the 2026-07 checkpoint). It lives in the CSP in
+`apps/server/src/securityHeaders.ts` — `'self'` + `https://marcportal.com` +
+`https://*.marcportal.com`, which is what keeps dads framing the table. No
+`X-Frame-Options`: it can't express a two-origin allowlist, and a DENY beside
+it would refuse dads in browsers that read XFO first. See the security
+headers section below.
