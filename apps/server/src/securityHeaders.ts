@@ -54,7 +54,10 @@ const CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline'",
   // data: covers the inline SVG favicon, qrcode-generator's data-URL output,
   // and a painted-avatar <img src=dataURL> round-trip (src/paint/importImage.ts).
-  "img-src 'self' data:",
+  // i.ytimg.com: the music queue's track thumbnails are the YouTube oEmbed
+  // thumbnail_url (apps/server/src/room/music.ts), rendered as <img> in
+  // MusicDock / MusicQueuePanel — without it every thumbnail is blank.
+  "img-src 'self' data: https://i.ytimg.com",
   "font-src 'self'",
   // 'self' covers same-origin wss on whatever host serves the page (prod and
   // the workers.dev preview alike); the explicit prod wss names the game socket.

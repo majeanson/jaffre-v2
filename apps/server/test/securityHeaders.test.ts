@@ -84,6 +84,12 @@ describe('the enforced policy', () => {
     expect(csp).not.toContain('default-src *');
   });
 
+  it('admits the YouTube oEmbed thumbnails (music queue) in img-src, no wildcard', () => {
+    const imgSrc = csp.split('; ').find((d) => d.startsWith('img-src ')) ?? '';
+    expect(imgSrc.split(' ')).toContain('https://i.ytimg.com');
+    expect(imgSrc).not.toContain('*');
+  });
+
   it('keeps the microphone for voice chat while denying unused capabilities', () => {
     const pp = ENFORCED.find(([n]) => n === 'Permissions-Policy')?.[1] ?? '';
     expect(pp).toContain('microphone=(self)');
